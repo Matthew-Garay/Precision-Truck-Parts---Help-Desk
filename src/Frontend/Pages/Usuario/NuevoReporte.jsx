@@ -21,7 +21,9 @@ const CATEGORIAS = [
 ];
 
 const MAX_IMGS = 8;
-const EMPTY = { titulo:"", descripcion:"", prioridad:"", categoria:"", evidencias:[] };
+const EMPTY = { titulo:"", descripcion:"", palabras:0, prioridad:"", categoria:"", evidencias:[] };
+const MAX_PALABRAS = 500;
+const contarPalabras = t => t.trim().length;
 
 export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
   const [form,     setForm]     = useState(EMPTY);
@@ -57,9 +59,23 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
   }, []);
 
   const onEditorInput = () => {
-    const html = editorRef.current?.innerHTML || "";
-    const text = editorRef.current?.innerText || "";
-    set("descripcion", text.trim() ? html : "");
+    const texto   = editorRef.current?.innerText || "";
+    const html    = editorRef.current?.innerHTML  || "";
+    const palabras = contarPalabras(texto);
+
+    if (palabras > MAX_PALABRAS) {
+      // revertir al último HTML válido
+      editorRef.current.innerHTML = form.descripcion || "";
+      const range = document.createRange();
+      const sel   = window.getSelection();
+      range.selectNodeContents(editorRef.current);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return;
+    }
+    setForm(f => ({ ...f, descripcion: texto.trim() ? html : "", palabras: texto.trim().length }));
+    quitarError("descripcion");
   };
 
   const handleSubir = () => {
@@ -300,7 +316,25 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
                   [contenteditable] hr { border: none; border-top: 1px solid ${dividerLine}; margin: 6px 0; }
                 `}</style>
 
-                <Err campo="descripcion"/>
+                {/* Contador de palabras */}
+                <div className="flex items-center justify-between mt-1.5">
+                  <Err campo="descripcion"/>
+                  <span className="ml-auto text-[11px] font-bold px-2.5 py-0.5 rounded-full"
+                    style={{
+                      background: form.palabras >= MAX_PALABRAS ? "#fee2e2"
+                        : form.palabras >= 450 ? "#fef9c3"
+                        : isDark ? "rgba(255,255,255,0.06)" : T.bg,
+                      color: form.palabras >= MAX_PALABRAS ? "#dc2626"
+                        : form.palabras >= 450 ? "#ca8a04"
+                        : T.textMuted,
+                      border: `1px solid ${
+                        form.palabras >= MAX_PALABRAS ? "#fca5a5"
+                        : form.palabras >= 450 ? "#fde047"
+                        : dividerLine}`,
+                    }}>
+                    {form.palabras} / {MAX_PALABRAS} palabras
+                  </span>
+                </div>
               </div>
             </div>
 
