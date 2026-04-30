@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import NuevoReporte from "./NuevoReporte";
 import HistorialIncidencias from "./HistorialIncidencias";
+import ManualesIncidencias from "./ManualesIncidencias";
 
 const LIGHT = {
   orange:      "#F47920",
@@ -571,7 +572,7 @@ export default function UsuarioDashboard() {
             <div className="hidden md:flex items-center gap-2.5">
               <div className="w-1 h-7 rounded-full" style={{ background: `linear-gradient(180deg, ${T.orange}, #ffb347)` }} />
               <h1 className="text-[17px] font-black tracking-tight" style={{ color: T.text }}>
-                {activo === 1 ? "Nuevo Reporte" : activo === 2 ? "Historial de Incidencias" : "Incidencias Actuales"}
+                {activo === 1 ? "Nuevo Reporte" : activo === 2 ? "Historial de Incidencias" : activo === 4 ? "Manuales de Incidencias" : "Incidencias Actuales"}
               </h1>
             </div>
             <h1 className="md:hidden text-[15px] font-black" style={{ color: T.text }}>
@@ -607,6 +608,8 @@ export default function UsuarioDashboard() {
             ? <NuevoReporte T={T} />
             : activo === 2
             ? <HistorialIncidencias T={T} />
+            : activo === 4
+            ? <ManualesIncidencias T={T} />
             : <div className="h-full overflow-y-auto p-4 md:p-6 flex flex-col gap-0">
                 <SeccionEstadisticas T={T} />
                 <Tabla T={T} />
