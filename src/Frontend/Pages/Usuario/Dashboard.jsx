@@ -6,6 +6,7 @@ import {
   AlertCircle, Filter, FilePlus
 } from "lucide-react";
 import NuevoReporte from "./NuevoReporte";
+import HistorialIncidencias from "./HistorialIncidencias";
 
 const LIGHT = {
   orange:      "#F47920",
@@ -296,66 +297,246 @@ function PanelDerecho({ T }) {
   );
 }
 
+// ── ESTADÍSTICAS ─────────────────────────────────────────────
+const PRIORIDAD_DATA = [
+  { label: "Urgente", valor: 0, total: 0, color: "#dc2626", bg: "#fee2e2" },
+  { label: "Alta",    valor: 0, total: 0, color: "#ea580c", bg: "#ffedd5" },
+  { label: "Media",   valor: 0, total: 0, color: "#ca8a04", bg: "#fef9c3" },
+  { label: "Baja",    valor: 0, total: 0, color: "#16a34a", bg: "#dcfce7" },
+];
+
+const ESTATUS_DATA = [
+  { label: "Finalizado", valor: 0, color: "#16a34a" },
+  { label: "En Proceso", valor: 0, color: "#ca8a04" },
+  { label: "Revisión",   valor: 0, color: "#ea580c" },
+];
+
+function GraficaPastel({ data, size = 100 }) {
+  const total = data.reduce((s, d) => s + d.valor, 0);
+  const r  = size / 2 - 6;
+  const cx = size / 2;
+  const cy = size / 2;
+  const circ = 2 * Math.PI * r;
+
+  if (total === 0) return (
+    <svg width={size} height={size}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e2e8f0" strokeWidth="12" />
+      <text x={cx} y={cy + 4} textAnchor="middle" fontSize="9" fill="#94a3b8" fontWeight="600">Sin datos</text>
+    </svg>
+  );
+
+  let offset = 0;
+  const segs = data.map(d => {
+    const dash = (d.valor / total) * circ;
+    const s = { ...d, dash, gap: circ - dash, offset };
+    offset += dash;
+    return s;
+  });
+
+  return (
+    <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+      {segs.map((s, i) => (
+        <circle key={i} cx={cx} cy={cy} r={r} fill="none"
+          stroke={s.color} strokeWidth="12"
+          strokeDasharray={`${s.dash} ${s.gap}`}
+          strokeDashoffset={-s.offset} strokeLinecap="butt" />
+      ))}
+    </svg>
+  );
+}
+
+function SeccionEstadisticas({ T }) {
+  const isDark = T.bg === "#0b0e14";
+  const cardStyle = {
+    background: isDark ? "#141720" : T.surface,
+    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`,
+    boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.4)" : "0 1px 6px rgba(0,0,0,0.06)",
+  };
+  const totalEstatus = ESTATUS_DATA.reduce((s, d) => s + d.valor, 0);
+  const hdr = { borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`, background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt };
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+
+      {/* Tarjeta 1: Prioridad */}
+      <div className="rounded-xl overflow-hidden" style={cardStyle}>
+        <div className="px-4 py-2.5 flex items-center gap-2" style={hdr}>
+          <div className="w-1 h-3.5 rounded-full" style={{ background: "#F47920" }} />
+          <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Reportes por Prioridad</p>
+        </div>
+        <div className="px-4 py-3 flex flex-col gap-2.5">
+          {PRIORIDAD_DATA.map((p, i) => {
+            const pct = p.total > 0 ? Math.round((p.valor / p.total) * 100) : 0;
+            return (
+              <div key={i} className="flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
+                    <span className="text-[11px] font-semibold" style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{p.label}</span>
+                  </div>
+                  <span className="text-[11px] font-black" style={{ color: p.color }}>{p.valor}</span>
+                </div>
+                <div className="relative h-4 rounded-full overflow-hidden"
+                  style={{ background: isDark ? "rgba(255,255,255,0.06)" : p.bg }}>
+                  <div className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-700"
+                    style={{ width: `${pct > 0 ? Math.max(pct, 10) : 0}%`, background: p.color }}>
+                    {p.valor > 0 && <span className="text-[9px] font-black text-white">{pct}%</span>}
+                  </div>
+                  {p.valor === 0 && (
+                    <span className="absolute inset-0 flex items-center pl-2.5 text-[9px]"
+                      style={{ color: isDark ? "rgba(255,255,255,0.2)" : T.textFaint }}>Sin registros</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tarjeta 2: Estatus */}
+      <div className="rounded-xl overflow-hidden" style={cardStyle}>
+        <div className="px-4 py-2.5 flex items-center gap-2" style={hdr}>
+          <div className="w-1 h-3.5 rounded-full" style={{ background: "#F47920" }} />
+          <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Tickets por Estatus</p>
+        </div>
+        <div className="px-4 py-3 flex items-center gap-4">
+          {/* Pastel */}
+          <div className="relative flex-shrink-0">
+            <GraficaPastel data={ESTATUS_DATA} size={100} />
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-base font-black" style={{ color: isDark ? "#f1f5f9" : T.text }}>{totalEstatus}</span>
+              <span className="text-[8px] font-semibold" style={{ color: isDark ? "rgba(255,255,255,0.3)" : T.textMuted }}>total</span>
+            </div>
+          </div>
+          {/* Leyenda */}
+          <div className="flex flex-col gap-2 flex-1">
+            {ESTATUS_DATA.map((e, i) => {
+              const pct = totalEstatus > 0 ? Math.round((e.valor / totalEstatus) * 100) : 0;
+              return (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: e.color }} />
+                  <span className="text-[11px] flex-1" style={{ color: isDark ? "rgba(255,255,255,0.6)" : T.text }}>{e.label}</span>
+                  <span className="text-[11px] font-black" style={{ color: e.color }}>{pct}%</span>
+                  <span className="text-[10px]" style={{ color: isDark ? "rgba(255,255,255,0.22)" : T.textFaint }}>({e.valor})</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── TABLA ─────────────────────────────────────────────────────
+const P_BADGE_DARK = {
+  Urgente: { background: "rgba(220,38,38,0.18)",  color: "#f87171" },
+  Alta:    { background: "rgba(234,88,12,0.18)",  color: "#fb923c" },
+  Media:   { background: "rgba(202,138,4,0.18)",  color: "#fbbf24" },
+  Baja:    { background: "rgba(22,163,74,0.18)",  color: "#4ade80" },
+};
+const E_BADGE_DARK = {
+  Finalizado:   { background: "rgba(22,163,74,0.18)",  color: "#4ade80" },
+  "En Proceso": { background: "rgba(202,138,4,0.18)",  color: "#fbbf24" },
+  "Revisión":   { background: "rgba(234,88,12,0.18)",  color: "#fb923c" },
+};
+
 function Tabla({ T }) {
+  const isDark = T.bg === "#0b0e14";
+  const [busqueda, setBusqueda] = useState("");
   const COLS = ["ID", "Asunto", "Categoría", "Prioridad", "Estatus", "Fecha"];
+
+  const filtrados = TICKETS.filter(t =>
+    !busqueda ||
+    Object.values(t).some(v => String(v).toLowerCase().includes(busqueda.toLowerCase()))
+  );
+
+  const pBadge = (p) => isDark ? (P_BADGE_DARK[p] || {}) : (P_BADGE[p] || {});
+  const eBadge = (e) => isDark ? (E_BADGE_DARK[e] || {}) : (E_BADGE[e] || {});
+
   return (
     <div className="rounded-2xl overflow-hidden"
       style={{ border: `1px solid ${T.border}`, boxShadow: `0 1px 3px rgba(0,0,0,0.06)` }}>
-      <table className="w-full text-sm border-collapse" style={{ minWidth: "560px" }}>
-        <thead>
-          <tr style={{ background: T.surfaceAlt }}>
-            {COLS.map(col => (
-              <th key={col}
-                className="text-left px-5 py-3.5 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap"
-                style={{ color: T.textMuted, borderBottom: `1px solid ${T.border}` }}>
-                {col}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {TICKETS.length === 0 ? (
-            <tr>
-              <td colSpan={6} style={{ background: T.surface }}>
-                <div className="flex flex-col items-center justify-center py-20 gap-3">
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                    style={{ background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
-                    <AlertCircle size={24} style={{ color: T.textFaint }} />
-                  </div>
-                  <p className="text-sm font-semibold" style={{ color: T.textMuted }}>
-                    No hay incidencias registradas
-                  </p>
-                  <p className="text-xs" style={{ color: T.textFaint }}>
-                    Crea un nuevo ticket para comenzar
-                  </p>
-                </div>
-              </td>
+
+      {/* Buscador */}
+      <div className="flex items-center justify-between px-4 py-3"
+        style={{ borderBottom: `1px solid ${T.border}`, background: T.surfaceAlt }}>
+        <p className="text-xs font-bold" style={{ color: T.textMuted }}>Incidencias</p>
+        <div className="relative">
+          <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="5" cy="5" r="3.5" stroke={T.textFaint} strokeWidth="1.4"/>
+            <path d="M8 8l2 2" stroke={T.textFaint} strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+          <input
+            className="pl-7 pr-3 py-1.5 rounded-lg text-xs outline-none transition-all w-40 sm:w-52"
+            style={{ background: T.bg, border: `1px solid ${T.border}`, color: T.text }}
+            placeholder="Buscar ticket..."
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            onFocus={e => { e.target.style.borderColor = "#F47920"; e.target.style.boxShadow = "0 0 0 2px rgba(244,121,32,0.12)"; }}
+            onBlur={e =>  { e.target.style.borderColor = T.border;   e.target.style.boxShadow = "none"; }}
+          />
+        </div>
+      </div>
+
+      {/* Tabla */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse" style={{ minWidth: "560px" }}>
+          <thead>
+            <tr style={{ background: T.surfaceAlt }}>
+              {COLS.map(col => (
+                <th key={col}
+                  className="text-left px-5 py-3.5 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap"
+                  style={{ color: T.textMuted, borderBottom: `1px solid ${T.border}` }}>
+                  {col}
+                </th>
+              ))}
             </tr>
-          ) : (
-            TICKETS.map((t, i) => (
-              <tr key={i} className="cursor-pointer transition-colors"
-                style={{ borderBottom: `1px solid ${T.border}`, background: T.surface }}
-                onMouseEnter={e => e.currentTarget.style.background = T.surfaceAlt}
-                onMouseLeave={e => e.currentTarget.style.background = T.surface}
-              >
-                <td className="px-5 py-3.5 font-mono text-xs font-bold" style={{ color: T.orange }}>#{t.id}</td>
-                <td className="px-5 py-3.5 font-semibold" style={{ color: T.text }}>{t.asunto}</td>
-                <td className="px-5 py-3.5 text-xs" style={{ color: T.textMuted }}>{t.categoria}</td>
-                <td className="px-5 py-3.5">
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
-                    style={P_BADGE[t.prioridad] || {}}>{t.prioridad}</span>
+          </thead>
+          <tbody>
+            {filtrados.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ background: T.surface }}>
+                  <div className="flex flex-col items-center justify-center py-16 gap-3">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                      style={{ background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
+                      <AlertCircle size={22} style={{ color: T.textFaint }} />
+                    </div>
+                    <p className="text-sm font-semibold" style={{ color: T.textMuted }}>
+                      {busqueda ? "Sin resultados" : "No hay incidencias registradas"}
+                    </p>
+                    <p className="text-xs" style={{ color: T.textFaint }}>
+                      {busqueda ? `No se encontró "${busqueda}"` : "Crea un nuevo reporte para comenzar"}
+                    </p>
+                  </div>
                 </td>
-                <td className="px-5 py-3.5">
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
-                    style={E_BADGE[t.estatus] || {}}>{t.estatus}</span>
-                </td>
-                <td className="px-5 py-3.5 text-xs whitespace-nowrap" style={{ color: T.textFaint }}>{t.fecha}</td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              filtrados.map((t, i) => (
+                <tr key={i} className="cursor-pointer transition-colors"
+                  style={{ borderBottom: `1px solid ${T.border}`, background: T.surface }}
+                  onMouseEnter={e => e.currentTarget.style.background = T.surfaceAlt}
+                  onMouseLeave={e => e.currentTarget.style.background = T.surface}>
+                  <td className="px-5 py-3.5 font-mono text-xs font-bold" style={{ color: T.orange }}>#{t.id}</td>
+                  <td className="px-5 py-3.5 font-semibold text-xs max-w-[160px]">
+                    <span className="block truncate" style={{ color: T.text }}>{t.asunto}</span>
+                  </td>
+                  <td className="px-5 py-3.5 text-xs" style={{ color: T.textMuted }}>{t.categoria}</td>
+                  <td className="px-5 py-3.5">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
+                      style={pBadge(t.prioridad)}>{t.prioridad}</span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
+                      style={eBadge(t.estatus)}>{t.estatus}</span>
+                  </td>
+                  <td className="px-5 py-3.5 text-xs whitespace-nowrap" style={{ color: T.textFaint }}>{t.fecha}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -390,7 +571,7 @@ export default function UsuarioDashboard() {
             <div className="hidden md:flex items-center gap-2.5">
               <div className="w-1 h-7 rounded-full" style={{ background: `linear-gradient(180deg, ${T.orange}, #ffb347)` }} />
               <h1 className="text-[17px] font-black tracking-tight" style={{ color: T.text }}>
-                {activo === 1 ? "Nuevo Reporte" : "Incidencias Actuales"}
+                {activo === 1 ? "Nuevo Reporte" : activo === 2 ? "Historial de Incidencias" : "Incidencias Actuales"}
               </h1>
             </div>
             <h1 className="md:hidden text-[15px] font-black" style={{ color: T.text }}>
@@ -424,7 +605,12 @@ export default function UsuarioDashboard() {
         <div className="flex-1 overflow-hidden" style={{ background: T.bg }}>
           {activo === 1
             ? <NuevoReporte T={T} />
-            : <div className="h-full overflow-y-auto p-4 md:p-6"><Tabla T={T} /></div>
+            : activo === 2
+            ? <HistorialIncidencias T={T} />
+            : <div className="h-full overflow-y-auto p-4 md:p-6 flex flex-col gap-0">
+                <SeccionEstadisticas T={T} />
+                <Tabla T={T} />
+              </div>
           }
         </div>
       </div>
