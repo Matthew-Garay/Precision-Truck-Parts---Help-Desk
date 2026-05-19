@@ -7,17 +7,60 @@
     
     <link rel="icon" type="image/x-icon" href="/assets/img/icono.ico" />
     <link rel="apple-touch-icon" href="/assets/img/logo.png" />
-    <meta name="theme-color" content="#F28705" /> <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#F28705" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <!-- Bloquear orientación horizontal en móviles (no tablets) -->
+    <style>
+      @media screen and (max-width: 767px) and (orientation: landscape) {
+        #orientation-lock {
+          display: flex !important;
+        }
+      }
+      #orientation-lock {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: #1D1D1B;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+      }
+      #orientation-lock svg {
+        animation: rotate-hint 1.5s ease-in-out infinite alternate;
+      }
+      @keyframes rotate-hint {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(-90deg); }
+      }
+    </style>
 
     <title>Precision Truck Parts – HelpDesk</title>
     <meta name="description" content="Sistema de Gestión de Tickets e Inventario de Precision Truck Parts and Accessories." />
     <meta property="og:title" content="Precision Trucks Parts Helpdesk" />
     <meta property="og:description" content="Acceso al portal de soporte técnico y gestión de activos." />
     <meta property="og:image" content="/assets/img/og-image.jpg" />
-
     <meta name="referrer" content="no-referrer-when-downgrade" />
   </head>
   <body>
+    <!-- Pantalla de bloqueo horizontal para móviles -->
+    <div id="orientation-lock">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+        <rect x="8" y="16" width="32" height="48" rx="5" stroke="#F47920" stroke-width="3"/>
+        <circle cx="24" cy="57" r="2.5" fill="#F47920"/>
+        <path d="M48 8l8 8-8 8" stroke="#F47920" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M56 16H44a8 8 0 00-8 8" stroke="#F47920" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <p style="color:#fff;font-family:'Segoe UI',sans-serif;font-size:15px;font-weight:700;text-align:center;padding:0 32px;">
+        Por favor gira tu dispositivo a posición vertical
+      </p>
+      <p style="color:rgba(255,255,255,0.4);font-family:'Segoe UI',sans-serif;font-size:12px;text-align:center;padding:0 40px;">
+        Esta aplicación está optimizada para uso vertical en móviles
+      </p>
+    </div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

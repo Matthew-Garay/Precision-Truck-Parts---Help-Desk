@@ -1,165 +1,40 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ClipboardList, ShoppingCart,
   BookOpen, LogOut, Plus, User, Sun, Moon,
   Menu, X, TrendingUp, Clock, CheckCircle2,
-  AlertCircle, Filter, FilePlus
+  FilePlus, Settings
 } from "lucide-react";
 import NuevoReporte from "./NuevoReporte";
 import HistorialIncidencias from "./HistorialIncidencias";
 import ManualesIncidencias from "./ManualesIncidencias";
+import SolicitudInsumo from "./SolicitudInsumo";
+import VistaTicket from "./VistaTicket";
+import ConfiguracionPerfil from "./ConfiguracionPerfil";
+import API from "../../Config/api";
+import { LIGHT, DARK, RelojFecha, Calendario } from "../../Config/theme.jsx";
 
-const LIGHT = {
-  orange:      "#F47920",
-  bg:          "#f1f5f9",
-  surface:     "#ffffff",
-  surfaceAlt:  "#f8fafc",
-  border:      "#e2e8f0",
-  text:        "#1D1D1B",
-  textMuted:   "#64748b",
-  textFaint:   "#cbd5e1",
-  sidebar:     "#1D1D1B",
-  sidebarText: "#94a3b8",
-};
-const DARK = {
-  orange:      "#F47920",
-  bg:          "#0b0e14",
-  surface:     "#141720",
-  surfaceAlt:  "#1c2030",
-  border:      "#252a3a",
-  text:        "#f1f5f9",
-  textMuted:   "#94a3b8",
-  textFaint:   "#3d4460",
-  sidebar:     "#0d1018",
-  sidebarText: "#5a6480",
-};
-
-const STATS = [
-  { label: "Tickets Totales", valor: 0, color: "#3b82f6", bgL: "#eff6ff", bgD: "#0f1f3d", icon: TrendingUp  },
-  { label: "En Proceso",      valor: 0, color: "#F47920", bgL: "#fff7ed", bgD: "#2d1200", icon: Clock        },
-  { label: "Finalizados",     valor: 0, color: "#16a34a", bgL: "#f0fdf4", bgD: "#071a0e", icon: CheckCircle2 },
-];
-const TICKETS = [];
-const USUARIO = { nombre: "", puesto: "" };
-const P_BADGE = {
-  Alta:  { background: "#fee2e2", color: "#dc2626" },
-  Media: { background: "#fef9c3", color: "#ca8a04" },
-  Baja:  { background: "#dcfce7", color: "#16a34a" },
-};
-const E_BADGE = {
-  Abierto:      { background: "#dbeafe", color: "#2563eb" },
-  "En Proceso": { background: "#ffedd5", color: "#ea580c" },
-  Cerrado:      { background: "#f3f4f6", color: "#6b7280" },
-};
 const NAV = [
-  { icon: LayoutDashboard, label: "Dashboard"               },
-  { icon: FilePlus,        label: "Nuevo Reporte"            },
-  { icon: ClipboardList,   label: "Historial de Incidencias" },
-  { icon: ShoppingCart,    label: "Solicitud de Insumo"      },
-  { icon: BookOpen,        label: "Manuales de Incidencias"  },
+  { icon: LayoutDashboard, label: "Dashboard",               path: "/usuario/dashboard"                    },
+  { icon: FilePlus,        label: "Nuevo Reporte",            path: "/usuario/nuevo"              },
+  { icon: ClipboardList,   label: "Historial de Incidencias", path: "/usuario/historial"          },
+  { icon: ShoppingCart,    label: "Solicitud de Insumo",      path: "/usuario/insumo" },
+  { icon: BookOpen,        label: "Manuales de Incidencias",  path: "/usuario/manuales"           },
+  { icon: Settings,        label: "Configuración",            path: "/usuario/configuracion"      },
 ];
-
-// ── RELOJ ────────────────────────────────────────────────────
-function RelojFecha({ T }) {
-  const [ahora, setAhora] = useState(new Date());
-  useEffect(() => {
-    const t = setInterval(() => setAhora(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-  const pad  = n => String(n).padStart(2, "0");
-  const dia  = pad(ahora.getDate());
-  const mes  = pad(ahora.getMonth() + 1);
-  const anio = ahora.getFullYear();
-  const hrs  = ahora.getHours();
-  const min  = pad(ahora.getMinutes());
-  const seg  = pad(ahora.getSeconds());
-  const ampm = hrs >= 12 ? "pm" : "am";
-  const h12  = pad(hrs % 12 || 12);
-  return (
-    <div className="rounded-xl overflow-hidden"
-      style={{ border: `1px solid ${T.border}` }}>
-      <div className="px-4 py-2 flex items-center justify-between"
-        style={{ background: T.orange }}>
-        <span className="text-[9px] font-bold uppercase tracking-widest text-white/80">Fecha y hora</span>
-        <Clock size={11} color="rgba(255,255,255,0.7)" />
-      </div>
-      <div className="px-4 py-3 flex items-center justify-between"
-        style={{ background: T.surfaceAlt }}>
-        <p className="text-xs font-semibold">
-          <span style={{ color: T.text, fontWeight: 700 }}>{dia}</span>
-          <span style={{ color: T.orange, fontWeight: 700 }}>/</span>
-          <span style={{ color: T.text, fontWeight: 700 }}>{mes}</span>
-          <span style={{ color: T.orange, fontWeight: 700 }}>/</span>
-          <span style={{ color: T.text, fontWeight: 700 }}>{anio}</span>
-        </p>
-        <p className="text-xs font-black" style={{ color: T.text }}>
-          {h12}:{min}<span style={{ color: T.orange }}>:{seg}</span>
-          <span className="text-[10px] font-semibold ml-1" style={{ color: T.textMuted }}>{ampm}</span>
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ── CALENDARIO ───────────────────────────────────────────────
-function Calendario({ T }) {
-  const hoy = new Date();
-  const mes  = hoy.getMonth();
-  const anio = hoy.getFullYear();
-  const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
-                 "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-  const DIAS  = ["Do","Lu","Ma","Mi","Ju","Vi","Sa"];
-  const primerDia = new Date(anio, mes, 1).getDay();
-  const totalDias = new Date(anio, mes+1, 0).getDate();
-  const celdas = [
-    ...Array(primerDia).fill(null),
-    ...Array.from({ length: totalDias }, (_, i) => i + 1),
-  ];
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-center">
-        <span className="text-[11px] font-bold" style={{ color: T.text }}>{MESES[mes]} {anio}</span>
-      </div>
-      <div className="grid grid-cols-7">
-        {DIAS.map(d => (
-          <div key={d} className="text-center text-[9px] font-bold py-0.5" style={{ color: T.textFaint }}>{d}</div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-y-0.5">
-        {celdas.map((dia, i) => {
-          const esHoy = dia === hoy.getDate();
-          return (
-            <div key={i} className="flex items-center justify-center h-6">
-              {dia && (
-                <span className="w-6 h-6 flex items-center justify-center rounded-full text-[11px] select-none transition-all"
-                  style={{
-                    background: esHoy ? T.orange : "transparent",
-                    color:      esHoy ? "#fff"   : T.textMuted,
-                    fontWeight: esHoy ? 700 : 400,
-                    boxShadow:  esHoy ? `0 2px 8px rgba(244,121,32,0.5)` : "none",
-                  }}>
-                  {dia}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 // ── SIDEBAR CONTENT ──────────────────────────────────────────
-function SidebarContent({ T, activo, setActivo, onClose }) {
+function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
   return (
     <div className="relative flex flex-col h-full">
 
       {/* Logo */}
-      <div className="flex flex-col items-center justify-center py-6 px-4"
+      <div className="flex flex-col items-center justify-center py-4 px-4"
         style={{ borderBottom: `1px solid rgba(255,255,255,0.06)` }}>
         <img src="/assets/img/logo.png" alt="PTP"
-          className="object-contain drop-shadow-lg"
-          style={{ height: "80px", width: "auto", maxWidth: "160px" }} />
+          className="object-contain"
+          style={{ height: "72px", width: "auto", maxWidth: "180px", mixBlendMode: "screen" }} />
       </div>
 
       {onClose && (
@@ -171,21 +46,17 @@ function SidebarContent({ T, activo, setActivo, onClose }) {
         </button>
       )}
 
-      {/* Label sección */}
       <p className="px-5 pt-5 pb-2 text-[9px] font-bold uppercase tracking-[0.18em]"
         style={{ color: "rgba(255,255,255,0.2)" }}>
         Menú principal
       </p>
 
-      {/* Nav */}
       <nav className="flex flex-col gap-0.5 flex-1 px-3">
         {NAV.map((item, i) => (
-          <button key={i} onClick={() => { setActivo(i); onClose?.(); }}
+          <button key={i} onClick={() => { onNavigate(item.path); onClose?.(); }}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full text-left relative"
             style={{
-              background: activo === i
-                ? `linear-gradient(135deg, ${T.orange}, #d97400)`
-                : "transparent",
+              background: activo === i ? `linear-gradient(135deg, ${T.orange}, #d97400)` : "transparent",
               color: activo === i ? "#fff" : T.sidebarText,
               boxShadow: activo === i ? `0 4px 12px rgba(244,121,32,0.35)` : "none",
             }}
@@ -193,20 +64,26 @@ function SidebarContent({ T, activo, setActivo, onClose }) {
             onMouseLeave={e => { if (activo !== i) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.sidebarText; }}}
           >
             <item.icon size={16} strokeWidth={activo === i ? 2.5 : 1.8} style={{ flexShrink: 0 }} />
-            <span style={{ fontSize: "12.5px", fontWeight: activo === i ? 700 : 500, lineHeight: "1.3" }}>
+            <span style={{ fontSize: "12.5px", fontWeight: activo === i ? 700 : 500, lineHeight: "1.3", flex: 1 }}>
               {item.label}
             </span>
+            {item.pronto && (
+              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0"
+                style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.45)", letterSpacing: "0.05em" }}>
+                PRONTO
+              </span>
+            )}
           </button>
         ))}
       </nav>
 
-      {/* Cerrar sesión */}
       <div className="px-3 pb-4 pt-2" style={{ borderTop: `1px solid rgba(255,255,255,0.06)` }}>
         <button
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full"
           style={{ color: T.sidebarText }}
           onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.1)"; e.currentTarget.style.color = "#ef4444"; }}
           onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.sidebarText; }}
+          onClick={onLogout}
         >
           <LogOut size={16} strokeWidth={1.8} style={{ flexShrink: 0 }} />
           <span style={{ fontSize: "12.5px", fontWeight: 500 }}>Cerrar sesión</span>
@@ -216,47 +93,58 @@ function SidebarContent({ T, activo, setActivo, onClose }) {
   );
 }
 
-function Sidebar({ T, activo, setActivo }) {
+function Sidebar({ T, activo, onNavigate, onLogout }) {
   return (
-    <aside className="hidden md:flex flex-shrink-0 flex-col h-screen"
+    <aside className="hidden md:flex flex-shrink-0 flex-col sticky top-0 h-screen"
       style={{ width: "220px", background: T.sidebar, boxShadow: "2px 0 12px rgba(0,0,0,0.15)" }}>
-      <SidebarContent T={T} activo={activo} setActivo={setActivo} />
+      <SidebarContent T={T} activo={activo} onNavigate={onNavigate} onLogout={onLogout} />
     </aside>
   );
 }
 
-function SidebarMobile({ T, activo, setActivo, open, onClose }) {
+function SidebarMobile({ T, activo, onNavigate, open, onClose, onLogout }) {
   if (!open) return null;
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden" onClick={onClose} />
       <aside className="fixed top-0 left-0 z-50 flex flex-col h-screen md:hidden"
         style={{ width: "260px", background: T.sidebar }}>
-        <SidebarContent T={T} activo={activo} setActivo={setActivo} onClose={onClose} />
+        <SidebarContent T={T} activo={activo} onNavigate={onNavigate} onClose={onClose} onLogout={onLogout} />
       </aside>
     </>
   );
 }
 
 // ── PANEL DERECHO ─────────────────────────────────────────────
-function PanelDerecho({ T }) {
+function PanelDerecho({ T, nombre, departamento, foto, tickets = [] }) {
+  const isDark = T.bg === "#0b0e14";
+  const total     = tickets.length;
+  const enProceso = tickets.filter(t => t.estatus === "En proceso").length;
+  const resueltos = tickets.filter(t => t.estatus === "Resuelto").length;
+  const stats = [
+    { label: "Tickets Totales", valor: total,     color: "#3b82f6", bgL: "#eff6ff", bgD: "#0f1f3d", icon: TrendingUp  },
+    { label: "En Proceso",      valor: enProceso, color: "#F47920", bgL: "#fff7ed", bgD: "#2d1200", icon: Clock        },
+    { label: "Finalizados",     valor: resueltos, color: "#16a34a", bgL: "#f0fdf4", bgD: "#071a0e", icon: CheckCircle2 },
+  ];
   return (
-    <aside className="hidden lg:flex flex-shrink-0 flex-col h-screen overflow-y-auto"
+    <aside className="hidden xl:flex flex-shrink-0 flex-col sticky top-0 h-screen overflow-y-auto"
       style={{ width: "280px", background: T.surface, borderLeft: `1px solid ${T.border}` }}>
       <div className="flex flex-col h-full p-4 gap-3">
 
         {/* Perfil */}
         <div className="flex flex-col items-center text-center py-4 px-3 rounded-2xl relative overflow-hidden flex-shrink-0"
           style={{ background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
-          {/* Banda decorativa superior */}
           <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl"
             style={{ background: `linear-gradient(90deg, ${T.orange}, #ffb347)` }} />
-          <div className="flex items-center justify-center rounded-full mt-2 mb-3"
+          <div className="flex items-center justify-center rounded-full mt-2 mb-3 overflow-hidden"
             style={{ width: "68px", height: "68px", background: T.bg, border: `2.5px solid ${T.orange}`, boxShadow: `0 0 0 4px rgba(244,121,32,0.1)` }}>
-            <User size={30} style={{ color: T.textFaint }} />
+            {foto
+              ? <img src={foto} alt="perfil" className="w-full h-full object-cover" />
+              : <User size={30} style={{ color: T.textFaint }} />
+            }
           </div>
-          <p className="font-black text-sm" style={{ color: T.text }}>{USUARIO.nombre || "—"}</p>
-          <p className="text-xs mt-0.5" style={{ color: T.textMuted }}>{USUARIO.puesto || "—"}</p>
+          <p className="font-black text-sm" style={{ color: T.text }}>{nombre || "—"}</p>
+          <p className="text-xs mt-0.5" style={{ color: T.textMuted }}>{departamento || "—"}</p>
           <span className="mt-3 px-3 py-1 rounded-full text-[10px] font-bold"
             style={{ background: `linear-gradient(135deg, rgba(244,121,32,0.15), rgba(244,121,32,0.08))`, color: T.orange, border: `1px solid rgba(244,121,32,0.2)` }}>
             ● Usuario activo
@@ -268,9 +156,9 @@ function PanelDerecho({ T }) {
 
         {/* Métricas */}
         <div className="flex flex-col gap-1.5 flex-shrink-0">
-          {STATS.map((s, i) => (
+          {stats.map((s, i) => (
             <div key={i} className="flex items-center justify-between px-4 py-3 rounded-xl"
-              style={{ background: T === DARK ? s.bgD : s.bgL, border: `1px solid ${T.border}` }}>
+              style={{ background: isDark ? s.bgD : s.bgL, border: `1px solid ${T.border}` }}>
               <div className="flex items-center gap-2.5">
                 <s.icon size={14} style={{ color: s.color, flexShrink: 0 }} />
                 <span className="text-xs font-semibold" style={{ color: T.textMuted }}>{s.label}</span>
@@ -299,30 +187,18 @@ function PanelDerecho({ T }) {
 }
 
 // ── ESTADÍSTICAS ─────────────────────────────────────────────
-const PRIORIDAD_DATA = [
-  { label: "Urgente", valor: 0, total: 0, color: "#dc2626", bg: "#fee2e2" },
-  { label: "Alta",    valor: 0, total: 0, color: "#ea580c", bg: "#ffedd5" },
-  { label: "Media",   valor: 0, total: 0, color: "#ca8a04", bg: "#fef9c3" },
-  { label: "Baja",    valor: 0, total: 0, color: "#16a34a", bg: "#dcfce7" },
-];
-
-const ESTATUS_DATA = [
-  { label: "Finalizado", valor: 0, color: "#16a34a" },
-  { label: "En Proceso", valor: 0, color: "#ca8a04" },
-  { label: "Revisión",   valor: 0, color: "#ea580c" },
-];
-
-function GraficaPastel({ data, size = 100 }) {
+function GraficaPastel({ data, size = 80, T }) {
   const total = data.reduce((s, d) => s + d.valor, 0);
-  const r  = size / 2 - 6;
+  const isDark = T?.bg === "#0b0e14";
+  const r  = size / 2 - 8;
   const cx = size / 2;
   const cy = size / 2;
   const circ = 2 * Math.PI * r;
 
   if (total === 0) return (
     <svg width={size} height={size}>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e2e8f0" strokeWidth="12" />
-      <text x={cx} y={cy + 4} textAnchor="middle" fontSize="9" fill="#94a3b8" fontWeight="600">Sin datos</text>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"} strokeWidth="10" />
+      <text x={cx} y={cy + 4} textAnchor="middle" fontSize="9" fill={isDark ? "rgba(255,255,255,0.3)" : "#94a3b8"} fontWeight="600">Sin datos</text>
     </svg>
   );
 
@@ -334,30 +210,54 @@ function GraficaPastel({ data, size = 100 }) {
     return s;
   });
 
+  const textColor = isDark ? "#f1f5f9" : "#1D1D1B";
+  const subColor  = isDark ? "rgba(255,255,255,0.4)" : "#94a3b8";
+
   return (
-    <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-      {segs.map((s, i) => (
-        <circle key={i} cx={cx} cy={cy} r={r} fill="none"
-          stroke={s.color} strokeWidth="12"
-          strokeDasharray={`${s.dash} ${s.gap}`}
-          strokeDashoffset={-s.offset} strokeLinecap="butt" />
-      ))}
-    </svg>
+    <div style={{ position: "relative", width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        {segs.map((s, i) => (
+          <circle key={i} cx={cx} cy={cy} r={r} fill="none"
+            stroke={s.color} strokeWidth="10"
+            strokeDasharray={`${s.dash} ${s.gap}`}
+            strokeDashoffset={-s.offset} strokeLinecap="butt" />
+        ))}
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+        <span style={{ fontSize: "15px", fontWeight: 900, lineHeight: 1, color: textColor }}>{total}</span>
+        <span style={{ fontSize: "8px", fontWeight: 600, marginTop: "2px", color: subColor }}>total</span>
+      </div>
+    </div>
   );
 }
 
-function SeccionEstadisticas({ T }) {
+function SeccionEstadisticas({ T, tickets = [] }) {
   const isDark = T.bg === "#0b0e14";
+  const total = tickets.length;
+
+  const prioridadData = [
+    { label: "Urgente", color: "#dc2626", bg: "#fee2e2" },
+    { label: "Alta",    color: "#ea580c", bg: "#ffedd5" },
+    { label: "Media",   color: "#ca8a04", bg: "#fef9c3" },
+    { label: "Baja",    color: "#16a34a", bg: "#dcfce7" },
+  ].map(p => ({ ...p, valor: tickets.filter(t => t.prioridad === p.label).length }));
+
+  const estatusData = [
+    { label: "Resuelto",    color: "#16a34a", valor: tickets.filter(t => t.estatus === "Resuelto").length },
+    { label: "En proceso",  color: "#ca8a04", valor: tickets.filter(t => t.estatus === "En proceso").length },
+    { label: "No Resuelto", color: "#ea580c", valor: tickets.filter(t => t.estatus === "No Resuelto").length },
+  ];
+  const totalEstatus = estatusData.reduce((s, d) => s + d.valor, 0);
+
   const cardStyle = {
     background: isDark ? "#141720" : T.surface,
     border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`,
     boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.4)" : "0 1px 6px rgba(0,0,0,0.06)",
   };
-  const totalEstatus = ESTATUS_DATA.reduce((s, d) => s + d.valor, 0);
   const hdr = { borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`, background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3 w-full">
 
       {/* Tarjeta 1: Prioridad */}
       <div className="rounded-xl overflow-hidden" style={cardStyle}>
@@ -366,8 +266,8 @@ function SeccionEstadisticas({ T }) {
           <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Reportes por Prioridad</p>
         </div>
         <div className="px-4 py-3 flex flex-col gap-2.5">
-          {PRIORIDAD_DATA.map((p, i) => {
-            const pct = p.total > 0 ? Math.round((p.valor / p.total) * 100) : 0;
+          {prioridadData.map((p, i) => {
+            const pct = total > 0 ? Math.round((p.valor / total) * 100) : 0;
             return (
               <div key={i} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
@@ -395,33 +295,59 @@ function SeccionEstadisticas({ T }) {
       </div>
 
       {/* Tarjeta 2: Estatus */}
-      <div className="rounded-xl overflow-hidden" style={cardStyle}>
+      <div className="rounded-xl overflow-hidden flex flex-col" style={cardStyle}>
         <div className="px-4 py-2.5 flex items-center gap-2" style={hdr}>
           <div className="w-1 h-3.5 rounded-full" style={{ background: "#F47920" }} />
           <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Tickets por Estatus</p>
         </div>
-        <div className="px-4 py-3 flex items-center gap-4">
+
+        <div className="px-4 py-3 flex gap-4 flex-1">
           {/* Pastel */}
-          <div className="relative flex-shrink-0">
-            <GraficaPastel data={ESTATUS_DATA} size={100} />
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-base font-black" style={{ color: isDark ? "#f1f5f9" : T.text }}>{totalEstatus}</span>
-              <span className="text-[8px] font-semibold" style={{ color: isDark ? "rgba(255,255,255,0.3)" : T.textMuted }}>total</span>
-            </div>
+          <div className="flex-shrink-0">
+            <GraficaPastel data={estatusData} size={80} T={T} />
           </div>
-          {/* Leyenda */}
-          <div className="flex flex-col gap-2 flex-1">
-            {ESTATUS_DATA.map((e, i) => {
+
+          {/* Leyenda + barras */}
+          <div className="flex flex-col gap-2.5 flex-1 justify-center">
+            {estatusData.map((e, i) => {
               const pct = totalEstatus > 0 ? Math.round((e.valor / totalEstatus) * 100) : 0;
               return (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: e.color }} />
-                  <span className="text-[11px] flex-1" style={{ color: isDark ? "rgba(255,255,255,0.6)" : T.text }}>{e.label}</span>
-                  <span className="text-[11px] font-black" style={{ color: e.color }}>{pct}%</span>
-                  <span className="text-[10px]" style={{ color: isDark ? "rgba(255,255,255,0.22)" : T.textFaint }}>({e.valor})</span>
+                <div key={i} className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: e.color }} />
+                      <span className="text-[11px] font-semibold" style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{e.label}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-black" style={{ color: e.color }}>{e.valor}</span>
+                      <span className="text-[9px] font-semibold" style={{ color: T.textFaint }}>({pct}%)</span>
+                    </div>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden"
+                    style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.border }}>
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${pct > 0 ? Math.max(pct, 5) : 0}%`, background: e.color }} />
+                  </div>
                 </div>
               );
             })}
+
+            {/* Tasa de resolución */}
+            <div className="mt-1 pt-2 border-t" style={{ borderColor: isDark ? "rgba(255,255,255,0.07)" : T.border }}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>Tasa de resolución</span>
+                <span className="text-[10px] font-black" style={{ color: "#16a34a" }}>
+                  {totalEstatus > 0 ? Math.round((estatusData[0].valor / totalEstatus) * 100) : 0}%
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.border }}>
+                <div className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${totalEstatus > 0 ? Math.round((estatusData[0].valor / totalEstatus) * 100) : 0}%`,
+                    background: "linear-gradient(90deg, #16a34a, #4ade80)"
+                  }} />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -429,170 +355,175 @@ function SeccionEstadisticas({ T }) {
   );
 }
 
-// ── TABLA ─────────────────────────────────────────────────────
-const P_BADGE_DARK = {
-  Urgente: { background: "rgba(220,38,38,0.18)",  color: "#f87171" },
-  Alta:    { background: "rgba(234,88,12,0.18)",  color: "#fb923c" },
-  Media:   { background: "rgba(202,138,4,0.18)",  color: "#fbbf24" },
-  Baja:    { background: "rgba(22,163,74,0.18)",  color: "#4ade80" },
-};
-const E_BADGE_DARK = {
-  Finalizado:   { background: "rgba(22,163,74,0.18)",  color: "#4ade80" },
-  "En Proceso": { background: "rgba(202,138,4,0.18)",  color: "#fbbf24" },
-  "Revisión":   { background: "rgba(234,88,12,0.18)",  color: "#fb923c" },
-};
+// ── KANBAN BOARD ─────────────────────────────────────────────
+const PRIORIDADES = [
+  { id: "Urgente", label: "Urgente", color: "#dc2626", bg: "#fee2e2", bgDark: "rgba(220,38,38,0.18)" },
+  { id: "Alta",    label: "Alta",    color: "#ea580c", bg: "#ffedd5", bgDark: "rgba(234,88,12,0.18)" },
+  { id: "Media",   label: "Media",   color: "#ca8a04", bg: "#fef9c3", bgDark: "rgba(202,138,4,0.18)" },
+  { id: "Baja",    label: "Baja",    color: "#16a34a", bg: "#dcfce7", bgDark: "rgba(22,163,74,0.18)" },
+];
 
-function Tabla({ T }) {
+function KanbanBoard({ T, tickets = [], onVerTicket, inline = false }) {
   const isDark = T.bg === "#0b0e14";
-  const [busqueda, setBusqueda] = useState("");
-  const COLS = ["ID", "Asunto", "Categoría", "Prioridad", "Estatus", "Fecha"];
+  const ticketsEnProceso = tickets.filter(t => t.estatus === "En proceso" || t.estatus === "En Proceso");
+  
+  const agruparPorPrioridad = () => {
+    const grupos = {};
+    PRIORIDADES.forEach(p => { grupos[p.id] = []; });
+    ticketsEnProceso.forEach(t => {
+      if (grupos[t.prioridad]) grupos[t.prioridad].push(t);
+    });
+    return grupos;
+  };
+  
+  const ticketsPorPrioridad = agruparPorPrioridad();
 
-  const filtrados = TICKETS.filter(t =>
-    !busqueda ||
-    Object.values(t).some(v => String(v).toLowerCase().includes(busqueda.toLowerCase()))
-  );
-
-  const pBadge = (p) => isDark ? (P_BADGE_DARK[p] || {}) : (P_BADGE[p] || {});
-  const eBadge = (e) => isDark ? (E_BADGE_DARK[e] || {}) : (E_BADGE[e] || {});
-
-  return (
-    <div className="rounded-2xl overflow-hidden"
-      style={{ border: `1px solid ${T.border}`, boxShadow: `0 1px 3px rgba(0,0,0,0.06)` }}>
-
-      {/* Buscador */}
-      <div className="flex items-center justify-between px-4 py-3"
-        style={{ borderBottom: `1px solid ${T.border}`, background: T.surfaceAlt }}>
-        <p className="text-xs font-bold" style={{ color: T.textMuted }}>Incidencias</p>
-        <div className="relative">
-          <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <circle cx="5" cy="5" r="3.5" stroke={T.textFaint} strokeWidth="1.4"/>
-            <path d="M8 8l2 2" stroke={T.textFaint} strokeWidth="1.4" strokeLinecap="round"/>
-          </svg>
-          <input
-            className="pl-7 pr-3 py-1.5 rounded-lg text-xs outline-none transition-all w-40 sm:w-52"
-            style={{ background: T.bg, border: `1px solid ${T.border}`, color: T.text }}
-            placeholder="Buscar ticket..."
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-            onFocus={e => { e.target.style.borderColor = "#F47920"; e.target.style.boxShadow = "0 0 0 2px rgba(244,121,32,0.12)"; }}
-            onBlur={e =>  { e.target.style.borderColor = T.border;   e.target.style.boxShadow = "none"; }}
-          />
+  const columnas = PRIORIDADES.map(prioridad => {
+    const tks = ticketsPorPrioridad[prioridad.id];
+    const bgCol = isDark ? "#141720" : T.surface;
+    const borderCol = isDark ? "rgba(255,255,255,0.08)" : T.border;
+    return (
+      <div key={prioridad.id} className="flex flex-col rounded-xl overflow-hidden w-full md:flex-1"
+        style={{ minWidth: "0", background: bgCol, border: `1px solid ${borderCol}`, boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.4)" : "0 1px 6px rgba(0,0,0,0.06)" }}>
+        <div className="px-4 py-3 flex items-center justify-between flex-shrink-0"
+          style={{ background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt, borderBottom: `1px solid ${borderCol}` }}>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full" style={{ background: prioridad.color }} />
+            <span className="text-sm font-bold" style={{ color: prioridad.color }}>{prioridad.label}</span>
+          </div>
+          <span className="px-2 py-0.5 rounded-full text-xs font-bold"
+            style={{ background: isDark ? prioridad.bgDark : prioridad.bg, color: prioridad.color }}>
+            {tks.length}
+          </span>
+        </div>
+        <div className="overflow-y-auto p-3 flex flex-col gap-2.5" style={{ maxHeight: "320px" }}>
+          {tks.length === 0 ? (
+            <div className="flex items-center justify-center py-6">
+              <p className="text-xs" style={{ color: T.textFaint }}>Sin tickets</p>
+            </div>
+          ) : tks.map(t => (
+            <div key={t.id_ticket}
+              className="p-3 rounded-xl cursor-pointer transition-all hover:scale-[1.01] active:scale-95 flex flex-col gap-2"
+              style={{ background: isDark ? "rgba(255,255,255,0.05)" : T.bg, border: `1px solid ${borderCol}`, boxShadow: isDark ? "0 2px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.06)" }}
+              onClick={() => onVerTicket(t)}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: prioridad.color }} />
+                  <span className="text-[10px] font-mono font-black" style={{ color: T.orange }}>#{t.folio_ticket}</span>
+                </div>
+                <img src={isDark?"/assets/img/logo%20blanco.png":"/assets/img/logo%20negro.png"} alt="logo" className="h-4 object-contain opacity-50" />
+              </div>
+              <p className="text-xs font-semibold leading-snug line-clamp-2" style={{ color: T.text }}>{t.titulo}</p>
+              <div className="pt-1.5 flex items-center justify-between" style={{ borderTop: `1px solid ${borderCol}` }}>
+                <span className="text-[10px] truncate max-w-[60%]" style={{ color: T.textMuted }}>{t.nombre_empleado || "—"}</span>
+                <span className="text-[10px] font-semibold flex-shrink-0" style={{ color: T.textFaint }}>
+                  {t.fecha_subido ? new Date(t.fecha_subido).toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit"}) : "—"}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
+    );
+  });
 
-      {/* Tabla */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse" style={{ minWidth: "560px" }}>
-          <thead>
-            <tr style={{ background: T.surfaceAlt }}>
-              {COLS.map(col => (
-                <th key={col}
-                  className="text-left px-5 py-3.5 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap"
-                  style={{ color: T.textMuted, borderBottom: `1px solid ${T.border}` }}>
-                  {col}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtrados.length === 0 ? (
-              <tr>
-                <td colSpan={6} style={{ background: T.surface }}>
-                  <div className="flex flex-col items-center justify-center py-16 gap-3">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                      style={{ background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
-                      <AlertCircle size={22} style={{ color: T.textFaint }} />
-                    </div>
-                    <p className="text-sm font-semibold" style={{ color: T.textMuted }}>
-                      {busqueda ? "Sin resultados" : "No hay incidencias registradas"}
-                    </p>
-                    <p className="text-xs" style={{ color: T.textFaint }}>
-                      {busqueda ? `No se encontró "${busqueda}"` : "Crea un nuevo reporte para comenzar"}
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              filtrados.map((t, i) => (
-                <tr key={i} className="cursor-pointer transition-colors"
-                  style={{ borderBottom: `1px solid ${T.border}`, background: T.surface }}
-                  onMouseEnter={e => e.currentTarget.style.background = T.surfaceAlt}
-                  onMouseLeave={e => e.currentTarget.style.background = T.surface}>
-                  <td className="px-5 py-3.5 font-mono text-xs font-bold" style={{ color: T.orange }}>#{t.id}</td>
-                  <td className="px-5 py-3.5 font-semibold text-xs max-w-[160px]">
-                    <span className="block truncate" style={{ color: T.text }}>{t.asunto}</span>
-                  </td>
-                  <td className="px-5 py-3.5 text-xs" style={{ color: T.textMuted }}>{t.categoria}</td>
-                  <td className="px-5 py-3.5">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
-                      style={pBadge(t.prioridad)}>{t.prioridad}</span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
-                      style={eBadge(t.estatus)}>{t.estatus}</span>
-                  </td>
-                  <td className="px-5 py-3.5 text-xs whitespace-nowrap" style={{ color: T.textFaint }}>{t.fecha}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+  if (inline) return <>{columnas}</>;
+
+  return (
+    <div className="h-full overflow-x-auto px-3 pt-2 pb-4 md:px-4">
+      <div className="flex gap-3 h-full" style={{ minWidth: "max-content" }}>
+        {columnas}
       </div>
     </div>
   );
 }
 
 // ── LAYOUT PRINCIPAL ──────────────────────────────────────────
-export default function UsuarioDashboard() {
-  const [dark,        setDark]        = useState(false);
-  const [activo,      setActivo]      = useState(0);
+export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActualizado }) {
+  const [dark,        setDark]        = useState(() => localStorage.getItem("theme") === "dark");
+  const toggleDark = (v) => { setDark(v); localStorage.setItem("theme", v ? "dark" : "light"); };
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [tickets,     setTickets]     = useState([]);
+  const [ticketVer,   setTicketVer]   = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const activo    = NAV.findIndex(n => location.pathname.startsWith(n.path));
+  const activoIdx = activo === -1 ? 0 : activo;
+  const onNavigate = (path) => { setTicketVer(null); navigate(path, { replace: true }); };
+
   const T = dark ? DARK : LIGHT;
+  const nombreCompleto = [usuario.nombre, usuario.ap_paterno, usuario.ap_materno].filter(Boolean).join(" ") || "—";
+  const departamento   = usuario.departamento || "—";
+
+  const cargarTickets = () => {
+    if (!usuario?.id_empleado) return;
+    fetch(`${API}/api/tickets/empleado/${usuario.id_empleado}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!Array.isArray(data)) return;
+        setTickets(prev => JSON.stringify(prev) === JSON.stringify(data) ? prev : data);
+        setTicketVer(prev => {
+          if (!prev) return null;
+          const actualizado = data.find(t => t.id_ticket === prev.id_ticket);
+          return actualizado ?? prev;
+        });
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    cargarTickets();
+    const id = setInterval(cargarTickets, 5000);
+    return () => clearInterval(id);
+  }, [usuario?.id_empleado]);
+
+  // Interceptar botón atrás cuando hay ticket abierto
+  useEffect(() => {
+    if (!ticketVer) return;
+    const handlePop = () => { setTicketVer(null); cargarTickets(); window.history.pushState(null, '', window.location.href); };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, [ticketVer]);
+
+  const irDashboard    = () => { onNavigate('/usuario/dashboard'); };
+  const volverDeTicket = () => { setTicketVer(null); cargarTickets(); };
+
+  const tituloHeader = ticketVer
+    ? ticketVer.folio_ticket
+    : NAV[activoIdx]?.label || 'Dashboard';
 
   return (
-    <div className="flex flex-row h-screen w-screen overflow-hidden"
+    <div className="flex flex-col md:flex-row min-h-screen w-full overflow-x-hidden"
       style={{ fontFamily: "'Inter','Segoe UI',sans-serif", background: T.bg }}>
 
-      <Sidebar T={T} activo={activo} setActivo={setActivo} />
-      <SidebarMobile T={T} activo={activo} setActivo={setActivo}
-        open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar T={T} activo={activoIdx} onNavigate={onNavigate} onLogout={onLogout} />
+      <SidebarMobile T={T} activo={activoIdx} onNavigate={onNavigate}
+        open={sidebarOpen} onClose={() => setSidebarOpen(false)} onLogout={onLogout} />
 
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden min-h-0">
 
-        {/* Header */}
         <header className="flex-shrink-0 flex items-center justify-between px-4 md:px-7 py-4"
           style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, minHeight: "68px", boxShadow: `0 1px 4px rgba(0,0,0,0.05)` }}>
-
           <div className="flex items-center gap-3">
             <button className="md:hidden flex items-center justify-center w-9 h-9 rounded-xl"
               style={{ background: T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}
               onClick={() => setSidebarOpen(true)}>
               <Menu size={17} />
             </button>
-            <div className="hidden md:flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5">
               <div className="w-1 h-7 rounded-full" style={{ background: `linear-gradient(180deg, ${T.orange}, #ffb347)` }} />
-              <h1 className="text-[17px] font-black tracking-tight" style={{ color: T.text }}>
-                {activo === 1 ? "Nuevo Reporte" : activo === 2 ? "Historial de Incidencias" : activo === 4 ? "Manuales de Incidencias" : "Incidencias Actuales"}
-              </h1>
+              <h1 className="text-[17px] font-black tracking-tight" style={{ color: T.text }}>{tituloHeader}</h1>
             </div>
-            <h1 className="md:hidden text-[15px] font-black" style={{ color: T.text }}>
-              Incidencias
-            </h1>
           </div>
-
           <div className="flex items-center gap-2">
-
-            {/* Toggle modo */}
-            <button onClick={() => setDark(d => !d)}
+            <button onClick={() => toggleDark(!dark)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all text-xs font-semibold"
               style={{ background: T.surfaceAlt, color: dark ? "#f59e0b" : T.textMuted, border: `1px solid ${T.border}` }}>
               {dark ? <Sun size={14} /> : <Moon size={14} />}
               <span className="hidden sm:inline">{dark ? "Claro" : "Oscuro"}</span>
             </button>
-
-            {/* Nuevo ticket */}
-            <button
-              onClick={() => setActivo(1)}
+            <button onClick={() => onNavigate('/usuario/nuevo')}
               className="flex items-center gap-1.5 px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold text-white hover:brightness-110 active:scale-95 transition-all"
               style={{ background: `linear-gradient(135deg, ${T.orange}, #d97400)`, boxShadow: "0 4px 14px rgba(244,121,32,0.4)" }}>
               <Plus size={14} strokeWidth={2.5} />
@@ -602,23 +533,37 @@ export default function UsuarioDashboard() {
           </div>
         </header>
 
-        {/* Contenido */}
-        <div className="flex-1 overflow-hidden" style={{ background: T.bg }}>
-          {activo === 1
-            ? <NuevoReporte T={T} />
-            : activo === 2
-            ? <HistorialIncidencias T={T} />
-            : activo === 4
-            ? <ManualesIncidencias T={T} />
-            : <div className="h-full overflow-y-auto p-4 md:p-6 flex flex-col gap-0">
-                <SeccionEstadisticas T={T} />
-                <Tabla T={T} />
+        <div className="flex-1 min-h-0 relative" style={{ background: T.bg, overflow: "hidden" }}>
+          {ticketVer ? (
+            <div className="absolute inset-0"><VistaTicket T={T} ticket={ticketVer} onVolver={volverDeTicket} usuario={usuario} /></div>
+          ) : activoIdx === 1 ? (
+            <div className="absolute inset-0 overflow-y-auto"><NuevoReporte T={T} solicitante={nombreCompleto} area={departamento} usuario={usuario} onSuccess={irDashboard} /></div>
+          ) : activoIdx === 2 ? (
+            <div className="absolute inset-0"><HistorialIncidencias T={T} usuario={usuario} onVerTicket={setTicketVer} /></div>
+          ) : activoIdx === 3 ? (
+            <div className="absolute inset-0"><SolicitudInsumo T={T} usuario={usuario} /></div>
+          ) : activoIdx === 4 ? (
+            <div className="absolute inset-0"><ManualesIncidencias T={T} /></div>
+          ) : activoIdx === 5 ? (
+            <div className="absolute inset-0"><ConfiguracionPerfil T={T} usuario={usuario} onUsuarioActualizado={onUsuarioActualizado} /></div>
+          ) : (
+            <div className="absolute inset-0 flex flex-col overflow-hidden">
+              <div className="flex-shrink-0 px-3 pt-3 md:px-4 md:pt-4">
+                <SeccionEstadisticas T={T} tickets={tickets} />
               </div>
-          }
+              <div className="flex-1 overflow-x-auto overflow-y-auto md:overflow-y-hidden px-3 pt-2 pb-4 md:px-4">
+                <div className="flex flex-col md:flex-row gap-3 md:h-full" style={{ minWidth: "0" }}>
+                  <KanbanBoard T={T} tickets={tickets} onVerTicket={setTicketVer} inline />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      <PanelDerecho T={T} />
+      <PanelDerecho T={T} nombre={nombreCompleto} departamento={departamento}
+        foto={usuario.foto ? `${API}/fotos/${usuario.foto.split("/").pop()}` : null}
+        tickets={tickets} />
     </div>
   );
 }
