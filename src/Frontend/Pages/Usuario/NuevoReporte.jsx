@@ -1,48 +1,49 @@
-import { useState, useRef, useCallback } from "react";
+﻿import { useState, useRef, useCallback, useEffect } from "react";
 import { Camera, Plus, X, ZoomIn, ChevronLeft, ChevronRight, Trash2,
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight, Minus } from "lucide-react";
+import API from "../../Config/api";
 
 const PRIORIDADES = [
-  { label:"Urgente", nivel:"Urgente", color:"#dc2626", bgL:"#fee2e2", bgD:"#2d0a0a", borderL:"#fca5a5", borderD:"#7f1d1d" },
-  { label:"Alta",    nivel:"Alta",    color:"#ea580c", bgL:"#ffedd5", bgD:"#2d1200", borderL:"#fdba74", borderD:"#7c2d12" },
-  { label:"Media",   nivel:"Media",   color:"#ca8a04", bgL:"#fef9c3", bgD:"#1f1a00", borderL:"#fde047", borderD:"#713f12" },
-  { label:"Baja",    nivel:"Baja",    color:"#16a34a", bgL:"#dcfce7", bgD:"#052e16", borderL:"#86efac", borderD:"#14532d" },
-];
-
-const CATEGORIAS = [
-  { valor:"Hardware",           icono:"🖥️", label:"Hardware"           },
-  { valor:"Software",           icono:"💾", label:"Software"           },
-  { valor:"Red / Conectividad", icono:"🌐", label:"Red / Conectividad"  },
-  { valor:"Impresoras",         icono:"🖨️", label:"Impresoras"         },
-  { valor:"Accesos y Permisos", icono:"🔐", label:"Accesos y Permisos"  },
-  { valor:"Correo Electrónico", icono:"📧", label:"Correo Electrónico"  },
-  { valor:"Otro",               icono:"📌", label:"Otro"               },
+  { label:"Urgente", nivel:"Urgente", color:"#dc2626", bgL:"#fee2e2", bgD:"#2d0a0a" },
+  { label:"Alta",    nivel:"Alta",    color:"#ea580c", bgL:"#ffedd5", bgD:"#2d1200" },
+  { label:"Media",   nivel:"Media",   color:"#ca8a04", bgL:"#fef9c3", bgD:"#1f1a00" },
+  { label:"Baja",    nivel:"Baja",    color:"#16a34a", bgL:"#dcfce7", bgD:"#052e16" },
 ];
 
 const MAX_IMGS = 8;
-const EMPTY = { titulo:"", descripcion:"", palabras:0, prioridad:"", categoria:"", evidencias:[] };
 const MAX_PALABRAS = 500;
+const EMPTY = { titulo:"", descripcion:"", palabras:0, prioridad:"", categoria:"", evidencias:[] };
 const contarPalabras = t => t.trim().length;
 
-export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
-  const [form,     setForm]     = useState(EMPTY);
-  const [visor,    setVisor]    = useState(null);
-  const [catOpen,  setCatOpen]  = useState(false);
-  const [errores,  setErrores]  = useState({});
-  const [dragging, setDragging] = useState(false);
-  const fileRef = useRef();
+export default function NuevoReporte({ T, solicitante = "—", area = "—", usuario = {}, onSuccess }) {
+  const [form,       setForm]       = useState(EMPTY);
+  const [visor,      setVisor]      = useState(null);
+  const [catOpen,    setCatOpen]    = useState(false);
+  const [errores,    setErrores]    = useState({});
+  const [dragging,   setDragging]   = useState(false);
+  const [categorias, setCategorias] = useState([]);
+  const [modal,      setModal]      = useState(null);
+  const fileRef  = useRef();
+  const editorRef = useRef(null);
+
+  useEffect(() => {
+    fetch(`${API}/api/categorias`)
+      .then(r => r.json())
+      .then(data => setCategorias(
+        data.map(c => ({ id: c.id_categoria, valor: c.nombre_categoria, label: c.nombre_categoria }))
+      ))
+      .catch(() => setCategorias([]));
+  }, []);
 
   const isDark      = T.bg === "#0b0e14";
-  const catSel      = CATEGORIAS.find(c => c.valor === form.categoria);
+  const catSel      = categorias.find(c => c.valor === form.categoria);
   const inputBg     = isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt;
   const inputBorder = isDark ? "rgba(255,255,255,0.12)" : T.border;
   const dividerLine = isDark ? "rgba(255,255,255,0.08)" : T.border;
   const dividerText = isDark ? "rgba(255,255,255,0.45)" : T.textMuted;
   const iconColor   = isDark ? "rgba(255,255,255,0.22)" : T.textFaint;
   const textColor   = isDark ? "#e2e8f0" : T.text;
-
-  const editorRef = useRef(null);
 
   const quitarError = k => setErrores(p => { const n = {...p}; delete n[k]; return n; });
   const set = (k, v) => { setForm(f => ({...f, [k]:v})); quitarError(k); };
@@ -52,19 +53,16 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
     if (editorRef.current) editorRef.current.innerHTML = "";
   };
 
-  // Ejecuta comando de formato sin perder el foco
-  const fmt = useCallback((cmd, val = null) => {
+  const fmt = useCallback((cmd) => {
     editorRef.current?.focus();
-    document.execCommand(cmd, false, val);
+    document.execCommand(cmd, false, null);
   }, []);
 
   const onEditorInput = () => {
-    const texto   = editorRef.current?.innerText || "";
-    const html    = editorRef.current?.innerHTML  || "";
+    const texto  = editorRef.current?.innerText || "";
+    const html   = editorRef.current?.innerHTML  || "";
     const palabras = contarPalabras(texto);
-
     if (palabras > MAX_PALABRAS) {
-      // revertir al último HTML válido
       editorRef.current.innerHTML = form.descripcion || "";
       const range = document.createRange();
       const sel   = window.getSelection();
@@ -78,15 +76,39 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
     quitarError("descripcion");
   };
 
-  const handleSubir = () => {
+  const handleSubir = async () => {
     const e = {};
     if (!form.titulo.trim())      e.titulo      = "El título es requerido";
     if (!form.descripcion.trim()) e.descripcion = "La descripción es requerida";
     if (!form.prioridad)          e.prioridad   = "Selecciona una prioridad";
     if (!form.categoria)          e.categoria   = "Selecciona una categoría";
     if (Object.keys(e).length) { setErrores(e); return; }
-    alert("✅ Reporte enviado correctamente");
-    limpiar();
+
+    const catObj = categorias.find(c => c.valor === form.categoria);
+    try {
+      const formData = new FormData();
+      formData.append("titulo",       form.titulo);
+      formData.append("descripcion",  form.descripcion);
+      formData.append("prioridad",    form.prioridad);
+      formData.append("id_empleado",  usuario.id_empleado);
+      formData.append("id_categoria", catObj?.id);
+
+      for (let i = 0; i < form.evidencias.length; i++) {
+        const ev   = form.evidencias[i];
+        const res2 = await fetch(ev.src);
+        const blob = await res2.blob();
+        formData.append("evidencias", new File([blob], ev.name, { type: blob.type }));
+      }
+
+      const res  = await fetch(`${API}/api/tickets`, { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) { setModal({ ok: false, titulo: "Error al enviar", msg: data.error }); return; }
+      setModal({ ok: true, titulo: "Reporte enviado", folio: data.folio_ticket, prioridad: form.prioridad, categoria: catObj?.label });
+      limpiar();
+      setTimeout(() => { onSuccess?.(); }, 1800);
+    } catch {
+      setModal({ ok: false, titulo: "Sin conexión", msg: "No se pudo conectar con el servidor" });
+    }
   };
 
   const agregarImgs = files => {
@@ -113,7 +135,6 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
   const slots = [...form.evidencias];
   if (slots.length < MAX_IMGS) slots.push(null);
 
-  // ── tokens de estilo ──────────────────────────────────────
   const card = {
     background: isDark ? "#141720" : T.surface,
     border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`,
@@ -135,9 +156,8 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
   const onFocus = e => { e.target.style.borderColor = "#F47920"; e.target.style.boxShadow = "0 0 0 3px rgba(244,121,32,0.12)"; };
   const onBlur  = e => { e.target.style.borderColor = inputBorder; e.target.style.boxShadow = "none"; };
 
-  // ── sub-componentes ───────────────────────────────────────
   const SectionHeader = ({ title }) => (
-    <div className="flex items-center gap-2 mb-3">
+    <div className="flex items-center gap-2 mb-1.5">
       <div className="w-0.5 h-4 rounded-full flex-shrink-0" style={{ background:"#F47920" }}/>
       <span className="text-[10px] font-black uppercase tracking-widest" style={{ color:dividerText }}>{title}</span>
       <div className="flex-1 h-px" style={{ background:dividerLine }}/>
@@ -155,14 +175,13 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
     : null;
 
   return (
-    <div className="h-full overflow-y-auto relative p-4 md:p-6"
+    <div className="h-full overflow-y-auto p-4 md:p-6"
       style={{ background:T.bg }}
       onDragOver={e => { e.preventDefault(); setDragging(true); }}
       onDragEnter={e => { e.preventDefault(); setDragging(true); }}
       onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
       onDrop={handleDrop}>
 
-      {/* Overlay drag */}
       {dragging && (
         <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-4 pointer-events-none"
           style={{ background:"rgba(244,121,32,0.07)", border:"3px dashed #F47920" }}>
@@ -175,33 +194,24 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
         </div>
       )}
 
-      {/* ── Tarjeta ── */}
-      <div className="max-w-5xl mx-auto rounded-2xl overflow-hidden" style={card}>
-
+      <div className="max-w-3xl mx-auto rounded-2xl overflow-hidden relative" style={card}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3.5"
-          style={{ background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt, borderBottom:`1px solid ${dividerLine}` }}>
-          <div className="flex items-center gap-2">
-            <div className="w-0.5 h-4 rounded-full" style={{ background:"#F47920" }}/>
-            <div>
-              <p className="text-sm font-black" style={{ color:textColor }}>Formulario de Incidencias</p>
-              <p className="text-[11px]" style={{ color:dividerText }}>Completa todos los campos obligatorios</p>
-            </div>
+        <div className="flex items-center gap-3 px-4 py-3"
+          style={{ background: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff", borderBottom:`1px solid ${isDark ? "rgba(59,130,246,0.2)" : "#bfdbfe"}` }}>
+          <img src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"} alt="Logo" className="object-contain" style={{ width:"40px", height:"40px" }}/>
+          <div>
+            <p className="text-sm font-black tracking-tight" style={{ color: isDark ? "#93c5fd" : "#1d4ed8" }}>FORMULARIO DE INCIDENCIAS</p>
+            <p className="text-[10px] font-medium mt-0.5" style={{ color: isDark ? "rgba(147,197,253,0.6)" : "#3b82f6" }}>Completa el formulario para habilitar el envío.</p>
           </div>
-          <span className="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full"
-            style={{ background:`rgba(244,121,32,0.10)`, color:T.orange, border:`1px solid rgba(244,121,32,0.25)` }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background:T.orange }}/>
-            Nuevo ticket
-          </span>
         </div>
 
-        <div className="p-5 md:p-7 flex flex-col gap-6">
+        <div className="p-3 md:p-4 flex flex-col gap-3">
 
-          {/* ── Grid 2 columnas ── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Grid 2 columnas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
             {/* Col izquierda */}
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-3">
               <SectionHeader title="Información general"/>
 
               <div>
@@ -216,71 +226,53 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
 
               <div>
                 <Label required>Descripción detallada</Label>
-
-                {/* Contenedor editor */}
                 <div style={{
                   border: `1.5px solid ${errores.descripcion ? "#ef4444" : inputBorder}`,
-                  borderRadius: "12px",
-                  overflow: "hidden",
-                  background: inputBg,
+                  borderRadius: "12px", overflow: "hidden", background: inputBg,
                   transition: "border-color .15s, box-shadow .15s",
                 }}>
-
-                  {/* ── Barra de herramientas ── */}
+                  {/* Toolbar */}
                   <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5"
                     style={{ borderBottom:`1px solid ${dividerLine}`, background: isDark ? "rgba(255,255,255,0.04)" : T.surfaceAlt }}>
-
-                    {/* Grupo formato */}
                     {[
-                      { cmd:"bold",          Icon:Bold,          title:"Negrita (Ctrl+B)"    },
-                      { cmd:"italic",        Icon:Italic,        title:"Cursiva (Ctrl+I)"    },
-                      { cmd:"underline",     Icon:Underline,     title:"Subrayado (Ctrl+U)"  },
-                      { cmd:"strikeThrough", Icon:Strikethrough, title:"Tachado"             },
+                      { cmd:"bold",          Icon:Bold,          title:"Negrita (Ctrl+B)"   },
+                      { cmd:"italic",        Icon:Italic,        title:"Cursiva (Ctrl+I)"   },
+                      { cmd:"underline",     Icon:Underline,     title:"Subrayado (Ctrl+U)" },
+                      { cmd:"strikeThrough", Icon:Strikethrough, title:"Tachado"            },
                     ].map(({ cmd, Icon, title }) => (
-                      <ToolBtn key={cmd} title={title} onClick={() => fmt(cmd)} isDark={isDark} T={T} dividerLine={dividerLine}>
+                      <ToolBtn key={cmd} title={title} onClick={() => fmt(cmd)} isDark={isDark} T={T}>
                         <Icon size={13}/>
                       </ToolBtn>
                     ))}
-
                     <Divider dividerLine={dividerLine}/>
-
-                    {/* Listas */}
                     {[
-                      { cmd:"insertUnorderedList", Icon:List,         title:"Lista con viñetas" },
-                      { cmd:"insertOrderedList",   Icon:ListOrdered,  title:"Lista numerada"   },
+                      { cmd:"insertUnorderedList", Icon:List,        title:"Lista con viñetas" },
+                      { cmd:"insertOrderedList",   Icon:ListOrdered, title:"Lista numerada"    },
                     ].map(({ cmd, Icon, title }) => (
-                      <ToolBtn key={cmd} title={title} onClick={() => fmt(cmd)} isDark={isDark} T={T} dividerLine={dividerLine}>
+                      <ToolBtn key={cmd} title={title} onClick={() => fmt(cmd)} isDark={isDark} T={T}>
                         <Icon size={13}/>
                       </ToolBtn>
                     ))}
-
                     <Divider dividerLine={dividerLine}/>
-
-                    {/* Alineación */}
                     {[
                       { cmd:"justifyLeft",   Icon:AlignLeft,   title:"Alinear izquierda" },
                       { cmd:"justifyCenter", Icon:AlignCenter, title:"Centrar"           },
                       { cmd:"justifyRight",  Icon:AlignRight,  title:"Alinear derecha"   },
                     ].map(({ cmd, Icon, title }) => (
-                      <ToolBtn key={cmd} title={title} onClick={() => fmt(cmd)} isDark={isDark} T={T} dividerLine={dividerLine}>
+                      <ToolBtn key={cmd} title={title} onClick={() => fmt(cmd)} isDark={isDark} T={T}>
                         <Icon size={13}/>
                       </ToolBtn>
                     ))}
-
                     <Divider dividerLine={dividerLine}/>
-
-                    {/* Línea horizontal */}
-                    <ToolBtn title="Línea separadora" onClick={() => fmt("insertHorizontalRule")} isDark={isDark} T={T} dividerLine={dividerLine}>
+                    <ToolBtn title="Línea separadora" onClick={() => fmt("insertHorizontalRule")} isDark={isDark} T={T}>
                       <Minus size={13}/>
                     </ToolBtn>
-
-                    {/* Limpiar formato */}
-                    <ToolBtn title="Quitar formato" onClick={() => fmt("removeFormat")} isDark={isDark} T={T} dividerLine={dividerLine}>
+                    <ToolBtn title="Quitar formato" onClick={() => fmt("removeFormat")} isDark={isDark} T={T}>
                       <span className="text-[10px] font-black">Aa</span>
                     </ToolBtn>
                   </div>
 
-                  {/* ── Área editable ── */}
+                  {/* Área editable */}
                   <div
                     ref={editorRef}
                     contentEditable
@@ -296,41 +288,23 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
                       e.currentTarget.parentElement.style.boxShadow   = "none";
                     }}
                     className="outline-none px-3.5 py-3 text-sm leading-relaxed"
-                    style={{
-                      minHeight: "160px",
-                      color: textColor,
-                      background: "transparent",
-                    }}
+                    style={{ minHeight:"120px", color:textColor, background:"transparent" }}
                     data-placeholder="Describe el problema con el mayor detalle posible: cuándo ocurrió, qué estabas haciendo, mensajes de error, etc."
                   />
                 </div>
-
                 <style>{`
-                  [contenteditable]:empty:before {
-                    content: attr(data-placeholder);
-                    color: ${iconColor};
-                    pointer-events: none;
-                  }
+                  [contenteditable]:empty:before { content: attr(data-placeholder); color: ${iconColor}; pointer-events: none; }
                   [contenteditable] ul { list-style: disc; padding-left: 1.25rem; }
                   [contenteditable] ol { list-style: decimal; padding-left: 1.25rem; }
                   [contenteditable] hr { border: none; border-top: 1px solid ${dividerLine}; margin: 6px 0; }
                 `}</style>
-
-                {/* Contador de palabras */}
                 <div className="flex items-center justify-between mt-1.5">
                   <Err campo="descripcion"/>
                   <span className="ml-auto text-[11px] font-bold px-2.5 py-0.5 rounded-full"
                     style={{
-                      background: form.palabras >= MAX_PALABRAS ? "#fee2e2"
-                        : form.palabras >= 450 ? "#fef9c3"
-                        : isDark ? "rgba(255,255,255,0.06)" : T.bg,
-                      color: form.palabras >= MAX_PALABRAS ? "#dc2626"
-                        : form.palabras >= 450 ? "#ca8a04"
-                        : T.textMuted,
-                      border: `1px solid ${
-                        form.palabras >= MAX_PALABRAS ? "#fca5a5"
-                        : form.palabras >= 450 ? "#fde047"
-                        : dividerLine}`,
+                      background: form.palabras >= MAX_PALABRAS ? "#fee2e2" : form.palabras >= 450 ? "#fef9c3" : isDark ? "rgba(255,255,255,0.06)" : T.bg,
+                      color:      form.palabras >= MAX_PALABRAS ? "#dc2626" : form.palabras >= 450 ? "#ca8a04" : T.textMuted,
+                      border: `1px solid ${form.palabras >= MAX_PALABRAS ? "#fca5a5" : form.palabras >= 450 ? "#fde047" : dividerLine}`,
                     }}>
                     {form.palabras} / {MAX_PALABRAS} palabras
                   </span>
@@ -339,27 +313,27 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
             </div>
 
             {/* Col derecha */}
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-3">
               <SectionHeader title="Clasificación"/>
 
               {/* Prioridad */}
               <div>
                 <Label required>Nivel de prioridad</Label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 gap-1.5">
                   {PRIORIDADES.map(p => {
                     const sel = form.prioridad === p.nivel;
                     return (
                       <button key={p.nivel} type="button" onClick={() => set("prioridad", p.nivel)}
-                        className="flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-xl text-xs font-bold transition-all select-none"
+                        className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-xs font-bold transition-all select-none"
                         style={{
                           background: sel ? (isDark ? p.bgD : p.bgL) : inputBg,
-                          border:    `1.5px solid ${sel ? (isDark ? p.borderD : p.borderL) : errores.prioridad ? "#ef4444" : inputBorder}`,
+                          border:    `2.5px solid ${sel ? p.color : errores.prioridad ? "#ef4444" : inputBorder}`,
                           color:      sel ? p.color : dividerText,
-                          boxShadow:  sel ? `0 4px 14px ${p.color}40` : "none",
-                          transform:  sel ? "translateY(-2px)" : "none",
+                          boxShadow:  sel ? `0 0 0 3px ${p.color}20, 0 4px 14px ${p.color}40` : "none",
+                          transform:  sel ? "translateY(-2px) scale(1.02)" : "none",
                         }}>
                         <span className="w-3 h-3 rounded-full"
-                          style={{ background:p.color, boxShadow:sel ? `0 0 8px ${p.color}90` : "none" }}/>
+                          style={{ background:p.color, boxShadow:sel ? `0 0 12px ${p.color}90` : "none" }}/>
                         {p.label}
                         {sel && <span className="text-[10px] leading-none">✓</span>}
                       </button>
@@ -384,10 +358,7 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
                     cursor: "pointer",
                   }}>
                   <span className="flex items-center gap-2.5 font-medium text-sm">
-                    {catSel
-                      ? <><span className="text-base">{catSel.icono}</span><span>{catSel.label}</span></>
-                      : <span>Selecciona una categoría</span>
-                    }
+                    {catSel ? catSel.label : "Selecciona una categoría"}
                   </span>
                   <svg width="12" height="12" viewBox="0 0 13 13" fill="none"
                     style={{ flexShrink:0, transition:"transform .2s", transform:catOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
@@ -401,7 +372,7 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
                       border: `1.5px solid ${isDark ? "rgba(255,255,255,0.12)" : T.border}`,
                       boxShadow: isDark ? "0 16px 48px rgba(0,0,0,0.7)" : "0 8px 28px rgba(0,0,0,0.14)",
                     }}>
-                    {CATEGORIAS.map((c, idx) => {
+                    {categorias.map((c, idx) => {
                       const sel = form.categoria === c.valor;
                       return (
                         <button key={c.valor} type="button"
@@ -414,7 +385,6 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
                           }}
                           onMouseEnter={e => { if (!sel) e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt; }}
                           onMouseLeave={e => { if (!sel) e.currentTarget.style.background = "transparent"; }}>
-                          <span className="text-base w-5 text-center flex-shrink-0">{c.icono}</span>
                           <span className="flex-1">{c.label}</span>
                           {sel && (
                             <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -445,34 +415,33 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
             </div>
           </div>
 
-          {/* ── Evidencias ── */}
+          {/* Evidencias */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-0.5 h-4 rounded-full flex-shrink-0" style={{ background:"#F47920" }}/>
-              <span className="text-[10px] font-black uppercase tracking-widest" style={{ color:dividerText }}>
-                Evidencias fotográficas
-              </span>
+              <span className="text-[10px] font-black uppercase tracking-widest" style={{ color:dividerText }}>Evidencias fotográficas</span>
               <div className="flex-1 h-px" style={{ background:dividerLine }}/>
               <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
                 style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.bg, color:dividerText, border:`1px solid ${dividerLine}` }}>
                 {form.evidencias.length}/{MAX_IMGS}
               </span>
             </div>
-
-            <div className="grid gap-3" style={{ gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))" }}>
+            <div className="grid gap-2" style={{ gridTemplateColumns:"repeat(auto-fill,minmax(90px,1fr))" }}>
               {slots.map((img, i) =>
                 img === null ? (
                   <label key="add"
-                    className="aspect-square rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all"
-                    style={{ border:`2px dashed ${inputBorder}`, background:inputBg }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor="#F47920"; e.currentTarget.style.background="rgba(244,121,32,0.07)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor=inputBorder; e.currentTarget.style.background=inputBg; }}>
+                    className="aspect-square rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all"
+                    style={{ border:`2px dashed ${inputBorder}`, background: isDark ? "rgba(255,255,255,0.02)" : "rgba(244,121,32,0.02)" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor="#F47920"; e.currentTarget.style.background="rgba(244,121,32,0.06)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor=inputBorder; e.currentTarget.style.background= isDark ? "rgba(255,255,255,0.02)" : "rgba(244,121,32,0.02)"; }}>
                     <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
                       onChange={e => { agregarImgs(e.target.files); e.target.value=""; }}/>
-                    {form.evidencias.length === 0
-                      ? <><Camera size={26} style={{ color:iconColor }}/><span className="text-xs" style={{ color:iconColor }}>Agregar foto</span></>
-                      : <><Plus size={22} style={{ color:iconColor }}/><span className="text-xs" style={{ color:iconColor }}>Agregar</span></>
-                    }
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background:"rgba(244,121,32,0.1)" }}>
+                      {form.evidencias.length === 0 ? <Camera size={20} style={{ color:T.orange }}/> : <Plus size={18} style={{ color:T.orange }}/>}
+                    </div>
+                    <span className="text-[11px] font-semibold" style={{ color:T.orange }}>
+                      {form.evidencias.length === 0 ? "Agregar foto" : "Agregar"}
+                    </span>
                   </label>
                 ) : (
                   <div key={i} className="flex flex-col gap-1.5">
@@ -514,30 +483,99 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
             </p>
           </div>
 
-          {/* ── Botones ── */}
-          <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-3 pt-4"
-            style={{ borderTop:`1px solid ${dividerLine}` }}>
-            <p className="text-xs" style={{ color:iconColor }}>
-              <span className="text-red-400 font-bold">*</span> Campos obligatorios
+          {/* Botones */}
+          <div className="flex flex-col gap-3 pt-3" style={{ borderTop:`1px solid ${dividerLine}` }}>
+            <p className="text-[11px] text-center leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.3)" : T.textFaint }}>
+              Al enviar este reporte, el usuario autoriza al personal de soporte técnico a ejecutar los protocolos y medidas necesarias para la resolución efectiva de la incidencia.
             </p>
-            <div className="flex flex-col-reverse sm:flex-row gap-2.5 w-full sm:w-auto">
-              <button type="button" onClick={limpiar}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95"
-                style={{ background:"#3b82f6", boxShadow:"0 3px 10px rgba(59,130,246,0.35)" }}>
-                Limpiar Campos
-              </button>
-              <button type="button" onClick={handleSubir}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95"
-                style={{ background:`linear-gradient(135deg,${T.orange},#d97400)`, boxShadow:"0 4px 14px rgba(244,121,32,0.45)" }}>
-                Subir Reporte
-              </button>
+            <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-2">
+              <p className="text-xs flex items-center gap-1" style={{ color:iconColor }}>
+                <span className="text-red-400 font-bold">*</span> Campos obligatorios
+              </p>
+              <div className="flex flex-col-reverse sm:flex-row gap-2.5 w-full sm:w-auto">
+                <button type="button" onClick={limpiar}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-95"
+                  style={{ background: isDark ? "rgba(59,130,246,0.15)" : "#eff6ff", color:"#3b82f6", border:"1px solid rgba(59,130,246,0.3)" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Limpiar
+                </button>
+                <button type="button" onClick={handleSubir}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95"
+                  style={{ background:`linear-gradient(135deg,${T.orange},#d97400)`, boxShadow:"0 4px 14px rgba(244,121,32,0.45)" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 5v14M5 12l7-7 7 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Subir Reporte
+                </button>
+              </div>
             </div>
           </div>
 
         </div>
       </div>
 
-      {/* ── Visor modal ── */}
+      {/* Modal confirmación */}
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background:"rgba(0,0,0,0.6)" }}
+          onClick={() => setModal(null)}>
+          <div className="w-full max-w-sm rounded-2xl overflow-hidden"
+            style={{ background: isDark?"#141720":T.surface, border:`1px solid ${isDark?"rgba(255,255,255,0.1)":T.border}`, boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}
+            onClick={e => e.stopPropagation()}>
+            <div className="h-1.5" style={{ background: modal.ok ? "#16a34a" : "#dc2626" }}/>
+            <div className="p-6 flex flex-col items-center gap-4 text-center">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center"
+                style={{ background: modal.ok ? (isDark?"rgba(22,163,74,0.2)":"#dcfce7") : (isDark?"rgba(220,38,38,0.2)":"#fee2e2") }}>
+                {modal.ok
+                  ? <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  : <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 8v4m0 4h.01" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round"/><circle cx="12" cy="12" r="9" stroke="#dc2626" strokeWidth="2"/></svg>
+                }
+              </div>
+              <div className="w-full">
+                <p className="text-base font-black" style={{ color:T.text }}>{modal.titulo}</p>
+                {modal.ok
+                  ? <div className="mt-3 flex flex-col gap-2.5 text-left">
+                      <div className="h-1 rounded-full" style={{ background:"linear-gradient(90deg,#3b82f6,#60a5fa)", boxShadow:"0 2px 8px rgba(59,130,246,0.3)" }}/>
+                      <span className="text-sm font-mono font-bold" style={{ color:T.orange }}>#{modal.folio}</span>
+                      <div className="flex flex-col gap-1.5 text-xs border-t" style={{ borderColor:T.border, paddingTop:"12px" }}>
+                        <div className="flex items-center justify-between">
+                          <span style={{ color:T.textMuted }}>Prioridad:</span>
+                          <span style={{ color: PRIORIDADES.find(p => p.nivel === modal.prioridad)?.color ?? T.text, fontWeight:600 }}>{modal.prioridad}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span style={{ color:T.textMuted }}>Estado:</span>
+                          <span style={{ color:"#ca8a04", fontWeight:600 }}>En Proceso</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span style={{ color:T.textMuted }}>Categoría:</span>
+                          <span style={{ color:T.text, fontWeight:600 }}>{modal.categoria}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span style={{ color:T.textMuted }}>Fecha:</span>
+                          <span style={{ color:T.text, fontWeight:600 }}>{new Date().toLocaleDateString("es-MX")}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span style={{ color:T.textMuted }}>Hora:</span>
+                          <span style={{ color:T.text, fontWeight:600 }}>{new Date().toLocaleTimeString("es-MX", { hour:"2-digit", minute:"2-digit" })}</span>
+                        </div>
+                      </div>
+                    </div>
+                  : <p className="text-sm mt-1" style={{ color:T.textMuted }}>{modal.msg}</p>
+                }
+              </div>
+              <button onClick={() => setModal(null)}
+                className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95"
+                style={{ background: modal.ok ? "#16a34a" : "#dc2626" }}>
+                {modal.ok ? "Aceptar" : "Cerrar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Visor modal */}
       {visor !== null && form.evidencias[visor] && (
         <div className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ background:"rgba(0,0,0,0.92)" }}
@@ -580,32 +618,20 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—" }) {
   );
 }
 
-// ── Botón de herramienta ─────────────────────────────────────
-function ToolBtn({ children, onClick, title, isDark, T, dividerLine }) {
+function ToolBtn({ children, onClick, title, isDark, T }) {
   return (
-    <button
-      type="button"
-      title={title}
+    <button type="button" title={title}
       onMouseDown={e => { e.preventDefault(); onClick(); }}
       className="flex items-center justify-center w-7 h-7 rounded-lg transition-all hover:brightness-110 active:scale-95"
-      style={{
-        color: isDark ? "rgba(255,255,255,0.6)" : T.textMuted,
-        background: "transparent",
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.08)" : T.border;
-        e.currentTarget.style.color = isDark ? "#fff" : T.text;
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.background = "transparent";
-        e.currentTarget.style.color = isDark ? "rgba(255,255,255,0.6)" : T.textMuted;
-      }}>
+      style={{ color: isDark ? "rgba(255,255,255,0.6)" : T.textMuted, background:"transparent" }}
+      onMouseEnter={e => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.08)" : T.border; e.currentTarget.style.color = isDark ? "#fff" : T.text; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = isDark ? "rgba(255,255,255,0.6)" : T.textMuted; }}>
       {children}
     </button>
   );
 }
 
-// ── Separador vertical de toolbar ────────────────────────────
 function Divider({ dividerLine }) {
   return <div className="w-px h-4 mx-0.5" style={{ background: dividerLine }}/>;
 }
+
