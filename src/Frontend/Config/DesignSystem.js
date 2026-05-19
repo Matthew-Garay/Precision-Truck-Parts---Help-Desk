@@ -82,10 +82,10 @@ export const BTN_SECONDARY = {
   cursor:       "pointer",
 };
 
-// ── DIAGONAL NARANJA ─────────────────────────────────────────
+// ── DIAGONAL ─────────────────────────────────────────────────
 export const DIAGONAL = {
-  desktop: { background: "#F47920", clipPath: "polygon(62% 100%, 100% 48%, 100% 100%)" },
-  mobile:  { background: "#F47920", clipPath: "polygon(0% 100%, 100% 80%, 100% 100%)" },
+  desktop: { background: "#1D1D1B",  clipPath: "polygon(66% 100%, 100% 55%, 100% 100%)" },
+  mobile:  { background: "#1D1D1B",  clipPath: "polygon(0% 100%, 100% 84%, 100% 100%)" },
 };
 
 // ── OVERLAY DE FONDO ─────────────────────────────────────────
