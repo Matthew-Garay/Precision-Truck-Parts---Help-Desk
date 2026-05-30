@@ -23,7 +23,7 @@ export default function ManualesIncidencias({ T }) {
   const [busqueda, setBusqueda] = useState("");
   const [manuales, setManuales] = useState([]);
   const [loading,  setLoading]  = useState(true);
-  const isDark = T.bg === "#0b0e14";
+  const isDark = T.isDark;
 
   useEffect(() => {
     fetch(`${API}/api/manuales`)
@@ -44,7 +44,7 @@ export default function ManualesIncidencias({ T }) {
   };
 
   return (
-    <div className="absolute inset-0 overflow-y-auto" style={{ background: T.bg }}>
+    <div className="overflow-y-auto" style={{ background: T.bg }}>
       <div className="p-3 md:p-4 flex flex-col gap-3 max-w-[1400px] mx-auto">
 
         {/* Hero buscador */}

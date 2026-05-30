@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle2, X, Search, Tag, AlertCircle } from "lucide-react";
-import API from "../../Config/api";
+import { apiFetch } from "../../Config/api";
 
 const PRIORIDADES = [
   { val: "Urgente", color: "#dc2626", bg: "rgba(220,38,38,0.12)",  border: "rgba(220,38,38,0.3)"  },
@@ -100,7 +100,7 @@ function TarjetaInsumo({ ins, cantidad, onAgregar, onQuitar, T, isDark }) {
 }
 
 export default function SolicitudInsumo({ T, usuario = {} }) {
-  const isDark = T.bg === "#0b0e14";
+  const isDark = T.isDark;
   const [insumos,   setInsumos]   = useState([]);
   const [carrito,   setCarrito]   = useState({});
   const [prioridad, setPrioridad] = useState("");
@@ -111,7 +111,7 @@ export default function SolicitudInsumo({ T, usuario = {} }) {
   const [catFiltro, setCatFiltro] = useState("Todos");
 
   useEffect(() => {
-    fetch(`${API}/api/solicitudes/insumos`)
+    apiFetch(`/api/solicitudes/insumos`)
       .then(r => r.json())
       .then(d => setInsumos(Array.isArray(d) ? d : []))
       .catch(() => setInsumos([]))
@@ -147,14 +147,13 @@ export default function SolicitudInsumo({ T, usuario = {} }) {
 
     setEnviando(true);
     try {
-      const res  = await fetch(`${API}/api/solicitudes`, {
+      const res  = await apiFetch(`/api/solicitudes`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-        body: JSON.stringify({
+        body: {
           prioridad,
           id_empleado: usuario.id_empleado,
           insumos: Object.entries(carrito).map(([id_insumo, cantidad]) => ({ id_insumo: parseInt(id_insumo), cantidad })),
-        }),
+        },
       });
       const data = await res.json();
       if (!res.ok) { setModal({ ok: false, msg: data.error || "Error al enviar" }); return; }
@@ -179,10 +178,10 @@ export default function SolicitudInsumo({ T, usuario = {} }) {
   };
 
   return (
-    <div className="absolute inset-0 overflow-y-auto" style={{ background: T.bg }}>
+    <div className="overflow-y-auto" style={{ background: T.bg }}>
       <div className="max-w-[1300px] mx-auto px-4 py-5 flex flex-col gap-4">
 
-        {/* ── PRIORIDAD ── */}
+        {/* -- PRIORIDAD -- */}
         <div className="rounded-xl overflow-hidden" style={card}>
           <div className="px-4 py-2.5 flex items-center gap-2" style={hdr}>
             <div className="w-0.5 h-3.5 rounded-full" style={{ background: T.orange }} />
@@ -207,7 +206,7 @@ export default function SolicitudInsumo({ T, usuario = {} }) {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-          {/* ── CATÁLOGO ── */}
+          {/* -- CATÁLOGO -- */}
           <div className="lg:col-span-2 flex flex-col gap-3">
 
             {/* Buscador + filtro categoría */}
@@ -281,8 +280,8 @@ export default function SolicitudInsumo({ T, usuario = {} }) {
             )}
           </div>
 
-          {/* ── CARRITO ── */}
-          <div className="rounded-xl overflow-hidden flex flex-col" style={{ ...card, alignSelf: "start", position: "sticky", top: "16px" }}>
+          {/* -- CARRITO -- */}
+          <div className="rounded-xl overflow-hidden flex flex-col lg:sticky lg:top-4 lg:self-start" style={card}>
             <div className="px-4 py-2.5 flex items-center justify-between" style={hdr}>
               <div className="flex items-center gap-2">
                 <ShoppingCart size={13} style={{ color: T.orange }} />

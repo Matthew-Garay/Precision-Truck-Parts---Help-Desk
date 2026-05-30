@@ -5,37 +5,13 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     
-    <link rel="icon" type="image/x-icon" href="/assets/img/icono.ico" />
+    <link rel="icon" type="image/x-icon" href="/assets/img/logo.ico?v=2" />
     <link rel="apple-touch-icon" href="/assets/img/logo.png" />
     <meta name="theme-color" content="#F28705" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
     <!-- Bloquear orientación horizontal en móviles (no tablets) -->
-    <style>
-      @media screen and (max-width: 767px) and (orientation: landscape) {
-        #orientation-lock {
-          display: flex !important;
-        }
-      }
-      #orientation-lock {
-        display: none;
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        background: #1D1D1B;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 20px;
-      }
-      #orientation-lock svg {
-        animation: rotate-hint 1.5s ease-in-out infinite alternate;
-      }
-      @keyframes rotate-hint {
-        from { transform: rotate(0deg); }
-        to   { transform: rotate(-90deg); }
-      }
-    </style>
+    <link rel="stylesheet" href="/src/orientation.css" />
 
     <title>Precision Truck Parts – HelpDesk</title>
     <meta name="description" content="Sistema de Gestión de Tickets e Inventario de Precision Truck Parts and Accessories." />

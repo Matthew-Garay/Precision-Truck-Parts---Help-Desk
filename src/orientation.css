@@ -1,0 +1,48 @@
+@media screen and (max-width: 767px) and (orientation: landscape) {
+  #orientation-lock {
+    display: flex !important;
+  }
+}
+#orientation-lock {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #1D1D1B;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+#orientation-lock svg {
+  animation: rotate-hint 1.5s ease-in-out infinite alternate;
+}
+@keyframes rotate-hint {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-90deg); }
+}
+
+/* Mobile-first: asegurar scroll nativo en iOS/Android */
+html, body, #root {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+/* Evitar que el scroll se bloquee en iOS */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Botones y elementos interactivos con área táctil mínima */
+button, [role="button"], select, input, a {
+  min-height: 36px;
+  touch-action: manipulation;
+}
+
+/* Scrollbar delgado en desktop */
+@media (min-width: 768px) {
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3); }
+}

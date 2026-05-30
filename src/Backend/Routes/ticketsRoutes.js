@@ -1,57 +1,48 @@
 import { Router }      from "express";
-import multer          from "multer";
-import path            from "path";
-import fs              from "fs";
-import { csrfProtection, safeResolvePath } from "../Middlewares/security.js";
-import { crearTicket, getTicketsByEmpleado, getImagenesTicket, getAllTickets, actualizarTicket, calificarTicket, editarTicketUsuario } from "../Controllers/ticketsController.js";
+import rateLimit       from "express-rate-limit";
+import { csrfProtection } from "../Middlewares/security.js";
+import { requireAuth } from "../Middlewares/authMiddleware.js";
+import { uploadEvidencias, EVIDENCIAS_BASE, safeResolvePath } from "../Middlewares/uploadEvidencias.js";
+import { validate, schemaCrearTicket, schemaActualizarTicket, schemaCalificarTicket, schemaEditarTicket } from "../Middlewares/validate.js";
+import { crearTicket, getTicketsByEmpleado, getImagenesTicket, getAllTickets, actualizarTicket, calificarTicket, editarTicketUsuario, getMetricas, getAdmins, getReporte } from "../Controllers/ticketsController.js";
+
+// Middleware: solo el propio empleado o un admin puede acceder
+function requireOwnerOrAdmin(req, res, next) {
+  const idParam = parseInt(req.params.id_empleado, 10);
+  const { id_empleado, id_rol } = req.usuario;
+  if (id_rol === 1 || id_empleado === idParam) return next();
+  return res.status(403).json({ error: "Acceso no autorizado" });
+}
 
 const router = Router();
 router.use(csrfProtection);
+router.use(requireAuth);
 
-const EVIDENCIAS_BASE = path.resolve("storage", "Evidencias_Tickets");
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    try {
-      const tmp = safeResolvePath(EVIDENCIAS_BASE, "_tmp_upload");
-      fs.mkdirSync(tmp, { recursive: true });
-      cb(null, tmp);
-    } catch {
-      cb(new Error("Ruta de destino no permitida"));
-    }
-  },
-  // Nombre generado 100% por el servidor — no usa originalname del cliente
-  filename: (req, file, cb) => {
-    const ext = file.mimetype === "image/png"  ? ".png"
-              : file.mimetype === "image/webp" ? ".webp"
-              : file.mimetype === "image/gif"  ? ".gif"
-              : ".jpg";
-    cb(null, `${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`);
-  },
+// Rate limit para creacion de tickets: max 30 por hora
+const ticketLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Limite de tickets alcanzado. Intenta mas tarde." },
 });
 
-const upload = multer({
-  storage,
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) cb(null, true);
-    else cb(new Error("Solo se permiten imágenes"));
-  },
-  limits: { fileSize: 10 * 1024 * 1024 },
-});
-
+router.get("/metricas", getMetricas);
+router.get("/admins", getAdmins);
+router.get("/reporte", getReporte);
 router.get("/", getAllTickets);
-router.get("/empleado/:id_empleado", getTicketsByEmpleado);
+router.get("/empleado/:id_empleado", requireOwnerOrAdmin, getTicketsByEmpleado);
 router.get("/:id_ticket/imagenes",   getImagenesTicket);
 
-router.patch("/:id_ticket/calificar", calificarTicket);
-router.put("/:id_ticket/editar", editarTicketUsuario);
-router.patch("/:id_ticket", actualizarTicket);
+router.patch("/:id_ticket/calificar", validate(schemaCalificarTicket),  calificarTicket);
+router.put("/:id_ticket/editar",      validate(schemaEditarTicket),     editarTicketUsuario);
+router.patch("/:id_ticket",           validate(schemaActualizarTicket), actualizarTicket);
 
-router.post("/", (req, res, next) => {
-  upload.array("evidencias", 8)(req, res, (err) => {
+router.post("/", ticketLimiter, (req, res, next) => {
+  uploadEvidencias.array("evidencias", 8)(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message });
     next();
   });
-}, crearTicket);
+}, validate(schemaCrearTicket), crearTicket);
 
 export default router;

@@ -1,25 +1,25 @@
 import pool from "../Config/db.js";
 
 const Solicitud = {
-  generarFolio: async () => {
-    const ahora   = new Date();
-    const anio    = ahora.getFullYear();
-    const mes     = String(ahora.getMonth() + 1).padStart(2, "0");
-    const prefijo = `SOL-${anio}${mes}-`;
-    const [rows]  = await pool.query(
-      "SELECT folio_solicitud FROM solicitud WHERE folio_solicitud LIKE ? ORDER BY id_solicitud DESC LIMIT 1",
-      [`${prefijo}%`]
-    );
-    const ultimo = rows[0]?.folio_solicitud;
-    const num    = ultimo ? parseInt(ultimo.split("-")[2]) + 1 : 1;
-    return `${prefijo}${String(num).padStart(3, "0")}`;
-  },
-
   crear: async ({ prioridad, id_empleado, insumos }) => {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
-      const folio = await Solicitud.generarFolio();
+
+      // Bloqueo exclusivo igual que en Ticket.crear - evita folios duplicados bajo concurrencia
+      const ahora   = new Date();
+      const anio    = ahora.getFullYear();
+      const mes     = String(ahora.getMonth() + 1).padStart(2, "0");
+      const prefijo = `SOL-${anio}${mes}-`;
+
+      const [rows] = await conn.query(
+        "SELECT folio_solicitud FROM solicitud WHERE folio_solicitud LIKE ? ORDER BY id_solicitud DESC LIMIT 1 FOR UPDATE",
+        [`${prefijo}%`]
+      );
+      const ultimo = rows[0]?.folio_solicitud;
+      const num    = ultimo ? parseInt(ultimo.split("-")[2]) + 1 : 1;
+      const folio  = `${prefijo}${String(num).padStart(3, "0")}`;
+
       const [result] = await conn.query(
         `INSERT INTO solicitud (folio_solicitud, prioridad, id_empleado) VALUES (?, ?, ?)`,
         [folio, prioridad, id_empleado]

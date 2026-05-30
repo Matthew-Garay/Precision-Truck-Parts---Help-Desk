@@ -1,5 +1,7 @@
 import Solicitud from "../Models/Solicitud.js";
 import Insumo    from "../Models/Insumo.js";
+import { io }    from "../server.js";
+import pool      from "../Config/db.js";
 
 export const getInsumos = async (req, res) => {
   try {
@@ -19,16 +21,55 @@ export const getInventario = async (req, res) => {
   }
 };
 
+// Insumos con stock = 0 para alertas del panel derecho
+export const getInsumosStockBajo = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT i.id_insumo, i.nombre, i.marca, i.modelo, i.stock, c.nombre_categoria
+       FROM insumo i
+       LEFT JOIN categoria c ON i.id_categoria = c.id_categoria
+       WHERE i.stock = 0
+       ORDER BY i.nombre ASC
+       LIMIT 20`
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Error al obtener alertas de stock", detalle: err.message });
+  }
+};
+
 export const crearSolicitud = async (req, res) => {
   const { prioridad, id_empleado, insumos } = req.body;
   if (!prioridad || !id_empleado || !Array.isArray(insumos) || insumos.length === 0)
     return res.status(400).json({ error: "Datos incompletos" });
+  // El empleado solo puede crear solicitudes en su propio nombre
+  if (parseInt(id_empleado) !== req.usuario.id_empleado && req.usuario.id_rol !== 1)
+    return res.status(403).json({ error: "No puedes crear solicitudes en nombre de otro usuario" });
   for (const item of insumos) {
     if (!item.id_insumo || !item.cantidad || item.cantidad < 1)
       return res.status(400).json({ error: "Cada insumo debe tener id y cantidad válida" });
   }
   try {
     const result = await Solicitud.crear({ prioridad, id_empleado: parseInt(id_empleado), insumos });
+    // Obtener nombre y área del empleado
+    const [[emp]] = await pool.query(
+      `SELECT CONCAT(e.nombre,' ',e.ap_paterno) AS nombre_empleado,
+              d.nombre_departamento
+       FROM empleado e
+       LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       WHERE e.id_empleado = ? LIMIT 1`,
+      [parseInt(id_empleado)]
+    );
+    // Notificar a todos los admins que llegó una nueva solicitud
+    io.to("admins").emit("solicitud:nueva", {
+      id_solicitud:    result.id_solicitud,
+      folio_solicitud: result.folio_solicitud,
+      id_empleado:     parseInt(id_empleado),
+      prioridad,
+      total_insumos:   insumos.length,
+      nombre_empleado: emp?.nombre_empleado || "Usuario",
+      departamento:    emp?.nombre_departamento || "Sin área",
+    });
     res.status(201).json({ ok: true, ...result });
   } catch (err) {
     res.status(500).json({ error: "Error al crear solicitud", detalle: err.message });
@@ -75,6 +116,18 @@ export const actualizarEstatusSolicitud = async (req, res) => {
   try {
     const ok = await Solicitud.actualizarEstatus(parseInt(id), estatus);
     if (!ok) return res.status(404).json({ error: "Solicitud no encontrada" });
+    // Notificar al empleado dueño de la solicitud
+    const [[sol]] = await pool.query(
+      "SELECT id_empleado, folio_solicitud FROM solicitud WHERE id_solicitud = ? LIMIT 1",
+      [parseInt(id)]
+    );
+    if (sol) {
+      io.to(`empleado_${sol.id_empleado}`).emit("solicitud:actualizada", {
+        id_solicitud:    parseInt(id),
+        folio_solicitud: sol.folio_solicitud,
+        estatus,
+      });
+    }
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

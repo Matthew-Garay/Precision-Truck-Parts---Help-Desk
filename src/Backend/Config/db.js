@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Pool de conexiones — reutiliza conexiones activas en lugar de abrir una nueva cada vez
+// Pool de conexiones - reutiliza conexiones activas en lugar de abrir una nueva cada vez
 const pool = mysql.createPool({
   host:               process.env.DB_HOST,
   port:               process.env.DB_PORT,
