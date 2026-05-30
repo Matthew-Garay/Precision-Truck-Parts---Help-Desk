@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Star, Inbox, FileDown, X } from "lucide-react";
 import { apiFetch } from "../../Config/api";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
