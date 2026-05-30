@@ -28,7 +28,7 @@ const Empleado = {
   },
 
   updatePerfil: async (id, { nombre, ap_paterno, ap_materno, email, password, foto }) => {
-    // SQL estático — sin construcción dinámica de nombres de columna
+    // SQL estático - sin construcción dinámica de nombres de columna
     await pool.query(
       `UPDATE empleado
        SET nombre     = COALESCE(?, nombre),
@@ -114,7 +114,7 @@ const Empleado = {
   },
 
   updateAdmin: async (id, { num_empleado, nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, estatus, password, foto }) => {
-    // SQL estático — sin construcción dinámica de nombres de columna
+    // SQL estático - sin construcción dinámica de nombres de columna
     await pool.query(
       `UPDATE empleado
        SET num_empleado    = COALESCE(?, num_empleado),
