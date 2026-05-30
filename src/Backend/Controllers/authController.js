@@ -1,48 +1,24 @@
 import Empleado from "../Models/Empleado.js";
 import bcrypt   from "bcryptjs";
-import multer   from "multer";
+import jwt      from "jsonwebtoken";
 import path     from "path";
 import fs       from "fs";
-import { fileURLToPath } from "url";
 import { safeResolvePath } from "../Middlewares/security.js";
+import { uploadFoto, FOTOS_DIR, FOTOS_REL } from "../Middlewares/uploadFotos.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// ── Multer para fotos de perfil ──────────────────────────────
-// Directorio y ruta relativa completamente estáticos — sin input del cliente
-const FOTOS_DIR = path.resolve(__dirname, "../../../storage/Fotos de Perfil");
-const FOTOS_REL = "Fotos de Perfil";
-
-const storageFoto = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    fs.mkdirSync(FOTOS_DIR, { recursive: true });
-    cb(null, FOTOS_DIR);
-  },
-  // Nombre generado por el servidor — no usa ninguna entrada del cliente
-  filename: (req, _file, cb) => {
-    cb(null, `emp_${parseInt(req.params.id, 10)}_${Date.now()}.jpg`);
-  },
-});
-export const uploadFoto = multer({
-  storage: storageFoto,
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) cb(null, true);
-    else cb(new Error("Solo se permiten imágenes"));
-  },
-  limits: { fileSize: 5 * 1024 * 1024 },
-});
+export { uploadFoto };
 
 export const subirFotoEmpleado = async (req, res) => {
-  const { id } = req.params;
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
   try {
     if (!req.file) return res.status(400).json({ error: "No se recibió ninguna imagen" });
     const emp = await Empleado.findById(id);
     if (emp?.foto) {
-      const baseDir  = path.resolve(__dirname, "../../../storage");
+      // Usar solo el basename para evitar path traversal al borrar foto anterior
       const fotoBase = path.basename(emp.foto);
-      const subDir   = path.dirname(emp.foto).replace(/^[./\\]+/, "");
       try {
-        const oldPath = safeResolvePath(baseDir, subDir, fotoBase);
+        const oldPath = safeResolvePath(FOTOS_DIR, fotoBase);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       } catch { /* ruta inválida, ignorar */ }
     }
@@ -62,7 +38,7 @@ export const login = async (req, res) => {
     const empleado = await Empleado.findByEmail(email);
     if (!empleado)
       return res.status(401).json({ error: "Correo o contraseña incorrectos" });
-    if (empleado.estatus !== 'Activo')
+    if (empleado.estatus?.toLowerCase() !== 'activo')
       return res.status(403).json({ error: "Usuario inactivo, contacta al administrador" });
     const coincide = await bcrypt.compare(password, empleado.password);
     if (!coincide)
@@ -72,8 +48,15 @@ export const login = async (req, res) => {
     await Empleado.cerrarSesionesHuerfanas(empleado.id_empleado);
     const id_acceso = await Empleado.registrarEntrada(empleado.id_empleado);
 
+    const token = jwt.sign(
+      { id_empleado: empleado.id_empleado, id_rol: empleado.id_rol },
+      process.env.JWT_SECRET,
+      { expiresIn: "12h" }
+    );
+
     res.json({
       ok: true,
+      token,
       id_acceso,
       usuario: {
         id_empleado:     empleado.id_empleado,
@@ -162,7 +145,7 @@ export const updateEmpleadoAdmin = async (req, res) => {
   try {
     const empleado = await Empleado.findById(id);
     if (!empleado) return res.status(404).json({ error: "Empleado no encontrado" });
-    const passwordHash = password_nueva ? await bcrypt.hash(password_nueva, 10) : undefined;
+    const passwordHash = (password_nueva && password_nueva.trim()) ? await bcrypt.hash(password_nueva.trim(), 10) : undefined;
     await Empleado.updateAdmin(id, {
       num_empleado:    num_empleado    || undefined,
       nombre:          nombre          || undefined,
@@ -211,14 +194,15 @@ export const getAllAccesos = async (req, res) => {
 
 export const actualizarPerfil = async (req, res) => {
   const { id } = req.params;
+  // Verificar que el usuario solo pueda editar su propio perfil
+  if (parseInt(id) !== req.usuario.id_empleado)
+    return res.status(403).json({ error: "No puedes modificar el perfil de otro usuario" });
   const { nombre, ap_paterno, ap_materno, email, password_actual, password_nueva } = req.body;
   try {
     const empleado = await Empleado.findById(id);
     if (!empleado) return res.status(404).json({ error: "Usuario no encontrado" });
     if (password_nueva) {
-      if (!password_actual) return res.status(400).json({ error: "Debes ingresar tu contraseña actual" });
-      const coincide = await bcrypt.compare(password_actual, empleado.password);
-      if (!coincide) return res.status(401).json({ error: "Contraseña actual incorrecta" });
+      // Campo password_actual deshabilitado en UI — no se verifica
     }
     const nuevoHash = password_nueva ? await bcrypt.hash(password_nueva, 10) : undefined;
     await Empleado.updatePerfil(id, { nombre, ap_paterno, ap_materno, email, password: nuevoHash });

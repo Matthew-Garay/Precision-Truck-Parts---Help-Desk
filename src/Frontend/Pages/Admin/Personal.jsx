@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import API from "../../Config/api";
+import { useState, useEffect, useCallback } from "react";
+import { apiFetch } from "../../Config/api";
+import FiltrosToolbar from "../../Components/FiltrosToolbar";
 
 function Avatar({ nombre, size = 48, isDark }) {
   const partes = (nombre || "").split(" ").filter(Boolean);
@@ -95,13 +96,13 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, onGuar
       onClick={onCerrar}>
       <div className="w-full max-w-md rounded-2xl overflow-hidden"
         style={{
-          background: isDark ? "#141720" : "#ffffff",
+          background: isDark ? "#141720" : "#F9FAFB",
           border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}`,
           boxShadow: isDark ? "0 25px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)" : "0 25px 80px rgba(0,0,0,0.15)",
         }}
         onClick={e => e.stopPropagation()}>
 
-        {/* ── HEADER con banda naranja ── */}
+        {/* -- HEADER con banda naranja -- */}
         <div className="relative overflow-hidden">
           <div className="absolute inset-0" style={{
             background: `linear-gradient(135deg, ${T.orange}22 0%, transparent 60%)`,
@@ -139,7 +140,7 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, onGuar
           </div>
         </div>
 
-        {/* ── BODY ── */}
+        {/* -- BODY -- */}
         <div className="px-5 py-4 flex flex-col gap-4 max-h-[62vh] overflow-y-auto">
 
           {/* Número de empleado */}
@@ -198,7 +199,7 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, onGuar
               onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : T.border; e.target.style.boxShadow = "none"; }} />
           </div>
 
-          {/* Rol y Departamento — campos separados */}
+          {/* Rol y Departamento - campos separados */}
           <div className="grid grid-cols-2 gap-3">
             {[
               { key: "id_rol",          opts: roles.map(r => ({ val: r.id_rol, lbl: r.nombre_rol })),                          lbl: "Rol",          ph: "Seleccionar rol"  },
@@ -217,7 +218,7 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, onGuar
             ))}
           </div>
 
-          {/* Estatus — Toggle Switch (solo editar) */}
+          {/* Estatus - Toggle Switch (solo editar) */}
           {modo === "editar" && (
             <div className="flex flex-col gap-1.5">
               <Lbl>Estatus</Lbl>
@@ -305,12 +306,12 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, onGuar
           )}
         </div>
 
-        {/* ── FOOTER ── */}
+        {/* -- FOOTER -- */}
         <div className="px-5 py-3 flex gap-2"
           style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9"}`, background: isDark ? "rgba(255,255,255,0.02)" : "#fafbfc" }}>
           <button onClick={onCerrar}
             className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-95 active:scale-95"
-            style={{ background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}` }}>
+            style={{ background: "transparent", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "#cbd5e1"}` }}>
             Cancelar
           </button>
           <button onClick={guardar} disabled={loading}
@@ -343,14 +344,14 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
   const nombre = `${empleado.nombre} ${empleado.ap_paterno}`.trim();
 
   useEffect(() => {
-    fetch(`${API}/api/auth/accesos/${empleado.id_empleado}`)
+    apiFetch(`/api/auth/accesos/${empleado.id_empleado}`)
       .then(r => r.json())
-      .then(d => setAccesos(Array.isArray(d) ? d : []))
+      .then(d => setAccesos(Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : [])))
       .finally(() => setLoading(false));
   }, [empleado.id_empleado]);
 
   const fmt = iso => {
-    if (!iso) return "—";
+    if (!iso) return "-";
     return new Date(iso).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
   };
 
@@ -390,7 +391,7 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
       ...filtrados.map(a => [
         fmt(a.fecha_entrada),
         fmt(a.fecha_salida),
-        duracion(a.fecha_entrada, a.fecha_salida) || "—",
+        duracion(a.fecha_entrada, a.fecha_salida) || "-",
         a.fecha_salida ? "Cerrada" : "Activa",
       ]),
     ];
@@ -431,7 +432,7 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
         }}
         onClick={e => e.stopPropagation()}>
 
-        {/* ── HEADER ── */}
+        {/* -- HEADER -- */}
         <div className="relative overflow-hidden flex-shrink-0">
           <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${T.orange}22 0%, transparent 60%)`, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9"}` }} />
           <div className="relative px-5 py-4 flex items-center justify-between">
@@ -457,7 +458,7 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
           </div>
         </div>
 
-        {/* ── FILTROS ── */}
+        {/* -- FILTROS -- */}
         <div className="px-5 py-3 flex flex-col gap-3 flex-shrink-0"
           style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9"}`, background: isDark ? "rgba(255,255,255,0.015)" : "#fafbfc" }}>
 
@@ -490,7 +491,7 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
             <span className="text-[10px] font-black uppercase tracking-widest flex-shrink-0" style={{ color: T.textFaint }}>Rango</span>
             <div className="flex items-center gap-2">
               <input type="date" style={inpDate} value={desde} onChange={e => setDesde(e.target.value)} />
-              <span className="text-[11px]" style={{ color: T.textFaint }}>—</span>
+              <span className="text-[11px]" style={{ color: T.textFaint }}>-</span>
               <input type="date" style={inpDate} value={hasta} onChange={e => setHasta(e.target.value)} />
               {(desde || hasta) && (
                 <button onClick={() => { setDesde(""); setHasta(""); }}
@@ -525,7 +526,7 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
           </div>
         </div>
 
-        {/* ── LISTA ── */}
+        {/* -- LISTA -- */}
         <div className="px-5 py-3 overflow-y-auto flex flex-col gap-2" style={{ flex: 1, minHeight: 0 }}>
           {loading ? (
             <div className="flex justify-center py-10">
@@ -567,7 +568,7 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
           })}
         </div>
 
-        {/* ── FOOTER ── */}
+        {/* -- FOOTER -- */}
         <div className="px-5 py-3 flex items-center justify-between gap-2 flex-shrink-0"
           style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9"}`, background: isDark ? "rgba(255,255,255,0.02)" : "#fafbfc" }}>
           <span className="text-[11px] font-semibold" style={{ color: T.textFaint }}>
@@ -631,27 +632,28 @@ function TarjetaEmpleado({ emp, T, isDark, onEditar, onToggleEstatus, onHistoria
             {emp.nombre_departamento || "Sin departamento"}
           </span>
           <span className="text-[10px] font-mono font-bold flex-shrink-0 ml-2" style={{ color: T.textFaint }}>
-            {emp.num_empleado || "—"}
+            {emp.num_empleado || "-"}
           </span>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-1.5">
           <button onClick={() => onEditar(emp)}
-            className="flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110 active:scale-95"
-            style={{ background: isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}` }}>
+            className="flex-1 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110 active:scale-95"
+            style={{ background: isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`, minHeight: "36px" }}>
             Editar
           </button>
           <button onClick={() => onHistorial(emp)}
-            className="flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110 active:scale-95"
-            style={{ background: isDark ? "rgba(244,121,32,0.08)" : "#fff7ed", color: T.orange, border: "1px solid rgba(244,121,32,0.2)" }}>
+            className="flex-1 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110 active:scale-95"
+            style={{ background: isDark ? "rgba(244,121,32,0.08)" : "#fff7ed", color: T.orange, border: "1px solid rgba(244,121,32,0.2)", minHeight: "36px" }}>
             Historial
           </button>
           <button onClick={() => onToggleEstatus(emp)}
-            className="flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110 active:scale-95"
+            className="flex-1 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110 active:scale-95"
             style={{
               background: activo ? (isDark ? "rgba(220,38,38,0.08)" : "#fef2f2") : (isDark ? "rgba(22,163,74,0.08)" : "#f0fdf4"),
               color: activo ? "#dc2626" : "#16a34a",
               border: `1px solid ${activo ? "rgba(220,38,38,0.2)" : "rgba(22,163,74,0.2)"}`,
+              minHeight: "36px",
             }}>
             {activo ? "Desactivar" : "Activar"}
           </button>
@@ -662,57 +664,61 @@ function TarjetaEmpleado({ emp, T, isDark, onEditar, onToggleEstatus, onHistoria
 }
 
 export default function Personal({ T }) {
-  const isDark = T.bg === "#0b0e14";
+  const isDark = T.isDark;
 
   const [empleados,     setEmpleados]     = useState([]);
   const [departamentos, setDepartamentos] = useState([]);
   const [roles,         setRoles]         = useState([]);
   const [loading,       setLoading]       = useState(true);
-  const [busqueda,      setBusqueda]      = useState("");
-  const [depFiltro,     setDepFiltro]     = useState("Todos");
-  const [rolFiltro,     setRolFiltro]     = useState("Todos");
-  const [estatusFiltro, setEstatusFiltro] = useState("Todos");
+  const [filtros,       setFiltros]       = useState({ busqueda:"", departamento:"Todos", estatus:"Todos" });
   const [modal,         setModal]         = useState(null);
   const [modalHistorial, setModalHistorial] = useState(null);
 
-  const cargar = () => {
+  const cargar = useCallback(() => {
     setLoading(true);
     Promise.all([
-      fetch(`${API}/api/auth/empleados`).then(r => r.json()),
-      fetch(`${API}/api/auth/departamentos`).then(r => r.json()),
-      fetch(`${API}/api/auth/roles`).then(r => r.json()),
+      apiFetch(`/api/auth/empleados`).then(r => r.ok ? r.json() : []),
+      apiFetch(`/api/auth/departamentos`).then(r => r.ok ? r.json() : []),
+      apiFetch(`/api/auth/roles`).then(r => r.ok ? r.json() : []),
     ]).then(([emps, deps, rols]) => {
       setEmpleados(Array.isArray(emps) ? emps : []);
       setDepartamentos(Array.isArray(deps) ? deps : []);
       setRoles(Array.isArray(rols) ? rols : []);
-    }).catch(() => {}).finally(() => setLoading(false));
-  };
+    }).catch(err => { console.error("Error cargando personal:", err); }).finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
     cargar();
-    const id = setInterval(cargar, 5000);
+    const id = setInterval(cargar, 30000);
     return () => clearInterval(id);
-  }, []);
+  }, [cargar]);
 
   const filtrados = empleados.filter(e => {
     const nombre = `${e.nombre} ${e.ap_paterno} ${e.ap_materno || ""}`.toLowerCase();
-    if (busqueda && !nombre.includes(busqueda.toLowerCase()) && !e.email?.toLowerCase().includes(busqueda.toLowerCase())) return false;
-    if (depFiltro !== "Todos" && e.nombre_departamento !== depFiltro) return false;
-    if (rolFiltro !== "Todos" && e.nombre_rol !== rolFiltro) return false;
-    if (estatusFiltro !== "Todos" && e.estatus !== estatusFiltro) return false;
+    if (filtros.busqueda && !nombre.includes(filtros.busqueda.toLowerCase()) && !e.email?.toLowerCase().includes(filtros.busqueda.toLowerCase())) return false;
+    if (filtros.departamento !== "Todos" && e.nombre_departamento !== filtros.departamento) return false;
+    if (filtros.estatus !== "Todos" && e.estatus !== filtros.estatus) return false;
     return true;
   });
+
+  const camposFiltro = [
+    { key:"busqueda",      label:"Búsqueda Rápida", type:"search",  placeholder:"Nombre o correo..." },
+    { key:"departamento",  label:"Área",             type:"select",  opts:["Todos",...departamentos.map(d=>d.nombre_departamento)] },
+    { key:"estatus",       label:"Estatus",           type:"select",  opts:["Todos","Activo","Inactivo"] },
+  ];
+
+  const limpiarFiltros = () => setFiltros({ busqueda:"", departamento:"Todos", estatus:"Todos" });
 
   const activos   = empleados.filter(e => e.estatus === "Activo").length;
   const inactivos = empleados.filter(e => e.estatus !== "Activo").length;
 
   const guardarEmpleado = async (form) => {
     const esEditar = modal.modo === "editar";
-    const url  = esEditar ? `${API}/api/auth/empleados/${modal.empleado.id_empleado}` : `${API}/api/auth/empleados`;
+    const url  = esEditar ? `/api/auth/empleados/${modal.empleado.id_empleado}` : `/api/auth/empleados`;
     const body = esEditar
-      ? { num_empleado: form.num_empleado, nombre: form.nombre, ap_paterno: form.ap_paterno, ap_materno: form.ap_materno, email: form.email, id_rol: form.id_rol, id_departamento: form.id_departamento, estatus: form.estatus, password_nueva: form.password_nueva || undefined }
+      ? { num_empleado: form.num_empleado, nombre: form.nombre, ap_paterno: form.ap_paterno, ap_materno: form.ap_materno, email: form.email, id_rol: form.id_rol, id_departamento: form.id_departamento, estatus: form.estatus, password_nueva: form.password_nueva.trim() || undefined }
       : { num_empleado: form.num_empleado, nombre: form.nombre, ap_paterno: form.ap_paterno, ap_materno: form.ap_materno, email: form.email, password: form.password_nueva, id_rol: form.id_rol, id_departamento: form.id_departamento };
-    const res  = await fetch(url, { method: esEditar ? "PUT" : "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" }, body: JSON.stringify(body) });
+    const res  = await apiFetch(url, { method: esEditar ? "PUT" : "POST", body });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Error al guardar");
     cargar();
@@ -721,11 +727,20 @@ export default function Personal({ T }) {
 
   const toggleEstatus = async (emp) => {
     const nuevoEstatus = emp.estatus === "Activo" ? "Inactivo" : "Activo";
-    await fetch(`${API}/api/auth/empleados/${emp.id_empleado}`, {
-      method: "PUT", headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-      body: JSON.stringify({ estatus: nuevoEstatus }),
-    });
-    cargar();
+    try {
+      const res = await apiFetch(`/api/auth/empleados/${emp.id_empleado}`, {
+        method: "PUT",
+        body: { estatus: nuevoEstatus },
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        console.error("Error al cambiar estatus:", data.error);
+        return;
+      }
+      cargar();
+    } catch (err) {
+      console.error("Error al cambiar estatus:", err.message);
+    }
   };
 
   const card = { background: isDark ? "#141720" : T.surface, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`, boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.05)" };
@@ -733,75 +748,34 @@ export default function Personal({ T }) {
   const selStyle = { background: isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt, border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : T.border}`, color: T.text, borderRadius: "8px", padding: "6px 10px", fontSize: "12px", outline: "none", cursor: "pointer", colorScheme: isDark ? "dark" : "light", maxWidth: "180px", minWidth: "120px", flexShrink: 0 };
 
   return (
-    <div className="absolute inset-0 overflow-y-auto" style={{ background: T.bg }}>
-      <div className="max-w-[1400px] mx-auto px-4 py-5 flex flex-col gap-4">
+    <div className="overflow-y-auto" style={{ background: T.bg }}>
+      <div className="max-w-[1400px] mx-auto px-3 py-3 sm:px-4 sm:py-5 flex flex-col gap-3">
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {[
             { label: "Total empleados", val: empleados.length,     color: "#3b82f6", bgL: "#eff6ff", bgD: "#0f1f3d" },
             { label: "Activos",         val: activos,              color: "#16a34a", bgL: "#f0fdf4", bgD: "#071a0e" },
             { label: "Inactivos",       val: inactivos,            color: "#94a3b8", bgL: "#f8fafc", bgD: "#1a1f2e" },
             { label: "Departamentos",   val: departamentos.length, color: T.orange,  bgL: "#fff7ed", bgD: "#2d1200" },
-          ].map((s, i) => (
-            <div key={i} className="rounded-xl px-4 py-3"
+          ].map((s) => (
+            <div key={s.label} className="rounded-xl px-3 py-2 sm:px-4 sm:py-3"
               style={{ background: isDark ? s.bgD : s.bgL, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}` }}>
-              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }}>{s.label}</p>
-              <p className="text-2xl font-black mt-0.5" style={{ color: s.color }}>{s.val}</p>
+              <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }}>{s.label}</p>
+              <p className="text-xl sm:text-2xl font-black mt-0.5" style={{ color: s.color }}>{s.val}</p>
             </div>
           ))}
         </div>
 
-        <div className="rounded-xl overflow-hidden" style={card}>
-          <div className="px-4 py-2 flex items-center gap-2" style={hdr}>
-            <div className="w-0.5 h-3 rounded-full" style={{ background: T.orange }} />
-            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Filtros</p>
-          </div>
-          <div className="px-4 py-3 flex flex-wrap items-center gap-3">
-
-            <div className="relative w-full sm:flex-1" style={{ minWidth: "160px", maxWidth: "300px" }}>
-              <input
-                className="w-full px-3 py-2 rounded-lg text-[12px] outline-none"
-                style={{ background: isDark ? "rgba(255,255,255,0.05)" : T.bg, border: `1px solid ${busqueda ? T.orange : T.border}`, color: T.text }}
-                placeholder="Buscar por nombre o correo..."
-                value={busqueda} onChange={e => setBusqueda(e.target.value)}
-                onFocus={e => e.target.style.borderColor = T.orange}
-                onBlur={e  => { if (!busqueda) e.target.style.borderColor = T.border; }}
-              />
-              {busqueda && (
-                <button onClick={() => setBusqueda("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold"
-                  style={{ color: T.textMuted, background: "none", border: "none", cursor: "pointer" }}>
-                  x
-                </button>
-              )}
-            </div>
-
-            <select value={depFiltro} onChange={e => setDepFiltro(e.target.value)} style={selStyle}>
-              <option value="Todos">Todas las areas</option>
-              {departamentos.map(d => <option key={d.id_departamento} value={d.nombre_departamento}>{d.nombre_departamento}</option>)}
-            </select>
-
-            <select value={estatusFiltro} onChange={e => setEstatusFiltro(e.target.value)} style={selStyle}>
-              <option value="Todos">Todos los estatus</option>
-              <option value="Activo">Activo</option>
-              <option value="Inactivo">Inactivo</option>
-            </select>
-
-            {(busqueda || depFiltro !== "Todos" || rolFiltro !== "Todos" || estatusFiltro !== "Todos") && (
-              <button onClick={() => { setBusqueda(""); setDepFiltro("Todos"); setRolFiltro("Todos"); setEstatusFiltro("Todos"); }}
-                className="px-3 py-2 rounded-lg text-[11px] font-bold transition-all hover:brightness-110"
-                style={{ background: "rgba(244,121,32,0.08)", color: T.orange, border: "1px solid rgba(244,121,32,0.2)" }}>
-                Limpiar filtros
-              </button>
-            )}
-
-            <button onClick={() => setModal({ modo: "crear" })}
-              className="w-full sm:w-auto sm:ml-auto px-4 py-2.5 rounded-lg text-[12px] font-bold text-white transition-all hover:brightness-110 active:scale-95"
-              style={{ background: `linear-gradient(135deg, ${T.orange}, #d97400)`, boxShadow: "0 3px 12px rgba(244,121,32,0.35)", minHeight: "44px" }}>
-              Agregar empleado
-            </button>
-          </div>
-        </div>
+        <FiltrosToolbar campos={camposFiltro} valores={filtros} onChange={(k,v) => setFiltros(p=>({...p,[k]:v}))} onLimpiar={limpiarFiltros} T={T}>
+          <button onClick={() => setModal({ modo: "crear" })}
+            style={{ display:"flex", alignItems:"center", gap:"6px", padding:"5px 14px", borderRadius:"4px",
+              fontSize:"12px", fontWeight:700, background:"#F47920", color:"#fff", border:"none", cursor:"pointer",
+              whiteSpace:"nowrap", transition:"filter 0.15s" }}
+            onMouseEnter={e => e.currentTarget.style.filter="brightness(1.08)"}
+            onMouseLeave={e => e.currentTarget.style.filter="none"}>
+            + Agregar empleado
+          </button>
+        </FiltrosToolbar>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -815,7 +789,7 @@ export default function Personal({ T }) {
             <p className="text-xs" style={{ color: T.textFaint }}>Ajusta los filtros o agrega un nuevo empleado</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
             {filtrados.map(emp => (
               <TarjetaEmpleado
                 key={emp.id_empleado}

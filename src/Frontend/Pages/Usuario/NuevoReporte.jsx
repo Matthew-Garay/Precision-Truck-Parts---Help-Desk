@@ -1,8 +1,8 @@
-﻿import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Camera, Plus, X, ZoomIn, ChevronLeft, ChevronRight, Trash2,
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight, Minus } from "lucide-react";
-import API from "../../Config/api";
+import { apiFetch } from "../../Config/api";
 
 const PRIORIDADES = [
   { label:"Urgente", nivel:"Urgente", color:"#dc2626", bgL:"#fee2e2", bgD:"#2d0a0a" },
@@ -14,9 +14,9 @@ const PRIORIDADES = [
 const MAX_IMGS = 8;
 const MAX_PALABRAS = 500;
 const EMPTY = { titulo:"", descripcion:"", palabras:0, prioridad:"", categoria:"", evidencias:[] };
-const contarPalabras = t => t.trim().length;
+const contarPalabras = t => t.trim() ? t.trim().split(/\s+/).length : 0;
 
-export default function NuevoReporte({ T, solicitante = "—", area = "—", usuario = {}, onSuccess }) {
+export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario = {}, onSuccess }) {
   const [form,       setForm]       = useState(EMPTY);
   const [visor,      setVisor]      = useState(null);
   const [catOpen,    setCatOpen]    = useState(false);
@@ -24,11 +24,13 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—", usu
   const [dragging,   setDragging]   = useState(false);
   const [categorias, setCategorias] = useState([]);
   const [modal,      setModal]      = useState(null);
+  const [enviando,   setEnviando]   = useState(false);
+  const [modalLimpiar, setModalLimpiar] = useState(false);
   const fileRef  = useRef();
   const editorRef = useRef(null);
 
   useEffect(() => {
-    fetch(`${API}/api/categorias`)
+    apiFetch(`/api/categorias`)
       .then(r => r.json())
       .then(data => setCategorias(
         data.map(c => ({ id: c.id_categoria, valor: c.nombre_categoria, label: c.nombre_categoria }))
@@ -36,7 +38,7 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—", usu
       .catch(() => setCategorias([]));
   }, []);
 
-  const isDark      = T.bg === "#0b0e14";
+  const isDark = T.isDark;
   const catSel      = categorias.find(c => c.valor === form.categoria);
   const inputBg     = isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt;
   const inputBorder = isDark ? "rgba(255,255,255,0.12)" : T.border;
@@ -50,6 +52,7 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—", usu
   const limpiar = () => {
     setForm(EMPTY);
     setErrores({});
+    setModalLimpiar(false);
     if (editorRef.current) editorRef.current.innerHTML = "";
   };
 
@@ -85,6 +88,7 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—", usu
     if (Object.keys(e).length) { setErrores(e); return; }
 
     const catObj = categorias.find(c => c.valor === form.categoria);
+    setEnviando(true);
     try {
       const formData = new FormData();
       formData.append("titulo",       form.titulo);
@@ -93,14 +97,12 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—", usu
       formData.append("id_empleado",  usuario.id_empleado);
       formData.append("id_categoria", catObj?.id);
 
-      for (let i = 0; i < form.evidencias.length; i++) {
-        const ev   = form.evidencias[i];
-        const res2 = await fetch(ev.src);
-        const blob = await res2.blob();
-        formData.append("evidencias", new File([blob], ev.name, { type: blob.type }));
+      // Adjuntar el File original directamente - sin conversión base64 intermedia
+      for (const ev of form.evidencias) {
+        formData.append("evidencias", ev.file, ev.name);
       }
 
-      const res  = await fetch(`${API}/api/tickets`, { method: "POST", body: formData });
+      const res  = await apiFetch(`/api/tickets`, { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) { setModal({ ok: false, titulo: "Error al enviar", msg: data.error }); return; }
       setModal({ ok: true, titulo: "Reporte enviado", folio: data.folio_ticket, prioridad: form.prioridad, categoria: catObj?.label });
@@ -108,15 +110,17 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—", usu
       setTimeout(() => { onSuccess?.(); }, 1800);
     } catch {
       setModal({ ok: false, titulo: "Sin conexión", msg: "No se pudo conectar con el servidor" });
+    } finally {
+      setEnviando(false);
     }
   };
 
   const agregarImgs = files => {
     const libres = MAX_IMGS - form.evidencias.length;
+    // Guardar el File original + URL de previsualización - sin doble conversión base64
     Array.from(files).slice(0, libres).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = ev => setForm(f => ({...f, evidencias:[...f.evidencias, {src:ev.target.result, name:file.name}]}));
-      reader.readAsDataURL(file);
+      const src = URL.createObjectURL(file);
+      setForm(f => ({ ...f, evidencias: [...f.evidencias, { src, name: file.name, file }] }));
     });
   };
 
@@ -128,6 +132,8 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—", usu
 
   const borrarImg = i => {
     const evs = form.evidencias.filter((_, idx) => idx !== i);
+    // Liberar la URL de objeto para evitar memory leaks
+    URL.revokeObjectURL(form.evidencias[i].src);
     setForm(f => ({...f, evidencias:evs}));
     if (visor !== null) setVisor(evs.length === 0 ? null : Math.min(i, evs.length - 1));
   };
@@ -196,12 +202,12 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—", usu
 
       <div className="max-w-3xl mx-auto rounded-2xl overflow-hidden relative" style={card}>
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3"
+        <div className="flex items-center gap-3 px-3 py-3 sm:px-4"
           style={{ background: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff", borderBottom:`1px solid ${isDark ? "rgba(59,130,246,0.2)" : "#bfdbfe"}` }}>
-          <img src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"} alt="Logo" className="object-contain" style={{ width:"40px", height:"40px" }}/>
-          <div>
-            <p className="text-sm font-black tracking-tight" style={{ color: isDark ? "#93c5fd" : "#1d4ed8" }}>FORMULARIO DE INCIDENCIAS</p>
-            <p className="text-[10px] font-medium mt-0.5" style={{ color: isDark ? "rgba(147,197,253,0.6)" : "#3b82f6" }}>Completa el formulario para habilitar el envío.</p>
+          <img src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"} alt="Logo" className="object-contain flex-shrink-0" style={{ width:"32px", height:"32px" }}/>
+          <div className="min-w-0">
+            <p className="text-xs sm:text-sm font-black tracking-tight truncate" style={{ color: isDark ? "#93c5fd" : "#1d4ed8" }}>FORMULARIO DE INCIDENCIAS</p>
+            <p className="text-[10px] font-medium mt-0.5 hidden sm:block" style={{ color: isDark ? "rgba(147,197,253,0.6)" : "#3b82f6" }}>Completa el formulario para habilitar el envío.</p>
           </div>
         </div>
 
@@ -319,7 +325,7 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—", usu
               {/* Prioridad */}
               <div>
                 <Label required>Nivel de prioridad</Label>
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                   {PRIORIDADES.map(p => {
                     const sel = form.prioridad === p.nivel;
                     return (
@@ -488,26 +494,38 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—", usu
             <p className="text-[11px] text-center leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.3)" : T.textFaint }}>
               Al enviar este reporte, el usuario autoriza al personal de soporte técnico a ejecutar los protocolos y medidas necesarias para la resolución efectiva de la incidencia.
             </p>
-            <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-2">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <p className="text-xs flex items-center gap-1" style={{ color:iconColor }}>
                 <span className="text-red-400 font-bold">*</span> Campos obligatorios
               </p>
-              <div className="flex flex-col-reverse sm:flex-row gap-2.5 w-full sm:w-auto">
-                <button type="button" onClick={limpiar}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-95"
+            <div className="flex flex-col sm:flex-row gap-2 w-full">
+                <button type="button" onClick={() => setModalLimpiar(true)}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-95"
                   style={{ background: isDark ? "rgba(59,130,246,0.15)" : "#eff6ff", color:"#3b82f6", border:"1px solid rgba(59,130,246,0.3)" }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                     <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                   Limpiar
                 </button>
-                <button type="button" onClick={handleSubir}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95"
+                <button type="button" onClick={handleSubir} disabled={enviando}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 sm:py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{ background:`linear-gradient(135deg,${T.orange},#d97400)`, boxShadow:"0 4px 14px rgba(244,121,32,0.45)" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 5v14M5 12l7-7 7 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  Subir Reporte
+                  {enviando ? (
+                    <>
+                      <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="3"/>
+                        <path d="M12 2a10 10 0 0 1 10 10" stroke="#fff" strokeWidth="3" strokeLinecap="round"/>
+                      </svg>
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 5v14M5 12l7-7 7 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Subir Reporte
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -515,6 +533,43 @@ export default function NuevoReporte({ T, solicitante = "—", area = "—", usu
 
         </div>
       </div>
+
+      {/* Modal confirmación limpiar */}
+      {modalLimpiar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background:"rgba(0,0,0,0.6)" }}
+          onClick={() => setModalLimpiar(false)}>
+          <div className="w-full max-w-xs rounded-2xl overflow-hidden"
+            style={{ background: isDark?"#141720":T.surface, border:`1px solid ${isDark?"rgba(255,255,255,0.1)":T.border}`, boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}
+            onClick={e => e.stopPropagation()}>
+            <div className="h-1.5" style={{ background:"#3b82f6" }}/>
+            <div className="p-6 flex flex-col items-center gap-4 text-center">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center"
+                style={{ background: isDark?"rgba(59,130,246,0.2)":"#eff6ff" }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-black" style={{ color:T.text }}>¿Limpiar formulario?</p>
+                <p className="text-xs mt-1" style={{ color:T.textMuted }}>Se borrarán todos los campos y las imágenes adjuntas.</p>
+              </div>
+              <div className="flex gap-2 w-full">
+                <button onClick={() => setModalLimpiar(false)}
+                  className="flex-1 py-2 rounded-xl text-sm font-bold transition-all hover:brightness-110"
+                  style={{ background: isDark?"rgba(255,255,255,0.06)":T.surfaceAlt, color:T.textMuted, border:`1px solid ${T.border}` }}>
+                  Cancelar
+                </button>
+                <button onClick={limpiar}
+                  className="flex-1 py-2 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95"
+                  style={{ background:"#3b82f6" }}>
+                  Sí, limpiar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal confirmación */}
       {modal && (

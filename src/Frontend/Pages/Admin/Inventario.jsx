@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Search, X, Package, AlertTriangle, CheckCircle2, XCircle, SlidersHorizontal, Inbox, Tag, Hash } from "lucide-react";
-import API from "../../Config/api";
+import { Package, AlertTriangle, CheckCircle2, XCircle, Inbox, Tag, Hash } from "lucide-react";
+import { apiFetch } from "../../Config/api";
+import FiltrosToolbar from "../../Components/FiltrosToolbar";
 
 const ESTADO_OPTS = ["Todos", "Excelente", "Bueno", "Regular", "Malo"];
 const ESTADO_META = {
@@ -16,7 +17,7 @@ function BadgeEstado({ estado }) {
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold whitespace-nowrap"
       style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: s.color }} />
-      {estado || "—"}
+      {estado || "-"}
     </span>
   );
 }
@@ -97,7 +98,7 @@ function TarjetaInsumo({ i, T, isDark }) {
               {i.stock === 0 ? "Agotado" : i.stock <= 3 ? "Stock bajo" : "En stock"}
             </span>
             <span className="text-[22px] font-black leading-none" style={{ color: stockColor }}>
-              {i.stock ?? "—"}
+              {i.stock ?? "-"}
             </span>
           </div>
         </div>
@@ -107,17 +108,14 @@ function TarjetaInsumo({ i, T, isDark }) {
 }
 
 export default function Inventario({ T }) {
-  const isDark = T.bg === "#0b0e14";
+  const isDark = T.isDark;
   const [insumos,      setInsumos]      = useState([]);
   const [loading,      setLoading]      = useState(true);
-  const [busqueda,     setBusqueda]     = useState("");
-  const [estadoFiltro, setEstadoFiltro] = useState("Todos");
-  const [catFiltro,    setCatFiltro]    = useState("Todos");
-  const [stockFiltro,  setStockFiltro]  = useState("Todos");
+  const [filtros,      setFiltros]      = useState({ busqueda:"", estado:"Todos", categoria:"Todos", stock:"Todos" });
 
   useEffect(() => {
     const cargar = () =>
-      fetch(`${API}/api/solicitudes/inventario`)
+      apiFetch(`/api/solicitudes/inventario`)
         .then(r => r.json())
         .then(d => setInsumos(Array.isArray(d) ? d : []))
         .catch(() => {})
@@ -129,23 +127,28 @@ export default function Inventario({ T }) {
 
   const categorias = ["Todos", ...Array.from(new Set(insumos.map(i => i.nombre_categoria).filter(Boolean)))];
 
+  const camposFiltro = [
+    { key:"busqueda",  label:"Búsqueda Rápida", type:"search",  placeholder:"Nombre, marca, modelo..." },
+    { key:"estado",    label:"Estado",           type:"select",  opts:["Todos","Excelente","Bueno","Regular","Malo"] },
+    { key:"categoria", label:"Categoría",         type:"select",  opts:categorias },
+    { key:"stock",     label:"Stock",             type:"select",  opts:["Todos","Con stock","Sin stock"] },
+  ];
+
   const filtrados = insumos.filter(i => {
-    if (busqueda) {
-      const q = busqueda.toLowerCase();
-      if (!i.nombre?.toLowerCase().includes(q) &&
-          !i.marca?.toLowerCase().includes(q) &&
-          !i.modelo?.toLowerCase().includes(q) &&
-          !i.num_serie?.toLowerCase().includes(q)) return false;
+    if (filtros.busqueda) {
+      const q = filtros.busqueda.toLowerCase();
+      if (!i.nombre?.toLowerCase().includes(q) && !i.marca?.toLowerCase().includes(q) &&
+          !i.modelo?.toLowerCase().includes(q) && !i.num_serie?.toLowerCase().includes(q)) return false;
     }
-    if (estadoFiltro !== "Todos" && i.estado !== estadoFiltro) return false;
-    if (catFiltro    !== "Todos" && i.nombre_categoria !== catFiltro) return false;
-    if (stockFiltro === "Con stock" && !(i.stock > 0))  return false;
-    if (stockFiltro === "Sin stock" && i.stock > 0)     return false;
+    if (filtros.estado    !== "Todos" && i.estado !== filtros.estado)                  return false;
+    if (filtros.categoria !== "Todos" && i.nombre_categoria !== filtros.categoria)     return false;
+    if (filtros.stock === "Con stock" && !(i.stock > 0))                               return false;
+    if (filtros.stock === "Sin stock" && i.stock > 0)                                  return false;
     return true;
   });
 
-  const hayFiltros = busqueda || estadoFiltro !== "Todos" || catFiltro !== "Todos" || stockFiltro !== "Todos";
-  const limpiar = () => { setBusqueda(""); setEstadoFiltro("Todos"); setCatFiltro("Todos"); setStockFiltro("Todos"); };
+  const hayFiltros = filtros.busqueda || filtros.estado !== "Todos" || filtros.categoria !== "Todos" || filtros.stock !== "Todos";
+  const limpiar = () => setFiltros({ busqueda:"", estado:"Todos", categoria:"Todos", stock:"Todos" });
 
   const totalItems    = insumos.length;
   const totalStock    = insumos.reduce((s, i) => s + (i.stock || 0), 0);
@@ -170,10 +173,10 @@ export default function Inventario({ T }) {
   };
 
   return (
-    <div className="absolute inset-0 overflow-y-auto" style={{ background: T.bg }}>
+    <div className="overflow-y-auto" style={{ background: T.bg }}>
       <div className="max-w-[1400px] mx-auto px-4 py-5 flex flex-col gap-4">
 
-        {/* ── KPIs ── */}
+        {/* -- KPIs -- */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "Total insumos",   val: totalItems,    color: "#3b82f6", bgL: "#eff6ff", bgD: "#0f1f3d", icon: Package      },
@@ -195,69 +198,10 @@ export default function Inventario({ T }) {
           ))}
         </div>
 
-        {/* ── FILTROS ── */}
-        <div className="rounded-xl overflow-hidden" style={card}>
-          <div className="px-4 py-2 flex items-center justify-between" style={hdr}>
-            <div className="flex items-center gap-2">
-              <SlidersHorizontal size={12} style={{ color: T.orange }} />
-              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Filtros</p>
-            </div>
-            {hayFiltros && (
-              <button onClick={limpiar}
-                className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md"
-                style={{ color: T.orange, background: "rgba(244,121,32,0.08)", border: "1px solid rgba(244,121,32,0.2)" }}>
-                <X size={9} strokeWidth={3} /> Limpiar
-              </button>
-            )}
-          </div>
-          <div className="px-4 py-3 flex flex-wrap items-center gap-3">
+        {/* -- FILTROS -- */}
+        <FiltrosToolbar campos={camposFiltro} valores={filtros} onChange={(k,v) => setFiltros(p=>({...p,[k]:v}))} onLimpiar={limpiar} T={T} />
 
-            <div className="relative flex-1" style={{ minWidth: "160px", maxWidth: "280px" }}>
-              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                style={{ color: busqueda ? T.orange : T.textFaint }} />
-              <input
-                className="w-full pl-7 pr-7 py-1.5 rounded-lg text-[11px] outline-none"
-                style={{ background: isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt, border: `1px solid ${busqueda ? T.orange : T.border}`, color: T.text }}
-                placeholder="Nombre, marca, modelo, N° serie..."
-                value={busqueda} onChange={e => setBusqueda(e.target.value)}
-                onFocus={e => e.target.style.borderColor = T.orange}
-                onBlur={e  => { if (!busqueda) e.target.style.borderColor = T.border; }} />
-              {busqueda && (
-                <button onClick={() => setBusqueda("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2"
-                  style={{ background: "none", border: "none", cursor: "pointer", color: T.textMuted }}>
-                  <X size={10} />
-                </button>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[8px] font-black uppercase tracking-wider" style={{ color: estadoFiltro !== "Todos" ? T.orange : T.textFaint }}>Estado</span>
-              <select value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)}
-                style={{ ...selStyle, borderColor: estadoFiltro !== "Todos" ? T.orange : undefined, color: estadoFiltro !== "Todos" ? T.orange : T.text }}>
-                {ESTADO_OPTS.map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[8px] font-black uppercase tracking-wider" style={{ color: catFiltro !== "Todos" ? T.orange : T.textFaint }}>Categoría</span>
-              <select value={catFiltro} onChange={e => setCatFiltro(e.target.value)}
-                style={{ ...selStyle, borderColor: catFiltro !== "Todos" ? T.orange : undefined, color: catFiltro !== "Todos" ? T.orange : T.text }}>
-                {categorias.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[8px] font-black uppercase tracking-wider" style={{ color: stockFiltro !== "Todos" ? T.orange : T.textFaint }}>Stock</span>
-              <select value={stockFiltro} onChange={e => setStockFiltro(e.target.value)}
-                style={{ ...selStyle, borderColor: stockFiltro !== "Todos" ? T.orange : undefined, color: stockFiltro !== "Todos" ? T.orange : T.text }}>
-                {["Todos", "Con stock", "Sin stock"].map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* ── GRID DE TARJETAS ── */}
+        {/* -- GRID DE TARJETAS -- */}
         <div className="rounded-xl overflow-hidden" style={card}>
           <div className="px-4 py-2.5 flex items-center justify-between" style={hdr}>
             <div className="flex items-center gap-2">
@@ -284,7 +228,7 @@ export default function Inventario({ T }) {
                   <Inbox size={24} style={{ color: T.textFaint }} />
                 </div>
                 <p className="text-sm font-bold" style={{ color: T.textMuted }}>
-                  {hayFiltros ? "Sin resultados — ajusta los filtros" : "No hay insumos registrados"}
+                  {hayFiltros ? "Sin resultados - ajusta los filtros" : "No hay insumos registrados"}
                 </p>
               </div>
             ) : (

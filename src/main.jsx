@@ -5,9 +5,16 @@ import './Frontend/Styles/login.css'
 import Login            from './Frontend/Pages/login'
 import AdminDashboard   from './Frontend/Pages/Admin/Dashboard'
 import UsuarioDashboard from './Frontend/Pages/Usuario/Dashboard'
-import API              from './Frontend/Config/api'
+import API, { setToken, clearToken, clearSession, apiFetch } from './Frontend/Config/api'
+import ErrorBoundary   from './Frontend/Components/ErrorBoundary'
 
-// ── Helpers sesión ────────────────────────────────────────────
+// -- Helpers sesión --------------------------------------------
+// Forzar favicon en todas las rutas (algunos navegadores lo cachean por ruta)
+const faviconLink = document.querySelector("link[rel='icon']") || document.createElement("link");
+faviconLink.rel  = "icon";
+faviconLink.type = "image/x-icon";
+faviconLink.href = "/assets/img/logo.ico?v=2";
+if (!document.querySelector("link[rel='icon']")) document.head.appendChild(faviconLink);
 export const getUsuario = () => {
   try {
     const u = JSON.parse(sessionStorage.getItem('usuario') || 'null')
@@ -28,7 +35,7 @@ export const getIdAcceso  = () => sessionStorage.getItem('id_acceso')
 export const setIdAcceso  = id => sessionStorage.setItem('id_acceso', id)
 export const clearIdAcceso= () => sessionStorage.removeItem('id_acceso')
 
-// ── Rutas protegidas ──────────────────────────────────────────
+// -- Rutas protegidas ------------------------------------------
 function RutaAdmin({ onLogout, onUsuarioActualizado, usuarioActual }) {
   const u = usuarioActual || getUsuario()
   if (!u)                return <Navigate to="/login" replace />
@@ -44,7 +51,7 @@ function RutaUsuario({ onLogout, onUsuarioActualizado, usuarioActual }) {
 }
 
 
-// ── Pantalla de cierre de sesión ──────────────────────────────
+// -- Pantalla de cierre de sesión ------------------------------
 function PantallaSalida() {
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center gap-6"
@@ -74,7 +81,7 @@ function PantallaSalida() {
   )
 }
 
-// ── App raíz ──────────────────────────────────────────────────
+// -- App raíz --------------------------------------------------
 function App() {
   const navigate = useNavigate()
   const [saliendo, setSaliendo] = useState(false)
@@ -89,21 +96,21 @@ function App() {
     setSaliendo(true)
     const idAcceso = sessionStorage.getItem('id_acceso')
     if (idAcceso) {
-      fetch(`${API}/api/auth/logout`, {
+      apiFetch('/api/auth/logout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-        body: JSON.stringify({ id_acceso: parseInt(idAcceso) }),
+        body: { id_acceso: parseInt(idAcceso) },
       }).catch(() => {})
     }
     setTimeout(() => {
-      clearUsuario()
-      clearIdAcceso()
+      clearSession()
       setSaliendo(false)
       navigate('/login', { replace: true })
     }, 1200)
   }
 
-  // ── Cierre de sesión al cerrar pestaña/navegador ─────────────────────
+  // -- Cierre de sesión al cerrar pestaña/navegador ---------------------
+  // sendBeacon no puede enviar headers personalizados, por eso /logout está
+  // exento de CSRF en security.js. Es seguro porque no modifica datos críticos.
   useEffect(() => {
     const cerrarAlSalir = () => {
       const idAcceso = sessionStorage.getItem('id_acceso')
@@ -125,17 +132,18 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={
-        <Login onLogin={(u, idAcceso) => {
+        <Login onLogin={(u, idAcceso, token) => {
           setUsuario(u)
           if (idAcceso) setIdAcceso(idAcceso)
+          if (token) setToken(token)
           navigate(u.rol === 'admin' ? '/admin/dashboard' : '/usuario/dashboard', { replace: true })
         }} />
       } />
 
-      {/* Admin — un solo componente persistente para todas las sub-rutas */}
+      {/* Admin - un solo componente persistente para todas las sub-rutas */}
       <Route path="/admin/*" element={<RutaAdmin onLogout={handleLogout} onUsuarioActualizado={handleUsuarioActualizado} usuarioActual={usuarioActual} />} />
 
-      {/* Usuario — un solo componente persistente para todas las sub-rutas */}
+      {/* Usuario - un solo componente persistente para todas las sub-rutas */}
       <Route path="/usuario/*" element={<RutaUsuario onLogout={handleLogout} onUsuarioActualizado={handleUsuarioActualizado} usuarioActual={usuarioActual} />} />
 
       {/* Raíz → redirige según sesión */}
@@ -153,7 +161,9 @@ function App() {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </BrowserRouter>
   </StrictMode>
 )

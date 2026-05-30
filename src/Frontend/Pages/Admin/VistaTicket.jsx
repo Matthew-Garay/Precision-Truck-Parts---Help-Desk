@@ -1,5 +1,5 @@
 /**
- * VistaTicket — Admin
+ * VistaTicket - Admin
  * Extiende la vista del usuario con:
  *  - Cambio de estatus (En proceso / No Resuelto / Resuelto)
  *  - Comentarios editables del técnico

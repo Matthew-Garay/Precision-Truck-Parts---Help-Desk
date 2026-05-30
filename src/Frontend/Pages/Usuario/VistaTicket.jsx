@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import {
   ArrowLeft, Tag, Calendar, User, Clock,
   CheckCircle2, XCircle, ImageOff, ZoomIn,
-  X, MessageSquare, ChevronLeft, ChevronRight, Star
+  X, MessageSquare, ChevronLeft, ChevronRight, Star, Pencil
 } from "lucide-react";
-import API from "../../Config/api";
+import API, { apiFetch } from "../../Config/api";
 
 const PRIO = {
   Urgente: { color: "#dc2626", bgL: "#fee2e2", bgD: "rgba(220,38,38,0.15)", borderL: "#fca5a5", borderD: "rgba(220,38,38,0.3)" },
@@ -13,7 +13,8 @@ const PRIO = {
   Baja:    { color: "#16a34a", bgL: "#dcfce7", bgD: "rgba(22,163,74,0.15)",  borderL: "#86efac", borderD: "rgba(22,163,74,0.3)"  },
 };
 
-function CalificacionEstrellas({ T, ticket, isDark, estatusActual }) {
+function CalificacionEstrellas({ T, ticket, estatusActual }) {
+  const isDark = T.isDark;
   const calInicial = ticket.calificacion ? parseInt(ticket.calificacion, 10) : 0;
   const idTicket   = parseInt(ticket.id_ticket, 10);
   const [hover,        setHover]        = useState(0);
@@ -23,19 +24,18 @@ function CalificacionEstrellas({ T, ticket, isDark, estatusActual }) {
   const [error,        setError]        = useState("");
   const MENSAJES = ["", "Muy malo", "Malo", "Regular", "Bueno", "Excelente"];
 
-  const enProceso  = estatusActual === "En proceso";
+  const bloqueado  = estatusActual === "En proceso" || estatusActual === "No Resuelto";
   const yaGuardado = guardado && calificacion > 0;
 
   const guardar = async (n) => {
-    if (enProceso || yaGuardado || guardando) return;
+    if (bloqueado || yaGuardado || guardando) return;
     setError("");
     setCalificacion(n);
     setGuardando(true);
     try {
-      const res = await fetch(`${API}/api/tickets/${idTicket}/calificar`, {
+      const res = await apiFetch(`/api/tickets/${idTicket}/calificar`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ calificacion: Number(n) }),
+        body: { calificacion: Number(n) },
       });
       const text = await res.text();
       let data = {};
@@ -43,18 +43,26 @@ function CalificacionEstrellas({ T, ticket, isDark, estatusActual }) {
       if (res.ok && data.ok) {
         setGuardado(true);
       } else {
-        setError(data.error || `Error ${res.status}`);
+        setError(data.error || "No se pudo guardar");
         setCalificacion(calInicial);
       }
     } catch {
-      setError("No se pudo conectar. Verifica que el servidor esté activo.");
+      setError("Error de conexión");
       setCalificacion(calInicial);
     } finally {
       setGuardando(false);
     }
   };
 
-  if (enProceso) return (
+  if (estatusActual === "No Resuelto") return (
+    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[11px] font-semibold"
+      style={{ background: isDark ? "rgba(220,38,38,0.08)" : "#fef2f2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.25)" }}>
+      <XCircle size={12} />
+      No disponible — ticket marcado como No Resuelto
+    </div>
+  );
+
+  if (estatusActual === "En proceso") return (
     <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[11px] font-semibold"
       style={{ background: isDark ? "rgba(244,121,32,0.08)" : "#fff7ed", color: "#ea580c", border: "1px solid rgba(234,88,12,0.25)" }}>
       <Clock size={12} />
@@ -68,7 +76,7 @@ function CalificacionEstrellas({ T, ticket, isDark, estatusActual }) {
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-semibold"
           style={{ background: isDark ? "rgba(22,163,74,0.08)" : "#f0fdf4", color: "#16a34a", border: "1px solid rgba(22,163,74,0.25)" }}>
           <CheckCircle2 size={12} />
-          Calificación registrada — gracias por tu opinión
+          Calificación registrada - gracias por tu opinión
         </div>
       )}
       <div className={`flex items-center justify-center gap-1.5 py-2 ${yaGuardado ? "opacity-60" : ""}`}>
@@ -76,7 +84,7 @@ function CalificacionEstrellas({ T, ticket, isDark, estatusActual }) {
           const activa = n <= (hover || calificacion);
           return (
             <button key={n}
-              disabled={yaGuardado || guardando}
+              disabled={bloqueado || yaGuardado || guardando}
               onClick={() => guardar(n)}
               onMouseEnter={() => !yaGuardado && setHover(n)}
               onMouseLeave={() => setHover(0)}
@@ -104,8 +112,146 @@ function CalificacionEstrellas({ T, ticket, isDark, estatusActual }) {
   );
 }
 
+function ModalEditarTicket({ T, ticket, onCerrar, onGuardado }) {
+  const isDark = T.isDark;
+  const [categorias, setCategorias] = useState([]);
+  const [form, setForm] = useState({
+    titulo:       ticket.titulo       || "",
+    descripcion:  ticket.descripcion  || "",
+    prioridad:    ticket.prioridad    || "Media",
+    id_categoria: ticket.id_categoria || "",
+  });
+  const [guardando, setGuardando] = useState(false);
+  const [error,     setError]     = useState("");
+
+  useEffect(() => {
+    apiFetch("/api/categorias").then(r => r.json()).then(d => setCategorias(d)).catch(() => {});
+  }, []);
+
+  const inputStyle = {
+    background: isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt,
+    border: `1.5px solid ${isDark ? "rgba(255,255,255,0.12)" : T.border}`,
+    borderRadius: "10px", color: T.text, fontSize: "13px",
+    padding: "9px 12px", outline: "none", width: "100%",
+  };
+  const PRIOS = [
+    { v: "Urgente", c: "#dc2626" }, { v: "Alta", c: "#ea580c" },
+    { v: "Media",   c: "#ca8a04" }, { v: "Baja", c: "#16a34a" },
+  ];
+
+  const handleGuardar = async (e) => {
+    e.preventDefault();
+    if (!form.titulo.trim() || !form.descripcion.trim() || !form.prioridad || !form.id_categoria)
+      return setError("Todos los campos son requeridos");
+    setGuardando(true); setError("");
+    try {
+      const res  = await apiFetch(`/api/tickets/${ticket.id_ticket}/editar`, {
+        method: "PUT",
+        body: { ...form, id_categoria: parseInt(form.id_categoria) },
+      });
+      const data = await res.json();
+      if (!res.ok) return setError(data.error || "Error al guardar");
+      onGuardado({ ...form, id_categoria: parseInt(form.id_categoria) });
+    } catch { setError("No se pudo conectar con el servidor"); }
+    finally { setGuardando(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+      onClick={e => { if (e.target === e.currentTarget) onCerrar(); }}>
+      <div className="w-full max-w-md rounded-2xl overflow-hidden"
+        style={{ background: isDark ? "#141720" : T.surface, boxShadow: "0 32px 80px rgba(0,0,0,0.5)", borderTop: `3px solid ${T.orange}` }}>
+
+        {/* Header */}
+        <div className="px-5 py-3.5 flex items-center justify-between"
+          style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`, background: isDark ? "rgba(255,255,255,0.02)" : T.surfaceAlt }}>
+          <div className="flex items-center gap-2">
+            <span className="w-1 h-5 rounded-full" style={{ background: T.orange }} />
+            <p className="font-black text-sm" style={{ color: T.text }}>Editar ticket</p>
+            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-lg" style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.bg, color: T.orange, border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : T.border}` }}>
+              {ticket.folio_ticket}
+            </span>
+          </div>
+          <button onClick={onCerrar} className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>
+            <X size={13} />
+          </button>
+        </div>
+
+        <form onSubmit={handleGuardar} className="p-5 flex flex-col gap-4">
+          {/* Título */}
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{ color: T.textMuted }}>Título</label>
+            <input value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
+              style={inputStyle} placeholder="Título del problema"
+              onFocus={e => { e.target.style.borderColor = T.orange; e.target.style.boxShadow = "0 0 0 3px rgba(244,121,32,0.1)"; }}
+              onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.12)" : T.border; e.target.style.boxShadow = "none"; }} />
+          </div>
+
+          {/* Descripción */}
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{ color: T.textMuted }}>Descripción</label>
+            <textarea rows={4} value={form.descripcion}
+              onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
+              style={{ ...inputStyle, resize: "vertical", lineHeight: "1.6" }}
+              placeholder="Describe el problema..."
+              onFocus={e => { e.target.style.borderColor = T.orange; e.target.style.boxShadow = "0 0 0 3px rgba(244,121,32,0.1)"; }}
+              onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.12)" : T.border; e.target.style.boxShadow = "none"; }} />
+          </div>
+
+          {/* Prioridad */}
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{ color: T.textMuted }}>Prioridad</label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {PRIOS.map(p => (
+                <button key={p.v} type="button" onClick={() => setForm(f => ({ ...f, prioridad: p.v }))}
+                  className="py-2 rounded-xl text-xs font-bold transition-all"
+                  style={{
+                    background: form.prioridad === p.v ? `${p.c}20` : isDark ? "rgba(255,255,255,0.04)" : T.surfaceAlt,
+                    border: `2px solid ${form.prioridad === p.v ? p.c : isDark ? "rgba(255,255,255,0.1)" : T.border}`,
+                    color: form.prioridad === p.v ? p.c : T.textMuted,
+                  }}>{p.v}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Categoría */}
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{ color: T.textMuted }}>Categoría</label>
+            <select value={form.id_categoria} onChange={e => setForm(f => ({ ...f, id_categoria: e.target.value }))}
+              style={{ ...inputStyle, cursor: "pointer", colorScheme: isDark ? "dark" : "light" }}>
+              <option value="">Selecciona una categoría</option>
+              {categorias.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.nombre_categoria}</option>)}
+            </select>
+          </div>
+
+          {error && (
+            <p className="text-xs font-semibold px-3 py-2 rounded-lg" style={{ background: isDark ? "rgba(220,38,38,0.15)" : "#fee2e2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.3)" }}>
+              {error}
+            </p>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={onCerrar}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110"
+              style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>
+              Cancelar
+            </button>
+            <button type="submit" disabled={guardando}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95 disabled:opacity-60"
+              style={{ background: `linear-gradient(135deg,${T.orange},#d97400)`, boxShadow: "0 3px 12px rgba(244,121,32,0.3)" }}>
+              {guardando ? "Guardando..." : "Guardar cambios"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usuario = {} }) {
-  const isDark = T.bg === "#0b0e14";
+  const isDark = T.isDark;
   const prio   = PRIO[ticket.prioridad] || PRIO.Media;
   const prioBg     = isDark ? prio.bgD     : prio.bgL;
   const prioBorder = isDark ? prio.borderD : prio.borderL;
@@ -136,15 +282,17 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
   const [guardando,   setGuardando]   = useState(false);
   const [guardado,    setGuardado]    = useState(false);
   const [errorGuard,  setErrorGuard]  = useState("");
-  const [confirmCierre, setConfirmCierre] = useState(false);
+  const [confirmCierre,  setConfirmCierre]  = useState(false);
+  const [modalEditar,    setModalEditar]    = useState(false);
+  const [ticketLocal,    setTicketLocal]    = useState(ticket);
 
   const [fechaResueltoState, setFechaResueltoState] = useState(ticket.fecha_resuelto || null);
   const [resueltoporState,   setResueltoporState]   = useState(ticket.resuelto_por   || null);
 
   const fmtFecha = (d) => new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" });
   const fmtHora  = (d) => new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
-  const fechaAlta     = ticket.fecha_subido    ? fmtFecha(ticket.fecha_subido)   : "—";
-  const horaAlta      = ticket.fecha_subido    ? fmtHora(ticket.fecha_subido)    : "—";
+  const fechaAlta     = ticketLocal.fecha_subido    ? fmtFecha(ticketLocal.fecha_subido)   : "-";
+  const horaAlta      = ticketLocal.fecha_subido    ? fmtHora(ticketLocal.fecha_subido)    : "-";
   const fechaResuelto = fechaResueltoState     ? fmtFecha(fechaResueltoState)    : null;
   const horaResuelto  = fechaResueltoState     ? fmtHora(fechaResueltoState)     : null;
 
@@ -216,7 +364,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
   *  { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Segoe UI',Arial,sans-serif; background:#fff; color:#1D1D1B; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 
-  /* ── HEADER ── */
+  /* -- HEADER -- */
   .hdr { display:flex; align-items:center; justify-content:space-between; padding:10px 0 10px 0; border-bottom:3px solid #F47920; margin-bottom:10px; }
   .hdr-logo { height:52px; object-fit:contain; }
   .hdr-center { flex:1; text-align:center; }
@@ -226,10 +374,10 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
   .hdr-folio { font-family:monospace; font-size:18px; font-weight:900; color:#F47920; }
   .hdr-date  { font-size:7.5px; color:#9ca3af; margin-top:3px; }
 
-  /* ── BANDA ── */
+  /* -- BANDA -- */
   .banda { height:3px; background:linear-gradient(90deg,#F47920,#ffb347,#F47920); margin-bottom:10px; }
 
-  /* ── BLOQUE TITULO ── */
+  /* -- BLOQUE TITULO -- */
   .titulo-block { border:1.5px solid #e5e7eb; border-radius:8px; overflow:hidden; margin-bottom:8px; }
   .titulo-top   { background:#f8fafc; padding:10px 14px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; border-bottom:1.5px solid #e5e7eb; }
   .titulo-text  { font-size:15px; font-weight:900; color:#1D1D1B; flex:1; line-height:1.3; }
@@ -240,25 +388,25 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
   .sub-lbl { font-size:7px; font-weight:900; text-transform:uppercase; letter-spacing:.1em; color:#9ca3af; }
   .sub-val { font-size:13px; font-weight:800; color:#1D1D1B; }
 
-  /* ── GRID ── */
+  /* -- GRID -- */
   .g2 { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:7px; }
   .g3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; margin-bottom:7px; }
 
-  /* ── SECCIONES ── */
+  /* -- SECCIONES -- */
   .sec { border:1.5px solid #e5e7eb; border-radius:7px; overflow:hidden; }
   .sec-h { background:#f8fafc; padding:5px 10px; border-bottom:1.5px solid #e5e7eb; display:flex; align-items:center; gap:5px; }
   .sec-dot { width:3px; height:12px; border-radius:2px; background:#F47920; flex-shrink:0; }
   .sec-title { font-size:7px; font-weight:900; text-transform:uppercase; letter-spacing:.14em; color:#6b7280; }
   .sec-b { padding:8px 10px; }
 
-  /* ── DATOS ── */
+  /* -- DATOS -- */
   .dato-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
   .dato { background:#f9fafb; border:1px solid #e5e7eb; border-radius:5px; padding:5px 8px; }
   .dato.full { grid-column:1/-1; }
   .dato-lbl { font-size:6.5px; font-weight:900; text-transform:uppercase; letter-spacing:.1em; color:#9ca3af; margin-bottom:3px; }
   .dato-val { font-size:10px; font-weight:700; color:#1D1D1B; line-height:1.3; }
 
-  /* ── BADGES ── */
+  /* -- BADGES -- */
   .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:9.5px; font-weight:800; border:1.5px solid; }
   .b-urgente  { background:#fee2e2; color:#dc2626; border-color:#fca5a5; }
   .b-alta     { background:#ffedd5; color:#ea580c; border-color:#fdba74; }
@@ -268,17 +416,17 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
   .b-proceso  { background:#ffedd5; color:#ea580c; border-color:#fdba74; }
   .b-nores    { background:#fee2e2; color:#dc2626; border-color:#fca5a5; }
 
-  /* ── TEXTO LIBRE ── */
+  /* -- TEXTO LIBRE -- */
   .tx     { border-left:3px solid #e5e7eb; padding:7px 10px; font-size:10.5px; line-height:1.7; color:#374151; background:#f9fafb; border-radius:0 5px 5px 0; min-height:30px; }
   .tx-tec { border-left-color:#F47920; background:#fff7ed; }
 
-  /* ── TECNICO ── */
+  /* -- TECNICO -- */
   .tec-box { background:#f8fafc; border:1.5px solid #e5e7eb; border-radius:7px; padding:10px 14px; }
   .tec-lbl  { font-size:7px; font-weight:900; text-transform:uppercase; letter-spacing:.12em; color:#9ca3af; margin-bottom:5px; }
   .tec-name { font-size:14px; font-weight:900; color:#1D1D1B; line-height:1.2; }
   .tec-role { font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#F47920; margin-top:3px; }
 
-  /* ── VALORACION ── */
+  /* -- VALORACION -- */
   .val-box  { background:#fffbeb; border:1.5px solid #fde68a; border-radius:7px; padding:10px 12px; }
   .val-lbl  { font-size:7px; font-weight:900; text-transform:uppercase; letter-spacing:.12em; color:#92400e; margin-bottom:6px; }
   .val-stars{ display:flex; align-items:center; gap:2px; margin-bottom:4px; }
@@ -286,10 +434,10 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
   .val-sub  { font-size:8px; color:#9ca3af; margin-top:1px; }
   .val-none { font-size:9px; color:#9ca3af; font-style:italic; }
 
-  /* ── EVIDENCIAS ── */
+  /* -- EVIDENCIAS -- */
   .ev-sec { border:1.5px solid #e5e7eb; border-radius:7px; overflow:hidden; margin-bottom:7px; }
 
-  /* ── FOOTER NEGRO ── */
+  /* -- FOOTER NEGRO -- */
   .ftr {
     background:#1D1D1B;
     border-radius:8px;
@@ -460,6 +608,8 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
 
 
 
+  const cerrado = estatus === "Resuelto" || estatus === "No Resuelto";
+
   const pasoActual = estatus === "Resuelto" ? 2
     : estatus === "En proceso" ? 1 : 0;
 
@@ -469,17 +619,14 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
     const estatusFinal = nuevoEstatus ?? estatus;
     const adminId = getAdminId();
     const adminNombre = getNombreAdmin();
-    console.warn("[guardarCambios] estatus:", estatusFinal);
     try {
-      const url = `${API}/api/tickets/${ticket.id_ticket}`;
-      const res = await fetch(url, {
+      const res = await apiFetch(`/api/tickets/${ticket.id_ticket}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: {
           comentarios: comentario,
           estatus: estatusFinal,
           id_resuelto_por: estatusFinal === "Resuelto" ? adminId : null,
-        }),
+        },
       });
       const text = await res.text();
       let data;
@@ -502,7 +649,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
 
   useEffect(() => {
     if (!ticket.id_ticket) return;
-    fetch(`${API}/api/tickets/${ticket.id_ticket}/imagenes`)
+    apiFetch(`/api/tickets/${ticket.id_ticket}/imagenes`)
       .then(r => r.json())
       .then(d => setImgs(Array.isArray(d) ? d : []))
       .catch(() => setImgs([]));
@@ -521,10 +668,21 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
   const valStyle   = { color: T.text };
 
   return (
-    <div className="absolute inset-0 overflow-y-auto" style={{ background: T.bg }}>
+    <div className="overflow-y-auto" style={{ background: T.bg }}>
+      {modalEditar && (
+        <ModalEditarTicket
+          T={T}
+          ticket={ticketLocal}
+          onCerrar={() => setModalEditar(false)}
+          onGuardado={(cambios) => {
+            setTicketLocal(prev => ({ ...prev, ...cambios }));
+            setModalEditar(false);
+          }}
+        />
+      )}
       <div className="max-w-5xl mx-auto p-3 sm:p-4 md:p-6 pb-6 space-y-3 sm:space-y-4">
 
-        {/* ── HEADER CARD ── */}
+        {/* -- HEADER CARD -- */}
         <div className="rounded-2xl overflow-hidden" style={card}>
           <div className="h-1" style={{ background: `linear-gradient(90deg, ${prio.color}, ${prio.color}55)` }} />
 
@@ -537,6 +695,13 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                   style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>
                   <ArrowLeft size={13} /> Volver
                 </button>
+                {!esAdmin && estatus !== "Resuelto" && (
+                  <button onClick={() => setModalEditar(true)}
+                    className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
+                    style={{ background: isDark ? "rgba(244,121,32,0.12)" : "rgba(244,121,32,0.08)", color: T.orange, border: `1px solid rgba(244,121,32,0.3)` }}>
+                    <Pencil size={12} /> Editar ticket
+                  </button>
+                )}
                 {/* Folio visible solo en móvil junto al botón */}
                 <span className="sm:hidden font-mono text-xs font-black px-2.5 py-1 rounded-xl"
                   style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.text, border: `1px solid ${T.border}` }}>
@@ -545,10 +710,10 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               </div>
 
               <h1 className="text-sm sm:text-lg md:text-xl font-black leading-snug flex-1" style={{ color: T.text }}>
-                {ticket.titulo}
+                {ticketLocal.titulo}
               </h1>
 
-              {/* Folio + logo — solo desktop */}
+              {/* Folio + logo - solo desktop */}
               <div className="hidden sm:flex flex-col items-end gap-1 flex-shrink-0">
                 <span className="font-mono text-xs font-black px-2.5 py-1 rounded-xl"
                   style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.text, border: `1px solid ${T.border}` }}>
@@ -591,11 +756,11 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
           </div>
         </div>
 
-        {/* ── CUERPO ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+        {/* -- CUERPO -- */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
 
-          {/* ── COLUMNA IZQUIERDA ── */}
-          <div className="lg:col-span-2 space-y-3 sm:space-y-4">
+          {/* -- COLUMNA IZQUIERDA -- */}
+          <div className="lg:col-span-3 space-y-3 sm:space-y-4">
 
             {/* Descripción */}
             <div className="rounded-2xl overflow-hidden" style={card}>
@@ -606,9 +771,10 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                 </p>
               </div>
               <div className="p-4 sm:p-5">
-                {ticket.descripcion ? (
-                  <div className="text-sm leading-relaxed break-words" style={{ color: T.text }}
-                    dangerouslySetInnerHTML={{ __html: ticket.descripcion }} />
+                {ticketLocal.descripcion ? (
+                  <p className="text-sm leading-relaxed break-words whitespace-pre-wrap" style={{ color: T.text }}>
+                    {ticketLocal.descripcion}
+                  </p>
                 ) : (
                   <p className="text-sm italic" style={{ color: T.textFaint }}>Sin descripción registrada.</p>
                 )}
@@ -625,8 +791,8 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               </div>
               <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 {[
-                  { icon: User,         label: "Solicitante",                    val: ticket.nombre_empleado     || "—" },
-                  { icon: Tag,          label: "Departamento",                   val: ticket.nombre_departamento || "—" },
+                  { icon: User,         label: "Solicitante",                    val: ticket.nombre_empleado     || "-" },
+                  { icon: Tag,          label: "Departamento",                   val: ticket.nombre_departamento || "-" },
                   { icon: Calendar,     label: "Fecha de alta",                  val: fechaAlta },
                   { icon: CheckCircle2, label: "Fecha Resolución de Incidencia", val: fechaResuelto || "Pendiente" },
                   { icon: User,         label: "Resuelto por",                   val: resueltoporState || "Pendiente" },
@@ -709,29 +875,29 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                   <div className="flex flex-col gap-1.5">
                     <div className="relative">
                       <div className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full"
-                        style={{ background: estatus === "Resuelto" ? T.border : "#F47920", marginLeft: "12px" }} />
+                        style={{ background: cerrado ? T.border : "#F47920", marginLeft: "12px" }} />
                       <textarea
                         rows={5}
-                        disabled={estatus === "Resuelto"}
+                        disabled={cerrado}
                         className="w-full rounded-xl text-sm outline-none resize-none transition-all"
                         style={{
-                          background: estatus === "Resuelto"
+                          background: cerrado
                             ? isDark ? "rgba(255,255,255,0.02)" : "#f4f4f4"
                             : isDark ? "rgba(255,255,255,0.04)" : "#fafafa",
-                          border: `1.5px solid ${estatus === "Resuelto" ? T.border : isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}`,
-                          color: estatus === "Resuelto" ? T.textMuted : T.text,
+                          border: `1.5px solid ${cerrado ? T.border : isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}`,
+                          color: cerrado ? T.textMuted : T.text,
                           fontSize: "13px",
                           lineHeight: "1.65",
                           padding: "12px 14px 12px 28px",
                           letterSpacing: "0.01em",
-                          cursor: estatus === "Resuelto" ? "not-allowed" : "text",
-                          opacity: estatus === "Resuelto" ? 0.6 : 1,
+                          cursor: cerrado ? "not-allowed" : "text",
+                          opacity: cerrado ? 0.6 : 1,
                         }}
                         placeholder="Describe la solución aplicada, pasos realizados o notas relevantes para el cierre del ticket..."
                         value={comentario}
-                        onChange={e => estatus !== "Resuelto" && setComentario(e.target.value)}
+                        onChange={e => !cerrado && setComentario(e.target.value)}
                         onFocus={e => {
-                          if (estatus === "Resuelto") return;
+                          if (cerrado) return;
                           e.target.style.borderColor = "#F47920";
                           e.target.style.boxShadow  = "0 0 0 3px rgba(244,121,32,0.10)";
                           e.target.style.background = isDark ? "rgba(244,121,32,0.04)" : "#fff";
@@ -739,7 +905,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                         onBlur={e => {
                           e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0";
                           e.target.style.boxShadow  = "none";
-                          e.target.style.background = estatus === "Resuelto"
+                          e.target.style.background = cerrado
                             ? isDark ? "rgba(255,255,255,0.02)" : "#f4f4f4"
                             : isDark ? "rgba(255,255,255,0.04)" : "#fafafa";
                         }}
@@ -747,9 +913,9 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                     </div>
                     <div className="flex items-center justify-between px-1">
                       <span className="text-[10px]" style={{ color: T.textFaint }}>
-                        {estatus === "Resuelto" ? "Ticket cerrado — comentarios bloqueados" : "Visible para el solicitante una vez guardado"}
+                        {cerrado ? "Ticket cerrado - comentarios bloqueados" : "Visible para el solicitante una vez guardado"}
                       </span>
-                      {estatus !== "Resuelto" && (
+                      {!cerrado && (
                         <span className="text-[10px] font-semibold" style={{ color: comentario.length > 900 ? "#dc2626" : T.textFaint }}>
                           {comentario.length} / 1000
                         </span>
@@ -782,18 +948,18 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
 
           </div>
 
-          {/* ── COLUMNA DERECHA ── */}
-          <div className="space-y-3 sm:space-y-4">
+          {/* -- COLUMNA DERECHA -- */}
+          <div className="lg:col-span-2 space-y-3 sm:space-y-4">
             <div className="rounded-2xl overflow-hidden" style={card}>
-              <div className="px-3 py-2 flex items-center gap-2" style={hdr}>
-                <div className="w-1 h-3 rounded-full flex-shrink-0" style={{ background: T.orange }} />
-                <p className="text-[9px] font-black uppercase tracking-widest" style={labelStyle}>
+              <div className="px-4 py-3 flex items-center gap-2" style={hdr}>
+                <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: T.orange }} />
+                <p className="text-[11px] font-black uppercase tracking-widest" style={labelStyle}>
                   Estado del ticket
                 </p>
               </div>
-              <div className="p-4">
+              <div className="p-5">
 
-                {/* ── Pasos ── */}
+                {/* -- Pasos -- */}
                 <div className="flex flex-col gap-0">
                   {[
                     {
@@ -904,7 +1070,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                         {/* Contenido del paso */}
                         <div className="flex-1 pb-4" style={{ paddingTop: "3px" }}>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-xs font-black"
+                            <p className="text-sm font-black"
                               style={{ color: completado ? T.text : T.textFaint }}>
                               {paso.label}
                             </p>
@@ -937,7 +1103,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                             )}
                           </div>
 
-                          <p className="text-[10px] mt-0.5" style={{ color: T.textFaint }}>{paso.sub}</p>
+                          <p className="text-xs mt-1" style={{ color: T.textFaint }}>{paso.sub}</p>
 
                           {/* Fecha/hora si existe */}
                           {paso.fecha && (
@@ -945,12 +1111,12 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                               <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg"
                                 style={{ background: isDark ? "rgba(255,255,255,0.04)" : "#f8fafc", border: `1px solid ${T.border}` }}>
                                 <Calendar size={9} style={{ color: T.orange, flexShrink: 0 }} />
-                                <span className="text-[9px] font-bold" style={{ color: T.text }}>{paso.fecha}</span>
+                                <span className="text-[11px] font-bold" style={{ color: T.text }}>{paso.fecha}</span>
                               </div>
                               <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg"
                                 style={{ background: isDark ? "rgba(255,255,255,0.04)" : "#f8fafc", border: `1px solid ${T.border}` }}>
                                 <Clock size={9} style={{ color: T.orange, flexShrink: 0 }} />
-                                <span className="text-[9px] font-bold" style={{ color: T.text }}>{paso.hora}</span>
+                                <span className="text-[11px] font-bold" style={{ color: T.text }}>{paso.hora}</span>
                               </div>
                             </div>
                           )}
@@ -962,7 +1128,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               </div>
             </div>
 
-            {/* ── CALIFICACIÓN ── solo usuario ── */}
+            {/* -- CALIFICACIÓN -- solo usuario -- */}
             {!esAdmin && (
             <div className="rounded-2xl overflow-hidden" style={card}>
               <div className="px-4 py-2.5 flex items-center gap-2" style={hdr}>
@@ -972,12 +1138,12 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                 </p>
               </div>
               <div className="p-4 flex flex-col gap-3">
-                <CalificacionEstrellas T={T} ticket={ticket} isDark={isDark} estatusActual={estatus} />
+                <CalificacionEstrellas T={T} ticket={ticket} estatusActual={estatus} />
               </div>
             </div>
             )}
 
-            {/* ── GENERACIÓN DE REPORTE ── */}
+            {/* -- GENERACIÓN DE REPORTE -- */}
             <div className="rounded-2xl overflow-hidden" style={card}>
               <div className="px-4 py-2.5 flex items-center gap-2" style={hdr}>
                 <div className="w-1 h-3.5 rounded-full flex-shrink-0" style={{ background: "#dc2626" }} />
@@ -989,7 +1155,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                 <p className="text-[11px]" style={{ color: T.textMuted }}>Incluye información del ticket, descripción y comentarios del técnico.</p>
                 <button onClick={generarReporte}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-95"
-                  style={{ background: "linear-gradient(135deg, #dc2626, #b91c1c)", color: "#fff", boxShadow: "0 3px 12px rgba(220,38,38,0.35)" }}>
+                  style={{ background: "linear-gradient(135deg, #dc2626, #b91c1c)", color: "#fff", boxShadow: "0 3px 12px rgba(220,38,38,0.35)", minHeight: "48px" }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M14 2v6h6" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1002,7 +1168,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               </div>
             </div>
 
-            {/* ── ACCIONES ADMIN ── */}
+            {/* -- ACCIONES ADMIN -- */}
             {esAdmin && (
               <div className="rounded-2xl overflow-hidden" style={card}>
                 <div className="h-0.5" style={{ background: "linear-gradient(90deg,#16a34a,#4ade80,#16a34a)" }} />
@@ -1031,17 +1197,17 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                       <CheckCircle2 size={13}/> Cambios guardados
                     </div>
                   )}
-                  {estatus !== "Resuelto" ? (
+                  {!cerrado ? (
                     <>
                       <button onClick={() => guardarCambios(null)} disabled={guardando}
                         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                        style={{ background: `linear-gradient(135deg,${T.orange},#d97400)`, color: "#fff", boxShadow: "0 3px 12px rgba(244,121,32,0.3)" }}>
+                        style={{ background: `linear-gradient(135deg,${T.orange},#d97400)`, color: "#fff", boxShadow: "0 3px 12px rgba(244,121,32,0.3)", minHeight: "48px" }}>
                         <MessageSquare size={14}/> {guardando ? "Guardando..." : "Guardar comentario"}
                       </button>
                       {!confirmCierre ? (
                         <button onClick={() => setConfirmCierre(true)}
                           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-95"
-                          style={{ background: "linear-gradient(135deg,#16a34a,#15803d)", color: "#fff", boxShadow: "0 3px 12px rgba(22,163,74,0.3)" }}>
+                  style={{ background: "linear-gradient(135deg,#16a34a,#15803d)", color: "#fff", boxShadow: "0 3px 12px rgba(22,163,74,0.3)", minHeight: "48px" }}>
                           <CheckCircle2 size={14}/> Cerrar ticket
                         </button>
                       ) : (
@@ -1089,7 +1255,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
 
       </div>
 
-      {/* ── VISOR MODAL ── */}
+      {/* -- VISOR MODAL -- */}
       {visor !== null && imgs[visor] && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.93)" }}
