@@ -30,7 +30,7 @@ function requireOwnerOrAdmin(req, res, next) {
 }
 
 // Rutas de usuario autenticado
-router.get("/insumos/stock-bajo", getInsumosStockBajo);
+router.get("/insumos/stock-bajo", requireAdmin, getInsumosStockBajo);
 router.get("/insumos",           getInsumos);
 router.get("/empleado/:id_empleado", requireOwnerOrAdmin, getSolicitudesByEmpleado);
 router.post("/", solicitudLimiter, validate(schemaCrearSolicitud), crearSolicitud);

@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Package, AlertTriangle, CheckCircle2, XCircle, Inbox, Tag, Hash } from "lucide-react";
 import { apiFetch } from "../../Config/api";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
+import { useToast } from "../../Components/Feedback";
 
 const ESTADO_OPTS = ["Todos", "Excelente", "Bueno", "Regular", "Malo"];
 const ESTADO_META = {
@@ -112,17 +113,36 @@ export default function Inventario({ T }) {
   const [insumos,      setInsumos]      = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [filtros,      setFiltros]      = useState({ busqueda:"", estado:"Todos", categoria:"Todos", stock:"Todos" });
+  const prevInsumosRef = useRef(null);
+  const toast = useToast();
 
   useEffect(() => {
     const cargar = () =>
       apiFetch(`/api/solicitudes/inventario`)
         .then(r => r.json())
-        .then(d => setInsumos(Array.isArray(d) ? d : []))
+        .then(d => {
+          const lista = Array.isArray(d) ? d : [];
+          setInsumos(prev => {
+            if (prevInsumosRef.current !== null) {
+              const prevIds = new Set(prevInsumosRef.current.map(i => i.id_insumo));
+              const nuevos  = lista.filter(i => !prevIds.has(i.id_insumo));
+              const agotados = lista.filter(i => {
+                const ant = prevInsumosRef.current.find(p => p.id_insumo === i.id_insumo);
+                return ant && ant.stock > 0 && i.stock === 0;
+              });
+              if (nuevos.length)   toast.info(`${nuevos.length} insumo${nuevos.length > 1 ? "s" : ""} nuevo${nuevos.length > 1 ? "s" : ""} en inventario`, { title: "Inventario actualizado" });
+              if (agotados.length) toast.warning(`${agotados.length} insumo${agotados.length > 1 ? "s" : ""} agotado${agotados.length > 1 ? "s" : ""}`, { title: "Stock agotado" });
+            }
+            prevInsumosRef.current = lista;
+            return lista;
+          });
+        })
         .catch(() => {})
         .finally(() => setLoading(false));
     cargar();
     const id = setInterval(cargar, 30000);
     return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const categorias = ["Todos", ...Array.from(new Set(insumos.map(i => i.nombre_categoria).filter(Boolean)))];

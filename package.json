@@ -17,21 +17,20 @@
     "express-rate-limit": "^8.5.1",
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^1.12.0",
     "multer": "^2.1.1",
     "mysql2": "^3.22.3",
     "nodemailer": "^8.0.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.15.0",
     "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.7",
     "@vitejs/plugin-react": "^4.3.1",
-    "lucide-react": "^1.12.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^7.15.0",
-    "resend": "^6.12.4",
-    "socket.io-client": "^4.8.3",
     "tailwindcss": "^4.1.7",
     "vite": "^6.3.5"
   }

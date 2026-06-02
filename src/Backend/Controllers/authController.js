@@ -202,7 +202,11 @@ export const actualizarPerfil = async (req, res) => {
     const empleado = await Empleado.findById(id);
     if (!empleado) return res.status(404).json({ error: "Usuario no encontrado" });
     if (password_nueva) {
-      // Campo password_actual deshabilitado en UI — no se verifica
+      if (!password_actual)
+        return res.status(400).json({ error: "La contraseña actual es requerida" });
+      const coincide = await bcrypt.compare(password_actual, empleado.password);
+      if (!coincide)
+        return res.status(401).json({ error: "La contraseña actual es incorrecta" });
     }
     const nuevoHash = password_nueva ? await bcrypt.hash(password_nueva, 10) : undefined;
     await Empleado.updatePerfil(id, { nombre, ap_paterno, ap_materno, email, password: nuevoHash });

@@ -267,7 +267,7 @@ export default function Login({ onLogin }) {
 
         {/* Logo marca — esquina inferior derecha */}
         <div className="fixed bottom-8 right-3 z-40 pointer-events-none select-none hidden sm:block">
-          <img src="/assets/img/log .png" alt="Precision Truck Parts"
+          <img src="/assets/img/logo.png" alt="Precision Truck Parts"
             className="object-contain drop-shadow-lg"
             style={{ height: "clamp(28px, 4vw, 44px)" }} />
         </div>

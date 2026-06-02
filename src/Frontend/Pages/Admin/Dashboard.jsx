@@ -14,7 +14,7 @@ import { apiFetch } from "../../Config/api";
 import { LIGHT, DARK } from "../../Config/theme.jsx";
 import { SeccionEstadisticas, SeccionMetricas, KanbanBoard, PanelDerecho } from "../../Components/DashboardShared.jsx";
 import CampanaNotificaciones from "../../Components/CampanaNotificaciones.jsx";
-import { ToastProvider } from "../../Components/Feedback.jsx";
+import { ToastProvider, useToast } from "../../Components/Feedback.jsx";
 import { useSocket } from "../../Config/useSocket.js";
 
 const NAV = [
@@ -93,7 +93,7 @@ function DashboardContent({ T, usuario, tickets = [], metricas, onVerTicket }) {
   );
 }
 
-export default function AdminDashboard({ usuario = {}, onLogout, onUsuarioActualizado }) {
+function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
   const [dark, setDark]               = useState(() => localStorage.getItem("theme") === "dark");
   const toggleDark = (v) => { setDark(v); localStorage.setItem("theme", v ? "dark" : "light"); };
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -104,13 +104,13 @@ export default function AdminDashboard({ usuario = {}, onLogout, onUsuarioActual
   const [ultimaActualizacion, setUltimaActualizacion] = useState(null);
   const [notificaciones, setNotificaciones] = useState([]);
 
+  const toast = useToast();
 
   const agregarNotif = useCallback((notif) => {
     setNotificaciones(prev => [{ id: Date.now(), ts: Date.now(), ...notif }, ...prev].slice(0, 20));
   }, []);
 
   const recargarHistorialRef = useRef(null);
-  // Ref estable para evitar closure stale en el callback del socket
   const cargarTicketsRef = useRef(null);
   const cargarMetricasRef = useRef(null);
 
@@ -129,16 +129,17 @@ export default function AdminDashboard({ usuario = {}, onLogout, onUsuarioActual
   const activo       = activoIdx === -1 ? 0 : activoIdx;
   const onNavigate   = (path) => { setTicketVer(null); navigate(path); };
 
-  // Cuando el usuario usa flechas del navegador, cerrar ticket abierto
   useEffect(() => {
     setTicketVer(null);
   }, [location.pathname]);
+
   const T = dark ? DARK : LIGHT;
   const nombreCompleto = [usuario.nombre, usuario.ap_paterno, usuario.ap_materno].filter(Boolean).join(" ") || "-";
   const departamento   = usuario.departamento || "-";
 
   const ticketVerRef = useRef(null);
   ticketVerRef.current = ticketVer;
+  const prevTicketsCountRef = useRef(null);
 
   const cargarTickets = useCallback(() =>
     apiFetch(`/api/tickets`)
@@ -147,13 +148,22 @@ export default function AdminDashboard({ usuario = {}, onLogout, onUsuarioActual
         setErrorRed(false);
         setUltimaActualizacion(new Date());
         const lista = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
-        setTickets(prev => JSON.stringify(prev) === JSON.stringify(lista) ? prev : lista);
+        setTickets(prev => {
+          const prevCount = prevTicketsCountRef.current;
+          if (prevCount !== null && lista.length > prevCount) {
+            const nuevos = lista.length - prevCount;
+            toast.info(`${nuevos} ticket${nuevos > 1 ? "s" : ""} nuevo${nuevos > 1 ? "s" : ""}`, { title: "Tickets actualizados" });
+          }
+          prevTicketsCountRef.current = lista.length;
+          return JSON.stringify(prev) === JSON.stringify(lista) ? prev : lista;
+        });
         if (ticketVerRef.current) {
           const actualizado = lista.find(t => t.id_ticket === ticketVerRef.current.id_ticket);
           if (actualizado) setTicketVer(actualizado);
         }
       })
       .catch((err) => { console.error("[Admin] Error cargando tickets:", err.message); setErrorRed(true); })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   , []);
 
   const cargarMetricas = useCallback(() =>
@@ -175,7 +185,6 @@ export default function AdminDashboard({ usuario = {}, onLogout, onUsuarioActual
   const tituloHeader = ticketVer ? ticketVer.folio_ticket : (NAV[activo]?.label || 'Dashboard');
 
   return (
-    <ToastProvider T={T}>
     <div className="flex min-h-screen w-full"
       style={{ fontFamily: "'Inter','Segoe UI',sans-serif", background: T.bg }}>
 
@@ -293,6 +302,15 @@ export default function AdminDashboard({ usuario = {}, onLogout, onUsuarioActual
         foto={usuario.foto ? `/fotos/${usuario.foto.split("/").pop()}` : null}
         tickets={tickets} etiquetaRol="Administrador" />
     </div>
+  );
+}
+
+export default function AdminDashboard({ usuario = {}, onLogout, onUsuarioActualizado }) {
+  const [dark] = useState(() => localStorage.getItem("theme") === "dark");
+  const T = dark ? DARK : LIGHT;
+  return (
+    <ToastProvider T={T}>
+      <AdminDashboardInner usuario={usuario} onLogout={onLogout} onUsuarioActualizado={onUsuarioActualizado} />
     </ToastProvider>
   );
 }

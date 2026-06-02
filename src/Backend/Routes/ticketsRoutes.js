@@ -4,6 +4,7 @@ import { csrfProtection } from "../Middlewares/security.js";
 import { requireAuth, requireAdmin } from "../Middlewares/authMiddleware.js";
 import { validate, schemaCrearTicket, schemaActualizarTicket, schemaCalificarTicket, schemaEditarTicket } from "../Middlewares/validate.js";
 import { crearTicket, getTicketsByEmpleado, getImagenesTicket, getAllTickets, actualizarTicket, calificarTicket, editarTicketUsuario, getMetricas, getAdmins, getReporte } from "../Controllers/ticketsController.js";
+import { uploadEvidencias } from "../Middlewares/uploadEvidencias.js";
 
 // Middleware: solo el propio empleado o un admin puede acceder
 function requireOwnerOrAdmin(req, res, next) {
