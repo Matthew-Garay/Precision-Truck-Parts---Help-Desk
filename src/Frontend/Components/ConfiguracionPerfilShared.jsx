@@ -192,7 +192,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
           </div>
           <div className="px-5 py-5 flex flex-col gap-4">
             {[
-              { label: "Contraseña Actual",         k: "actual", val: passActual, set: setPassActual, auto: "current-password", disabled: true  },
+              { label: "Contraseña Actual",         k: "actual", val: passActual, set: setPassActual, auto: "current-password", disabled: false },
               { label: "Nueva Contraseña",           k: "nueva",  val: passNueva,  set: setPassNueva,  auto: "new-password",     disabled: false },
               { label: "Confirmar Nueva Contraseña", k: "conf",   val: passConf,   set: setPassConf,   auto: "new-password",     disabled: false },
             ].map(({ label, k, val, set, auto, disabled }) => (
@@ -200,12 +200,11 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
                 <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</span>
                 <div className="relative">
                   <input className="[&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
-                    style={{ ...inp, paddingRight: "36px", opacity: disabled ? 0.45 : 1, cursor: disabled ? "not-allowed" : "text" }}
+                    style={{ ...inp, paddingRight: "36px" }}
                     type={showPass[k] ? "text" : "password"} value={val}
-                    onChange={e => !disabled && set(e.target.value)} autoComplete={auto} placeholder={disabled ? "No modificable" : "••••••••"}
-                    disabled={disabled}
-                    onFocus={e => { if (!disabled) e.target.style.borderColor = T.orange; }} onBlur={e => e.target.style.borderColor = T.border} />
-                  {!disabled && <EyeBtn show={showPass[k]} onToggle={() => setShowPass(p => ({ ...p, [k]: !p[k] }))} textFaint={T.textFaint} />}
+                    onChange={e => set(e.target.value)} autoComplete={auto} placeholder="••••••••"
+                    onFocus={e => e.target.style.borderColor = T.orange} onBlur={e => e.target.style.borderColor = T.border} />
+                  <EyeBtn show={showPass[k]} onToggle={() => setShowPass(p => ({ ...p, [k]: !p[k] }))} textFaint={T.textFaint} />
                 </div>
               </div>
             ))}

@@ -92,7 +92,7 @@ const Ticket = {
   editarPorUsuario: async (id_ticket, { titulo, descripcion, prioridad, id_categoria }) => {
     const [result] = await pool.query(
       `UPDATE ticket SET titulo = ?, descripcion = ?, prioridad = ?, id_categoria = ?
-       WHERE id_ticket = ? AND estatus != 'Resuelto'`,
+       WHERE id_ticket = ? AND estatus = 'En proceso'`,
       [titulo, descripcion, prioridad, id_categoria, id_ticket]
     );
     return result.affectedRows > 0;
@@ -183,6 +183,10 @@ const Ticket = {
   },
 
   getReporte: async ({ fecha_inicio, fecha_fin, id_tecnico }) => {
+    // Validar formato de fechas YYYY-MM-DD antes de pasarlas a MySQL
+    const reFecha = /^\d{4}-\d{2}-\d{2}$/;
+    if (!reFecha.test(fecha_inicio) || !reFecha.test(fecha_fin))
+      throw Object.assign(new Error("Formato de fecha inválido. Use YYYY-MM-DD"), { status: 400 });
     const params = [fecha_inicio, fecha_fin];
     const tecnicoWhere = id_tecnico ? `AND t.id_tecnico = ?` : "";
     if (id_tecnico) params.push(id_tecnico);
