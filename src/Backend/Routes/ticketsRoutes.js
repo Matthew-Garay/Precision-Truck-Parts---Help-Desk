@@ -1,8 +1,7 @@
 import { Router }      from "express";
 import rateLimit       from "express-rate-limit";
 import { csrfProtection } from "../Middlewares/security.js";
-import { requireAuth } from "../Middlewares/authMiddleware.js";
-import { uploadEvidencias, EVIDENCIAS_BASE, safeResolvePath } from "../Middlewares/uploadEvidencias.js";
+import { requireAuth, requireAdmin } from "../Middlewares/authMiddleware.js";
 import { validate, schemaCrearTicket, schemaActualizarTicket, schemaCalificarTicket, schemaEditarTicket } from "../Middlewares/validate.js";
 import { crearTicket, getTicketsByEmpleado, getImagenesTicket, getAllTickets, actualizarTicket, calificarTicket, editarTicketUsuario, getMetricas, getAdmins, getReporte } from "../Controllers/ticketsController.js";
 
@@ -27,22 +26,24 @@ const ticketLimiter = rateLimit({
   message: { error: "Limite de tickets alcanzado. Intenta mas tarde." },
 });
 
-router.get("/metricas", getMetricas);
-router.get("/admins", getAdmins);
-router.get("/reporte", getReporte);
-router.get("/", getAllTickets);
+// Rutas de usuario autenticado
 router.get("/empleado/:id_empleado", requireOwnerOrAdmin, getTicketsByEmpleado);
 router.get("/:id_ticket/imagenes",   getImagenesTicket);
-
 router.patch("/:id_ticket/calificar", validate(schemaCalificarTicket),  calificarTicket);
 router.put("/:id_ticket/editar",      validate(schemaEditarTicket),     editarTicketUsuario);
-router.patch("/:id_ticket",           validate(schemaActualizarTicket), actualizarTicket);
-
 router.post("/", ticketLimiter, (req, res, next) => {
   uploadEvidencias.array("evidencias", 8)(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message });
     next();
   });
 }, validate(schemaCrearTicket), crearTicket);
+
+// Rutas exclusivas de admin
+router.use(requireAdmin);
+router.get("/metricas", getMetricas);
+router.get("/admins",   getAdmins);
+router.get("/reporte",  getReporte);
+router.get("/",         getAllTickets);
+router.patch("/:id_ticket", validate(schemaActualizarTicket), actualizarTicket);
 
 export default router;
