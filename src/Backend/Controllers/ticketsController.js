@@ -63,7 +63,8 @@ export const crearTicket = async (req, res) => {
       departamento:    emp?.nombre_departamento || "Sin área",
     });
   } catch (err) {
-    res.status(500).json({ error: "Error al crear el ticket", detalle: err.message });
+    console.error("[crearTicket]", err.message);
+    res.status(500).json({ error: "Error al crear el ticket" });
   }
 };
 
@@ -79,7 +80,8 @@ export const getImagenesTicket = async (req, res) => {
       .sort();
     res.json(archivos);
   } catch (err) {
-    res.status(500).json({ error: "Error al obtener imágenes", detalle: err.message });
+    console.error("[getImagenesTicket]", err.message);
+    res.status(500).json({ error: "Error al obtener imágenes" });
   }
 };
 
@@ -89,7 +91,8 @@ export const getTicketsByEmpleado = async (req, res) => {
     const tickets = await Ticket.getByEmpleado(parseInt(id_empleado));
     res.json(tickets);
   } catch (err) {
-    res.status(500).json({ error: "Error al obtener tickets", detalle: err.message });
+    console.error("[getTicketsByEmpleado]", err.message);
+    res.status(500).json({ error: "Error al obtener tickets" });
   }
 };
 
@@ -177,7 +180,8 @@ export const actualizarTicket = async (req, res) => {
 
     res.json({ ok: true, estatus: updated.estatus, fecha_resuelto: updated.fecha_resuelto ?? null, resuelto_por: updated.resuelto_por ?? null });
   } catch (err) {
-    res.status(500).json({ error: "Error al actualizar el ticket", detalle: err.message });
+    console.error("[actualizarTicket]", err.message);
+    res.status(500).json({ error: "Error al actualizar el ticket" });
   }
 };
 
@@ -218,7 +222,8 @@ export const calificarTicket = async (req, res) => {
 
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: "Error al guardar calificación", detalle: err.message });
+    console.error("[calificarTicket]", err.message);
+    res.status(500).json({ error: "Error al guardar calificación" });
   }
 };
 
@@ -240,7 +245,8 @@ export const editarTicketUsuario = async (req, res) => {
     if (!ok) return res.status(404).json({ error: "Ticket no encontrado o ya está cerrado" });
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: "Error al editar el ticket", detalle: err.message });
+    console.error("[editarTicketUsuario]", err.message);
+    res.status(500).json({ error: "Error al editar el ticket" });
   }
 };
 
@@ -249,7 +255,8 @@ export const getAdmins = async (req, res) => {
     const rows = await Ticket.getAdmins();
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: "Error al obtener admins", detalle: err.message });
+    console.error("[getAdmins]", err.message);
+    res.status(500).json({ error: "Error al obtener admins" });
   }
 };
 
@@ -264,7 +271,8 @@ export const getReporte = async (req, res) => {
     });
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: "Error al generar reporte", detalle: err.message });
+    console.error("[getReporte]", err.message);
+    res.status(500).json({ error: "Error al generar reporte" });
   }
 };
 
@@ -273,7 +281,8 @@ export const getMetricas = async (req, res) => {
     const data = await Ticket.getMetricas();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: "Error al obtener métricas", detalle: err.message });
+    console.error("[getMetricas]", err.message);
+    res.status(500).json({ error: "Error al obtener métricas" });
   }
 };
 
@@ -285,6 +294,7 @@ export const getAllTickets = async (req, res) => {
     const { rows, total } = await Ticket.getAll({ limit, offset });
     res.json({ data: rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
-    res.status(500).json({ error: "Error al obtener tickets", detalle: err.message });
+    console.error("[getAllTickets]", err.message);
+    res.status(500).json({ error: "Error al obtener tickets" });
   }
 };
