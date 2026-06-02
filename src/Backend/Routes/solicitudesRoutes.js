@@ -1,7 +1,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { csrfProtection } from "../Middlewares/security.js";
-import { requireAuth } from "../Middlewares/authMiddleware.js";
+import { requireAuth, requireAdmin } from "../Middlewares/authMiddleware.js";
 import { validate, schemaCrearSolicitud, schemaActualizarEstatusSolicitud } from "../Middlewares/validate.js";
 import {
   getInsumos, getInventario, getInsumosStockBajo, crearSolicitud, getSolicitudesByEmpleado,
@@ -29,13 +29,17 @@ function requireOwnerOrAdmin(req, res, next) {
   return res.status(403).json({ error: "Acceso no autorizado" });
 }
 
-router.get("/inventario",                              getInventario);
-router.get("/insumos/stock-bajo",                      getInsumosStockBajo);
-router.get("/insumos",                                 getInsumos);
-router.get("/",                                        getAllSolicitudes);
+// Rutas de usuario autenticado
+router.get("/insumos/stock-bajo", getInsumosStockBajo);
+router.get("/insumos",           getInsumos);
 router.get("/empleado/:id_empleado", requireOwnerOrAdmin, getSolicitudesByEmpleado);
-router.post("/",                     solicitudLimiter, validate(schemaCrearSolicitud), crearSolicitud);
-router.patch("/:id/estatus",         validate(schemaActualizarEstatusSolicitud),       actualizarEstatusSolicitud);
-router.get("/:id",                                     getSolicitudById);
+router.post("/", solicitudLimiter, validate(schemaCrearSolicitud), crearSolicitud);
+
+// Rutas exclusivas de admin
+router.use(requireAdmin);
+router.get("/inventario",      getInventario);
+router.get("/",                getAllSolicitudes);
+router.patch("/:id/estatus",   validate(schemaActualizarEstatusSolicitud), actualizarEstatusSolicitud);
+router.get("/:id",             getSolicitudById);
 
 export default router;

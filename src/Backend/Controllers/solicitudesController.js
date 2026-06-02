@@ -8,7 +8,8 @@ export const getInsumos = async (req, res) => {
     const insumos = await Insumo.getDisponibles();
     res.json(insumos);
   } catch (err) {
-    res.status(500).json({ error: "Error al obtener insumos", detalle: err.message });
+    console.error("[getInsumos]", err.message);
+    res.status(500).json({ error: "Error al obtener insumos" });
   }
 };
 
@@ -17,7 +18,8 @@ export const getInventario = async (req, res) => {
     const insumos = await Insumo.getAll();
     res.json(insumos);
   } catch (err) {
-    res.status(500).json({ error: "Error al obtener inventario", detalle: err.message });
+    console.error("[getInventario]", err.message);
+    res.status(500).json({ error: "Error al obtener inventario" });
   }
 };
 
@@ -34,7 +36,8 @@ export const getInsumosStockBajo = async (req, res) => {
     );
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: "Error al obtener alertas de stock", detalle: err.message });
+    console.error("[getInsumosStockBajo]", err.message);
+    res.status(500).json({ error: "Error al obtener alertas de stock" });
   }
 };
 
@@ -72,7 +75,8 @@ export const crearSolicitud = async (req, res) => {
     });
     res.status(201).json({ ok: true, ...result });
   } catch (err) {
-    res.status(500).json({ error: "Error al crear solicitud", detalle: err.message });
+    console.error("[crearSolicitud]", err.message);
+    res.status(500).json({ error: "Error al crear solicitud" });
   }
 };
 
@@ -82,7 +86,8 @@ export const getSolicitudesByEmpleado = async (req, res) => {
     const solicitudes = await Solicitud.getByEmpleado(parseInt(id_empleado));
     res.json(solicitudes);
   } catch (err) {
-    res.status(500).json({ error: "Error al obtener solicitudes", detalle: err.message });
+    console.error("[getSolicitudesByEmpleado]", err.message);
+    res.status(500).json({ error: "Error al obtener solicitudes" });
   }
 };
 
@@ -93,7 +98,8 @@ export const getSolicitudById = async (req, res) => {
     if (!solicitud) return res.status(404).json({ error: "Solicitud no encontrada" });
     res.json(solicitud);
   } catch (err) {
-    res.status(500).json({ error: "Error al obtener solicitud", detalle: err.message });
+    console.error("[getSolicitudById]", err.message);
+    res.status(500).json({ error: "Error al obtener solicitud" });
   }
 };
 
@@ -105,7 +111,8 @@ export const getAllSolicitudes = async (req, res) => {
     const { rows, total } = await Solicitud.getAll({ limit, offset });
     res.json({ data: rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
-    res.status(500).json({ error: "Error al obtener solicitudes", detalle: err.message });
+    console.error("[getAllSolicitudes]", err.message);
+    res.status(500).json({ error: "Error al obtener solicitudes" });
   }
 };
 
@@ -130,6 +137,7 @@ export const actualizarEstatusSolicitud = async (req, res) => {
     }
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("[actualizarEstatusSolicitud]", err.message);
+    res.status(500).json({ error: "Error al actualizar solicitud" });
   }
 };

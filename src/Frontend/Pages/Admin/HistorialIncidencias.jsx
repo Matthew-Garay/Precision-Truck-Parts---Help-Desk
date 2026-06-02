@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { Star, Inbox, FileDown, X } from "lucide-react";
-import { apiFetch } from "../../Config/api";
-import FiltrosToolbar from "../../Components/FiltrosToolbar";
 
 const PCOLOR = { Urgente:"#dc2626", Alta:"#ea580c", Media:"#ca8a04", Baja:"#16a34a" };
 
