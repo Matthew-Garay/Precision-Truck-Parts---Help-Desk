@@ -17,7 +17,11 @@ export function useSocket(id_empleado, onEvento) {
     const token = getToken();
     if (!token) return;
 
-    const SOCKET_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+    const SOCKET_URL = import.meta.env.VITE_API_URL;
+    if (!SOCKET_URL) {
+      console.error("[Socket] VITE_API_URL no definida");
+      return;
+    }
     const socket = io(SOCKET_URL, {
       auth: { token },
       transports: ["websocket", "polling"],
