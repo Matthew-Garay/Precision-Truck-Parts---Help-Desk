@@ -1,51 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Bell, X, CheckCircle2, Package, Ticket, Star, Clock, AlertTriangle, Wrench } from "lucide-react";
 
-// -- AudioContext compartido, desbloqueado en el primer gesto del usuario --
-let _ctx = null;
-function getCtx() {
-  if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
-  if (_ctx.state === "suspended") _ctx.resume();
-  return _ctx;
-}
-if (typeof window !== "undefined") {
-  const unlock = () => { getCtx(); document.removeEventListener("click", unlock); };
-  document.addEventListener("click", unlock);
-}
-
-// -- Sonido sutil via Web Audio API (sin archivos externos) ---------------
-function tocarSonido(tipo) {
-  try {
-    const ctx = getCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    // Frecuencias y formas según tipo de notificación
-    const configs = {
-      "ticket:nuevo":       { freq: [520, 660],  dur: 0.12, vol: 0.08, type: "sine"     },
-      "solicitud:nueva":    { freq: [440, 550],  dur: 0.12, vol: 0.07, type: "sine"     },
-      "ticket:actualizado": { freq: [660, 880],  dur: 0.10, vol: 0.07, type: "sine"     },
-      "ticket:en_atencion": { freq: [480, 600],  dur: 0.10, vol: 0.06, type: "sine"     },
-      "ticket:calificado":  { freq: [700, 900],  dur: 0.10, vol: 0.07, type: "triangle" },
-      "ticket:sla_warning": { freq: [300, 200],  dur: 0.18, vol: 0.10, type: "sawtooth" },
-      "tickets:vencidos":   { freq: [250, 180],  dur: 0.20, vol: 0.10, type: "sawtooth" },
-      default:              { freq: [500, 600],  dur: 0.10, vol: 0.06, type: "sine"     },
-    };
-    const cfg = configs[tipo] || configs.default;
-
-    osc.type = cfg.type;
-    osc.frequency.setValueAtTime(cfg.freq[0], ctx.currentTime);
-    osc.frequency.linearRampToValueAtTime(cfg.freq[1], ctx.currentTime + cfg.dur);
-    gain.gain.setValueAtTime(cfg.vol, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + cfg.dur + 0.05);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + cfg.dur + 0.06);
-    osc.onended = () => {};
-  } catch { /* navegador sin soporte o bloqueado */ }
-}
-
 // -- Configuración de cada tipo de notificación ---------------------------
 const TIPO_CONFIG = {
   // ADMIN: nuevo ticket con nombre y área
@@ -83,7 +38,7 @@ const TIPO_CONFIG = {
     icon:   AlertTriangle,
     color:  () => "#dc2626",
     bg:     () => "rgba(220,38,38,0.14)",
-    titulo: () => "⚠ Vencimiento de SLA",
+    titulo: () => "Vencimiento de SLA",
     sub:    (d) => `${d.mensaje || `Advertencia: El ticket #${d.folio_ticket} está próximo a superar el tiempo de respuesta acordado (SLA).`}\nTiempo restante: ${d.tiempo_restante} · Prioridad: ${d.prioridad}`,
     accion: "Ver ticket",
   },
@@ -102,8 +57,8 @@ const TIPO_CONFIG = {
     color:  (d) => d.estatus === "Resuelto" ? "#16a34a" : "#dc2626",
     bg:     (d) => d.estatus === "Resuelto" ? "rgba(22,163,74,0.12)" : "rgba(220,38,38,0.12)",
     titulo: (d) => d.estatus === "Resuelto"
-      ? "✅ Tu ticket fue resuelto — ¡Califícalo!"
-      : `❌ Ticket marcado como "${d.estatus}"`,
+      ? "Tu ticket fue resuelto"
+      : `Ticket marcado como "${d.estatus}"`,
     sub:    (d) => {
       const tecnico = d.resuelto_por || d.nombre_tecnico;
       const linea2  = d.estatus === "Resuelto"
@@ -111,14 +66,14 @@ const TIPO_CONFIG = {
         : (tecnico ? `Cerrado por: ${tecnico}` : "");
       return `#${d.folio_ticket} — ${d.titulo}${linea2 ? `\n${linea2}` : ""}`;
     },
-    accion: (d) => d.estatus === "Resuelto" ? "⭐ Calificar atención" : "Ver ticket",
+    accion: (d) => d.estatus === "Resuelto" ? "Calificar atencion" : "Ver ticket",
   },
   // USUARIO: su ticket está siendo atendido por un técnico
   "ticket:en_atencion": {
     icon:   Wrench,
     color:  () => "#8b5cf6",
     bg:     () => "rgba(139,92,246,0.12)",
-    titulo: () => "🔧 Tu ticket está siendo atendido",
+    titulo: () => "Tu ticket esta siendo atendido",
     sub:    (d) => `#${d.folio_ticket} — ${d.titulo}\nTécnico asignado: ${d.nombre_tecnico || "Soporte técnico"}`,
     accion: "Ver ticket",
   },
@@ -131,6 +86,35 @@ const TIPO_CONFIG = {
     sub:    (d) => `#${d.folio_solicitud}`,
     accion: null,
   },
+  // USUARIO: confirmación inmediata de ticket creado
+  "ticket:confirmado": {
+    icon:   CheckCircle2,
+    color:  () => "#16a34a",
+    bg:     () => "rgba(22,163,74,0.12)",
+    titulo: () => "Reporte recibido",
+    sub:    (d) => `#${d.folio_ticket} — ${d.titulo}\nPrioridad: ${d.prioridad} · En revisión por soporte`,
+    accion: "Ver ticket",
+  },
+  // ADMIN: stock crítico de insumo
+  "insumo:stock_critico": {
+    icon:   Package,
+    color:  (d) => d.stock === 0 ? "#dc2626" : "#f59e0b",
+    bg:     (d) => d.stock === 0 ? "rgba(220,38,38,0.14)" : "rgba(245,158,11,0.12)",
+    titulo: (d) => d.stock === 0 ? "Insumo agotado" : "Stock critico de insumo",
+    sub:    (d) => d.stock === 0
+      ? `"${d.nombre}" no tiene unidades disponibles`
+      : `"${d.nombre}" tiene solo ${d.stock} unidad${d.stock !== 1 ? "es" : ""} restante${d.stock !== 1 ? "s" : ""}`,
+    accion: null,
+  },
+  // ADMIN: ticket sin técnico asignado más de 24h
+  "ticket:sin_atender": {
+    icon:   Clock,
+    color:  () => "#f59e0b",
+    bg:     () => "rgba(245,158,11,0.12)",
+    titulo: () => "Ticket sin atender",
+    sub:    (d) => `#${d.folio_ticket} — ${d.titulo}\n${d.horas}h sin técnico asignado · Prioridad: ${d.prioridad}`,
+    accion: "Ver ticket",
+  },
 };
 
 // -- Componente principal -------------------------------------------------
@@ -142,18 +126,14 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
   const isDark   = T.isDark;
   const noLeidas = notificaciones.length;
 
-  // Tocar sonido y animar campana cuando llega una notificación nueva
+  // Animar campana cuando llega una notificación nueva
   useEffect(() => {
     if (notificaciones.length > prevLen.current) {
-      const ultima = notificaciones[0];
-      if (ultima) {
-        tocarSonido(ultima.tipo);
-        setAnimando(true);
-        setTimeout(() => setAnimando(false), 600);
-      }
+      setAnimando(true);
+      setTimeout(() => setAnimando(false), 600);
     }
     prevLen.current = notificaciones.length;
-  }, [notificaciones.length]);
+  }, [notificaciones]);
 
   // Cerrar al hacer click fuera
   useEffect(() => {
@@ -267,12 +247,13 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
                 <p className="text-[11px]" style={{ color: T.textFaint }}>Todo al día por ahora</p>
               </div>
             ) : notificaciones.map((n, i) => {
-              const cfg    = TIPO_CONFIG[n.tipo] ?? TIPO_CONFIG["ticket:nuevo"];
+              const cfg    = TIPO_CONFIG[n.tipo];
+              if (!cfg) return null;
               const Icon   = cfg.icon;
               const color  = cfg.color(n.data);
               const bg     = cfg.bg(n.data);
-              const titulo = cfg.titulo(n.data);
-              const sub    = cfg.sub(n.data);
+              const titulo = cfg.titulo(n.data) ?? "";
+              const sub    = cfg.sub(n.data) ?? "";
               const accion = typeof cfg.accion === "function" ? cfg.accion(n.data) : cfg.accion;
 
               // Botón calificar solo para ticket resuelto del usuario
@@ -284,7 +265,9 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
                 n.tipo === "ticket:calificado" ||
                 n.tipo === "ticket:sla_warning" ||
                 n.tipo === "ticket:en_atencion" ||
-                esCalificable
+                n.tipo === "ticket:actualizado" ||
+                n.tipo === "ticket:confirmado" ||
+                n.tipo === "ticket:sin_atender"
               );
 
               // Color especial para SLA warning
@@ -345,7 +328,7 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
 
                     {/* Cerrar */}
                     <button
-                      onClick={() => onDismiss(n.id)}
+                      onMouseDown={(e) => { e.stopPropagation(); onDismiss(n.id); }}
                       className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center transition-colors"
                       style={{ color: T.textFaint }}
                       onMouseEnter={e => e.currentTarget.style.color = T.text}
@@ -357,7 +340,7 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
                   {/* Botón de acción */}
                   {tieneAccion && (
                     <button
-                      onClick={() => handleClickNotif(n)}
+                      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); handleClickNotif(n); }}
                       className="mx-3 mb-2 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[10px] font-bold transition-all hover:brightness-110 active:scale-95"
                       style={
                         esCalificable

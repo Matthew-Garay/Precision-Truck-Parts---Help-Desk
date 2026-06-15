@@ -17,11 +17,8 @@ export function useSocket(id_empleado, onEvento) {
     const token = getToken();
     if (!token) return;
 
-    const SOCKET_URL = import.meta.env.VITE_API_URL;
-    if (!SOCKET_URL) {
-      console.error("[Socket] VITE_API_URL no definida");
-      return;
-    }
+    // Si VITE_API_URL está vacío (proxy de Vite en dev), usar window.location.origin
+    const SOCKET_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(":5173", ":3001");
     const socket = io(SOCKET_URL, {
       auth: { token },
       transports: ["websocket", "polling"],
@@ -38,13 +35,16 @@ export function useSocket(id_empleado, onEvento) {
     socket.on("ticket:actualizado",   d => cbRef.current?.({ tipo: "ticket:actualizado",   data: d }));
     socket.on("ticket:en_atencion",   d => cbRef.current?.({ tipo: "ticket:en_atencion",   data: d }));
     socket.on("solicitud:actualizada",d => cbRef.current?.({ tipo: "solicitud:actualizada", data: d }));
+    socket.on("ticket:confirmado",    d => cbRef.current?.({ tipo: "ticket:confirmado",    data: d }));
 
     // Eventos que escucha el admin
-    socket.on("ticket:nuevo",      d => cbRef.current?.({ tipo: "ticket:nuevo",      data: d }));
-    socket.on("solicitud:nueva",   d => cbRef.current?.({ tipo: "solicitud:nueva",   data: d }));
-    socket.on("ticket:calificado", d => cbRef.current?.({ tipo: "ticket:calificado", data: d }));
-    socket.on("tickets:vencidos",  d => cbRef.current?.({ tipo: "tickets:vencidos",  data: d }));
-    socket.on("ticket:sla_warning",d => cbRef.current?.({ tipo: "ticket:sla_warning",data: d }));
+    socket.on("ticket:nuevo",         d => cbRef.current?.({ tipo: "ticket:nuevo",         data: d }));
+    socket.on("solicitud:nueva",      d => cbRef.current?.({ tipo: "solicitud:nueva",      data: d }));
+    socket.on("ticket:calificado",    d => cbRef.current?.({ tipo: "ticket:calificado",    data: d }));
+    socket.on("tickets:vencidos",     d => cbRef.current?.({ tipo: "tickets:vencidos",     data: d }));
+    socket.on("ticket:sla_warning",   d => cbRef.current?.({ tipo: "ticket:sla_warning",   data: d }));
+    socket.on("insumo:stock_critico", d => cbRef.current?.({ tipo: "insumo:stock_critico", data: d }));
+    socket.on("ticket:sin_atender",   d => cbRef.current?.({ tipo: "ticket:sin_atender",   data: d }));
 
     return () => { socket.disconnect(); };
   }, [id_empleado]);

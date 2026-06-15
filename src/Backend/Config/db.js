@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Pool de conexiones - reutiliza conexiones activas en lugar de abrir una nueva cada vez
+// Pool de conexiones
 const pool = mysql.createPool({
   host:               process.env.DB_HOST,
   port:               process.env.DB_PORT,
@@ -11,12 +11,16 @@ const pool = mysql.createPool({
   password:           process.env.DB_PASSWORD,
   database:           process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit:    10,       // máximo 10 conexiones simultáneas
+  connectionLimit:    10,
   queueLimit:         0,
-  timezone:           "-06:00", // zona horaria México Centro
+  connectTimeout:     10000,
+  timezone:           "-06:00",
+  ...(process.env.DB_HOST !== "localhost" && process.env.DB_SSL === "true"
+    ? { ssl: { rejectUnauthorized: true } }
+    : {}),
 });
 
-// Verificar conexión al iniciar el servidor
+// Verificar conexión al iniciar
 pool.getConnection()
   .then(conn => {
     console.log("✅ Conexión a MySQL establecida correctamente");
@@ -24,7 +28,7 @@ pool.getConnection()
   })
   .catch(err => {
     console.error("❌ Error al conectar con MySQL:", err.message);
-    process.exit(1); // detiene el servidor si no hay conexión
+    process.exit(1);
   });
 
 export default pool;

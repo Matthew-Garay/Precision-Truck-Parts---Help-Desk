@@ -8,6 +8,9 @@ import { uploadFoto, FOTOS_DIR, FOTOS_REL } from "../Middlewares/uploadFotos.js"
 
 export { uploadFoto };
 
+const isProd = () => process.env.NODE_ENV === "production";
+const errDetalle = (err) => isProd() ? {} : { detalle: err.message };
+
 export const subirFotoEmpleado = async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
@@ -15,7 +18,6 @@ export const subirFotoEmpleado = async (req, res) => {
     if (!req.file) return res.status(400).json({ error: "No se recibió ninguna imagen" });
     const emp = await Empleado.findById(id);
     if (emp?.foto) {
-      // Usar solo el basename para evitar path traversal al borrar foto anterior
       const fotoBase = path.basename(emp.foto);
       try {
         const oldPath = safeResolvePath(FOTOS_DIR, fotoBase);
@@ -26,7 +28,7 @@ export const subirFotoEmpleado = async (req, res) => {
     await Empleado.updateAdmin(id, { foto: rutaBD });
     res.json({ ok: true, foto: rutaBD });
   } catch (err) {
-    res.status(500).json({ error: "Error al subir foto", detalle: err.message });
+    res.status(500).json({ error: "Error al subir foto", ...errDetalle(err) });
   }
 };
 
@@ -38,13 +40,12 @@ export const login = async (req, res) => {
     const empleado = await Empleado.findByEmail(email);
     if (!empleado)
       return res.status(401).json({ error: "Correo o contraseña incorrectos" });
-    if (empleado.estatus?.toLowerCase() !== 'activo')
+    if (empleado.estatus?.toLowerCase() !== "activo")
       return res.status(403).json({ error: "Usuario inactivo, contacta al administrador" });
     const coincide = await bcrypt.compare(password, empleado.password);
     if (!coincide)
       return res.status(401).json({ error: "Correo o contraseña incorrectos" });
 
-    // Cerrar sesiones huérfanas anteriores y registrar nueva entrada
     await Empleado.cerrarSesionesHuerfanas(empleado.id_empleado);
     const id_acceso = await Empleado.registrarEntrada(empleado.id_empleado);
 
@@ -73,7 +74,7 @@ export const login = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ error: "Error del servidor", detalle: err.message });
+    res.status(500).json({ error: "Error del servidor", ...errDetalle(err) });
   }
 };
 
@@ -84,31 +85,34 @@ export const logout = async (req, res) => {
     await Empleado.registrarSalida(id_acceso);
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: "Error del servidor", detalle: err.message });
+    res.status(500).json({ error: "Error del servidor", ...errDetalle(err) });
   }
 };
 
 export const getAccesos = async (req, res) => {
   const { id } = req.params;
+  const idNum  = parseInt(id, 10);
+  if (isNaN(idNum) || idNum <= 0)
+    return res.status(400).json({ error: "ID inválido" });
   const limit  = Math.min(parseInt(req.query.limit) || 500, 1000);
   const page   = Math.max(parseInt(req.query.page)  || 1, 1);
   const offset = (page - 1) * limit;
   try {
-    const { rows, total } = await Empleado.getAccesos(id, { limit, offset });
+    const { rows, total } = await Empleado.getAccesos(idNum, { limit, offset });
     res.json({ data: rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
-    res.status(500).json({ error: "Error del servidor", detalle: err.message });
+    res.status(500).json({ error: "Error del servidor", ...errDetalle(err) });
   }
 };
 
 export const getEmpleadoById = async (req, res) => {
   const { id } = req.params;
   try {
-    const emp = await Empleado.findById(parseInt(id));
+    const emp = await Empleado.findById(parseInt(id, 10));
     if (!emp) return res.status(404).json({ error: "Empleado no encontrado" });
     res.json(emp);
   } catch (err) {
-    res.status(500).json({ error: "Error del servidor", detalle: err.message });
+    res.status(500).json({ error: "Error del servidor", ...errDetalle(err) });
   }
 };
 
@@ -117,7 +121,7 @@ export const getAllEmpleados = async (req, res) => {
     const empleados = await Empleado.getAll();
     res.json(empleados);
   } catch (err) {
-    res.status(500).json({ error: "Error del servidor", detalle: err.message });
+    res.status(500).json({ error: "Error del servidor", ...errDetalle(err) });
   }
 };
 
@@ -126,7 +130,7 @@ export const getDepartamentos = async (req, res) => {
     const deps = await Empleado.getDepartamentos();
     res.json(deps);
   } catch (err) {
-    res.status(500).json({ error: "Error del servidor", detalle: err.message });
+    res.status(500).json({ error: "Error del servidor", ...errDetalle(err) });
   }
 };
 
@@ -135,33 +139,34 @@ export const getRoles = async (req, res) => {
     const roles = await Empleado.getRoles();
     res.json(roles);
   } catch (err) {
-    res.status(500).json({ error: "Error del servidor", detalle: err.message });
+    res.status(500).json({ error: "Error del servidor", ...errDetalle(err) });
   }
 };
 
 export const updateEmpleadoAdmin = async (req, res) => {
-  const { id } = req.params;
+  const idNum = parseInt(req.params.id, 10);
+  if (isNaN(idNum) || idNum <= 0) return res.status(400).json({ error: "ID inválido" });
   const { num_empleado, nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, estatus, password_nueva } = req.body;
   try {
-    const empleado = await Empleado.findById(id);
+    const empleado = await Empleado.findById(idNum);
     if (!empleado) return res.status(404).json({ error: "Empleado no encontrado" });
-    const passwordHash = (password_nueva && password_nueva.trim()) ? await bcrypt.hash(password_nueva.trim(), 10) : undefined;
-    await Empleado.updateAdmin(id, {
+    const passwordHash = (password_nueva && password_nueva.trim()) ? await bcrypt.hash(password_nueva.trim(), 12) : undefined;
+    await Empleado.updateAdmin(idNum, {
       num_empleado:    num_empleado    || undefined,
       nombre:          nombre          || undefined,
       ap_paterno:      ap_paterno      || undefined,
       ap_materno:      ap_materno      !== undefined ? ap_materno : undefined,
       email:           email           || undefined,
-      id_rol:          id_rol          ? parseInt(id_rol)          : undefined,
-      id_departamento: id_departamento ? parseInt(id_departamento) : undefined,
+      id_rol:          id_rol          ? parseInt(id_rol, 10)          : undefined,
+      id_departamento: id_departamento ? parseInt(id_departamento, 10) : undefined,
       estatus:         estatus         || undefined,
       password:        passwordHash,
     });
-    const actualizado = await Empleado.findById(id);
+    const actualizado = await Empleado.findById(idNum);
     res.json({ ok: true, empleado: actualizado });
   } catch (err) {
-    if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "El correo o n\u00famero de empleado ya existe" });
-    res.status(500).json({ error: "Error del servidor", detalle: err.message });
+    if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "El correo o número de empleado ya existe" });
+    res.status(500).json({ error: "Error del servidor" });
   }
 };
 
@@ -169,14 +174,16 @@ export const crearEmpleado = async (req, res) => {
   const { num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento } = req.body;
   if (!num_empleado || !nombre || !ap_paterno || !email || !password || !id_rol || !id_departamento)
     return res.status(400).json({ error: "Todos los campos son requeridos" });
+  if (password.length < 8)
+    return res.status(400).json({ error: "La contraseña debe tener al menos 8 caracteres" });
   try {
-    const hash = await bcrypt.hash(password, 10);
+    const hash = await bcrypt.hash(password, 12);
     const id = await Empleado.crear({ num_empleado, nombre, ap_paterno, ap_materno: ap_materno || "", email, password: hash, id_rol: parseInt(id_rol), id_departamento: parseInt(id_departamento) });
     const nuevo = await Empleado.findById(id);
     res.status(201).json({ ok: true, empleado: nuevo });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "El correo o número de empleado ya existe" });
-    res.status(500).json({ error: "Error del servidor", detalle: err.message });
+    res.status(500).json({ error: "Error del servidor" });
   }
 };
 
@@ -188,18 +195,18 @@ export const getAllAccesos = async (req, res) => {
     const { rows, total } = await Empleado.getAllAccesos({ limit, offset });
     res.json({ data: rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
-    res.status(500).json({ error: "Error del servidor", detalle: err.message });
+    res.status(500).json({ error: "Error del servidor", ...errDetalle(err) });
   }
 };
 
 export const actualizarPerfil = async (req, res) => {
   const { id } = req.params;
-  // Verificar que el usuario solo pueda editar su propio perfil
-  if (parseInt(id) !== req.usuario.id_empleado)
+  if (parseInt(id, 10) !== req.usuario.id_empleado)
     return res.status(403).json({ error: "No puedes modificar el perfil de otro usuario" });
   const { nombre, ap_paterno, ap_materno, email, password_actual, password_nueva } = req.body;
+  const idNum = parseInt(id, 10);
   try {
-    const empleado = await Empleado.findById(id);
+    const empleado = await Empleado.findById(idNum);
     if (!empleado) return res.status(404).json({ error: "Usuario no encontrado" });
     if (password_nueva) {
       if (!password_actual)
@@ -208,9 +215,9 @@ export const actualizarPerfil = async (req, res) => {
       if (!coincide)
         return res.status(401).json({ error: "La contraseña actual es incorrecta" });
     }
-    const nuevoHash = password_nueva ? await bcrypt.hash(password_nueva, 10) : undefined;
-    await Empleado.updatePerfil(id, { nombre, ap_paterno, ap_materno, email, password: nuevoHash });
-    const actualizado = await Empleado.findById(id);
+    const nuevoHash = password_nueva ? await bcrypt.hash(password_nueva, 12) : undefined;
+    await Empleado.updatePerfil(idNum, { nombre, ap_paterno, ap_materno, email, password: nuevoHash });
+    const actualizado = await Empleado.findById(idNum);
     res.json({
       ok: true,
       usuario: {
@@ -228,6 +235,6 @@ export const actualizarPerfil = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ error: "Error del servidor", detalle: err.message });
+    res.status(500).json({ error: "Error del servidor", ...errDetalle(err) });
   }
 };

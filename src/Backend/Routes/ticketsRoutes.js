@@ -3,7 +3,7 @@ import rateLimit       from "express-rate-limit";
 import { csrfProtection } from "../Middlewares/security.js";
 import { requireAuth, requireAdmin } from "../Middlewares/authMiddleware.js";
 import { validate, schemaCrearTicket, schemaActualizarTicket, schemaCalificarTicket, schemaEditarTicket } from "../Middlewares/validate.js";
-import { crearTicket, getTicketsByEmpleado, getImagenesTicket, getAllTickets, actualizarTicket, calificarTicket, editarTicketUsuario, getMetricas, getAdmins, getReporte } from "../Controllers/ticketsController.js";
+import { crearTicket, getTicketsByEmpleado, getImagenesTicket, agregarImagenesTicket, eliminarImagenTicket, getAllTickets, actualizarTicket, calificarTicket, editarTicketUsuario, getMetricas, getAdmins, getReporte, getTicketById } from "../Controllers/ticketsController.js";
 import { uploadEvidencias } from "../Middlewares/uploadEvidencias.js";
 
 // Middleware: solo el propio empleado o un admin puede acceder
@@ -27,24 +27,26 @@ const ticketLimiter = rateLimit({
   message: { error: "Limite de tickets alcanzado. Intenta mas tarde." },
 });
 
-// Rutas de usuario autenticado
-router.get("/empleado/:id_empleado", requireOwnerOrAdmin, getTicketsByEmpleado);
-router.get("/:id_ticket/imagenes",   getImagenesTicket);
-router.patch("/:id_ticket/calificar", validate(schemaCalificarTicket),  calificarTicket);
-router.put("/:id_ticket/editar",      validate(schemaEditarTicket),     editarTicketUsuario);
-router.post("/", ticketLimiter, (req, res, next) => {
-  uploadEvidencias.array("evidencias", 8)(req, res, (err) => {
-    if (err) return res.status(400).json({ error: err.message });
-    next();
-  });
-}, validate(schemaCrearTicket), crearTicket);
+// ── Rutas exclusivas de admin ─────────────────────────────────
+// IMPORTANTE: registradas ANTES de las rutas dinámicas /:id_ticket
+// para evitar que Express intercepte "/metricas", "/admins", etc.
+// como si fueran un id_ticket.
+router.get("/metricas", requireAdmin, getMetricas);
+router.get("/admins",   requireAdmin, getAdmins);
+router.get("/reporte",  requireAdmin, getReporte);
+router.get("/",         requireAdmin, getAllTickets);
+router.patch("/:id_ticket", requireAdmin, validate(schemaActualizarTicket), actualizarTicket);
 
-// Rutas exclusivas de admin
-router.use(requireAdmin);
-router.get("/metricas", getMetricas);
-router.get("/admins",   getAdmins);
-router.get("/reporte",  getReporte);
-router.get("/",         getAllTickets);
-router.patch("/:id_ticket", validate(schemaActualizarTicket), actualizarTicket);
+// ── Ruta de ticket individual (admin o dueño) ─────────────────
+router.get("/:id_ticket", getTicketById);
+
+// ── Rutas de usuario autenticado ──────────────────────────────
+router.get("/empleado/:id_empleado", requireOwnerOrAdmin, getTicketsByEmpleado);
+router.get("/:id_ticket/imagenes",                        getImagenesTicket);
+router.post("/:id_ticket/imagenes", ...uploadEvidencias.array("evidencias", 8), agregarImagenesTicket);
+router.delete("/:id_ticket/imagenes/:nombre",              eliminarImagenTicket);
+router.patch("/:id_ticket/calificar", validate(schemaCalificarTicket), calificarTicket);
+router.put("/:id_ticket/editar",      validate(schemaEditarTicket),    editarTicketUsuario);
+router.post("/", ticketLimiter, ...uploadEvidencias.array("evidencias", 8), validate(schemaCrearTicket), crearTicket);
 
 export default router;

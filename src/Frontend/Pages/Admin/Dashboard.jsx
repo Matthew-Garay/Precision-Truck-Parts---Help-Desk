@@ -5,21 +5,23 @@ import {
   LogOut, Menu, X, Sun, Moon
 } from "lucide-react";
 import VistaTicket from "./VistaTicket";
+import VistaSolicitud from "./VistaSolicitud";
 import HistorialIncidencias from "./HistorialIncidencias";
 import Inventario from "./Inventario";
 import Personal from "./Personal";
 import ManualesIncidencias from "./ManualesIncidencias";
 import ConfiguracionPerfil from "./ConfiguracionPerfil";
-import { apiFetch } from "../../Config/api";
-import { LIGHT, DARK } from "../../Config/theme.jsx";
+import HistorialInsumos from "./HistorialInsumos";
+import { apiFetch, API_ROUTES } from "../../Config/api";
+import { useTheme } from "../../Config/themeContext.js";
 import { SeccionEstadisticas, SeccionMetricas, KanbanBoard, PanelDerecho } from "../../Components/DashboardShared.jsx";
 import CampanaNotificaciones from "../../Components/CampanaNotificaciones.jsx";
-import { ToastProvider, useToast } from "../../Components/Feedback.jsx";
-import { useSocket } from "../../Config/useSocket.js";
+import { useTicketNotification } from "../../Config/useTicketNotification.js";
 
 const NAV = [
   { icon: LayoutDashboard, label: "Dashboard",               path: "/admin/dashboard"      },
   { icon: FileText,        label: "Historial de Incidencias", path: "/admin/historial"      },
+  { icon: Package,         label: "Historial de Insumos",    path: "/admin/insumos"        },
   { icon: Package,         label: "Inventario",              path: "/admin/inventario"     },
   { icon: Users,           label: "Personal",                path: "/admin/personal"       },
   { icon: BookOpen,        label: "Manuales de Incidencias",  path: "/admin/manuales"       },
@@ -29,13 +31,12 @@ const NAV = [
 function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
   return (
     <div className="relative flex flex-col h-full">
-      <div className="flex flex-col items-center justify-center py-4 px-4"
-        style={{ borderBottom: `1px solid rgba(255,255,255,0.06)` }}>
-        <button onClick={() => onNavigate("/admin/dashboard")} className="focus:outline-none"
-          style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-          <img src="/assets/img/log .png" alt="PTP"
-            className="object-contain transition-opacity hover:opacity-80"
-            style={{ height: "80px", width: "auto", maxWidth: "190px" }} />
+      <div className="flex flex-col items-center justify-center px-4"
+        style={{ borderBottom: `1px solid rgba(255,255,255,0.06)`, paddingTop: "clamp(8px,1.5vh,16px)", paddingBottom: "clamp(8px,1.5vh,16px)" }}>
+        <button onClick={() => onNavigate("/admin/dashboard")} className="focus:outline-none" style={{ cursor: "pointer" }}>
+          <img src="/assets/img/logo.png" alt="PTP"
+            className="object-contain"
+            style={{ height: "var(--sidebar-logo-h)", width: "auto", maxWidth: "180px", mixBlendMode: "screen" }} />
         </button>
       </div>
       {onClose && (
@@ -46,21 +47,23 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
           <X size={17} />
         </button>
       )}
-      <p className="px-5 pt-5 pb-2 text-[9px] font-bold uppercase tracking-[0.18em]"
-        style={{ color: "rgba(255,255,255,0.2)" }}>Panel Administrador</p>
+      <p className="px-5 pb-2 font-bold uppercase tracking-[0.18em]"
+        style={{ color: "rgba(255,255,255,0.2)", fontSize: "var(--fs-label)", paddingTop: "clamp(8px,1.5vh,20px)" }}>Panel Administrador</p>
       <nav className="flex flex-col gap-0.5 flex-1 px-3">
         {NAV.map((item, i) => (
           <button key={i} onClick={() => { onNavigate(item.path); onClose?.(); }}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full text-left"
+            className="flex items-center gap-3 px-3 rounded-xl transition-all w-full text-left"
             style={{
               background: activo === i ? `linear-gradient(135deg, ${T.orange}, #d97400)` : "transparent",
               color: activo === i ? "#fff" : T.sidebarText,
               boxShadow: activo === i ? `0 4px 12px rgba(244,121,32,0.35)` : "none",
+              paddingTop: "clamp(6px,0.9vh,10px)",
+              paddingBottom: "clamp(6px,0.9vh,10px)",
             }}
             onMouseEnter={e => { if (activo !== i) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#fff"; }}}
             onMouseLeave={e => { if (activo !== i) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.sidebarText; }}}>
-            <item.icon size={16} strokeWidth={activo === i ? 2.5 : 1.8} style={{ flexShrink: 0 }} />
-            <span style={{ fontSize: "12.5px", fontWeight: activo === i ? 700 : 500 }}>{item.label}</span>
+            <item.icon size={16} strokeWidth={activo === i ? 2.5 : 1.8} style={{ flexShrink: 0, width: "var(--icon-nav)", height: "var(--icon-nav)" }} />
+            <span style={{ fontSize: "var(--fs-nav)", fontWeight: activo === i ? 700 : 500 }}>{item.label}</span>
           </button>
         ))}
       </nav>
@@ -79,91 +82,107 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
 }
 
 
-function DashboardContent({ T, usuario, tickets = [], metricas, onVerTicket }) {
+function DashboardContent({ T, usuario, tickets = [], solicitudes = [], metricas, onVerTicket, onVerSolicitud }) {
   return (
-    <div className="overflow-y-auto" style={{ background: T.bg }}>
-      <div className="px-3 pt-3 md:px-4 md:pt-4">
+        <div className="flex flex-col h-full overflow-hidden" style={{ background: T.bg }}>
+      <div className="flex-shrink-0" style={{ padding: "var(--content-pt) var(--content-px) 0" }}>
         <SeccionMetricas T={T} metricas={metricas} />
-        <SeccionEstadisticas T={T} tickets={tickets} />
+        <SeccionEstadisticas T={T} tickets={tickets} solicitudes={solicitudes} />
       </div>
-      <div className="px-3 pt-2 pb-4 md:px-4">
-        <KanbanBoard T={T} tickets={tickets} onVerTicket={onVerTicket} inline />
+      <div className="flex-1 min-h-0 overflow-hidden" style={{ padding: "8px var(--content-px) 12px" }}>
+        <KanbanBoard T={T} tickets={tickets} solicitudes={solicitudes} onVerTicket={onVerTicket} onVerSolicitud={onVerSolicitud} inline />
       </div>
     </div>
   );
 }
 
 function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
-  const [dark, setDark]               = useState(() => localStorage.getItem("theme") === "dark");
-  const toggleDark = (v) => { setDark(v); localStorage.setItem("theme", v ? "dark" : "light"); };
+  const { dark, toggleDark, T } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tickets, setTickets]         = useState([]);
+  const [solicitudes, setSolicitudes]  = useState([]);
   const [metricas, setMetricas]        = useState(null);
   const [ticketVer, setTicketVer]     = useState(null);
+  const [solicitudVer, setSolicitudVer] = useState(null);
   const [errorRed, setErrorRed]       = useState(false);
   const [ultimaActualizacion, setUltimaActualizacion] = useState(null);
-  const [notificaciones, setNotificaciones] = useState([]);
-
-  const toast = useToast();
-
-  const agregarNotif = useCallback((notif) => {
-    setNotificaciones(prev => [{ id: Date.now(), ts: Date.now(), ...notif }, ...prev].slice(0, 20));
-  }, []);
-
   const recargarHistorialRef = useRef(null);
-  const cargarTicketsRef = useRef(null);
-  const cargarMetricasRef = useRef(null);
+  const cargarTicketsRef      = useRef(null);
+  const cargarMetricasRef     = useRef(null);
+  const cargarSolicitudesRef  = useRef(null);
+  const ticketsRef          = useRef(tickets);
+  ticketsRef.current        = tickets;
+  const solicitudesRef      = useRef(solicitudes);
+  solicitudesRef.current    = solicitudes;
 
-  useSocket(usuario?.id_empleado, useCallback(({ tipo, data }) => {
-    agregarNotif({ tipo, data });
-    if (tipo === "ticket:nuevo" || tipo === "solicitud:nueva" || tipo === "ticket:calificado" || tipo === "tickets:vencidos" || tipo === "ticket:sla_warning" || tipo === "ticket:actualizado") {
-      cargarTicketsRef.current?.();
-      cargarMetricasRef.current?.();
-      recargarHistorialRef.current?.();
-    }
-  }, [agregarNotif]));
+  const { notificaciones, onDismiss, onDismissAll, onClickNotif } =
+    useTicketNotification({
+      usuario,
+      onNavegar: useCallback((tipo, data) => {
+        const RECARGA = new Set(["ticket:nuevo","solicitud:nueva","ticket:calificado","tickets:vencidos","ticket:sla_warning","ticket:actualizado","ticket:en_atencion"]);
+        if (RECARGA.has(tipo)) {
+          cargarTicketsRef.current?.();
+          cargarMetricasRef.current?.();
+          recargarHistorialRef.current?.();
+          if (tipo === "solicitud:nueva" || tipo === "solicitud:actualizada") cargarSolicitudesRef.current?.();
+        }
+        if (["ticket:nuevo","ticket:calificado","ticket:sla_warning","ticket:actualizado","ticket:en_atencion"].includes(tipo) && data?.id_ticket) {
+          // Buscar en memoria primero; si no, ir directo al API
+          const enMemoria = ticketsRef.current.find(tk => tk.id_ticket === data.id_ticket);
+          if (enMemoria) {
+            setTicketVer(enMemoria);
+          } else {
+            apiFetch(API_ROUTES.TICKET(data.id_ticket))
+              .then(r => r.ok ? r.json() : null)
+              .then(t => { if (t?.id_ticket) setTicketVer(t); })
+              .catch(() => {});
+          }
+        }
+        if (tipo === "solicitud:nueva" && data?.id_solicitud) {
+          const s = solicitudesRef.current.find(s => s.id_solicitud === data.id_solicitud);
+          if (s) setSolicitudVer(s); else cargarSolicitudesRef.current?.();
+        }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []),
+    });
 
   const navigate     = useNavigate();
   const location     = useLocation();
   const activoIdx    = NAV.findIndex(n => n.path === location.pathname);
   const activo       = activoIdx === -1 ? 0 : activoIdx;
-  const onNavigate   = (path) => { setTicketVer(null); navigate(path); };
+  const onNavigate   = (path) => { setTicketVer(null); setSolicitudVer(null); navigate(path); };
 
   useEffect(() => {
-    setTicketVer(null);
+    setTicketVer(null); setSolicitudVer(null);
   }, [location.pathname]);
 
-  const T = dark ? DARK : LIGHT;
   const nombreCompleto = [usuario.nombre, usuario.ap_paterno, usuario.ap_materno].filter(Boolean).join(" ") || "-";
   const departamento   = usuario.departamento || "-";
 
   const ticketVerRef = useRef(null);
   ticketVerRef.current = ticketVer;
-  const prevTicketsCountRef = useRef(null);
 
   const cargarTickets = useCallback(() =>
-    apiFetch(`/api/tickets`)
+    apiFetch(`/api/tickets?limit=500&page=1`)
       .then(r => r.json())
       .then(data => {
         setErrorRed(false);
         setUltimaActualizacion(new Date());
         const lista = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
-        setTickets(prev => {
-          const prevCount = prevTicketsCountRef.current;
-          if (prevCount !== null && lista.length > prevCount) {
-            const nuevos = lista.length - prevCount;
-            toast.info(`${nuevos} ticket${nuevos > 1 ? "s" : ""} nuevo${nuevos > 1 ? "s" : ""}`, { title: "Tickets actualizados" });
-          }
-          prevTicketsCountRef.current = lista.length;
-          return JSON.stringify(prev) === JSON.stringify(lista) ? prev : lista;
-        });
+        setTickets(prev => JSON.stringify(prev) === JSON.stringify(lista) ? prev : lista);
         if (ticketVerRef.current) {
           const actualizado = lista.find(t => t.id_ticket === ticketVerRef.current.id_ticket);
           if (actualizado) setTicketVer(actualizado);
         }
       })
       .catch((err) => { console.error("[Admin] Error cargando tickets:", err.message); setErrorRed(true); })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  , []);
+
+  const cargarSolicitudes = useCallback(() =>
+    apiFetch(API_ROUTES.SOLICITUDES_PEND)
+      .then(r => r.json())
+      .then(data => setSolicitudes(Array.isArray(data) ? data : []))
+      .catch(err => console.error("[Admin] Error cargando solicitudes pendientes:", err.message))
   , []);
 
   const cargarMetricas = useCallback(() =>
@@ -174,23 +193,27 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
   , []);
 
   useEffect(() => {
-    cargarTicketsRef.current  = cargarTickets;
-    cargarMetricasRef.current = cargarMetricas;
+    cargarTicketsRef.current     = cargarTickets;
+    cargarMetricasRef.current    = cargarMetricas;
+    cargarSolicitudesRef.current = cargarSolicitudes;
     cargarTickets();
     cargarMetricas();
-    const id = setInterval(() => { cargarTickets(); cargarMetricas(); }, 30000);
-    return () => clearInterval(id);
-  }, [cargarTickets, cargarMetricas]);
+    cargarSolicitudes();
+  }, [cargarTickets, cargarMetricas, cargarSolicitudes]);
 
-  const tituloHeader = ticketVer ? ticketVer.folio_ticket : (NAV[activo]?.label || 'Dashboard');
+  const tituloHeader = ticketVer
+    ? ticketVer.folio_ticket
+    : solicitudVer
+      ? solicitudVer.folio_solicitud
+      : (NAV[activo]?.label || 'Dashboard');
 
   return (
     <div className="flex min-h-screen w-full"
       style={{ fontFamily: "'Inter','Segoe UI',sans-serif", background: T.bg }}>
 
       {/* Sidebar desktop */}
-      <aside className="hidden md:flex flex-shrink-0 flex-col sticky top-0 h-screen"
-        style={{ width: "220px", background: "#000000", boxShadow: "2px 0 12px rgba(0,0,0,0.15)" }}>
+      <aside className="hidden lg:flex flex-shrink-0 flex-col sticky top-0 h-screen"
+        style={{ width: "var(--sidebar-w)", background: "#000000", boxShadow: "2px 0 12px rgba(0,0,0,0.15)" }}>
         <SidebarContent T={T} activo={activo} onNavigate={onNavigate} onLogout={onLogout} />
       </aside>
 
@@ -208,8 +231,8 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
       {/* Contenido principal */}
       <div className="flex flex-col flex-1 min-w-0">
 
-        <header className="sticky top-0 z-30 flex items-center justify-between px-3 md:px-5 py-3"
-          style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, minHeight: "56px", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
+        <header className="sticky top-0 z-30 flex items-center justify-between px-3 md:px-5"
+          style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, height: "var(--header-h)", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
           {errorRed && (
             <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 py-1 text-xs font-bold"
               style={{ background: "#dc2626", color: "#fff" }}>
@@ -256,33 +279,31 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
             <CampanaNotificaciones
               T={T}
               notificaciones={notificaciones}
-              onDismiss={id => setNotificaciones(p => p.filter(n => n.id !== id))}
-              onDismissAll={() => setNotificaciones([])}
-              onClickNotif={(n) => {
-                if (n.tipo === "ticket:nuevo" || n.tipo === "ticket:calificado" || n.tipo === "ticket:sla_warning") {
-                  const t = tickets.find(tk => tk.id_ticket === n.data.id_ticket);
-                  if (t) setTicketVer(t);
-                  else cargarTickets();
-                }
-              }}
+              onDismiss={onDismiss}
+              onDismissAll={onDismissAll}
+              onClickNotif={onClickNotif}
             />
           </div>
         </header>
 
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-hidden">
           {ticketVer ? (
             <VistaTicket T={T} ticket={ticketVer} onVolver={() => { setTicketVer(null); cargarTickets(); }} esAdmin usuario={usuario} />
+          ) : solicitudVer ? (
+            <VistaSolicitud T={T} id_solicitud={solicitudVer.id_solicitud} esAdmin onBack={() => setSolicitudVer(null)} />
           ) : activo === 0 ? (
-            <DashboardContent T={T} usuario={usuario} tickets={tickets} metricas={metricas} onVerTicket={setTicketVer} />
+            <DashboardContent T={T} usuario={usuario} tickets={tickets} solicitudes={solicitudes} metricas={metricas} onVerTicket={setTicketVer} onVerSolicitud={setSolicitudVer} />
           ) : activo === 1 ? (
             <HistorialIncidencias T={T} usuario={usuario} onVerTicket={setTicketVer} onRecargarRef={recargarHistorialRef} />
           ) : activo === 2 ? (
-            <Inventario T={T} />
+            <HistorialInsumos T={T} onVerSolicitud={setSolicitudVer} />
           ) : activo === 3 ? (
-            <Personal T={T} />
+            <Inventario T={T} />
           ) : activo === 4 ? (
-            <ManualesIncidencias T={T} />
+            <Personal T={T} />
           ) : activo === 5 ? (
+            <ManualesIncidencias T={T} />
+          ) : activo === 6 ? (
             <ConfiguracionPerfil T={T} usuario={usuario} onUsuarioActualizado={onUsuarioActualizado} />
           ) : (
             <div className="flex items-center justify-center flex-col gap-3 py-20">
@@ -299,18 +320,15 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
 
       {/* Panel derecho solo en xl+ */}
       <PanelDerecho T={T} nombre={nombreCompleto} departamento={departamento}
-        foto={usuario.foto ? `/fotos/${usuario.foto.split("/").pop()}` : null}
-        tickets={tickets} etiquetaRol="Administrador" />
+        foto={usuario.foto ? `/storage/${usuario.foto}` : null}
+        tickets={tickets}
+        etiquetaRol="Activo" />
     </div>
   );
 }
 
 export default function AdminDashboard({ usuario = {}, onLogout, onUsuarioActualizado }) {
-  const [dark] = useState(() => localStorage.getItem("theme") === "dark");
-  const T = dark ? DARK : LIGHT;
   return (
-    <ToastProvider T={T}>
-      <AdminDashboardInner usuario={usuario} onLogout={onLogout} onUsuarioActualizado={onUsuarioActualizado} />
-    </ToastProvider>
+    <AdminDashboardInner usuario={usuario} onLogout={onLogout} onUsuarioActualizado={onUsuarioActualizado} />
   );
 }

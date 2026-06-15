@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { X, CheckCircle2, AlertTriangle, XCircle, Info, AlertCircle, Loader2 } from "lucide-react";
+import { ToastCtx } from "./toastContext.js";
+export { useToast } from "./useToast.js";
 
 // ================================================================
 //  FEEDBACK SYSTEM — Corporativo / Industrial
@@ -20,34 +22,35 @@ const CSS = `
 ._fb_spin     { animation: _fb_spin 0.7s linear infinite }
 `;
 
-function injectCSS() {
-  if (document.getElementById("__fb_css")) return;
+// Injected once at module load, outside React's render cycle
+if (typeof document !== "undefined" && !document.getElementById("__fb_css")) {
   const s = document.createElement("style");
   s.id = "__fb_css";
   s.textContent = CSS;
   document.head.appendChild(s);
 }
+function injectCSS() { /* noop — CSS already injected at module load */ }
 
 // ── Tokens internos ─────────────────────────────────────────────
-// Se derivan del tema T para no hardcodear colores
 function tk(T) {
   const d = T.isDark;
   return {
     // Superficies
-    bg:         d ? "#161B22"              : "#FFFFFF",
-    bgHeader:   d ? "#1C2230"              : "#F9FAFB",
-    bgFooter:   d ? "#1C2230"              : "#F9FAFB",
+    bg:         d ? "#161B22"               : "#FFFFFF",
+    bgHeader:   d ? "#0D1117"               : "#0F172A",  // Navy corporativo en header
+    bgFooter:   d ? "#1C2230"               : "#F8FAFC",
+    headerText: "#FFFFFF",
     // Bordes
-    border:     d ? "#21283A"              : "#E5E7EB",
-    borderBtn:  d ? "#30363D"              : "#D1D5DB",
+    border:     d ? "rgba(255,255,255,0.08)" : "#E2E8F0",
+    borderBtn:  d ? "rgba(255,255,255,0.14)" : "#CBD5E1",
     // Texto
-    text:       d ? "#E6EDF3"              : "#111827",
-    textSub:    d ? "#8B949E"              : "#374151",
-    textFaint:  d ? "#484F58"              : "#9CA3AF",
+    text:       d ? "#E6EDF3"               : "#334155",
+    textSub:    d ? "#8B949E"               : "#475569",
+    textFaint:  d ? "#484F58"               : "#94A3B8",
     // Botón ghost hover
-    ghostHover: d ? "rgba(255,255,255,0.06)" : "#F3F4F6",
-    // Overlay
-    overlay:    "rgba(0,0,0,0.45)",
+    ghostHover: d ? "rgba(255,255,255,0.06)" : "#F1F5F9",
+    // Overlay grisáceo — más sutil que negro puro
+    overlay:    d ? "rgba(0,0,0,0.60)"       : "rgba(15,23,42,0.50)",
   };
 }
 
@@ -72,7 +75,7 @@ function Btn({ label, onClick, disabled, variant = "ghost", color, icon: Icon, T
 
   const styles = {
     primary: {
-      background: hov && !disabled ? shiftBrightness(color || T.orange, -12) : (color || T.orange),
+      background: hov && !disabled ? shiftBrightness(color || T.orange, -20) : (color || T.orange),
       borderColor: "transparent",
       color: "#FFFFFF",
       fontWeight: 600,
@@ -87,6 +90,7 @@ function Btn({ label, onClick, disabled, variant = "ghost", color, icon: Icon, T
       borderColor: "transparent",
       color: "#FFFFFF",
       fontWeight: 600,
+      letterSpacing: "0.01em",
     },
   };
 
@@ -150,8 +154,7 @@ export function Modal({
     const fn = (e) => { if (e.key === "Escape") attemptClose(); };
     document.addEventListener("keydown", fn);
     return () => document.removeEventListener("keydown", fn);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, dirty]);
+  }, [open, dirty, onClose]); // attemptClose depende de dirty y onClose
 
   if (!open) return null;
 
@@ -181,33 +184,32 @@ export function Modal({
           width: "95%", maxWidth: maxW,
           background: s.bg,
           border: `1px solid ${s.border}`,
-          borderRadius: "4px",
+          borderRadius: "4px",          // enterprise: esquinas contenidas
           display: "flex", flexDirection: "column",
           maxHeight: "88vh",
           overflow: "hidden",
-          // Sombra minima — solo para separar del overlay, no decorativa
-          boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+          // Sombra funcional mínima — separa del overlay, no decora
+          boxShadow: "0 4px 16px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.08)",
         }}
       >
-        {/* ── HEADER ─────────────────────────────────────────── */}
+        {/* ── HEADER — Navy corporativo ───────────────────────── */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "0 20px",
           height: "48px",
-          borderBottom: `1px solid ${s.border}`,
           background: s.bgHeader,
           flexShrink: 0,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            {/* Acento de color — 2px, sin border-radius */}
+            {/* Barra de acento: naranja (#F7941E) estándar, rojo si destructivo */}
             <span style={{
-              display: "block", width: "2px", height: "16px",
+              display: "block", width: "3px", height: "16px",
               background: danger ? "#DC2626" : T.orange,
               borderRadius: 0, flexShrink: 0,
             }} />
             <h2 id="_fb_modal_title" style={{
               margin: 0, fontSize: "14px", fontWeight: 600,
-              color: s.text, letterSpacing: "0",
+              color: s.headerText, letterSpacing: "-0.01em",
             }}>
               {title}
             </h2>
@@ -218,17 +220,17 @@ export function Modal({
             onClick={attemptClose}
             aria-label="Cerrar"
             style={{
-              width: "44px", height: "44px", marginRight: "-12px",
+              width: "36px", height: "36px",
               display: "flex", alignItems: "center", justifyContent: "center",
               background: "transparent", border: "none",
               cursor: "pointer", borderRadius: "4px",
-              color: s.textFaint,
-              transition: "background 0.15s ease-in-out, color 0.15s ease-in-out",
+              color: "rgba(255,255,255,0.50)",
+              transition: "background 0.15s, color 0.15s",
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = s.ghostHover; e.currentTarget.style.color = s.text; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = s.textFaint; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#fff"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,0.50)"; }}
           >
-            <X size={15} strokeWidth={1.8} />
+            <X size={14} strokeWidth={2} />
           </button>
         </div>
 
@@ -294,7 +296,7 @@ export function Modal({
               boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
             }}
           >
-            {/* Header */}
+            {/* Header — también navy para consistencia */}
             <div style={{
               display: "flex", alignItems: "center", gap: "8px",
               padding: "0 16px", height: "44px",
@@ -302,7 +304,7 @@ export function Modal({
               background: s.bgHeader,
             }}>
               <AlertCircle size={14} style={{ color: T.orange, flexShrink: 0 }} />
-              <span style={{ fontSize: "13px", fontWeight: 600, color: s.text }}>
+              <span style={{ fontSize: "13px", fontWeight: 600, color: s.headerText }}>
                 Cambios sin guardar
               </span>
             </div>
@@ -353,8 +355,6 @@ export function ModalConfirm({ T, open, onClose, onConfirm, title, message, load
 // ================================================================
 //  TOAST SYSTEM
 // ================================================================
-
-const ToastCtx = createContext(null);
 
 // Configuracion semantica de cada tipo
 const TOAST_CFG = {
@@ -523,12 +523,6 @@ export function ToastProvider({ children, T }) {
       </div>
     </ToastCtx.Provider>
   );
-}
-
-export function useToast() {
-  const ctx = useContext(ToastCtx);
-  if (!ctx) throw new Error("useToast debe usarse dentro de <ToastProvider>");
-  return ctx;
 }
 
 // ================================================================

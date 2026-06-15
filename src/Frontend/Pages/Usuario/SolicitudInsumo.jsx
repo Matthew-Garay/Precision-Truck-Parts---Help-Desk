@@ -1,399 +1,637 @@
-import { useState, useEffect } from "react";
-import { ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle2, X, Search, Tag, AlertCircle } from "lucide-react";
-import { apiFetch } from "../../Config/api";
+import { useState, useEffect, useCallback } from "react";
+import { Plus, Trash2, Package, AlertCircle, CheckCircle2, X, Search, Tag, Ticket, ChevronDown, Clock, Loader2, XCircle, ArrowLeft, History } from "lucide-react";
+import { apiFetch, API_ROUTES } from "../../Config/api";
+import StockBar from "../../Components/StockBar";
+import VistaSolicitud from "./VistaSolicitud";
 
-const PRIORIDADES = [
-  { val: "Urgente", color: "#dc2626", bg: "rgba(220,38,38,0.12)",  border: "rgba(220,38,38,0.3)"  },
-  { val: "Alta",    color: "#ea580c", bg: "rgba(234,88,12,0.12)",  border: "rgba(234,88,12,0.3)"  },
-  { val: "Media",   color: "#ca8a04", bg: "rgba(202,138,4,0.12)",  border: "rgba(202,138,4,0.3)"  },
-  { val: "Baja",    color: "#16a34a", bg: "rgba(22,163,74,0.12)",  border: "rgba(22,163,74,0.3)"  },
+// ── Constantes ──────────────────────────────────────────────────
+const PRIORITY_OPTIONS = [
+  { value: "Urgente", label: "Urgente", color: "#dc2626", bg: "rgba(220,38,38,0.10)", border: "rgba(220,38,38,0.30)" },
+  { value: "Alta",    label: "Alta",    color: "#ea580c", bg: "rgba(234,88,12,0.10)",  border: "rgba(234,88,12,0.30)"  },
+  { value: "Media",   label: "Media",   color: "#d97706", bg: "rgba(217,119,6,0.10)",  border: "rgba(217,119,6,0.30)"  },
+  { value: "Baja",    label: "Baja",    color: "#6b7280", bg: "rgba(107,114,128,0.08)",border: "rgba(107,114,128,0.25)"},
 ];
 
-function TarjetaInsumo({ ins, cantidad, onAgregar, onQuitar, T, isDark }) {
-  const enCarrito = cantidad > 0;
-  const stockColor = ins.stock <= 3 ? "#ca8a04" : "#16a34a";
+const STATUS_BADGE = {
+  Disponible: { label: "Disponible", bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0" },
+  Bajo:       { label: "Stock Bajo", bg: "#fffbeb", color: "#d97706", border: "#fde68a" },
+  Agotado:    { label: "Agotado",    bg: "#fef2f2", color: "#dc2626", border: "#fecaca" },
+};
+
+function getStockStatus(stock) {
+  if (stock === 0) return "Agotado";
+  if (stock < 5)  return "Bajo";
+  return "Disponible";
+}
+
+// ── Sub-componente: fila de la tabla ────────────────────────────
+function SupplyRow({ supply, isAdded, onAdd, animatingId }) {
+  const status   = getStockStatus(supply.stock);
+  const badge    = STATUS_BADGE[status];
+  const isExhausted = supply.stock === 0;
+  const isAnimating = animatingId === supply.id_insumo;
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:translate-y-[-2px]"
-      style={{
-        background: isDark ? "#141720" : T.surface,
-        border: `1px solid ${enCarrito ? T.orange : (isDark ? "rgba(255,255,255,0.07)" : T.border)}`,
-        boxShadow: enCarrito
-          ? `0 0 0 2px rgba(244,121,32,0.2), ${isDark ? "0 4px 16px rgba(0,0,0,0.4)" : "0 4px 16px rgba(244,121,32,0.12)"}`
-          : isDark ? "0 2px 10px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.06)",
-      }}>
-
-      {/* Barra top */}
-      <div style={{
-        height: "3px",
-        background: enCarrito
-          ? `linear-gradient(90deg, ${T.orange}, #ffb347)`
-          : (isDark ? "rgba(255,255,255,0.06)" : "#e2e8f0"),
-      }} />
-
-      <div className="p-3.5 flex flex-col gap-3 flex-1">
-
-        {/* Icono + nombre */}
-        <div className="flex items-start gap-2.5">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: enCarrito ? "rgba(244,121,32,0.15)" : (isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt), border: `1px solid ${enCarrito ? "rgba(244,121,32,0.3)" : (isDark ? "rgba(255,255,255,0.08)" : T.border)}` }}>
-            <Package size={16} style={{ color: enCarrito ? T.orange : T.textFaint }} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[12px] font-bold leading-tight" style={{ color: T.text }}>{ins.nombre}</p>
-            {(ins.marca || ins.modelo) && (
-              <p className="text-[10px] mt-0.5 truncate" style={{ color: T.textMuted }}>
-                {[ins.marca, ins.modelo].filter(Boolean).join(" · ")}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Categoría + stock */}
-        <div className="flex items-center justify-between gap-2">
-          {ins.nombre_categoria && (
-            <div className="flex items-center gap-1 min-w-0">
-              <Tag size={9} style={{ color: T.textFaint, flexShrink: 0 }} />
-              <span className="text-[9px] font-semibold truncate px-1.5 py-0.5 rounded-full"
-                style={{ background: isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}` }}>
-                {ins.nombre_categoria}
-              </span>
-            </div>
-          )}
-          <span className="text-[10px] font-black flex-shrink-0" style={{ color: stockColor }}>
-            {ins.stock} en stock
+    <tr
+      className={`border-b border-slate-100 transition-colors hover:bg-slate-50 ${isAdded ? "bg-blue-50/40" : ""}`}
+    >
+      {/* ID / Nombre */}
+      <td className="px-4 py-3">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[11px] font-mono text-slate-400 select-all">
+            #{String(supply.id_insumo).padStart(4, "0")}
           </span>
-        </div>
-
-        {/* Controles */}
-        <div className="mt-auto">
-          {enCarrito ? (
-            <div className="flex items-center justify-between px-1">
-              <button onClick={() => onQuitar(ins.id_insumo)}
-                className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:brightness-110 active:scale-95"
-                style={{ background: isDark ? "rgba(255,255,255,0.07)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : T.border}` }}>
-                <Minus size={12} />
-              </button>
-              <div className="flex flex-col items-center">
-                <span className="text-[18px] font-black leading-none" style={{ color: T.orange }}>{cantidad}</span>
-                <span className="text-[8px] font-semibold" style={{ color: T.textFaint }}>en carrito</span>
-              </div>
-              <button onClick={() => onAgregar(ins.id_insumo)}
-                disabled={cantidad >= ins.stock}
-                className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ background: "rgba(244,121,32,0.15)", color: T.orange, border: "1px solid rgba(244,121,32,0.3)" }}>
-                <Plus size={12} />
-              </button>
-            </div>
-          ) : (
-            <button onClick={() => onAgregar(ins.id_insumo)}
-              className="w-full py-2 rounded-xl text-[11px] font-bold transition-all hover:brightness-110 active:scale-95 flex items-center justify-center gap-1.5"
-              style={{ background: "rgba(244,121,32,0.1)", color: T.orange, border: "1px solid rgba(244,121,32,0.2)" }}>
-              <Plus size={12} /> Agregar
-            </button>
+          <span className="text-[13px] font-semibold text-slate-800 leading-tight">
+            {supply.nombre}
+          </span>
+          {(supply.marca || supply.modelo) && (
+            <span className="text-[11px] text-slate-400">
+              {[supply.marca, supply.modelo].filter(Boolean).join(" · ")}
+            </span>
           )}
         </div>
+      </td>
+
+      {/* Categoría */}
+      <td className="px-4 py-3">
+        {supply.nombre_categoria ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+            <Tag size={9} />
+            {supply.nombre_categoria}
+          </span>
+        ) : (
+          <span className="text-slate-300 text-[11px]">—</span>
+        )}
+      </td>
+
+      {/* Stock con barra */}
+      <td className="px-4 py-3 w-36">
+        <StockBar stock={supply.stock} maxStock={100} />
+      </td>
+
+      {/* Estado */}
+      <td className="px-4 py-3">
+        <span
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border"
+          style={{ background: badge.bg, color: badge.color, borderColor: badge.border }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: badge.color }} />
+          {badge.label}
+        </span>
+      </td>
+
+      {/* Acción */}
+      <td className="px-4 py-3">
+        {isExhausted ? (
+          <button
+            disabled
+            className="px-3 py-1.5 rounded text-[11px] font-bold cursor-not-allowed bg-slate-100 text-slate-300 border border-slate-200"
+            style={{ filter: "grayscale(1)", opacity: 0.6 }}
+          >
+            Agotado
+          </button>
+        ) : isAdded ? (
+          <button
+            onClick={() => onAdd(supply.id_insumo)}
+            className="px-3 py-1.5 rounded text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors"
+          >
+            + Agregar otro
+          </button>
+        ) : (
+          <button
+            onClick={() => onAdd(supply.id_insumo)}
+            className={`px-3 py-1.5 rounded text-[11px] font-bold bg-blue-600 text-white border-0 hover:bg-blue-700 active:scale-95 transition-all ${isAnimating ? "animate-slide-out" : ""}`}
+          >
+            <span className="flex items-center gap-1">
+              <Plus size={11} /> Agregar
+            </span>
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+// ── Sub-componente: ítem en el panel lateral ────────────────────
+function RequestItem({ supply, quantity, onRemove }) {
+  return (
+    <div className="flex items-center gap-2 py-2.5 px-3 border-b border-slate-100 last:border-0 animate-slide-in">
+      <div className="w-7 h-7 rounded bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
+        <Package size={12} className="text-blue-500" />
       </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] font-semibold text-slate-700 truncate leading-tight">{supply.nombre}</p>
+        <p className="text-[10px] font-mono text-slate-400">
+          #{String(supply.id_insumo).padStart(4, "0")} · ×{quantity}
+        </p>
+      </div>
+      <button
+        onClick={() => onRemove(supply.id_insumo)}
+        className="w-6 h-6 rounded flex items-center justify-center bg-red-50 border border-red-100 text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors flex-shrink-0"
+      >
+        <Trash2 size={10} />
+      </button>
     </div>
   );
 }
 
-export default function SolicitudInsumo({ T, usuario = {} }) {
-  const isDark = T.isDark;
-  const [insumos,   setInsumos]   = useState([]);
-  const [carrito,   setCarrito]   = useState({});
-  const [prioridad, setPrioridad] = useState("");
-  const [loading,   setLoading]   = useState(true);
-  const [enviando,  setEnviando]  = useState(false);
-  const [modal,     setModal]     = useState(null);
-  const [busqueda,  setBusqueda]  = useState("");
-  const [catFiltro, setCatFiltro] = useState("Todos");
+// ── Estatus badge ────────────────────────────────────────────────
+const ESTATUS_META = {
+  "Pendiente":   { color: "#d97706", bg: "rgba(217,119,6,0.12)",  border: "rgba(217,119,6,0.3)",  icon: Clock        },
+  "En proceso":  { color: "#3b82f6", bg: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.3)", icon: Loader2      },
+  "Resuelto":    { color: "#16a34a", bg: "rgba(22,163,74,0.12)",  border: "rgba(22,163,74,0.3)",  icon: CheckCircle2 },
+  "No Resuelto": { color: "#dc2626", bg: "rgba(220,38,38,0.12)",  border: "rgba(220,38,38,0.3)",  icon: XCircle      },
+};
 
+function BadgeEstatus({ estatus }) {
+  const s = ESTATUS_META[estatus] || ESTATUS_META["Pendiente"];
+  const Icon = s.icon;
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold"
+      style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
+      <Icon size={9} className={estatus === "En proceso" ? "animate-spin" : ""} />
+      {estatus || "Pendiente"}
+    </span>
+  );
+}
+
+// ── Componente principal ─────────────────────────────────────────
+export default function SolicitudInsumo({ usuario = {}, T }) {
+  const [supplies,     setSupplies]     = useState([]);
+  const [requestCart,  setRequestCart]  = useState({}); // { id_insumo: quantity }
+  const [priority,     setPriority]     = useState("");
+  const [justification,setJustification]= useState("");
+  const [searchQuery,  setSearchQuery]  = useState("");
+  const [categoryFilter,setCategoryFilter]=useState("Todos");
+  const [isLoading,    setIsLoading]    = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resultModal,  setResultModal]  = useState(null);
+  const [animatingId,    setAnimatingId]    = useState(null);
+  const [tab,             setTab]             = useState("nueva"); // "nueva" | "historial"
+  const [solicitudes,     setSolicitudes]     = useState([]);
+  const [loadingSols,     setLoadingSols]     = useState(false);
+  const [solicitudVer,    setSolicitudVer]    = useState(null);
+
+  const requesterName = [usuario.nombre, usuario.ap_paterno, usuario.ap_materno]
+    .filter(Boolean).join(" ") || "—";
+
+  // ── Fetch insumos ──────────────────────────────────────────────
   useEffect(() => {
-    apiFetch(`/api/solicitudes/insumos`)
-      .then(r => r.json())
-      .then(d => setInsumos(Array.isArray(d) ? d : []))
-      .catch(() => setInsumos([]))
-      .finally(() => setLoading(false));
+    apiFetch(API_ROUTES.INSUMOS)
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(data => setSupplies(Array.isArray(data) ? data : []))
+      .catch(() => setSupplies([]))
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const categorias = ["Todos", ...Array.from(new Set(insumos.map(i => i.nombre_categoria).filter(Boolean)))];
+  // ── Fetch solicitudes del usuario ──────────────────────────────
+  const cargarSolicitudes = useCallback(() => {
+    if (!usuario?.id_empleado) return;
+    setLoadingSols(true);
+    apiFetch(API_ROUTES.SOLICITUDES_EMP(usuario.id_empleado))
+      .then(r => r.json())
+      .then(d => setSolicitudes(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setLoadingSols(false));
+  }, [usuario?.id_empleado]);
 
-  const filtrados = insumos.filter(i => {
-    if (catFiltro !== "Todos" && i.nombre_categoria !== catFiltro) return false;
-    if (!busqueda) return true;
-    const q = busqueda.toLowerCase();
-    return i.nombre?.toLowerCase().includes(q) || i.marca?.toLowerCase().includes(q);
+  useEffect(() => {
+    if (tab === "historial") cargarSolicitudes();
+  }, [tab, cargarSolicitudes]);
+
+  // ── Categorías únicas ──────────────────────────────────────────
+  const categories = ["Todos", ...Array.from(new Set(
+    supplies.map(s => s.nombre_categoria).filter(Boolean)
+  ))];
+
+  // ── Filtrado ───────────────────────────────────────────────────
+  const filteredSupplies = supplies.filter(s => {
+    if (categoryFilter !== "Todos" && s.nombre_categoria !== categoryFilter) return false;
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return s.nombre?.toLowerCase().includes(q) || s.marca?.toLowerCase().includes(q);
   });
 
-  const agregar = (id) => setCarrito(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
-  const quitar  = (id) => setCarrito(prev => {
-    const nueva = (prev[id] || 0) - 1;
-    if (nueva <= 0) { const c = { ...prev }; delete c[id]; return c; }
-    return { ...prev, [id]: nueva };
-  });
+  // ── Handlers ───────────────────────────────────────────────────
+  const handleAddSupply = useCallback((supplyId) => {
+    setAnimatingId(supplyId);
+    setTimeout(() => setAnimatingId(null), 400);
+    setRequestCart(prev => ({ ...prev, [supplyId]: (prev[supplyId] || 0) + 1 }));
+  }, []);
 
-  const totalItems = Object.values(carrito).reduce((s, n) => s + n, 0);
-  const itemsCarrito = Object.entries(carrito).map(([id, cant]) => ({
-    ins: insumos.find(i => i.id_insumo === parseInt(id)),
-    cant, id,
-  })).filter(x => x.ins);
+  const handleRemoveSupply = useCallback((supplyId) => {
+    setRequestCart(prev => {
+      const updated = { ...prev };
+      delete updated[supplyId];
+      return updated;
+    });
+  }, []);
 
-  const enviar = async () => {
-    if (!prioridad)             return setModal({ ok: false, msg: "Selecciona una prioridad" });
-    if (totalItems === 0)       return setModal({ ok: false, msg: "Agrega al menos un insumo al carrito" });
-    if (!usuario?.id_empleado)  return setModal({ ok: false, msg: "No se pudo identificar al usuario" });
+  // ── Derived state ──────────────────────────────────────────────
+  const cartEntries = Object.entries(requestCart)
+    .map(([id, qty]) => ({ supply: supplies.find(s => s.id_insumo === parseInt(id)), quantity: qty, id }))
+    .filter(e => e.supply);
 
-    setEnviando(true);
+  const totalItemCount   = Object.values(requestCart).reduce((sum, n) => sum + n, 0);
+  const isTicketValid    = cartEntries.length > 0 && justification.trim().length > 0;
+
+  // ── Envío ──────────────────────────────────────────────────────
+  const handleSubmitTicket = async () => {
+    if (!isTicketValid || !usuario?.id_empleado) return;
+
+    const payload = {
+      prioridad:   priority || "Media",
+      id_empleado: parseInt(usuario.id_empleado, 10),
+      insumos:     Object.entries(requestCart).map(([id, qty]) => ({
+        id_insumo: parseInt(id, 10),
+        cantidad:  parseInt(qty, 10),
+      })),
+    };
+
+    setIsSubmitting(true);
     try {
-      const res  = await apiFetch(`/api/solicitudes`, {
-        method: "POST",
-        body: {
-          prioridad,
-          id_empleado: usuario.id_empleado,
-          insumos: Object.entries(carrito).map(([id_insumo, cantidad]) => ({ id_insumo: parseInt(id_insumo), cantidad })),
-        },
-      });
+      const res  = await apiFetch(API_ROUTES.SOLICITUDES, { method: "POST", body: payload });
       const data = await res.json();
-      if (!res.ok) { setModal({ ok: false, msg: data.error || "Error al enviar" }); return; }
-      setModal({ ok: true, folio: data.folio_solicitud });
-      setCarrito({});
-      setPrioridad("");
+      if (!res.ok) {
+        const errorMsg = data.errores
+          ? data.errores.map(e => e.mensaje).join(", ")
+          : (data.error || "Error al crear el ticket");
+        setResultModal({ success: false, message: errorMsg });
+        return;
+      }
+      setResultModal({ success: true, folio: data.folio_solicitud });
+      setRequestCart({});
+      setPriority("");
+      setJustification("");
     } catch {
-      setModal({ ok: false, msg: "No se pudo conectar con el servidor" });
+      setResultModal({ success: false, message: "No se pudo conectar con el servidor" });
     } finally {
-      setEnviando(false);
+      setIsSubmitting(false);
     }
   };
 
-  const card = {
-    background: isDark ? "#141720" : T.surface,
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`,
-    boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.05)",
-  };
-  const hdr = {
-    background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt,
-    borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`,
-  };
+  const activePriority = PRIORITY_OPTIONS.find(p => p.value === priority);
+
+  // ── Vista detalle de solicitud ────────────────────────────────
+  if (solicitudVer) return (
+    <VistaSolicitud
+      T={T || { bg: "#f8fafc", surface: "#fff", border: "#e2e8f0", surfaceAlt: "#f8fafc",
+        text: "#1e293b", textMuted: "#64748b", textFaint: "#94a3b8", orange: "#f47920", isDark: false }}
+      id_solicitud={solicitudVer.id_solicitud}
+      onBack={() => setSolicitudVer(null)}
+    />
+  );
 
   return (
-    <div className="overflow-y-auto" style={{ background: T.bg }}>
-      <div className="max-w-[1300px] mx-auto px-4 py-5 flex flex-col gap-4">
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#f8fafc", overflow: "hidden" }}>
+      <div style={{ maxWidth: "1400px", width: "100%", margin: "0 auto", padding: "24px 16px", display: "flex", flexDirection: "column", gap: "16px", flex: 1, minHeight: 0, overflowY: "auto" }}>
 
-        {/* -- PRIORIDAD -- */}
-        <div className="rounded-xl overflow-hidden" style={card}>
-          <div className="px-4 py-2.5 flex items-center gap-2" style={hdr}>
-            <div className="w-0.5 h-3.5 rounded-full" style={{ background: T.orange }} />
-            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Prioridad de la solicitud</p>
-          </div>
-          <div className="px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {PRIORIDADES.map(p => (
-              <button key={p.val} onClick={() => setPrioridad(p.val)}
-                className="py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
-                style={{
-                  background:  prioridad === p.val ? p.bg : isDark ? "rgba(255,255,255,0.04)" : "#f8fafc",
-                  color:       prioridad === p.val ? p.color : T.textMuted,
-                  border:     `1px solid ${prioridad === p.val ? p.border : isDark ? "rgba(255,255,255,0.08)" : T.border}`,
-                  boxShadow:   prioridad === p.val ? `0 0 0 3px ${p.border}` : "none",
-                }}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: prioridad === p.val ? p.color : T.textFaint }} />
-                {p.val}
-              </button>
-            ))}
-          </div>
+        {/* ── Pestañas ─────────────────────────────────────────── */}
+        <div className="flex gap-1 mb-5 bg-white border border-slate-200 rounded-xl p-1 w-fit shadow-sm">
+          {[
+            { id: "nueva",     label: "Nueva Solicitud", icon: Plus    },
+            { id: "historial", label: "Mis Solicitudes",  icon: History },
+          ].map(({ id, label, icon: Icon }) => (
+            <button key={id} onClick={() => setTab(id)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-bold transition-all"
+              style={{
+                background: tab === id ? "#2563eb" : "transparent",
+                color:      tab === id ? "#fff"    : "#64748b",
+              }}>
+              <Icon size={13} />{label}
+            </button>
+          ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* ── Layout principal 75 / 25 ─────────────────────────── */}
+        <div className="flex flex-col lg:flex-row gap-4 items-start" style={{ flex: 1, minHeight: 0 }}>
 
-          {/* -- CATÁLOGO -- */}
-          <div className="lg:col-span-2 flex flex-col gap-3">
+          {/* ════ COLUMNA IZQUIERDA — Data Table (75%) ════════════ */}
+          <div className="w-full lg:w-3/4" style={{ display: "flex", flexDirection: "column", gap: "12px", flex: 1, minHeight: 0 }}>
 
-            {/* Buscador + filtro categoría */}
-            <div className="rounded-xl overflow-hidden" style={card}>
-              <div className="px-4 py-2.5 flex items-center justify-between" style={hdr}>
-                <div className="flex items-center gap-2">
-                  <div className="w-0.5 h-3.5 rounded-full" style={{ background: T.orange }} />
-                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Insumos disponibles</p>
+            {/* ── Historial de Mis Solicitudes ─────────────────── */}
+            {tab === "historial" && (
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-slate-800 px-4 py-3 flex items-center justify-between">
+                  <span className="text-[12px] font-bold text-white uppercase tracking-wider">Mis Solicitudes</span>
+                  <button onClick={cargarSolicitudes} className="text-[11px] text-slate-400 hover:text-white transition-colors">↻ Actualizar</button>
                 </div>
-                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: T.bg, color: T.textMuted, border: `1px solid ${T.border}` }}>
-                  {filtrados.length} insumo{filtrados.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-              <div className="px-4 py-3 flex flex-wrap gap-2 items-center">
-                <div className="relative flex-1" style={{ minWidth: "160px" }}>
-                  <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                    style={{ color: busqueda ? T.orange : T.textFaint }} />
-                  <input
-                    className="w-full pl-7 pr-3 py-1.5 rounded-lg text-[11px] outline-none"
-                    style={{ background: isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt, border: `1px solid ${busqueda ? T.orange : T.border}`, color: T.text }}
-                    placeholder="Buscar por nombre o marca..."
-                    value={busqueda} onChange={e => setBusqueda(e.target.value)}
-                    onFocus={e => e.target.style.borderColor = T.orange}
-                    onBlur={e  => { if (!busqueda) e.target.style.borderColor = T.border; }} />
-                </div>
-                {/* Chips de categoría */}
-                <div className="flex flex-wrap gap-1.5">
-                  {categorias.map(c => (
-                    <button key={c} onClick={() => setCatFiltro(c)}
-                      className="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all"
-                      style={{
-                        background: catFiltro === c ? T.orange : (isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt),
-                        color:      catFiltro === c ? "#fff" : T.textMuted,
-                        border:    `1px solid ${catFiltro === c ? T.orange : (isDark ? "rgba(255,255,255,0.08)" : T.border)}`,
-                      }}>
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Grid de tarjetas */}
-            {loading ? (
-              <div className="flex justify-center py-16">
-                <svg className="animate-spin" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.orange} strokeWidth="2">
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                </svg>
-              </div>
-            ) : filtrados.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-14 gap-3 rounded-xl"
-                style={{ background: isDark ? "#141720" : T.surface, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}` }}>
-                <Package size={28} style={{ color: T.textFaint }} />
-                <p className="text-sm font-bold" style={{ color: T.textMuted }}>Sin insumos disponibles</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                {filtrados.map(ins => (
-                  <TarjetaInsumo
-                    key={ins.id_insumo}
-                    ins={ins}
-                    cantidad={carrito[ins.id_insumo] || 0}
-                    onAgregar={agregar}
-                    onQuitar={quitar}
-                    T={T}
-                    isDark={isDark}
-                  />
-                ))}
+                {loadingSols ? (
+                  <div className="flex justify-center items-center py-16">
+                    <svg className="animate-spin w-6 h-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                  </div>
+                ) : solicitudes.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-2 text-slate-400">
+                    <History size={28} />
+                    <span className="text-[13px] font-semibold">Sin solicitudes</span>
+                    <span className="text-[11px]">Aún no has realizado ninguna solicitud de insumo</span>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {solicitudes.map(sol => (
+                      <button
+                        key={sol.id_solicitud}
+                        onClick={() => setSolicitudVer(sol)}
+                        className="w-full flex items-center gap-4 px-4 py-3 hover:bg-slate-50 transition-colors text-left"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[12px] font-bold text-slate-700 font-mono">{sol.folio_solicitud}</span>
+                            <BadgeEstatus estatus={sol.estatus} />
+                          </div>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            {new Date(sol.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                            {sol.prioridad && ` · Prioridad: ${sol.prioridad}`}
+                          </p>
+                        </div>
+                        <ArrowLeft size={14} className="text-slate-300 rotate-180 flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
-          </div>
 
-          {/* -- CARRITO -- */}
-          <div className="rounded-xl overflow-hidden flex flex-col lg:sticky lg:top-4 lg:self-start" style={card}>
-            <div className="px-4 py-2.5 flex items-center justify-between" style={hdr}>
-              <div className="flex items-center gap-2">
-                <ShoppingCart size={13} style={{ color: T.orange }} />
-                <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Carrito</p>
+            {/* Barra de búsqueda y filtros (solo en tab nueva) */}
+            {tab === "nueva" && (<>
+            <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex flex-wrap gap-3 items-center shadow-sm">
+              <div className="relative flex-1" style={{ minWidth: "200px" }}>
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Buscar insumo por nombre o marca…"
+                  className="w-full pl-8 pr-3 h-9 rounded-lg text-[12px] bg-slate-50 border border-slate-200 text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition-colors placeholder:text-slate-400"
+                />
               </div>
-              {totalItems > 0 && (
-                <span className="text-[9px] font-black px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(244,121,32,0.12)", color: T.orange, border: "1px solid rgba(244,121,32,0.25)" }}>
-                  {totalItems} pieza{totalItems !== 1 ? "s" : ""}
-                </span>
-              )}
+
+              {/* Chips de categoría */}
+              <div className="flex flex-wrap gap-1.5">
+                {categories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategoryFilter(cat)}
+                    className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors border ${
+                      categoryFilter === cat
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              <span className="text-[11px] text-slate-400 ml-auto font-mono">
+                {filteredSupplies.length} resultado{filteredSupplies.length !== 1 ? "s" : ""}
+              </span>
             </div>
 
-            <div className="flex flex-col flex-1">
-              {itemsCarrito.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 gap-2 px-4">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                    style={{ background: isDark ? "rgba(255,255,255,0.04)" : T.surfaceAlt, border: `1px solid ${T.border}` }}>
-                    <ShoppingCart size={20} style={{ color: T.textFaint }} />
-                  </div>
-                  <p className="text-xs font-bold text-center" style={{ color: T.textMuted }}>Carrito vacío</p>
-                  <p className="text-[11px] text-center" style={{ color: T.textFaint }}>Agrega insumos desde el catálogo</p>
+            {/* Tabla */}
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm" style={{ overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 280px)" }}>
+              <div style={{ overflowX: "auto", overflowY: "auto", flex: 1 }}>
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-800 text-white" style={{ position: "sticky", top: 0, zIndex: 10 }}>
+                      {["ID / Nombre", "Categoría", "Stock Actual", "Estado", "Acción"].map(col => (
+                        <th key={col} className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-300 whitespace-nowrap">
+                          {col}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={5} className="py-16 text-center">
+                          <div className="flex flex-col items-center gap-2 text-slate-400">
+                            <svg className="animate-spin w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                            </svg>
+                            <span className="text-[12px]">Cargando insumos…</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredSupplies.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-16 text-center">
+                          <div className="flex flex-col items-center gap-2 text-slate-400">
+                            <Package size={28} />
+                            <span className="text-[13px] font-semibold">Sin resultados</span>
+                            <span className="text-[11px]">Intenta con otro filtro o búsqueda</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredSupplies.map(supply => (
+                        <SupplyRow
+                          key={supply.id_insumo}
+                          supply={supply}
+                          isAdded={!!requestCart[supply.id_insumo]}
+                          onAdd={handleAddSupply}
+                          animatingId={animatingId}
+                        />
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>)}
+
+          </div>
+
+          {/* ════ COLUMNA DERECHA — Panel sticky (25%) ════════════ */}
+          <div className="w-full lg:w-1/4 lg:sticky lg:top-4 flex flex-col gap-3">
+
+            {/* Panel principal */}
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+
+              {/* Encabezado del panel */}
+              <div className="bg-slate-800 px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Ticket size={14} className="text-blue-400" />
+                  <span className="text-[12px] font-bold text-white uppercase tracking-wider">
+                    Solicitud en Proceso
+                  </span>
                 </div>
-              ) : (
-                <div className="flex flex-col">
-                  {itemsCarrito.map(({ ins, cant, id }) => (
-                    <div key={id} className="flex items-center gap-3 px-4 py-3"
-                      style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : T.border}` }}>
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: "rgba(244,121,32,0.1)", border: "1px solid rgba(244,121,32,0.2)" }}>
-                        <Package size={13} style={{ color: T.orange }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-bold truncate" style={{ color: T.text }}>{ins.nombre}</p>
-                        <p className="text-[10px] font-semibold" style={{ color: T.orange }}>× {cant}</p>
-                      </div>
-                      <button onClick={() => setCarrito(prev => { const c = { ...prev }; delete c[id]; return c; })}
-                        className="w-6 h-6 rounded-lg flex items-center justify-center transition-all hover:brightness-110 flex-shrink-0"
-                        style={{ background: "rgba(220,38,38,0.08)", color: "#dc2626", border: "1px solid rgba(220,38,38,0.2)" }}>
-                        <Trash2 size={10} />
-                      </button>
+                {totalItemCount > 0 && (
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-600 text-white">
+                    {totalItemCount}
+                  </span>
+                )}
+              </div>
+
+              {/* Resumen del solicitante (solo lectura) */}
+              <div className="px-4 py-3 bg-slate-50 border-b border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Solicitante</p>
+                <div className="flex flex-col gap-1.5">
+                  {[
+                    { label: "Nombre",  value: requesterName },
+                    { label: "Área",    value: usuario.departamento || "—" },
+                    { label: "Fecha",   value: new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="flex items-baseline justify-between gap-2">
+                      <span className="text-[10px] text-slate-400 flex-shrink-0">{label}</span>
+                      <span className="text-[11px] font-semibold text-slate-700 text-right truncate">{value}</span>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
 
-            <div className="px-4 py-3 flex flex-col gap-2"
-              style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` }}>
+              {/* Insumos agregados */}
+              <div className="flex flex-col" style={{ minHeight: "80px" }}>
+                {cartEntries.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 px-4 gap-2 text-slate-300">
+                    <Package size={24} />
+                    <span className="text-[11px] text-center">Agrega insumos desde la tabla</span>
+                  </div>
+                ) : (
+                  cartEntries.map(({ supply, quantity, id }) => (
+                    <RequestItem
+                      key={id}
+                      supply={supply}
+                      quantity={quantity}
+                      onRemove={handleRemoveSupply}
+                    />
+                  ))
+                )}
+              </div>
 
-              {/* Resumen */}
-              {itemsCarrito.length > 0 && (
-                <div className="flex items-center justify-between px-3 py-2 rounded-xl mb-1"
-                  style={{ background: isDark ? "rgba(244,121,32,0.06)" : "#fff7ed", border: "1px solid rgba(244,121,32,0.15)" }}>
-                  <span className="text-[10px] font-semibold" style={{ color: T.textMuted }}>{itemsCarrito.length} tipo{itemsCarrito.length !== 1 ? "s" : ""} de insumo</span>
-                  <span className="text-[11px] font-black" style={{ color: T.orange }}>{totalItems} piezas</span>
+              {/* Selector de prioridad + justificación + botón */}
+              <div className="px-4 py-4 border-t border-slate-100 flex flex-col gap-3">
+
+                {/* Selector de prioridad */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                    Prioridad
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={priority}
+                      onChange={e => setPriority(e.target.value)}
+                      className="w-full h-9 pl-3 pr-8 rounded-lg text-[12px] font-semibold border outline-none appearance-none cursor-pointer transition-colors"
+                      style={{
+                        background:   activePriority ? activePriority.bg   : "#f8fafc",
+                        color:        activePriority ? activePriority.color : "#94a3b8",
+                        borderColor:  activePriority ? activePriority.border : "#e2e8f0",
+                      }}
+                    >
+                      <option value="" disabled>Seleccionar prioridad…</option>
+                      {PRIORITY_OPTIONS.map(p => (
+                        <option key={p.value} value={p.value}>{p.label}</option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={13}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                      style={{ color: activePriority ? activePriority.color : "#94a3b8" }}
+                    />
+                  </div>
                 </div>
-              )}
 
-              <button onClick={enviar} disabled={enviando || totalItems === 0 || !prioridad}
-                className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ background: `linear-gradient(135deg, ${T.orange}, #d97400)`, boxShadow: "0 4px 14px rgba(244,121,32,0.35)" }}>
-                {enviando
-                  ? <><svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Enviando...</>
-                  : <><ShoppingCart size={14} /> Enviar Solicitud</>
-                }
-              </button>
-
-              {(!prioridad || totalItems === 0) && (
-                <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg"
-                  style={{ background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}>
-                  <AlertCircle size={10} style={{ color: T.textFaint, flexShrink: 0 }} />
-                  <p className="text-[10px]" style={{ color: T.textFaint }}>
-                    {!prioridad ? "Selecciona una prioridad" : "Agrega al menos un insumo"}
-                  </p>
+                {/* Justificación (obligatoria) */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                    Justificación / Motivo <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={justification}
+                    onChange={e => setJustification(e.target.value)}
+                    placeholder="Describe el motivo de esta solicitud…"
+                    className="w-full px-3 py-2 rounded-lg text-[12px] bg-slate-50 border outline-none resize-none transition-colors placeholder:text-slate-300 text-slate-700"
+                    style={{
+                      borderColor: justification.trim() ? "#e2e8f0" : "#fca5a5",
+                      background:  justification.trim() ? "#f8fafc"  : "#fff5f5",
+                    }}
+                    onFocus={e  => { e.target.style.borderColor = "#3b82f6"; e.target.style.background = "#fff"; }}
+                    onBlur={e   => { e.target.style.borderColor = justification.trim() ? "#e2e8f0" : "#fca5a5"; e.target.style.background = justification.trim() ? "#f8fafc" : "#fff5f5"; }}
+                  />
                 </div>
-              )}
+
+                {/* Validación visual */}
+                {!isTicketValid && (
+                  <div className="flex items-start gap-1.5 px-2.5 py-2 rounded-lg bg-slate-50 border border-slate-200">
+                    <AlertCircle size={11} className="text-slate-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-[10px] text-slate-400 leading-snug">
+                      {cartEntries.length === 0
+                        ? "Agrega al menos un insumo a la solicitud"
+                        : "Escribe la justificación del reporte"}
+                    </span>
+                  </div>
+                )}
+
+                {/* Botón Crear Ticket — habilitado solo si pasa validación */}
+                <button
+                  onClick={handleSubmitTicket}
+                  disabled={!isTicketValid || isSubmitting}
+                  className="w-full h-10 rounded-lg text-[13px] font-bold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    background:  isTicketValid ? "#2563eb" : "#94a3b8",
+                    boxShadow:   isTicketValid ? "0 4px 14px rgba(37,99,235,0.30)" : "none",
+                  }}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                      </svg>
+                      Creando…
+                    </>
+                  ) : (
+                    <>
+                      <Ticket size={14} />
+                      Crear Ticket
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Modal resultado */}
-      {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{ background: "rgba(0,0,0,0.65)" }}
-          onClick={() => setModal(null)}>
-          <div className="w-full max-w-sm rounded-2xl overflow-hidden"
-            style={{ background: isDark ? "#141720" : "#fff", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : T.border}`, boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
-            onClick={e => e.stopPropagation()}>
-            <div className="h-1.5" style={{ background: modal.ok ? "#16a34a" : "#dc2626" }} />
+      {/* ── Modal resultado ──────────────────────────────────────── */}
+      {resultModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/50"
+          onClick={() => setResultModal(null)}
+        >
+          <div
+            className="w-full max-w-sm bg-white rounded-xl overflow-hidden shadow-2xl border border-slate-200"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="h-1" style={{ background: resultModal.success ? "#16a34a" : "#dc2626" }} />
             <div className="p-6 flex flex-col items-center gap-4 text-center">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center"
-                style={{ background: modal.ok ? (isDark ? "rgba(22,163,74,0.2)" : "#dcfce7") : (isDark ? "rgba(220,38,38,0.2)" : "#fee2e2") }}>
-                {modal.ok
-                  ? <CheckCircle2 size={28} style={{ color: "#16a34a" }} />
-                  : <X size={28} style={{ color: "#dc2626" }} />
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center"
+                style={{ background: resultModal.success ? "#f0fdf4" : "#fef2f2" }}
+              >
+                {resultModal.success
+                  ? <CheckCircle2 size={28} className="text-green-600" />
+                  : <X size={28} className="text-red-500" />
                 }
               </div>
               <div>
-                <p className="text-base font-black" style={{ color: T.text }}>
-                  {modal.ok ? "Solicitud enviada" : "Error"}
+                <p className="text-[15px] font-bold text-slate-800">
+                  {resultModal.success ? "Ticket creado exitosamente" : "Error al crear el ticket"}
                 </p>
-                {modal.ok
-                  ? <p className="text-sm mt-1 font-mono font-bold" style={{ color: T.orange }}>#{modal.folio}</p>
-                  : <p className="text-sm mt-1" style={{ color: T.textMuted }}>{modal.msg}</p>
-                }
+                {resultModal.success ? (
+                  <p className="text-[13px] font-mono font-bold text-blue-600 mt-1">
+                    #{resultModal.folio}
+                  </p>
+                ) : (
+                  <p className="text-[12px] text-slate-500 mt-1">{resultModal.message}</p>
+                )}
               </div>
-              <button onClick={() => setModal(null)}
-                className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110"
-                style={{ background: modal.ok ? "#16a34a" : "#dc2626" }}>
-                {modal.ok ? "Aceptar" : "Cerrar"}
+              <button
+                onClick={() => setResultModal(null)}
+                className="w-full h-10 rounded-lg text-[13px] font-bold text-white transition-all hover:brightness-110"
+                style={{ background: resultModal.success ? "#16a34a" : "#dc2626" }}
+              >
+                {resultModal.success ? "Aceptar" : "Cerrar"}
               </button>
             </div>
           </div>

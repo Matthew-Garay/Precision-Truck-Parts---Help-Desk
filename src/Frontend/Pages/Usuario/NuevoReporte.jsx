@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Camera, Plus, X, ZoomIn, ChevronLeft, ChevronRight, Trash2,
+import { useLocation } from "react-router-dom";
+import { Camera, Plus, X, ChevronLeft, ChevronRight, Trash2,
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight, Minus } from "lucide-react";
 import { apiFetch } from "../../Config/api";
@@ -8,15 +9,16 @@ const PRIORIDADES = [
   { label:"Urgente", nivel:"Urgente", color:"#dc2626", bgL:"#fee2e2", bgD:"#2d0a0a" },
   { label:"Alta",    nivel:"Alta",    color:"#ea580c", bgL:"#ffedd5", bgD:"#2d1200" },
   { label:"Media",   nivel:"Media",   color:"#ca8a04", bgL:"#fef9c3", bgD:"#1f1a00" },
-  { label:"Baja",    nivel:"Baja",    color:"#16a34a", bgL:"#dcfce7", bgD:"#052e16" },
+  { label:"Bajo",    nivel:"Bajo",    color:"#16a34a", bgL:"#dcfce7", bgD:"#0a2d14" },
 ];
 
 const MAX_IMGS = 8;
 const MAX_PALABRAS = 500;
-const EMPTY = { titulo:"", descripcion:"", palabras:0, prioridad:"", categoria:"", evidencias:[] };
+const EMPTY = { titulo:"", descripcion:"", palabras:0, prioridad:"", categoria:"", evidencias:[], tvId:"", tvPass:"" };
 const contarPalabras = t => t.trim() ? t.trim().split(/\s+/).length : 0;
 
-export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario = {}, onSuccess }) {
+export default function NuevoReporte({ T, solicitante, area = "-", usuario = {}, onSuccess }) {
+  const nombreCompleto = [usuario.nombre, usuario.ap_paterno, usuario.ap_materno].filter(Boolean).join(" ") || solicitante || "-";
   const [form,       setForm]       = useState(EMPTY);
   const [visor,      setVisor]      = useState(null);
   const [catOpen,    setCatOpen]    = useState(false);
@@ -28,12 +30,23 @@ export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario
   const [modalLimpiar, setModalLimpiar] = useState(false);
   const fileRef  = useRef();
   const editorRef = useRef(null);
+  const location  = useLocation();
+
+  // Precargar imágenes arrastradas desde otras páginas (ej. Manuales)
+  useEffect(() => {
+    const previas = location.state?.evidencias;
+    if (Array.isArray(previas) && previas.length) {
+      setForm(f => ({ ...f, evidencias: previas.slice(0, MAX_IMGS) }));
+      window.history.replaceState({}, "");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     apiFetch(`/api/categorias`)
       .then(r => r.json())
       .then(data => setCategorias(
-        data.map(c => ({ id: c.id_categoria, valor: c.nombre_categoria, label: c.nombre_categoria }))
+        Array.isArray(data) ? data.map(c => ({ id: c.id_categoria, valor: c.nombre_categoria, label: c.nombre_categoria })) : []
       ))
       .catch(() => setCategorias([]));
   }, []);
@@ -49,6 +62,20 @@ export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario
 
   const quitarError = k => setErrores(p => { const n = {...p}; delete n[k]; return n; });
   const set = (k, v) => { setForm(f => ({...f, [k]:v})); quitarError(k); };
+
+  // Helper: obtiene o crea un elemento de bloque (p/div) que contiene el rango actual
+  const getOrCreateBlock = (range) => {
+    let node = range.commonAncestorContainer;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+    while (node && node !== editorRef.current) {
+      if (["P", "DIV", "LI"].includes(node.tagName)) return node;
+      node = node.parentElement;
+    }
+    // Si no hay bloque, envuelve el contenido en un <p>
+    const p = document.createElement("p");
+    range.surroundContents(p);
+    return p;
+  };
   const limpiar = () => {
     setForm(EMPTY);
     setErrores({});
@@ -57,8 +84,87 @@ export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario
   };
 
   const fmt = useCallback((cmd) => {
-    editorRef.current?.focus();
-    document.execCommand(cmd, false, null);
+    const el = editorRef.current;
+    if (!el) return;
+    el.focus();
+    // execCommand está deprecado — usamos Selection API con fallback
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+
+    if (cmd === "insertHorizontalRule") {
+      const hr = document.createElement("hr");
+      range.deleteContents();
+      range.insertNode(hr);
+      range.setStartAfter(hr);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+
+    if (cmd === "removeFormat") {
+      // Desenvuelve todos los elementos de formato dentro del rango
+      const fragment = range.extractContents();
+      const text = document.createTextNode(fragment.textContent ?? "");
+      range.insertNode(text);
+      range.selectNodeContents(text);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+
+    // Comandos de formato inline: bold, italic, underline, strikeThrough
+    const TAG_MAP = {
+      bold:          "strong",
+      italic:        "em",
+      underline:     "u",
+      strikeThrough: "s",
+    };
+    // Comandos de bloque: listas y alineación
+    const BLOCK_MAP = {
+      insertUnorderedList: () => {
+        const ul = document.createElement("ul");
+        const li = document.createElement("li");
+        li.appendChild(range.extractContents());
+        ul.appendChild(li);
+        range.insertNode(ul);
+        range.selectNodeContents(li);
+        range.collapse(false);
+      },
+      insertOrderedList: () => {
+        const ol = document.createElement("ol");
+        const li = document.createElement("li");
+        li.appendChild(range.extractContents());
+        ol.appendChild(li);
+        range.insertNode(ol);
+        range.selectNodeContents(li);
+        range.collapse(false);
+      },
+      justifyLeft:   () => { const b = getOrCreateBlock(range); if (b) b.style.textAlign = "left";   },
+      justifyCenter: () => { const b = getOrCreateBlock(range); if (b) b.style.textAlign = "center"; },
+      justifyRight:  () => { const b = getOrCreateBlock(range); if (b) b.style.textAlign = "right";  },
+    };
+
+    if (BLOCK_MAP[cmd]) {
+      BLOCK_MAP[cmd]();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+
+    const tag = TAG_MAP[cmd];
+    if (!tag) return;
+    const wrapper = document.createElement(tag);
+    wrapper.appendChild(range.extractContents());
+    range.insertNode(wrapper);
+    range.selectNodeContents(wrapper);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
   }, []);
 
   const onEditorInput = () => {
@@ -75,41 +181,47 @@ export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario
       sel.addRange(range);
       return;
     }
-    setForm(f => ({ ...f, descripcion: texto.trim() ? html : "", palabras: texto.trim().length }));
+    setForm(f => ({ ...f, descripcion: texto.trim() ? html : "", palabras: contarPalabras(texto) }));
     quitarError("descripcion");
   };
 
   const handleSubir = async () => {
     const e = {};
-    if (!form.titulo.trim())      e.titulo      = "El título es requerido";
-    if (!form.descripcion.trim()) e.descripcion = "La descripción es requerida";
-    if (!form.prioridad)          e.prioridad   = "Selecciona una prioridad";
-    if (!form.categoria)          e.categoria   = "Selecciona una categoría";
+    const textoPlano = editorRef.current?.innerText?.trim() || "";
+    if (!form.titulo.trim())  e.titulo      = "El título es requerido";
+    if (!textoPlano)          e.descripcion = "La descripción es requerida";
+    if (!form.prioridad)      e.prioridad   = "Selecciona una prioridad";
+    if (!form.categoria)      e.categoria   = "Selecciona una categoría";
     if (Object.keys(e).length) { setErrores(e); return; }
 
     const catObj = categorias.find(c => c.valor === form.categoria);
+    if (!catObj) { setErrores(e => ({ ...e, categoria: "Categoría no válida" })); return; }
+    if (!usuario?.id_empleado) { setModal({ ok: false, titulo: "Error de sesión", msg: "No se pudo identificar al usuario. Recarga la página." }); return; }
     setEnviando(true);
     try {
       const formData = new FormData();
-      formData.append("titulo",       form.titulo);
-      formData.append("descripcion",  form.descripcion);
+      formData.append("titulo",       form.titulo.trim());
+      const tvBlock = (form.tvId || form.tvPass)
+        ? `<hr/><p><strong>TeamViewer ID:</strong> ${form.tvId}</p><p><strong>CONTRASEÑA:</strong> ${form.tvPass}</p>`
+        : "";
+      formData.append("descripcion",  form.descripcion + tvBlock);
       formData.append("prioridad",    form.prioridad);
       formData.append("id_empleado",  usuario.id_empleado);
-      formData.append("id_categoria", catObj?.id);
+      formData.append("id_categoria", catObj.id);
 
-      // Adjuntar el File original directamente - sin conversión base64 intermedia
       for (const ev of form.evidencias) {
         formData.append("evidencias", ev.file, ev.name);
       }
 
       const res  = await apiFetch(`/api/tickets`, { method: "POST", body: formData });
       const data = await res.json();
-      if (!res.ok) { setModal({ ok: false, titulo: "Error al enviar", msg: data.error }); return; }
-      setModal({ ok: true, titulo: "Reporte enviado", folio: data.folio_ticket, prioridad: form.prioridad, categoria: catObj?.label });
+      if (!res.ok) { setModal({ ok: false, titulo: "Error al enviar", msg: data.error ?? JSON.stringify(data) }); return; }
+      setModal({ ok: true, titulo: "Reporte enviado", folio: data.folio_ticket, prioridad: form.prioridad, categoria: catObj.label });
       limpiar();
       setTimeout(() => { onSuccess?.(); }, 1800);
-    } catch {
-      setModal({ ok: false, titulo: "Sin conexión", msg: "No se pudo conectar con el servidor" });
+    } catch (err) {
+      console.error("[NuevoReporte] Error al enviar:", err);
+      setModal({ ok: false, titulo: "Sin conexión", msg: err?.message || "No se pudo conectar con el servidor" });
     } finally {
       setEnviando(false);
     }
@@ -143,24 +255,23 @@ export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario
 
   const card = {
     background: isDark ? "#141720" : T.surface,
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`,
-    boxShadow: isDark ? "0 8px 40px rgba(0,0,0,0.5)" : "0 1px 8px rgba(0,0,0,0.07)",
+    border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb"}`,
   };
 
   const inputStyle = {
-    background: inputBg,
-    border: `1.5px solid ${inputBorder}`,
+    background: isDark ? "rgba(255,255,255,0.05)" : "#fff",
+    border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "#d1d5db"}`,
     color: textColor,
-    borderRadius: "12px",
-    fontSize: "13px",
-    padding: "10px 14px",
+    borderRadius: "2px",
+    fontSize: "12px",
+    padding: "6px 10px",
     outline: "none",
     width: "100%",
     transition: "border-color .15s, box-shadow .15s",
   };
 
-  const onFocus = e => { e.target.style.borderColor = "#F47920"; e.target.style.boxShadow = "0 0 0 3px rgba(244,121,32,0.12)"; };
-  const onBlur  = e => { e.target.style.borderColor = inputBorder; e.target.style.boxShadow = "none"; };
+  const onFocus = e => { e.target.style.borderColor = "#FF6600"; e.target.style.boxShadow = "0 0 0 2px rgba(255,102,0,0.1)"; };
+  const onBlur  = e => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.15)" : "#d1d5db"; e.target.style.boxShadow = "none"; };
 
   const SectionHeader = ({ title }) => (
     <div className="flex items-center gap-2 mb-1.5">
@@ -171,7 +282,7 @@ export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario
   );
 
   const Label = ({ children, required }) => (
-    <label className="block text-xs font-bold mb-1.5" style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>
+    <label className="block text-xs font-semibold mb-1" style={{ color: isDark ? "rgba(255,255,255,0.75)" : T.text }}>
       {children}{required && <span className="text-red-400 ml-0.5">*</span>}
     </label>
   );
@@ -181,7 +292,7 @@ export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario
     : null;
 
   return (
-    <div className="h-full overflow-y-auto p-4 md:p-6"
+    <div className="h-full overflow-y-auto p-2 md:p-4"
       style={{ background:T.bg }}
       onDragOver={e => { e.preventDefault(); setDragging(true); }}
       onDragEnter={e => { e.preventDefault(); setDragging(true); }}
@@ -200,41 +311,156 @@ export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario
         </div>
       )}
 
-      <div className="max-w-3xl mx-auto rounded-2xl overflow-hidden relative" style={card}>
+      <div className="max-w-2xl mx-auto rounded-sm p-3" style={card}>
         {/* Header */}
-        <div className="flex items-center gap-3 px-3 py-3 sm:px-4"
+        <div className="flex items-center gap-3 px-3 py-2.5 sm:px-4"
           style={{ background: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff", borderBottom:`1px solid ${isDark ? "rgba(59,130,246,0.2)" : "#bfdbfe"}` }}>
-          <img src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"} alt="Logo" className="object-contain flex-shrink-0" style={{ width:"32px", height:"32px" }}/>
+          <img src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"} alt="Logo" className="object-contain flex-shrink-0" style={{ width:"40px", height:"40px" }}/>
           <div className="min-w-0">
-            <p className="text-xs sm:text-sm font-black tracking-tight truncate" style={{ color: isDark ? "#93c5fd" : "#1d4ed8" }}>FORMULARIO DE INCIDENCIAS</p>
+            <p className="text-xs sm:text-sm font-black tracking-tight" style={{ color: isDark ? "#93c5fd" : "#1d4ed8" }}>FORMULARIO DE INCIDENCIAS</p>
             <p className="text-[10px] font-medium mt-0.5 hidden sm:block" style={{ color: isDark ? "rgba(147,197,253,0.6)" : "#3b82f6" }}>Completa el formulario para habilitar el envío.</p>
           </div>
         </div>
 
-        <div className="p-3 md:p-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-0">
 
-          {/* Grid 2 columnas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-
-            {/* Col izquierda */}
-            <div className="flex flex-col gap-3">
-              <SectionHeader title="Información general"/>
-
+          {/* ── SECCIÓN 1: Información del Solicitante ── */}
+          <div className="flex flex-col gap-2 py-3">
+            <SectionHeader title="Información del Solicitante" />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="col-span-2 md:col-span-1">
+                <Label>Solicitante</Label>
+                <input readOnly value={nombreCompleto}
+                  style={{ ...inputStyle, opacity:.6, cursor:"default", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}/>
+              </div>
               <div>
-                <Label required>Título del problema</Label>
-                <input
-                  style={{ ...inputStyle, borderColor: errores.titulo ? "#ef4444" : inputBorder }}
-                  placeholder="Ej. Falla en impresora de recepción"
-                  value={form.titulo} onChange={e => set("titulo", e.target.value)}
-                  onFocus={onFocus} onBlur={onBlur}/>
-                <Err campo="titulo"/>
+                <Label>Área</Label>
+                <input readOnly value={area}
+                  style={{ ...inputStyle, opacity:.6, cursor:"default", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}/>
+              </div>
+              <div>
+                <Label>Fecha y hora</Label>
+                <input readOnly value={new Date().toLocaleString("es-MX", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" })}
+                  style={{ ...inputStyle, opacity:.6, cursor:"default", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}/>
+              </div>
+            </div>
+          </div>
+
+          <hr style={{ border:"none", borderTop:`1px solid ${dividerLine}`, margin:0 }}/>
+
+          {/* ── SECCIÓN 2: Detalles de la Falla ── */}
+          <div className="flex flex-col gap-2 py-3">
+            <SectionHeader title="Detalles de la Falla" />
+
+            {/* Título */}
+            <div>
+              <Label required>Título del problema</Label>
+              <input
+                style={{ ...inputStyle, borderColor: errores.titulo ? "#ef4444" : inputBorder }}
+                placeholder="Ej. Falla en impresora de recepción"
+                value={form.titulo} onChange={e => set("titulo", e.target.value)}
+                onFocus={onFocus} onBlur={onBlur}/>
+              <Err campo="titulo"/>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+              {/* Prioridad */}
+              <div>
+                <Label required>Nivel de prioridad</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {PRIORIDADES.map(p => {
+                    const sel = form.prioridad === p.nivel;
+                    return (
+                      <button key={p.nivel} type="button" onClick={() => set("prioridad", p.nivel)}
+                        className="flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl text-[11px] font-bold transition-all select-none"
+                        style={{
+                          background: sel ? (isDark ? p.bgD : p.bgL) : inputBg,
+                          border:    `2.5px solid ${sel ? p.color : errores.prioridad ? "#ef4444" : inputBorder}`,
+                          color:      sel ? p.color : dividerText,
+                          boxShadow:  sel ? `0 0 0 3px ${p.color}20, 0 4px 14px ${p.color}40` : "none",
+                          transform:  sel ? "translateY(-2px) scale(1.02)" : "none",
+                        }}>
+                        <span className="w-3 h-3 rounded-full"
+                          style={{ background:p.color, boxShadow:sel ? `0 0 12px ${p.color}90` : "none" }}/>
+                        {p.label}
+                        {sel && <span className="text-[10px] leading-none">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <Err campo="prioridad"/>
               </div>
 
-              <div>
-                <Label required>Descripción detallada</Label>
+              {/* Categoría */}
+              <div className="relative">
+                <Label required>Categoría</Label>
+                <button type="button"
+                  onClick={() => { setCatOpen(o => !o); quitarError("categoria"); }}
+                  onBlur={() => setTimeout(() => setCatOpen(false), 120)}
+                  className="w-full flex items-center justify-between gap-2 transition-all"
+                  style={{
+                    ...inputStyle,
+                    border: `1px solid ${catOpen ? "#FF6600" : errores.categoria ? "#ef4444" : isDark ? "rgba(255,255,255,0.15)" : "#d1d5db"}`,
+                    color: catSel ? textColor : dividerText,
+                    boxShadow: catOpen ? "0 0 0 2px rgba(255,102,0,0.1)" : "none",
+                    cursor: "pointer",
+                  }}>
+                  <span className="flex items-center gap-2.5 font-medium text-sm">
+                    {catSel ? catSel.label : "Selecciona una categoría"}
+                  </span>
+                  <svg width="12" height="12" viewBox="0 0 13 13" fill="none"
+                    style={{ flexShrink:0, transition:"transform .2s", transform:catOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                    <path d="M2.5 4.5l4 4 4-4" stroke="#F47920" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                {catOpen && (
+                  <div className="absolute z-30 left-0 right-0 mt-1.5 rounded-xl overflow-hidden"
+                    style={{
+                      background: isDark ? "#1a1f2e" : T.surface,
+                      border: `1.5px solid ${isDark ? "rgba(255,255,255,0.12)" : T.border}`,
+                      boxShadow: isDark ? "0 16px 48px rgba(0,0,0,0.7)" : "0 8px 28px rgba(0,0,0,0.14)",
+                    }}>
+                    {categorias.map((c, idx) => {
+                      const sel = form.categoria === c.valor;
+                      return (
+                        <button key={c.valor} type="button"
+                          onMouseDown={() => { set("categoria", c.valor); setCatOpen(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all text-left"
+                          style={{
+                            background: sel ? "rgba(244,121,32,0.12)" : "transparent",
+                            color: sel ? "#F47920" : isDark ? "rgba(255,255,255,0.8)" : T.text,
+                            borderTop: idx === 0 ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}`,
+                          }}
+                          onMouseEnter={e => { if (!sel) e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt; }}
+                          onMouseLeave={e => { if (!sel) e.currentTarget.style.background = "transparent"; }}>
+                          <span className="flex-1">{c.label}</span>
+                          {sel && (
+                            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                              <path d="M2 6.5l3.5 3.5 5.5-6" stroke="#F47920" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <Err campo="categoria"/>
+              </div>
+            </div>
+          </div>
+
+          <hr style={{ border:"none", borderTop:`1px solid ${dividerLine}`, margin:0 }}/>
+
+          {/* ── SECCIÓN 3: Descripción & Evidencias ── */}
+          <div className="flex flex-col gap-2 py-3">
+            <SectionHeader title="Descripción y Evidencias" />
+
+            <div>
+              <Label required>Descripción detallada</Label>
                 <div style={{
-                  border: `1.5px solid ${errores.descripcion ? "#ef4444" : inputBorder}`,
-                  borderRadius: "12px", overflow: "hidden", background: inputBg,
+                  border: `1px solid ${errores.descripcion ? "#ef4444" : isDark ? "rgba(255,255,255,0.15)" : "#d1d5db"}`,
+                  borderRadius: "2px", overflow: "hidden", background: isDark ? "rgba(255,255,255,0.05)" : "#fff",
                   transition: "border-color .15s, box-shadow .15s",
                 }}>
                   {/* Toolbar */}
@@ -280,22 +506,22 @@ export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario
 
                   {/* Área editable */}
                   <div
-                    ref={editorRef}
                     contentEditable
                     suppressContentEditableWarning
                     onInput={onEditorInput}
                     onFocus={e => {
-                      e.currentTarget.parentElement.style.borderColor = "#F47920";
-                      e.currentTarget.parentElement.style.boxShadow   = "0 0 0 3px rgba(244,121,32,0.12)";
+                      e.currentTarget.parentElement.style.borderColor = "#FF6600";
+                      e.currentTarget.parentElement.style.boxShadow   = "0 0 0 2px rgba(255,102,0,0.1)";
                       quitarError("descripcion");
                     }}
                     onBlur={e => {
-                      e.currentTarget.parentElement.style.borderColor = errores.descripcion ? "#ef4444" : inputBorder;
+                      e.currentTarget.parentElement.style.borderColor = errores.descripcion ? "#ef4444" : isDark ? "rgba(255,255,255,0.15)" : "#d1d5db";
                       e.currentTarget.parentElement.style.boxShadow   = "none";
                     }}
-                    className="outline-none px-3.5 py-3 text-sm leading-relaxed"
-                    style={{ minHeight:"120px", color:textColor, background:"transparent" }}
+                    className="outline-none px-3 py-2 text-xs leading-relaxed"
+                    style={{ minHeight:"110px", color:textColor, background:"transparent" }}
                     data-placeholder="Describe el problema con el mayor detalle posible: cuándo ocurrió, qué estabas haciendo, mensajes de error, etc."
+                    ref={el => { editorRef.current = el; }}
                   />
                 </div>
                 <style>{`
@@ -315,124 +541,39 @@ export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario
                     {form.palabras} / {MAX_PALABRAS} palabras
                   </span>
                 </div>
-              </div>
             </div>
 
-            {/* Col derecha */}
-            <div className="flex flex-col gap-3">
-              <SectionHeader title="Clasificación"/>
-
-              {/* Prioridad */}
-              <div>
-                <Label required>Nivel de prioridad</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                  {PRIORIDADES.map(p => {
-                    const sel = form.prioridad === p.nivel;
-                    return (
-                      <button key={p.nivel} type="button" onClick={() => set("prioridad", p.nivel)}
-                        className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-xs font-bold transition-all select-none"
-                        style={{
-                          background: sel ? (isDark ? p.bgD : p.bgL) : inputBg,
-                          border:    `2.5px solid ${sel ? p.color : errores.prioridad ? "#ef4444" : inputBorder}`,
-                          color:      sel ? p.color : dividerText,
-                          boxShadow:  sel ? `0 0 0 3px ${p.color}20, 0 4px 14px ${p.color}40` : "none",
-                          transform:  sel ? "translateY(-2px) scale(1.02)" : "none",
-                        }}>
-                        <span className="w-3 h-3 rounded-full"
-                          style={{ background:p.color, boxShadow:sel ? `0 0 12px ${p.color}90` : "none" }}/>
-                        {p.label}
-                        {sel && <span className="text-[10px] leading-none">✓</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-                <Err campo="prioridad"/>
-              </div>
-
-              {/* Categoría */}
-              <div className="relative">
-                <Label required>Categoría</Label>
-                <button type="button"
-                  onClick={() => { setCatOpen(o => !o); quitarError("categoria"); }}
-                  onBlur={() => setTimeout(() => setCatOpen(false), 120)}
-                  className="w-full flex items-center justify-between gap-2 transition-all"
-                  style={{
-                    ...inputStyle,
-                    border: `1.5px solid ${catOpen ? "#F47920" : errores.categoria ? "#ef4444" : inputBorder}`,
-                    color: catSel ? textColor : dividerText,
-                    boxShadow: catOpen ? "0 0 0 3px rgba(244,121,32,0.12)" : "none",
-                    cursor: "pointer",
-                  }}>
-                  <span className="flex items-center gap-2.5 font-medium text-sm">
-                    {catSel ? catSel.label : "Selecciona una categoría"}
-                  </span>
-                  <svg width="12" height="12" viewBox="0 0 13 13" fill="none"
-                    style={{ flexShrink:0, transition:"transform .2s", transform:catOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
-                    <path d="M2.5 4.5l4 4 4-4" stroke="#F47920" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-                {catOpen && (
-                  <div className="absolute z-30 left-0 right-0 mt-1.5 rounded-xl overflow-hidden"
-                    style={{
-                      background: isDark ? "#1a1f2e" : T.surface,
-                      border: `1.5px solid ${isDark ? "rgba(255,255,255,0.12)" : T.border}`,
-                      boxShadow: isDark ? "0 16px 48px rgba(0,0,0,0.7)" : "0 8px 28px rgba(0,0,0,0.14)",
-                    }}>
-                    {categorias.map((c, idx) => {
-                      const sel = form.categoria === c.valor;
-                      return (
-                        <button key={c.valor} type="button"
-                          onMouseDown={() => { set("categoria", c.valor); setCatOpen(false); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all text-left"
-                          style={{
-                            background: sel ? "rgba(244,121,32,0.12)" : "transparent",
-                            color: sel ? "#F47920" : isDark ? "rgba(255,255,255,0.8)" : T.text,
-                            borderTop: idx === 0 ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}`,
-                          }}
-                          onMouseEnter={e => { if (!sel) e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt; }}
-                          onMouseLeave={e => { if (!sel) e.currentTarget.style.background = "transparent"; }}>
-                          <span className="flex-1">{c.label}</span>
-                          {sel && (
-                            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                              <path d="M2 6.5l3.5 3.5 5.5-6" stroke="#F47920" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                <Err campo="categoria"/>
-              </div>
-
-              {/* Solicitante + Área */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Solicitante</Label>
-                  <input readOnly value={solicitante}
-                    style={{ ...inputStyle, opacity:.6, cursor:"default", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}/>
-                </div>
-                <div>
-                  <Label>Área</Label>
-                  <input readOnly value={area}
-                    style={{ ...inputStyle, opacity:.6, cursor:"default", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}/>
-                </div>
+            {/* TeamViewer */}
+            <div className="flex flex-col gap-2">
+              <span className="text-[11px] font-semibold" style={{ color: dividerText }}>TeamViewer <span style={{ fontWeight:400 }}>(opcional)</span></span>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  value={form.tvId}
+                  onChange={e => set("tvId", e.target.value)}
+                  placeholder="TeamViewer ID"
+                  style={{ ...inputStyle }}
+                  onFocus={onFocus} onBlur={onBlur}
+                />
+                <input
+                  value={form.tvPass}
+                  onChange={e => set("tvPass", e.target.value)}
+                  placeholder="Contraseña"
+                  style={{ ...inputStyle }}
+                  onFocus={onFocus} onBlur={onBlur}
+                />
               </div>
             </div>
-          </div>
 
           {/* Evidencias */}
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-0.5 h-4 rounded-full flex-shrink-0" style={{ background:"#F47920" }}/>
-              <span className="text-[10px] font-black uppercase tracking-widest" style={{ color:dividerText }}>Evidencias fotográficas</span>
-              <div className="flex-1 h-px" style={{ background:dividerLine }}/>
+            <div className="flex items-center justify-between mb-3">
+              <Label>Fotografías adjuntas</Label>
               <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
                 style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.bg, color:dividerText, border:`1px solid ${dividerLine}` }}>
                 {form.evidencias.length}/{MAX_IMGS}
               </span>
             </div>
-            <div className="grid gap-2" style={{ gridTemplateColumns:"repeat(auto-fill,minmax(90px,1fr))" }}>
+            <div className="grid gap-1.5" style={{ gridTemplateColumns:"repeat(auto-fill,minmax(72px,1fr))" }}>
               {slots.map((img, i) =>
                 img === null ? (
                   <label key="add"
@@ -450,36 +591,19 @@ export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario
                     </span>
                   </label>
                 ) : (
-                  <div key={i} className="flex flex-col gap-1.5">
-                    <div className="aspect-square rounded-xl overflow-hidden relative group"
-                      style={{ border:`1.5px solid ${isDark ? "rgba(255,255,255,0.12)" : T.border}`, boxShadow: isDark ? "0 4px 16px rgba(0,0,0,0.5)" : "0 2px 8px rgba(0,0,0,0.08)" }}>
-                      <img src={img.src} alt={img.name} className="w-full h-full object-cover"/>
-                      <div className="absolute inset-0 items-center justify-center gap-2 hidden md:flex opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ background:"rgba(0,0,0,0.6)" }}>
-                        <button type="button" onClick={() => setVisor(i)}
-                          className="w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 transition-all"
-                          style={{ background:"rgba(255,255,255,0.2)", color:"#fff" }}>
-                          <ZoomIn size={16}/>
-                        </button>
-                        <button type="button" onClick={() => borrarImg(i)}
-                          className="w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 transition-all"
-                          style={{ background:"rgba(220,38,38,0.8)", color:"#fff" }}>
-                          <Trash2 size={16}/>
-                        </button>
-                      </div>
+                  <div key={i} className="relative group">
+                    <div className="aspect-square rounded-xl overflow-hidden cursor-pointer"
+                      style={{ border:`1.5px solid ${isDark ? "rgba(255,255,255,0.12)" : T.border}`, boxShadow: isDark ? "0 4px 16px rgba(0,0,0,0.5)" : "0 2px 8px rgba(0,0,0,0.08)" }}
+                      onClick={() => setVisor(i)}>
+                      <img src={img.src} alt={img.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"/>
                     </div>
-                    <div className="flex gap-1.5 md:hidden">
-                      <button type="button" onClick={() => setVisor(i)}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold"
-                        style={{ background:inputBg, border:`1px solid ${inputBorder}`, color:dividerText }}>
-                        <ZoomIn size={12}/> Ver
-                      </button>
-                      <button type="button" onClick={() => borrarImg(i)}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold"
-                        style={{ background: isDark ? "rgba(220,38,38,0.15)" : "#fee2e2", border:`1px solid ${isDark ? "rgba(220,38,38,0.3)" : "#fca5a5"}`, color:"#ef4444" }}>
-                        <Trash2 size={12}/> Borrar
-                      </button>
-                    </div>
+                    {/* X de borrar siempre visible */}
+                    <button type="button"
+                      onClick={e => { e.stopPropagation(); borrarImg(i); }}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                      style={{ background:"#dc2626", color:"#fff", boxShadow:"0 2px 6px rgba(220,38,38,0.5)", zIndex:10 }}>
+                      <X size={10} strokeWidth={3}/>
+                    </button>
                   </div>
                 )
               )}
@@ -488,6 +612,8 @@ export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario
               Arrastra imágenes desde tu computadora a cualquier parte de la página · Máx. {MAX_IMGS} fotos
             </p>
           </div>
+
+          </div>{/* ── fin sección 3 ── */}
 
           {/* Botones */}
           <div className="flex flex-col gap-3 pt-3" style={{ borderTop:`1px solid ${dividerLine}` }}>
@@ -500,16 +626,16 @@ export default function NuevoReporte({ T, solicitante = "-", area = "-", usuario
               </p>
             <div className="flex flex-col sm:flex-row gap-2 w-full">
                 <button type="button" onClick={() => setModalLimpiar(true)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-95"
-                  style={{ background: isDark ? "rgba(59,130,246,0.15)" : "#eff6ff", color:"#3b82f6", border:"1px solid rgba(59,130,246,0.3)" }}>
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2 rounded-sm text-sm font-semibold transition-all hover:brightness-95 active:scale-95"
+                  style={{ background: isDark ? "rgba(255,255,255,0.06)" : "#f3f4f6", color: isDark ? "rgba(255,255,255,0.7)" : "#374151", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#d1d5db"}` }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                   Limpiar
                 </button>
                 <button type="button" onClick={handleSubir} disabled={enviando}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 sm:py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-                  style={{ background:`linear-gradient(135deg,${T.orange},#d97400)`, boxShadow:"0 4px 14px rgba(244,121,32,0.45)" }}>
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2 rounded-sm text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ background: "#FF6600" }}>
                   {enviando ? (
                     <>
                       <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">

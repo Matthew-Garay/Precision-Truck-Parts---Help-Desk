@@ -8,7 +8,7 @@ import {
   getAllEmpleados, getEmpleadoById, getDepartamentos, getRoles, updateEmpleadoAdmin, crearEmpleado,
   subirFotoEmpleado, uploadFoto
 } from "../Controllers/authController.js";
-import { solicitarRecuperacion, resetPassword } from "../Controllers/resetController.js";
+import { solicitarRecuperacion, verificarCodigo, resetPassword } from "../Controllers/resetController.js";
 
 const router = Router();
 router.use(csrfProtection);
@@ -38,26 +38,30 @@ const recuperarLimiter = rateLimit({
 });
 
 // Rutas públicas
-router.post("/login",          loginLimiter,      validate(schemaLogin),  login);
-router.post("/logout",                            validate(schemaLogout), logout);
-router.post("/recuperar",      recuperarLimiter,  solicitarRecuperacion);
-router.post("/reset-password", recuperarLimiter,  resetPassword);
+router.post("/login",            loginLimiter,     validate(schemaLogin), login);
+router.post("/recuperar",        recuperarLimiter, solicitarRecuperacion);
+router.post("/verificar-codigo", recuperarLimiter, verificarCodigo);
+router.post("/reset-password",   recuperarLimiter, resetPassword);
+// logout es público intencionalmente: sendBeacon (cierre de pestaña) no puede
+// enviar headers de Authorization. El riesgo es bajo — solo cierra una sesión
+// de historial_acceso por id_acceso, no modifica datos críticos.
+router.post("/logout", validate(schemaLogout), logout);
 
 // Rutas protegidas
 router.use(requireAuth);
 router.put("/perfil/:id",          validate(schemaActualizarPerfil), actualizarPerfil);
-router.post("/perfil/:id/foto",    uploadFoto.single("foto"), subirFotoEmpleado);
+router.post("/perfil/:id/foto",    ...uploadFoto.single("foto"), subirFotoEmpleado);
 router.get("/accesos/:id",         requireOwnerOrAdmin, getAccesos);
 router.get("/departamentos",       getDepartamentos);
 router.get("/roles",               getRoles);
-router.get("/empleados",           getAllEmpleados);
 router.get("/empleados/:id",       getEmpleadoById);
 
 // Solo admin
 router.use(requireAdmin);
 router.get("/accesos",             getAllAccesos);
+router.get("/empleados",           getAllEmpleados);
 router.put("/empleados/:id",       validate(schemaUpdateEmpleadoAdmin), updateEmpleadoAdmin);
 router.post("/empleados",          validate(schemaCrearEmpleado),       crearEmpleado);
-router.post("/empleados/:id/foto", uploadFoto.single("foto"), subirFotoEmpleado);
+router.post("/empleados/:id/foto", ...uploadFoto.single("foto"), subirFotoEmpleado);
 
 export default router;
