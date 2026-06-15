@@ -44,21 +44,21 @@ const API_ROUTES = {
 
 export { API_ROUTES };
 
-// -- Token en memoria (no en storage) para mitigar XSS ------
-// El token vive solo en memoria: se pierde al recargar la página intencionalmente.
-// NO se persiste en sessionStorage ni localStorage porque cualquier XSS
-// podría leerlo. Al recargar, main.jsx debe redirigir al login.
-let _token = null;
+// -- Token en sessionStorage para sobrevivir recargas ------
+// sessionStorage: persiste en recarga (F5) pero se borra al cerrar la pestaña.
+// Es aceptable porque el usuario ya autenticó en esta pestaña.
+let _token = sessionStorage.getItem("_tk") || null;
 
 export const getToken   = () => _token;
-export const setToken   = (t) => { _token = t; };
-export const clearToken = () => { _token = null; };
+export const setToken   = (t) => { _token = t; sessionStorage.setItem("_tk", t); };
+export const clearToken = () => { _token = null; sessionStorage.removeItem("_tk"); };
 
 // Limpia toda la sesión y redirige al login
 export function clearSession() {
   _token = null;
   sessionStorage.removeItem("usuario");
   sessionStorage.removeItem("id_acceso");
+  sessionStorage.removeItem("_tk");
   window.location.replace("/login");
 }
 
