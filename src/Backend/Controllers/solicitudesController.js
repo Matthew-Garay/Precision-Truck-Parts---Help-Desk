@@ -1,43 +1,33 @@
 import Solicitud from "../Models/Solicitud.js";
 import Insumo    from "../Models/Insumo.js";
-import { io }    from "../server.js";
+import Empleado  from "../Models/Empleado.js";
+import { getIO } from "../Config/socketInstance.js";
 import pool      from "../Config/db.js";
+
+const isProd = () => process.env.NODE_ENV === "production";
+const errDetalle = (err) => isProd() ? {} : { detalle: err.message };
 
 export const getInsumos = async (req, res) => {
   try {
-    const insumos = await Insumo.getDisponibles();
-    res.json(insumos);
+    res.json(await Insumo.getDisponibles());
   } catch (err) {
-    console.error("[getInsumos]", err.message);
-    res.status(500).json({ error: "Error al obtener insumos" });
+    res.status(500).json({ error: "Error al obtener insumos", ...errDetalle(err) });
   }
 };
 
 export const getInventario = async (req, res) => {
   try {
-    const insumos = await Insumo.getAll();
-    res.json(insumos);
+    res.json(await Insumo.getAll());
   } catch (err) {
-    console.error("[getInventario]", err.message);
-    res.status(500).json({ error: "Error al obtener inventario" });
+    res.status(500).json({ error: "Error al obtener inventario", ...errDetalle(err) });
   }
 };
 
-// Insumos con stock = 0 para alertas del panel derecho
 export const getInsumosStockBajo = async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.nombre, i.marca, i.modelo, i.stock, c.nombre_categoria
-       FROM insumo i
-       LEFT JOIN categoria c ON i.id_categoria = c.id_categoria
-       WHERE i.stock = 0
-       ORDER BY i.nombre ASC
-       LIMIT 20`
-    );
-    res.json(rows);
+    res.json(await Insumo.getStockBajo());
   } catch (err) {
-    console.error("[getInsumosStockBajo]", err.message);
-    res.status(500).json({ error: "Error al obtener alertas de stock" });
+    res.status(500).json({ error: "Error al obtener alertas de stock", ...errDetalle(err) });
   }
 };
 
@@ -45,7 +35,6 @@ export const crearSolicitud = async (req, res) => {
   const { prioridad, id_empleado, insumos } = req.body;
   if (!prioridad || !id_empleado || !Array.isArray(insumos) || insumos.length === 0)
     return res.status(400).json({ error: "Datos incompletos" });
-  // El empleado solo puede crear solicitudes en su propio nombre
   if (parseInt(id_empleado) !== req.usuario.id_empleado && req.usuario.id_rol !== 1)
     return res.status(403).json({ error: "No puedes crear solicitudes en nombre de otro usuario" });
   for (const item of insumos) {
@@ -54,52 +43,72 @@ export const crearSolicitud = async (req, res) => {
   }
   try {
     const result = await Solicitud.crear({ prioridad, id_empleado: parseInt(id_empleado), insumos });
-    // Obtener nombre y área del empleado
-    const [[emp]] = await pool.query(
-      `SELECT CONCAT(e.nombre,' ',e.ap_paterno) AS nombre_empleado,
-              d.nombre_departamento
-       FROM empleado e
-       LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
-       WHERE e.id_empleado = ? LIMIT 1`,
-      [parseInt(id_empleado)]
-    );
-    // Notificar a todos los admins que llegó una nueva solicitud
-    io.to("admins").emit("solicitud:nueva", {
-      id_solicitud:    result.id_solicitud,
-      folio_solicitud: result.folio_solicitud,
-      id_empleado:     parseInt(id_empleado),
-      prioridad,
-      total_insumos:   insumos.length,
-      nombre_empleado: emp?.nombre_empleado || "Usuario",
-      departamento:    emp?.nombre_departamento || "Sin área",
-    });
+    const emp = await Empleado.getResumen(parseInt(id_empleado));
+    try {
+      getIO().to("admins").emit("solicitud:nueva", {
+        id_solicitud:    result.id_solicitud,
+        folio_solicitud: result.folio_solicitud,
+        id_empleado:     parseInt(id_empleado),
+        prioridad,
+        total_insumos:   insumos.length,
+        nombre_empleado: emp.nombre_empleado,
+        departamento:    emp.nombre_departamento,
+      });
+    } catch (emitErr) { console.error("[emit solicitud:nueva]", emitErr.message); }
     res.status(201).json({ ok: true, ...result });
   } catch (err) {
-    console.error("[crearSolicitud]", err.message);
-    res.status(500).json({ error: "Error al crear solicitud" });
+    const status = err.statusCode === 400 ? 400 : 500;
+    res.status(status).json({ error: err.statusCode === 400 ? err.message : "Error al crear solicitud", ...errDetalle(err) });
   }
 };
 
 export const getSolicitudesByEmpleado = async (req, res) => {
   try {
-    const { id_empleado } = req.params;
-    const solicitudes = await Solicitud.getByEmpleado(parseInt(id_empleado));
-    res.json(solicitudes);
+    const idParam = parseInt(req.params.id_empleado, 10);
+    if (isNaN(idParam)) return res.status(400).json({ error: "ID inválido" });
+    if (req.usuario.id_rol !== 1 && req.usuario.id_empleado !== idParam)
+      return res.status(403).json({ error: "Acceso no autorizado" });
+    res.json(await Solicitud.getByEmpleado(idParam));
   } catch (err) {
-    console.error("[getSolicitudesByEmpleado]", err.message);
-    res.status(500).json({ error: "Error al obtener solicitudes" });
+    res.status(500).json({ error: "Error al obtener solicitudes", ...errDetalle(err) });
   }
 };
 
 export const getSolicitudById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const solicitud = await Solicitud.getById(parseInt(id));
+    const idNum = parseInt(req.params.id);
+    if (isNaN(idNum)) return res.status(400).json({ error: "ID inválido" });
+    const solicitud = await Solicitud.getById(idNum);
     if (!solicitud) return res.status(404).json({ error: "Solicitud no encontrada" });
+    const { id_empleado, id_rol } = req.usuario;
+    if (id_rol !== 1 && solicitud.id_empleado !== id_empleado)
+      return res.status(403).json({ error: "Acceso no autorizado" });
     res.json(solicitud);
   } catch (err) {
-    console.error("[getSolicitudById]", err.message);
-    res.status(500).json({ error: "Error al obtener solicitud" });
+    res.status(500).json({ error: "Error al obtener solicitud", ...errDetalle(err) });
+  }
+};
+
+export const getSolicitudesPendientes = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
+              CONCAT(e.nombre,' ',e.ap_paterno) AS nombre_empleado,
+              d.nombre_departamento,
+              COUNT(si.id_solicitud_insumo) AS total_insumos,
+              GROUP_CONCAT(i.nombre ORDER BY i.nombre SEPARATOR ', ') AS insumos_nombres
+       FROM solicitud s
+       JOIN empleado e          ON s.id_empleado     = e.id_empleado
+       LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       JOIN solicitud_insumo si ON s.id_solicitud    = si.id_solicitud
+       JOIN insumo i            ON si.id_insumo      = i.id_insumo
+       WHERE s.estatus NOT IN ('Resuelto', 'No Resuelto')
+       GROUP BY s.id_solicitud
+       ORDER BY FIELD(s.prioridad,'Urgente','Alta','Media','Baja'), s.fecha ASC`
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Error al obtener solicitudes pendientes", ...errDetalle(err) });
   }
 };
 
@@ -111,33 +120,159 @@ export const getAllSolicitudes = async (req, res) => {
     const { rows, total } = await Solicitud.getAll({ limit, offset });
     res.json({ data: rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
-    console.error("[getAllSolicitudes]", err.message);
-    res.status(500).json({ error: "Error al obtener solicitudes" });
+    res.status(500).json({ error: "Error al obtener solicitudes", ...errDetalle(err) });
   }
 };
 
 export const actualizarEstatusSolicitud = async (req, res) => {
-  const { id } = req.params;
+  const id     = parseInt(req.params.id);
   const { estatus } = req.body;
   if (!estatus) return res.status(400).json({ error: "Estatus requerido" });
   try {
-    const ok = await Solicitud.actualizarEstatus(parseInt(id), estatus);
-    if (!ok) return res.status(404).json({ error: "Solicitud no encontrada" });
-    // Notificar al empleado dueño de la solicitud
+    if (estatus === "Resuelto") {
+      const conn = await pool.getConnection();
+      try {
+        await conn.beginTransaction();
+        const [[sol]] = await conn.query(
+          "SELECT id_solicitud FROM solicitud WHERE id_solicitud = ? FOR UPDATE", [id]
+        );
+        if (!sol) { await conn.rollback(); return res.status(404).json({ error: "Solicitud no encontrada" }); }
+        const [detalle] = await conn.query(
+          "SELECT id_insumo, cantidad FROM solicitud_insumo WHERE id_solicitud = ?", [id]
+        );
+        await Insumo.descontarStock(conn, detalle);
+        await conn.query("UPDATE solicitud SET estatus = ? WHERE id_solicitud = ?", [estatus, id]);
+        await conn.commit();
+        // Verificar stock crítico tras descontar
+        try {
+          const idsInsumos = detalle.map(d => d.id_insumo);
+          const [criticos] = await pool.query(
+            `SELECT i.id_insumo, i.nombre, i.stock FROM insumo i WHERE i.id_insumo IN (?) AND i.stock <= 5`,
+            [idsInsumos]
+          );
+          if (criticos.length > 0) {
+            const io = getIO();
+            criticos.forEach(ins => {
+              io.to("admins").emit("insumo:stock_critico", {
+                id_insumo: ins.id_insumo,
+                nombre:    ins.nombre,
+                stock:     ins.stock,
+                nivel:     ins.stock === 0 ? "agotado" : "bajo",
+              });
+            });
+          }
+        } catch {}
+      } catch (err) {
+        await conn.rollback();
+        throw err;
+      } finally {
+        conn.release();
+      }
+    } else {
+      const ok = await Solicitud.actualizarEstatus(id, estatus);
+      if (!ok) return res.status(404).json({ error: "Solicitud no encontrada" });
+    }
+
     const [[sol]] = await pool.query(
-      "SELECT id_empleado, folio_solicitud FROM solicitud WHERE id_solicitud = ? LIMIT 1",
-      [parseInt(id)]
+      `SELECT s.id_empleado, s.folio_solicitud,
+              CONCAT(e.nombre,' ',e.ap_paterno) AS nombre_empleado,
+              d.nombre_departamento
+       FROM solicitud s
+       JOIN empleado e ON s.id_empleado = e.id_empleado
+       LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       WHERE s.id_solicitud = ? LIMIT 1`,
+      [id]
     );
     if (sol) {
-      io.to(`empleado_${sol.id_empleado}`).emit("solicitud:actualizada", {
-        id_solicitud:    parseInt(id),
-        folio_solicitud: sol.folio_solicitud,
-        estatus,
-      });
+      const payload = { id_solicitud: id, folio_solicitud: sol.folio_solicitud, estatus };
+      try {
+        getIO().to(`empleado_${sol.id_empleado}`).emit("solicitud:actualizada", payload);
+        getIO().to("admins").emit("solicitud:actualizada", {
+          ...payload,
+          nombre_empleado: sol.nombre_empleado,
+          departamento:    sol.nombre_departamento,
+        });
+      } catch (emitErr) { console.error("[emit solicitud:actualizada]", emitErr.message); }
     }
     res.json({ ok: true });
   } catch (err) {
-    console.error("[actualizarEstatusSolicitud]", err.message);
-    res.status(500).json({ error: "Error al actualizar solicitud" });
+    const status = err.statusCode === 400 ? 400 : 500;
+    res.status(status).json({ error: err.statusCode === 400 ? err.message : "Error al actualizar solicitud", ...errDetalle(err) });
+  }
+};
+
+export const crearInsumo = async (req, res) => {
+  try {
+    const id = await Insumo.crear(req.body);
+    const [rows] = await pool.query(
+      `SELECT i.*, c.nombre_categoria FROM insumo i LEFT JOIN categoria c ON i.id_categoria=c.id_categoria WHERE i.id_insumo=?`, [id]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY")
+      return res.status(409).json({ error: "Ya existe un insumo con ese número de serie" });
+    res.status(500).json({ error: "Error al crear insumo", ...errDetalle(err) });
+  }
+};
+
+export const actualizarInsumo = async (req, res) => {
+  try {
+    const ok = await Insumo.actualizar(parseInt(req.params.id), req.body);
+    if (!ok) return res.status(404).json({ error: "Insumo no encontrado" });
+    const [rows] = await pool.query(
+      `SELECT i.*, c.nombre_categoria FROM insumo i LEFT JOIN categoria c ON i.id_categoria=c.id_categoria WHERE i.id_insumo=?`,
+      [parseInt(req.params.id)]
+    );
+    res.json(rows[0]);
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY")
+      return res.status(409).json({ error: "Ya existe un insumo con ese número de serie" });
+    res.status(500).json({ error: "Error al actualizar insumo", ...errDetalle(err) });
+  }
+};
+
+export const getReporteSolicitudes = async (req, res) => {
+  try {
+    const { fecha_inicio, fecha_fin } = req.query;
+    if (!fecha_inicio || !fecha_fin) return res.status(400).json({ error: "fecha_inicio y fecha_fin son requeridos" });
+    const [rows] = await pool.query(
+      `SELECT s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
+              CONCAT(e.nombre,' ',e.ap_paterno) AS nombre_empleado,
+              d.nombre_departamento,
+              COUNT(si.id_solicitud_insumo) AS total_insumos,
+              SUM(si.cantidad) AS total_piezas,
+              GROUP_CONCAT(CONCAT(i.nombre,' x',si.cantidad) ORDER BY i.nombre SEPARATOR ', ') AS detalle_insumos
+       FROM solicitud s
+       JOIN empleado e          ON s.id_empleado     = e.id_empleado
+       LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       JOIN solicitud_insumo si ON s.id_solicitud    = si.id_solicitud
+       JOIN insumo i            ON si.id_insumo      = i.id_insumo
+       WHERE DATE(s.fecha) BETWEEN ? AND ?
+       GROUP BY s.id_solicitud
+       ORDER BY s.fecha DESC`,
+      [fecha_inicio, fecha_fin]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Error al generar reporte", ...errDetalle(err) });
+  }
+};
+
+export const eliminarInsumo = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [[{ total }]] = await pool.query(
+      `SELECT COUNT(*) AS total FROM solicitud_insumo si
+       JOIN solicitud s ON si.id_solicitud = s.id_solicitud
+       WHERE si.id_insumo = ? AND s.estatus NOT IN ('Resuelto', 'No Resuelto')`,
+      [id]
+    );
+    if (total > 0)
+      return res.status(409).json({ error: "No se puede eliminar: el insumo tiene solicitudes activas pendientes" });
+    const ok = await Insumo.eliminar(id);
+    if (!ok) return res.status(404).json({ error: "Insumo no encontrado" });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Error al eliminar insumo", ...errDetalle(err) });
   }
 };

@@ -3,70 +3,134 @@ import crypto   from "crypto";
 import Empleado from "../Models/Empleado.js";
 import { enviarCodigoRecuperacion } from "../Config/mailer.js";
 
-// -- Store en memoria: email → { codigo, expira, id_empleado } -
-// NOTA: Al ser un Map en memoria, los códigos se pierden si el servidor
-// se reinicia. Esto es aceptable - el usuario simplemente solicita un
-// nuevo código. No se usa BD intencionalmente para evitar migraciones.
-const store = new Map();
-const TTL   = 15 * 60 * 1000;
+const TTL          = 10 * 60 * 1000; // ms
 const MAX_INTENTOS = 5;
 
-setInterval(() => {
-  const ahora = Date.now();
-  for (const [key, val] of store)
-    if (val.expira < ahora) store.delete(key);
-}, 5 * 60 * 1000);
+// Almacén en memoria: email -> { codigoHash, id_empleado, expiraEn, intentos, verificado }
+const tokens = new Map();
+
+const normalizeEmail = (e) => String(e).trim().toLowerCase();
 
 // -- POST /api/auth/recuperar ---------------------------------
 export const solicitarRecuperacion = async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: "El correo es requerido" });
+  const emailRaw = req.body?.email;
+  if (!emailRaw) return res.status(400).json({ error: "El correo es requerido" });
+  const email = normalizeEmail(emailRaw);
+
   try {
     const empleado = await Empleado.findByEmail(email);
-    if (!empleado || empleado.estatus?.toLowerCase() !== "activo")
-      return res.json({ ok: true }); // respuesta generica - no revelar si existe
+    const OK_MSG = { ok: true, message: "Si el correo existe, recibirás un código en breve." };
+    if (!empleado || empleado.estatus?.toLowerCase() !== "activo") return res.json(OK_MSG);
 
-    const codigo = String(crypto.randomInt(100000, 999999));
-    store.set(email, { codigo, id_empleado: empleado.id_empleado, expira: Date.now() + TTL, intentos: 0 });
+    const codigo     = String(crypto.randomInt(100000, 999999));
+    const codigoHash = await bcrypt.hash(codigo, 10);
+
+    tokens.set(email, {
+      codigoHash,
+      id_empleado: empleado.id_empleado,
+      expiraEn:    Date.now() + TTL,
+      intentos:    0,
+      verificado:  false,
+    });
 
     await enviarCodigoRecuperacion({
       to:     empleado.email,
       nombre: `${empleado.nombre} ${empleado.ap_paterno}`,
       codigo,
     });
-    res.json({ ok: true });
+    res.json(OK_MSG);
   } catch (err) {
-    console.error("Error en recuperacion:", err.message);
-    res.status(500).json({ error: "No se pudo enviar el correo. Verifica tu direccion o intenta mas tarde." });
+    console.error("Error en recuperacion:", err);
+    res.status(500).json({ error: "No se pudo enviar el correo. Verifica tu dirección o intenta más tarde." });
   }
 };
 
-// -- POST /api/auth/reset-password ----------------------------
-export const resetPassword = async (req, res) => {
-  const { email, codigo, password_nueva } = req.body;
-  if (!email || !codigo || !password_nueva)
+// -- POST /api/auth/verificar-codigo ------------------------
+export const verificarCodigo = async (req, res) => {
+  const { email: emailRaw, codigo } = req.body;
+  if (!emailRaw || !codigo)
     return res.status(400).json({ error: "Datos incompletos" });
-  if (password_nueva.length < 6)
-    return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres" });
 
-  const entrada = store.get(email);
-  if (!entrada || entrada.expira < Date.now())
+  const email   = normalizeEmail(emailRaw);
+  const entrada = tokens.get(email);
+
+  if (!entrada || Date.now() > entrada.expiraEn) {
+    tokens.delete(email);
     return res.status(400).json({ error: "El código expiró. Solicita uno nuevo." });
+  }
+
   if (entrada.intentos >= MAX_INTENTOS) {
-    store.delete(email);
+    tokens.delete(email);
     return res.status(400).json({ error: "Demasiados intentos fallidos. Solicita un nuevo código." });
   }
-  if (entrada.codigo !== String(codigo).trim()) {
+
+  const codigoValido = await bcrypt.compare(String(codigo).trim(), entrada.codigoHash);
+  if (!codigoValido) {
     entrada.intentos++;
     return res.status(400).json({ error: "Código incorrecto" });
   }
 
+  // Verificar que el empleado siga activo antes de marcar el token como válido
   try {
-    const hash = await bcrypt.hash(password_nueva, 10);
+    const empleado = await Empleado.findById(entrada.id_empleado);
+    if (!empleado || empleado.estatus?.toLowerCase() !== "activo") {
+      tokens.delete(email);
+      return res.status(403).json({ error: "Tu cuenta no está activa. Contacta al administrador." });
+    }
+  } catch {
+    return res.status(500).json({ error: "Error al verificar la cuenta" });
+  }
+
+  entrada.verificado = true;
+  res.json({ ok: true });
+};
+
+// -- POST /api/auth/reset-password ----------------------------
+export const resetPassword = async (req, res) => {
+  const { email: emailRaw, codigo, password_nueva } = req.body;
+  if (!emailRaw || !codigo || !password_nueva)
+    return res.status(400).json({ error: "Datos incompletos" });
+  if (password_nueva.length < 8)
+    return res.status(400).json({ error: "La contraseña debe tener al menos 8 caracteres" });
+
+  const email   = normalizeEmail(emailRaw);
+  const entrada = tokens.get(email);
+
+  if (!entrada || Date.now() > entrada.expiraEn) {
+    tokens.delete(email);
+    return res.status(400).json({ error: "El código expiró. Solicita uno nuevo." });
+  }
+
+  if (entrada.intentos >= MAX_INTENTOS) {
+    tokens.delete(email);
+    return res.status(400).json({ error: "Demasiados intentos fallidos. Solicita un nuevo código." });
+  }
+
+  let codigoValido = entrada.verificado;
+  if (!codigoValido) {
+    codigoValido = await bcrypt.compare(String(codigo).trim(), entrada.codigoHash);
+    if (!codigoValido) {
+      entrada.intentos++;
+      return res.status(400).json({ error: "Código incorrecto" });
+    }
+  }
+
+  try {
+    // Re-verificar que el empleado siga activo al momento del reset,
+    // no solo al momento de solicitar el código (puede haber sido desactivado
+    // durante la ventana de 10 minutos del token).
+    const empleado = await Empleado.findById(entrada.id_empleado);
+    if (!empleado || empleado.estatus?.toLowerCase() !== "activo") {
+      tokens.delete(email);
+      return res.status(403).json({ error: "Tu cuenta no está activa. Contacta al administrador." });
+    }
+
+    const hash = await bcrypt.hash(password_nueva, 12);
     await Empleado.updatePerfil(entrada.id_empleado, { password: hash });
-    store.delete(email);
+    tokens.delete(email);
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: "Error al restablecer la contraseña", detalle: err.message });
+    console.error("Error al restablecer contraseña:", err.message);
+    res.status(500).json({ error: "Error al restablecer la contraseña" });
   }
 };

@@ -1,45 +1,4 @@
 import { useState, useEffect } from "react";
-import { Clock } from "lucide-react";
-
-// -- TOKENS LIGHT ---------------------------------------------
-export const LIGHT = {
-  isDark:       false,
-  orange:       "#F47920",
-  orangeDark:   "#d96a10",
-  orangeMuted:  "rgba(244,121,32,0.10)",
-  bg:           "#F9FAFB",
-  surface:      "#FFFFFF",
-  surfaceAlt:   "#F3F4F6",
-  surfaceHover: "#E5E7EB",
-  border:       "#E5E7EB",
-  borderFocus:  "#F47920",
-  text:         "#111827",
-  textMuted:    "#6B7280",
-  textFaint:    "#9CA3AF",
-  sidebar:      "#111827",
-  sidebarText:  "#9CA3AF",
-  sidebarHover: "rgba(255,255,255,0.06)",
-};
-
-// -- TOKENS DARK ----------------------------------------------
-export const DARK = {
-  isDark:       true,
-  orange:       "#F47920",
-  orangeDark:   "#d96a10",
-  orangeMuted:  "rgba(244,121,32,0.12)",
-  bg:           "#0D1117",
-  surface:      "#161B22",
-  surfaceAlt:   "#1C2230",
-  surfaceHover: "#21283A",
-  border:       "#21283A",
-  borderFocus:  "#F47920",
-  text:         "#E6EDF3",
-  textMuted:    "#8B949E",
-  textFaint:    "#484F58",
-  sidebar:      "#0D1117",
-  sidebarText:  "#6E7681",
-  sidebarHover: "rgba(255,255,255,0.06)",
-};
 
 // -- RELOJ Y FECHA --------------------------------------------
 export function RelojFecha({ T }) {
@@ -69,53 +28,37 @@ export function RelojFecha({ T }) {
 
   return (
     <div style={{
-      borderRadius: "10px",
+      borderRadius: "12px",
       overflow: "hidden",
       border: `1px solid ${T.border}`,
       background: isDark ? "#141720" : T.surface,
     }}>
-      {/* Hora grande */}
+      {/* Hora principal */}
       <div style={{
-        padding: "14px 16px 10px",
-        background: isDark ? "rgba(255,255,255,0.02)" : T.surfaceAlt,
+        padding: "8px 12px 6px",
+        background: isDark ? `linear-gradient(135deg, rgba(244,121,32,0.08), rgba(59,130,246,0.05))` : `linear-gradient(135deg, rgba(244,121,32,0.05), rgba(59,130,246,0.03))`,
         borderBottom: `1px solid ${T.border}`,
-        display: "flex", flexDirection: "column", alignItems: "center", gap: "2px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
-        {/* HH:MM */}
-        <div style={{ display: "flex", alignItems: "baseline", gap: "2px" }}>
-          <span style={{
-            fontSize: "38px", fontWeight: 900, lineHeight: 1,
-            color: T.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.03em",
-          }}>
-            {h12}<span style={{ color: T.orange }}>:</span>{min}
-          </span>
-          <span style={{
-            fontSize: "13px", fontWeight: 700, color: T.textMuted,
-            marginBottom: "4px", marginLeft: "3px",
-          }}>{ampm}</span>
+        <div style={{ display: "flex", alignItems: "baseline", gap: "1px" }}>
+          <span style={{ fontSize: "24px", fontWeight: 900, lineHeight: 1, color: T.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.03em" }}>{h12}</span>
+          <span style={{ fontSize: "24px", fontWeight: 900, lineHeight: 1, color: T.orange, margin: "0 1px" }}>:</span>
+          <span style={{ fontSize: "24px", fontWeight: 900, lineHeight: 1, color: T.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.03em" }}>{min}</span>
+          <div style={{ display: "flex", flexDirection: "column", marginLeft: "4px", gap: "1px", paddingBottom: "2px", alignSelf: "flex-end" }}>
+            <span style={{ fontSize: "10px", fontWeight: 800, color: T.orange, lineHeight: 1 }}>{ampm}</span>
+            <span style={{ fontSize: "12px", fontWeight: 700, color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{seg}s</span>
+          </div>
         </div>
-        {/* SS */}
-        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-          <span style={{
-            fontSize: "13px", fontWeight: 700,
-            color: T.orange, fontVariantNumeric: "tabular-nums",
-          }}>{seg}</span>
-          <span style={{ fontSize: "11px", color: T.textFaint, fontWeight: 500 }}>seg</span>
+        {/* Punto naranja pulsante */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px" }}>
+          <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: T.orange, boxShadow: `0 0 6px ${T.orange}`, animation: "pulse 1s ease-in-out infinite" }} />
+          <span style={{ fontSize: "9px", fontWeight: 600, color: T.textFaint }}>{diaSemana}</span>
         </div>
       </div>
-
       {/* Fecha */}
-      <div style={{
-        padding: "10px 16px",
-        display: "flex", flexDirection: "column", alignItems: "center", gap: "2px",
-      }}>
-        <span style={{
-          fontSize: "11px", fontWeight: 800, color: T.orange,
-          textTransform: "uppercase", letterSpacing: "0.1em",
-        }}>{diaSemana}</span>
-        <span style={{
-          fontSize: "13px", fontWeight: 700, color: T.text,
-        }}>{diaMes} de {mesNombre}, {anio}</span>
+      <div style={{ padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: "10px", fontWeight: 700, color: T.textMuted }}>{diaMes} de {mesNombre}</span>
+        <span style={{ fontSize: "10px", fontWeight: 800, color: T.text }}>{anio}</span>
       </div>
     </div>
   );
@@ -153,17 +96,14 @@ export function Calendario({ T }) {
       {/* Encabezado mes */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "center",
-        marginBottom: "10px", gap: "6px",
+        marginBottom: "6px", gap: "5px",
       }}>
         <div style={{
-          width: "3px", height: "12px", borderRadius: "99px",
+          width: "3px", height: "10px", borderRadius: "99px",
           background: `linear-gradient(180deg, ${T.orange}, ${T.orangeDark})`,
           flexShrink: 0,
         }} />
-        <p style={{
-          fontSize: "12px", fontWeight: 800, color: T.text,
-          letterSpacing: "-0.01em",
-        }}>
+        <p style={{ fontSize: "11px", fontWeight: 800, color: T.text, letterSpacing: "-0.01em" }}>
           {MESES[mes]} <span style={{ color: T.textMuted, fontWeight: 500 }}>{anio}</span>
         </p>
       </div>
@@ -171,17 +111,14 @@ export function Calendario({ T }) {
       {/* Días de la semana */}
       <div style={{
         display: "grid", gridTemplateColumns: "repeat(7,1fr)",
-        marginBottom: "4px",
-        padding: "4px 0",
-        borderRadius: "6px",
+        marginBottom: "3px", padding: "3px 0",
+        borderRadius: "5px",
         background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt,
       }}>
         {DIAS.map((d, i) => (
           <div key={i} style={{
-            textAlign: "center",
-            fontSize: "9px", fontWeight: 700,
+            textAlign: "center", fontSize: "8px", fontWeight: 700,
             color: (i === 0 || i === 6) ? T.orange : T.textMuted,
-            letterSpacing: "0.04em",
           }}>
             {d}
           </div>
@@ -189,7 +126,7 @@ export function Calendario({ T }) {
       </div>
 
       {/* Celdas de días */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: "2px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: "1px" }}>
         {celdas.map((dia, i) => {
           const esHoy   = dia === hoyNum;
           const finde   = dia ? esFinde(i) : false;
@@ -197,26 +134,21 @@ export function Calendario({ T }) {
           return (
             <div key={i} style={{
               display: "flex", alignItems: "center", justifyContent: "center",
-              height: "26px",
+              height: "22px",
             }}>
               {dia && (
                 <span style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  width: "24px", height: "24px",
-                  borderRadius: esHoy ? "8px" : "6px",
+                  width: "20px", height: "20px",
+                  borderRadius: esHoy ? "6px" : "4px",
                   background: esHoy
                     ? `linear-gradient(135deg, ${T.orange}, ${T.orangeDark})`
                     : "transparent",
-                  color: esHoy
-                    ? "#fff"
-                    : finde
-                    ? T.orange
-                    : T.textMuted,
-                  fontSize: "10px",
+                  color: esHoy ? "#fff" : finde ? T.orange : T.textMuted,
+                  fontSize: "9px",
                   fontWeight: esHoy ? 800 : finde ? 600 : 400,
-                  boxShadow: esHoy ? `0 2px 8px rgba(244,121,32,0.4)` : "none",
+                  boxShadow: esHoy ? `0 2px 6px rgba(244,121,32,0.4)` : "none",
                   userSelect: "none",
-                  transition: "all 0.15s",
                 }}>
                   {dia}
                 </span>
@@ -227,16 +159,10 @@ export function Calendario({ T }) {
       </div>
 
       {/* Indicador hoy */}
-      <div style={{
-        marginTop: "6px",
-        display: "flex", alignItems: "center", justifyContent: "flex-end",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-          <span style={{
-            width: "6px", height: "6px", borderRadius: "50%",
-            background: T.orange, boxShadow: `0 0 6px ${T.orange}`,
-          }} />
-          <span style={{ fontSize: "9px", fontWeight: 600, color: T.orange }}>Hoy</span>
+      <div style={{ marginTop: "4px", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+          <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: T.orange, boxShadow: `0 0 5px ${T.orange}` }} />
+          <span style={{ fontSize: "8px", fontWeight: 600, color: T.orange }}>Hoy</span>
         </div>
       </div>
     </div>

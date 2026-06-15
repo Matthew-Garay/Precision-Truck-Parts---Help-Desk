@@ -13,11 +13,11 @@ const Ticket = {
       const prefijo = `PTP-${anio}${mes}-`;
 
       const [rows] = await conn.query(
-        "SELECT folio_ticket FROM ticket WHERE folio_ticket LIKE ? ORDER BY id_ticket DESC LIMIT 1 FOR UPDATE",
+        "SELECT folio_ticket FROM ticket WHERE folio_ticket LIKE ? ORDER BY CAST(SUBSTRING_INDEX(folio_ticket, '-', -1) AS UNSIGNED) DESC LIMIT 1 FOR UPDATE",
         [`${prefijo}%`]
       );
       const ultimo = rows[0]?.folio_ticket;
-      const num    = ultimo ? parseInt(ultimo.split("-")[2]) + 1 : 1;
+      const num    = ultimo ? parseInt(ultimo.split("-").pop(), 10) + 1 : 1;
       const folio_ticket = `${prefijo}${String(num).padStart(3, "0")}`;
 
       const [result] = await conn.query(
@@ -39,6 +39,26 @@ const Ticket = {
   getFolioById: async (id_ticket) => {
     const [rows] = await pool.query(
       "SELECT folio_ticket FROM ticket WHERE id_ticket = ? LIMIT 1",
+      [id_ticket]
+    );
+    return rows[0] || null;
+  },
+
+  getById: async (id_ticket) => {
+    const [rows] = await pool.query(
+      `SELECT t.id_ticket, t.folio_ticket, t.titulo, t.descripcion,
+              t.estatus, t.prioridad, t.fecha_subido, t.fecha_resuelto,
+              t.comentarios, t.calificacion, t.id_categoria, t.id_empleado,
+              c.nombre_categoria,
+              CONCAT(e.nombre, ' ', e.ap_paterno, ' ', IFNULL(e.ap_materno,'')) AS nombre_empleado,
+              d.nombre_departamento,
+              CONCAT(r.nombre, ' ', r.ap_paterno, ' ', IFNULL(r.ap_materno,'')) AS resuelto_por
+       FROM ticket t
+       LEFT JOIN categoria c ON t.id_categoria = c.id_categoria
+       LEFT JOIN empleado  e ON t.id_empleado  = e.id_empleado
+       LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       LEFT JOIN empleado  r ON t.id_tecnico = r.id_empleado
+       WHERE t.id_ticket = ? LIMIT 1`,
       [id_ticket]
     );
     return rows[0] || null;
@@ -89,16 +109,37 @@ const Ticket = {
     return rows[0] || null;
   },
 
-  editarPorUsuario: async (id_ticket, { titulo, descripcion, prioridad, id_categoria }) => {
+  editarPorUsuario: async (id_ticket, { titulo, descripcion, prioridad, id_categoria, estatus, comentarios }) => {
+    const ESTATUS_EDITABLES = new Set(["En proceso", "Resuelto", "No Resuelto"]);
+    const sets = ["titulo = ?", "descripcion = ?", "prioridad = ?", "id_categoria = ?"];
+    const vals = [titulo, descripcion, prioridad, id_categoria];
+    if (estatus && ESTATUS_EDITABLES.has(estatus)) {
+      sets.push("estatus = ?");
+      vals.push(estatus);
+      if (estatus === "Resuelto" || estatus === "No Resuelto") {
+        sets.push("fecha_resuelto = NOW()");
+      }
+    }
+    if (comentarios !== undefined) { sets.push("comentarios = ?"); vals.push(comentarios ?? null); }
+    vals.push(id_ticket);
     const [result] = await pool.query(
-      `UPDATE ticket SET titulo = ?, descripcion = ?, prioridad = ?, id_categoria = ?
-       WHERE id_ticket = ? AND estatus = 'En proceso'`,
-      [titulo, descripcion, prioridad, id_categoria, id_ticket]
+      `UPDATE ticket SET ${sets.join(", ")} WHERE id_ticket = ? AND estatus IN ('En proceso')`,
+      vals
     );
     return result.affectedRows > 0;
   },
 
   guardarCalificacion: async (id_ticket, calificacion) => {
+    // Impedir calificar si ya tiene una calificacion previa
+    const [[ticket]] = await pool.query(
+      `SELECT calificacion, estatus FROM ticket WHERE id_ticket = ? LIMIT 1`,
+      [id_ticket]
+    );
+    if (!ticket) return null;
+    if (ticket.calificacion !== null)
+      throw Object.assign(new Error("Este ticket ya fue calificado"), { status: 409 });
+    if (ticket.estatus !== "Resuelto")
+      throw Object.assign(new Error("Solo se pueden calificar tickets resueltos"), { status: 400 });
     const [result] = await pool.query(
       `UPDATE ticket SET calificacion = ? WHERE id_ticket = ?`,
       [calificacion, id_ticket]
@@ -107,14 +148,15 @@ const Ticket = {
   },
 
   cerrarVencidos: async () => {
-    // Cierra tickets que llevan más de 2 días SIN ninguna actualización (comentario o cambio de estatus)
     const [tickets] = await pool.query(
-      `SELECT id_ticket, folio_ticket, titulo, id_empleado
-       FROM ticket
-       WHERE estatus = 'En proceso'
-       AND fecha_subido <= DATE_SUB(NOW(), INTERVAL 2 DAY)
-       AND (comentarios IS NULL OR comentarios = '')
-       AND fecha_resuelto IS NULL`
+      `SELECT t.id_ticket, t.folio_ticket, t.titulo, t.id_empleado,
+              CONCAT(e.nombre,' ',e.ap_paterno) AS nombre_empleado,
+              e.email AS email_empleado
+       FROM ticket t
+       JOIN empleado e ON t.id_empleado = e.id_empleado
+       WHERE t.estatus = 'En proceso'
+       AND t.fecha_subido <= DATE_SUB(NOW(), INTERVAL 2 DAY)
+       AND t.fecha_resuelto IS NULL`
     );
     if (tickets.length === 0) return [];
     const ids = tickets.map(t => t.id_ticket);
@@ -158,15 +200,24 @@ const Ticket = {
     );
 
     // Tendencia mensual - últimos 6 meses
-    const [tendencia] = await pool.query(
+    const [tendenciaRaw] = await pool.query(
       `SELECT DATE_FORMAT(fecha_subido, '%Y-%m') AS mes,
               COUNT(*) AS total,
-              SUM(estatus = 'Resuelto') AS resueltos
+              CAST(SUM(estatus = 'Resuelto') AS UNSIGNED) AS resueltos,
+              CAST(SUM(estatus = 'No Resuelto') AS UNSIGNED) AS no_resueltos,
+              CAST(SUM(estatus = 'En proceso') AS UNSIGNED) AS en_proceso
        FROM ticket
        WHERE fecha_subido >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
        GROUP BY mes
        ORDER BY mes ASC`
     );
+    const tendencia = tendenciaRaw.map(r => ({
+      mes:         r.mes,
+      total:       Number(r.total),
+      resueltos:   Number(r.resueltos),
+      no_resueltos: Number(r.no_resueltos),
+      en_proceso:  Number(r.en_proceso),
+    }));
 
     return { promedio_horas: promedio_horas ?? 0, porDepartamento, tendencia };
   },
@@ -183,38 +234,44 @@ const Ticket = {
   },
 
   getReporte: async ({ fecha_inicio, fecha_fin, id_tecnico }) => {
-    // Validar formato de fechas YYYY-MM-DD antes de pasarlas a MySQL
     const reFecha = /^\d{4}-\d{2}-\d{2}$/;
     if (!reFecha.test(fecha_inicio) || !reFecha.test(fecha_fin))
       throw Object.assign(new Error("Formato de fecha inválido. Use YYYY-MM-DD"), { status: 400 });
-    const params = [fecha_inicio, fecha_fin];
-    const tecnicoWhere = id_tecnico ? `AND t.id_tecnico = ?` : "";
-    if (id_tecnico) params.push(id_tecnico);
-    const [rows] = await pool.query(
-      `SELECT t.folio_ticket, t.titulo, t.estatus, t.prioridad,
-              t.fecha_subido, t.fecha_resuelto, t.calificacion,
-              c.nombre_categoria,
-              CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
-              dep.nombre_departamento,
-              CONCAT(r.nombre,' ',r.ap_paterno,' ',IFNULL(r.ap_materno,'')) AS atendido_por
-       FROM ticket t
-       LEFT JOIN categoria c    ON t.id_categoria  = c.id_categoria
-       LEFT JOIN empleado  e    ON t.id_empleado   = e.id_empleado
-       LEFT JOIN departamento dep ON e.id_departamento = dep.id_departamento
-       LEFT JOIN empleado  r    ON t.id_tecnico    = r.id_empleado
-       WHERE DATE(t.fecha_subido) BETWEEN ? AND ?
-       ${tecnicoWhere}
-       ORDER BY t.fecha_subido DESC`,
-      params
-    );
+    const idTecnico = id_tecnico ? parseInt(id_tecnico, 10) : null;
+    if (id_tecnico && (!Number.isInteger(idTecnico) || idTecnico <= 0))
+      throw Object.assign(new Error("id_tecnico debe ser un entero positivo"), { status: 400 });
+
+    const BASE_SELECT = `
+      SELECT t.folio_ticket, t.titulo, t.estatus, t.prioridad,
+             t.fecha_subido, t.fecha_resuelto, t.calificacion,
+             c.nombre_categoria,
+             CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
+             dep.nombre_departamento,
+             CONCAT(r.nombre,' ',r.ap_paterno,' ',IFNULL(r.ap_materno,'')) AS resuelto_por
+      FROM ticket t
+      LEFT JOIN categoria c      ON t.id_categoria    = c.id_categoria
+      LEFT JOIN empleado  e      ON t.id_empleado     = e.id_empleado
+      LEFT JOIN departamento dep ON e.id_departamento = dep.id_departamento
+      LEFT JOIN empleado  r      ON t.id_tecnico      = r.id_empleado`;
+
+    const [rows] = idTecnico
+      ? await pool.query(
+          `${BASE_SELECT} WHERE DATE(t.fecha_subido) BETWEEN ? AND ? AND t.id_tecnico = ? ORDER BY t.fecha_subido DESC`,
+          [fecha_inicio, fecha_fin, idTecnico]
+        )
+      : await pool.query(
+          `${BASE_SELECT} WHERE DATE(t.fecha_subido) BETWEEN ? AND ? ORDER BY t.fecha_subido DESC`,
+          [fecha_inicio, fecha_fin]
+        );
     return rows;
   },
 
   getAll: async ({ limit = 100, offset = 0 } = {}) => {
     const [rows] = await pool.query(
-      `SELECT t.id_ticket, t.folio_ticket, t.titulo, t.descripcion,
+      `SELECT SQL_CALC_FOUND_ROWS
+              t.id_ticket, t.folio_ticket, t.titulo, t.descripcion,
               t.estatus, t.prioridad, t.fecha_subido, t.fecha_resuelto,
-              t.comentarios, t.calificacion,
+              t.comentarios, t.calificacion, t.id_tecnico,
               c.nombre_categoria,
               CONCAT(e.nombre, ' ', e.ap_paterno, ' ', IFNULL(e.ap_materno,'')) AS nombre_empleado,
               d.nombre_departamento,
@@ -228,7 +285,7 @@ const Ticket = {
        LIMIT ? OFFSET ?`,
       [limit, offset]
     );
-    const [[{ total }]] = await pool.query("SELECT COUNT(*) AS total FROM ticket");
+    const [[{ total }]] = await pool.query(`SELECT FOUND_ROWS() AS total`);
     return { rows, total };
   },
 };

@@ -1,41 +1,77 @@
-import multer from "multer";
-import path   from "path";
-import fs     from "fs";
-import { safeResolvePath } from "./security.js";
+import multer             from "multer";
+import path               from "path";
+import fs                 from "fs";
+import { fileURLToPath }  from "url";
+import { fileTypeFromFile } from "file-type";
+import { safeResolvePath }  from "./security.js";
 
-// Directorio base completamente estatico \u2014 no proviene de input del cliente
-const EVIDENCIAS_BASE = path.resolve("storage", "Evidencias_Tickets");
-const EVIDENCIAS_TMP  = path.resolve("storage", "Evidencias_Tickets", "_tmp_upload");
+// Fix #16: usar import.meta.url en lugar de path.resolve relativo al CWD
+const __dirname       = path.dirname(fileURLToPath(import.meta.url));
+const EVIDENCIAS_BASE = path.resolve(__dirname, "../../../storage/Evidencias_Tickets");
+const EVIDENCIAS_TMP  = path.resolve(EVIDENCIAS_BASE, "_tmp_upload");
 
-// Mimetypes permitidos exactos
-const EVIDENCIA_MIMETYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const MIMETYPES_PERMITIDOS = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
-// Crear directorio tmp si no existe al arrancar
 fs.mkdirSync(EVIDENCIAS_TMP, { recursive: true });
 
 const storage = multer.diskStorage({
-  // destination es una ruta estatica pre-creada \u2014 no usa input del request
-  destination: (_req, _file, cb) => {
-    cb(null, EVIDENCIAS_TMP);
-  },
+  destination: (_req, _file, cb) => cb(null, EVIDENCIAS_TMP),
   filename: (_req, file, cb) => {
-    // Nombre completamente generado por el servidor — nunca usa originalname del cliente
     const ext = file.mimetype === "image/png"  ? ".png"
               : file.mimetype === "image/webp" ? ".webp"
               : file.mimetype === "image/gif"  ? ".gif"
               : ".jpg";
-    const nombreSeguro = `ev_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
-    cb(null, nombreSeguro);
+    cb(null, `ev_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`);
   },
 });
 
-export const uploadEvidencias = multer({
+// Primera barrera: mimetype declarado por el cliente
+const uploadEvidenciasRaw = multer({
   storage,
   fileFilter: (_req, file, cb) => {
-    if (EVIDENCIA_MIMETYPES.has(file.mimetype)) cb(null, true);
-    else cb(new Error("Solo se permiten imagenes JPEG, PNG, WebP o GIF"));
+    if (MIMETYPES_PERMITIDOS.has(file.mimetype)) cb(null, true);
+    else cb(new Error("Solo se permiten imágenes JPEG, PNG, WebP o GIF"));
   },
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-export { EVIDENCIAS_BASE, safeResolvePath };
+// Fix #11: cleanup robusto — elimina TODOS los archivos del request sin importar
+// si ya fueron renombrados/movidos, usando las rutas originales capturadas antes del loop.
+async function validarMagicBytes(req, res, next) {
+  const archivos = req.files || [];
+  if (archivos.length === 0) return next();
+
+  // Capturar rutas antes de cualquier modificación
+  const rutas = archivos.map(f => f.path);
+
+  const limpiar = () => {
+    for (const ruta of rutas) {
+      try { if (fs.existsSync(ruta)) fs.unlinkSync(ruta); } catch {}
+    }
+  };
+
+  for (const file of archivos) {
+    let tipo;
+    try {
+      tipo = await fileTypeFromFile(file.path);
+    } catch {
+      limpiar();
+      return res.status(400).json({ error: "No se pudo verificar el tipo de archivo" });
+    }
+    if (!tipo || !MIMETYPES_PERMITIDOS.has(tipo.mime)) {
+      limpiar();
+      return res.status(400).json({ error: "Archivo rechazado: el contenido no corresponde a una imagen válida" });
+    }
+  }
+  next();
+}
+
+// Middleware compuesto: multer + magic bytes
+const uploadEvidencias = {
+  array: (campo, maxCount) => [
+    uploadEvidenciasRaw.array(campo, maxCount),
+    validarMagicBytes,
+  ],
+};
+
+export { uploadEvidencias, EVIDENCIAS_BASE };

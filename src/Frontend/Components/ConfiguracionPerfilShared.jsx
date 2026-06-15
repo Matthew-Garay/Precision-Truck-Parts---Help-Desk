@@ -11,12 +11,11 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
   const [apPaterno,  setApPaterno]  = useState(usuario.ap_paterno || "");
   const [apMaterno,  setApMaterno]  = useState(usuario.ap_materno || "");
   const [email,      setEmail]      = useState(usuario.email      || "");
-  const [passActual, setPassActual] = useState("");
+  const [passActual, setPassActual] = useState(() => sessionStorage.getItem("pwd_actual") || "");
   const [passNueva,  setPassNueva]  = useState("");
   const [passConf,   setPassConf]   = useState("");
-  const [showPass,   setShowPass]   = useState({ actual: false, nueva: false, conf: false });
 
-  const fotoUrl = f => f ? `${API}/fotos/${f.split("/").pop()}` : null;
+  const fotoUrl = f => f ? `/storage/${f}` : null;
   const [foto,         setFoto]         = useState(fotoUrl(usuario.foto));
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [cropSrc,      setCropSrc]      = useState(null);
@@ -27,6 +26,13 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
   const [anioFiltro, setAnioFiltro] = useState("Todos");
   const [msg,        setMsg]        = useState(null);
   const [loading,    setLoading]    = useState(false);
+
+  useEffect(() => {
+    setNombre(usuario.nombre     || "");
+    setApPaterno(usuario.ap_paterno || "");
+    setApMaterno(usuario.ap_materno || "");
+    setEmail(usuario.email      || "");
+  }, [usuario.id_empleado]);
 
   const esAdmin = rol === "Administrador";
 
@@ -73,7 +79,12 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
           if (!emp?.id_empleado) return;
           setPerfil(prev => {
             const next = { ...prev, num_empleado: emp.num_empleado, nombre: emp.nombre, ap_paterno: emp.ap_paterno, ap_materno: emp.ap_materno || "", email: emp.email, departamento: emp.nombre_departamento };
-            return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
+            if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+            setNombre(emp.nombre || "");
+            setApPaterno(emp.ap_paterno || "");
+            setApMaterno(emp.ap_materno || "");
+            setEmail(emp.email || "");
+            return next;
           });
         }).catch(() => {});
     };
@@ -84,8 +95,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
 
   const guardar = async () => {
     if (passNueva && passNueva !== passConf) return setMsg({ tipo: "err", texto: "Las contraseñas no coinciden" });
-    if (passNueva && passNueva.length < 6)  return setMsg({ tipo: "err", texto: "La contraseña debe tener al menos 6 caracteres" });
-    if (passNueva && !passActual)           return setMsg({ tipo: "err", texto: "Ingresa tu contraseña actual" });
+    if (passNueva && passNueva.length < 8)  return setMsg({ tipo: "err", texto: "La contraseña debe tener al menos 8 caracteres" });
     setLoading(true); setMsg(null);
     try {
       const res  = await apiFetch(`/api/auth/perfil/${usuario.id_empleado}`, {
@@ -95,7 +105,11 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
       const data = await res.json();
       if (!res.ok) { setMsg({ tipo: "err", texto: data.error || "Error al guardar" }); return; }
       setMsg({ tipo: "ok", texto: "Datos actualizados correctamente" });
-      setPassActual(""); setPassNueva(""); setPassConf("");
+      if (passNueva) {
+        sessionStorage.setItem("pwd_actual", passNueva);
+        setPassActual(passNueva);
+      }
+      setPassNueva(""); setPassConf("");
       setTimeout(() => setMsg(null), 4000);
       const u = JSON.parse(sessionStorage.getItem("usuario") || "{}");
       const actualizado = { ...u, ...data.usuario };
@@ -184,43 +198,58 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
           </div>
         </div>
 
-        {/* -- CAMBIAR CONTRASEÑA -- */}
+        {/* -- DATOS PERSONALES + CONTRASEÑA + GUARDAR -- */}
         <div className="rounded-xl overflow-hidden" style={card}>
           <div className="px-5 py-3 flex items-center gap-2" style={hdr}>
             <div className="w-1 h-3.5 rounded-full" style={{ background: T.orange }} />
             <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Cambiar Contraseña</p>
           </div>
-          <div className="px-5 py-5 flex flex-col gap-4">
+          <div className="px-5 pt-4 pb-5 flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Contraseña Actual</span>
+              <input
+                style={{ ...inp, opacity: 0.55, cursor: "not-allowed", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}
+                type="text" value={passActual}
+                placeholder="Inicia sesión de nuevo para ver"
+                disabled readOnly />
+            </div>
             {[
-              { label: "Contraseña Actual",         k: "actual", val: passActual, set: setPassActual, auto: "current-password", disabled: false },
-              { label: "Nueva Contraseña",           k: "nueva",  val: passNueva,  set: setPassNueva,  auto: "new-password",     disabled: false },
-              { label: "Confirmar Nueva Contraseña", k: "conf",   val: passConf,   set: setPassConf,   auto: "new-password",     disabled: false },
-            ].map(({ label, k, val, set, auto, disabled }) => (
+              { label: "Nueva Contraseña",           k: "nueva", val: passNueva, set: setPassNueva },
+              { label: "Confirmar Nueva Contraseña", k: "conf",  val: passConf,  set: setPassConf  },
+            ].map(({ label, k, val, set }) => (
               <div key={k} className="flex flex-col gap-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</span>
-                <div className="relative">
-                  <input className="[&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
-                    style={{ ...inp, paddingRight: "36px" }}
-                    type={showPass[k] ? "text" : "password"} value={val}
-                    onChange={e => set(e.target.value)} autoComplete={auto} placeholder="••••••••"
-                    onFocus={e => e.target.style.borderColor = T.orange} onBlur={e => e.target.style.borderColor = T.border} />
-                  <EyeBtn show={showPass[k]} onToggle={() => setShowPass(p => ({ ...p, [k]: !p[k] }))} textFaint={T.textFaint} />
-                </div>
+                <input className="[&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
+                  style={inp} type="password" value={val} onChange={e => set(e.target.value)}
+                  autoComplete="new-password" placeholder="••••••••"
+                  onFocus={e => e.target.style.borderColor = T.orange}
+                  onBlur={e => e.target.style.borderColor = T.border} />
               </div>
             ))}
+
+            {/* Mensaje + Botón en misma fila */}
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <div className="flex-1">
+                {msg && (
+                  <div className="px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                    style={{ background: msg.tipo === "ok" ? (isDark ? "rgba(22,163,74,0.15)" : "#dcfce7") : (isDark ? "rgba(220,38,38,0.15)" : "#fee2e2"), color: msg.tipo === "ok" ? "#16a34a" : "#dc2626", border: `1px solid ${msg.tipo === "ok" ? "rgba(22,163,74,0.3)" : "rgba(220,38,38,0.3)"}` }}>
+                    {msg.tipo === "ok"
+                      ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
+                    {msg.texto}
+                  </div>
+                )}
+              </div>
+              <button onClick={guardar} disabled={loading}
+                className="flex-shrink-0 px-5 py-2 rounded-lg text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95 flex items-center gap-1.5"
+                style={{ background: `linear-gradient(135deg, ${T.orange}, #d97400)`, boxShadow: "0 2px 10px rgba(244,121,32,0.35)", opacity: loading ? 0.7 : 1 }}>
+                {loading
+                  ? <><svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Guardando...</>
+                  : "Guardar Cambios"}
+              </button>
+            </div>
           </div>
         </div>
-
-        {/* -- MENSAJE -- */}
-        {msg && (
-          <div className="px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2"
-            style={{ background: msg.tipo === "ok" ? (isDark ? "rgba(22,163,74,0.15)" : "#dcfce7") : (isDark ? "rgba(220,38,38,0.15)" : "#fee2e2"), color: msg.tipo === "ok" ? "#16a34a" : "#dc2626", border: `1px solid ${msg.tipo === "ok" ? "rgba(22,163,74,0.3)" : "rgba(220,38,38,0.3)"}` }}>
-            {msg.tipo === "ok"
-              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
-            {msg.texto}
-          </div>
-        )}
 
         {/* -- HISTORIAL DE ACCESOS -- */}
         <div className="rounded-xl overflow-hidden" style={card}>
@@ -262,7 +291,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             </div>
           </div>
 
-          {esAdmin && accesos.length > 0 && (
+          {accesos.length > 0 && (
             <div className="grid grid-cols-4 gap-0" style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` }}>
               {[{ label: "Sesiones", val: accesosFiltrados.length, color: T.orange },
                 { label: "Cerradas", val: accesosFiltrados.filter(a => a.fecha_salida).length, color: "#16a34a" },
@@ -315,14 +344,6 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
           </div>
         </div>
 
-        {/* -- BOTÓN GUARDAR -- */}
-        <button onClick={guardar} disabled={loading}
-          className="py-3 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95 flex items-center justify-center gap-2"
-          style={{ background: `linear-gradient(135deg, ${T.orange}, #d97400)`, boxShadow: "0 4px 14px rgba(244,121,32,0.35)", opacity: loading ? 0.7 : 1 }}>
-          {loading
-            ? <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Guardando...</>
-            : "Guardar Cambios"}
-        </button>
         <div className="pb-2" />
       </div>
     </div>

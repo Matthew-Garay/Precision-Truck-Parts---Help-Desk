@@ -7,7 +7,7 @@ import path from "path";
  */
 // Rutas completamente exentas de CSRF (sin sesion previa posible)
 // Se compara la ruta exacta, no con endsWith, para evitar bypass
-const CSRF_EXEMPT_EXACT = new Set(["/login", "/logout", "/recuperar", "/reset-password"]);
+const CSRF_EXEMPT_EXACT = new Set(["/login", "/logout", "/recuperar", "/verificar-codigo", "/reset-password"]);
 
 export function csrfProtection(req, res, next) {
   if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS")

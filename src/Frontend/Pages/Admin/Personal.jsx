@@ -1,8 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
+import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import { apiFetch } from "../../Config/api";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
+import { useCardStyles } from "../../Components/Card";
+import Modal from "../../Components/Modal";
 
-function Avatar({ nombre, size = 48, isDark }) {
+const API_URL = import.meta.env.VITE_API_URL ?? "";
+
+// ── Avatar ────────────────────────────────────────────────────────
+function Avatar({ nombre, foto, size = 48, isDark }) {
   const partes = (nombre || "").split(" ").filter(Boolean);
   const iniciales = partes.slice(0, 2).map(p => p[0]?.toUpperCase() || "").join("");
   const colores = [
@@ -14,21 +20,26 @@ function Avatar({ nombre, size = 48, isDark }) {
   const [light, dark] = colores[idx];
   const bg = isDark ? dark : light + "22";
   const fg = isDark ? light : light;
+
+  if (foto) {
+    const rel = foto.startsWith("/storage/") ? foto : `/storage/${foto}`;
+    const src = foto.startsWith("http") ? foto : `${API_URL}${rel.split("/").map(encodeURIComponent).join("/")}`;
+    return (
+      <div style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: `2px solid ${fg}44` }}>
+        <img src={src} alt={nombre} style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          onError={e => { e.target.style.display = "none"; e.target.parentElement.innerHTML = `<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:${bg};font-size:${size*0.33}px;font-weight:700;color:${fg}">${iniciales||"?"}</span>`; }} />
+      </div>
+    );
+  }
+
   return (
-    <div style={{
-      width: size, height: size, borderRadius: "50%",
-      background: bg, border: `2px solid ${fg}44`,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      flexShrink: 0,
-    }}>
-      {iniciales
-        ? <span style={{ fontSize: size * 0.33, fontWeight: 900, color: fg, letterSpacing: "-0.02em" }}>{iniciales}</span>
-        : <span style={{ fontSize: size * 0.33, fontWeight: 900, color: fg }}>?</span>
-      }
+    <div style={{ width: size, height: size, borderRadius: "50%", background: bg, border: `2px solid ${fg}44`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <span style={{ fontSize: size * 0.33, fontWeight: 700, color: fg, letterSpacing: "-0.02em" }}>{iniciales || "?"}</span>
     </div>
   );
 }
 
+// ── Password strength ─────────────────────────────────────────────
 function passStrength(p) {
   if (!p) return 0;
   let s = 0;
@@ -37,10 +48,12 @@ function passStrength(p) {
   if (/[A-Z]/.test(p)) s++;
   if (/[0-9]/.test(p)) s++;
   if (/[^A-Za-z0-9]/.test(p)) s++;
-  return s; // 0-5
+  return s;
 }
 
+// ── Modal Empleado ────────────────────────────────────────────────
 function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, onGuardar, onCerrar }) {
+  const ORANGE = "#F7941E";
   const [form, setForm] = useState({
     num_empleado:    empleado?.num_empleado    || "",
     nombre:          empleado?.nombre          || "",
@@ -60,12 +73,12 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, onGuar
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const guardar = async () => {
-    if (!form.nombre.trim() || !form.ap_paterno.trim() || !form.email.trim() || !form.id_rol || !form.id_departamento)
+    if ((modo === "crear" && !form.num_empleado.trim()) || !form.nombre.trim() || !form.ap_paterno.trim() || !form.email.trim() || !form.id_rol || !form.id_departamento)
       return setError("Completa todos los campos obligatorios");
     if (modo === "crear" && !form.password_nueva.trim())
       return setError("La contraseña es obligatoria al crear un empleado");
-    if (form.password_nueva && form.password_nueva.length < 6)
-      return setError("La contraseña debe tener al menos 6 caracteres");
+    if (form.password_nueva && form.password_nueva.trim().length < 8)
+      return setError("La contraseña debe tener al menos 8 caracteres");
     setLoading(true); setError(""); setExito("");
     try {
       await onGuardar(form);
@@ -78,112 +91,65 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, onGuar
   };
 
   const nombreCompleto = empleado ? `${empleado.nombre} ${empleado.ap_paterno}`.trim() : "";
+  const iconEmpleado = (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isDark ? "#93c5fd" : ORANGE} strokeWidth="2.5">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+    </svg>
+  );
 
   const inp = {
     background: isDark ? "rgba(255,255,255,0.05)" : "#f8fafc",
     border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : T.border}`,
-    color: T.text, borderRadius: "10px", padding: "9px 12px",
+    color: T.text, borderRadius: "8px", padding: "9px 12px",
     fontSize: "13px", outline: "none", width: "100%", transition: "border-color .15s, box-shadow .15s",
   };
 
   const Lbl = ({ children }) => (
-    <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>{children}</span>
+    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textMuted }}>{children}</span>
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      style={{ background: "rgba(0,0,0,0.65)" }}
-      onClick={onCerrar}>
-      <div className="w-full max-w-md rounded-2xl overflow-hidden"
-        style={{
-          background: isDark ? "#141720" : "#F9FAFB",
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}`,
-          boxShadow: isDark ? "0 25px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)" : "0 25px 80px rgba(0,0,0,0.15)",
-        }}
-        onClick={e => e.stopPropagation()}>
+    <Modal
+      title={modo === "crear" ? "Nuevo Empleado" : "Editar Empleado"}
+      subtitle={modo === "crear" ? "Registrar nuevo miembro del equipo" : nombreCompleto}
+      icon={iconEmpleado}
+      accentColor={ORANGE}
+      onClose={onCerrar}
+      loading={loading}
+      maxWidth="448px"
+      noBodyPadding
+    >
+      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14, maxHeight: "62vh", overflowY: "auto" }}>
 
-        {/* -- HEADER con banda naranja -- */}
-        <div className="relative overflow-hidden">
-          <div className="absolute inset-0" style={{
-            background: `linear-gradient(135deg, ${T.orange}22 0%, transparent 60%)`,
-            borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9"}`,
-          }} />
-          <div className="relative px-5 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {modo === "editar" && empleado
-                ? <Avatar nombre={nombreCompleto} size={40} isDark={isDark} />
-                : (
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: `linear-gradient(135deg, ${T.orange}, #d97400)`, boxShadow: "0 4px 12px rgba(244,121,32,0.4)" }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                    </svg>
-                  </div>
-                )
-              }
-              <div>
-                <p className="text-sm font-black" style={{ color: T.text }}>
-                  {modo === "crear" ? "Nuevo Empleado" : "Editar Empleado"}
-                </p>
-                <p className="text-[11px] mt-0.5" style={{ color: T.textMuted }}>
-                  {modo === "crear" ? "Registrar nuevo miembro del equipo" : nombreCompleto}
-                </p>
-              </div>
-            </div>
-            <button onClick={onCerrar}
-              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
-              style={{ background: isDark ? "rgba(255,255,255,0.07)" : "#f1f5f9", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}` }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* -- BODY -- */}
-        <div className="px-5 py-4 flex flex-col gap-4 max-h-[62vh] overflow-y-auto">
-
-          {/* Número de empleado */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
+          {/* N° Empleado */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <Lbl>N° Empleado</Lbl>
-              {modo === "editar" && (
-                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md"
-                  style={{ background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9", color: T.textFaint, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}` }}>
-                  Solo lectura
-                </span>
-              )}
+              {modo === "editar" && <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9", color: T.textFaint, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}`, padding: "2px 6px", borderRadius: 4 }}>Solo lectura</span>}
             </div>
             <input
-              style={{
-                ...inp,
-                background: modo === "editar" ? (isDark ? "rgba(255,255,255,0.02)" : "#f1f5f9") : inp.background,
-                color: modo === "editar" ? T.textFaint : T.text,
-                cursor: modo === "editar" ? "default" : "text",
-                borderStyle: modo === "editar" ? "dashed" : "solid",
-              }}
+              style={{ ...inp, background: modo === "editar" ? (isDark ? "rgba(255,255,255,0.02)" : "#f1f5f9") : inp.background, color: modo === "editar" ? T.textFaint : T.text, cursor: modo === "editar" ? "default" : "text", borderStyle: modo === "editar" ? "dashed" : "solid" }}
               value={form.num_empleado}
               onChange={e => modo === "crear" && set("num_empleado", e.target.value)}
               readOnly={modo === "editar"}
               placeholder="EMP-001"
-              onFocus={e => { if (modo === "crear") { e.target.style.borderColor = T.orange; e.target.style.boxShadow = `0 0 0 3px ${T.orange}18`; } }}
+              onFocus={e => { if (modo === "crear") { e.target.style.borderColor = "#F7941E"; e.target.style.boxShadow = "0 0 0 3px rgba(247,148,30,0.15)"; } }}
               onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : T.border; e.target.style.boxShadow = "none"; }} />
           </div>
 
-          {/* Nombre completo */}
-          <div className="flex flex-col gap-1.5">
+          {/* Nombre */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <Lbl>Nombre Completo</Lbl>
-            <div className="grid grid-cols-3 gap-2">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
               {[
                 { key: "nombre",     ph: "Nombre",          lbl: "Nombre"    },
-                { key: "ap_paterno", ph: "Ej. García",       lbl: "Ap. Paterno" },
-                { key: "ap_materno", ph: "Ej. López (opc.)", lbl: "Ap. Materno" },
+                { key: "ap_paterno", ph: "Ej. García",       lbl: "Paterno"   },
+                { key: "ap_materno", ph: "Opc.",             lbl: "Materno"   },
               ].map(({ key, ph, lbl }) => (
-                <div key={key} className="flex flex-col gap-1">
-                  <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: T.textFaint }}>{lbl}</span>
-                  <input style={inp} value={form[key]} onChange={e => set(key, e.target.value)}
-                    placeholder={ph}
-                    onFocus={e => { e.target.style.borderColor = T.orange; e.target.style.boxShadow = `0 0 0 3px ${T.orange}18`; }}
+                <div key={key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: T.textFaint }}>{lbl}</span>
+                  <input style={inp} value={form[key]} onChange={e => set(key, e.target.value)} placeholder={ph}
+                    onFocus={e => { e.target.style.borderColor = "#F7941E"; e.target.style.boxShadow = "0 0 0 3px rgba(247,148,30,0.15)"; }}
                     onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : T.border; e.target.style.boxShadow = "none"; }} />
                 </div>
               ))}
@@ -191,25 +157,24 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, onGuar
           </div>
 
           {/* Email */}
-          <div className="flex flex-col gap-1.5">
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <Lbl>Correo Electrónico</Lbl>
-            <input style={inp} type="email" value={form.email} onChange={e => set("email", e.target.value)}
-              placeholder="correo@empresa.com"
-              onFocus={e => { e.target.style.borderColor = T.orange; e.target.style.boxShadow = `0 0 0 3px ${T.orange}18`; }}
+            <input style={inp} type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="correo@empresa.com"
+              onFocus={e => { e.target.style.borderColor = "#F7941E"; e.target.style.boxShadow = "0 0 0 3px rgba(247,148,30,0.15)"; }}
               onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : T.border; e.target.style.boxShadow = "none"; }} />
           </div>
 
-          {/* Rol y Departamento - campos separados */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Rol y Depto */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {[
-              { key: "id_rol",          opts: roles.map(r => ({ val: r.id_rol, lbl: r.nombre_rol })),                          lbl: "Rol",          ph: "Seleccionar rol"  },
-              { key: "id_departamento", opts: departamentos.map(d => ({ val: d.id_departamento, lbl: d.nombre_departamento })), lbl: "Departamento",  ph: "Seleccionar área" },
+              { key: "id_rol",          opts: roles.map(r => ({ val: r.id_rol, lbl: r.nombre_rol })),                          lbl: "Rol",         ph: "Seleccionar rol"  },
+              { key: "id_departamento", opts: departamentos.map(d => ({ val: d.id_departamento, lbl: d.nombre_departamento })), lbl: "Departamento", ph: "Seleccionar área" },
             ].map(({ key, opts, lbl, ph }) => (
-              <div key={key} className="flex flex-col gap-1.5">
+              <div key={key} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 <Lbl>{lbl}</Lbl>
                 <select style={{ ...inp, cursor: "pointer", colorScheme: isDark ? "dark" : "light" }}
                   value={form[key]} onChange={e => set(key, e.target.value)}
-                  onFocus={e => { e.target.style.borderColor = T.orange; e.target.style.boxShadow = `0 0 0 3px ${T.orange}18`; }}
+                  onFocus={e => { e.target.style.borderColor = "#F7941E"; e.target.style.boxShadow = "0 0 0 3px rgba(247,148,30,0.15)"; }}
                   onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : T.border; e.target.style.boxShadow = "none"; }}>
                   <option value="">{ph}</option>
                   {opts.map(o => <option key={o.val} value={o.val}>{o.lbl}</option>)}
@@ -218,128 +183,98 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, onGuar
             ))}
           </div>
 
-          {/* Estatus - Toggle Switch (solo editar) */}
+          {/* Estatus toggle (solo editar) */}
           {modo === "editar" && (
-            <div className="flex flex-col gap-1.5">
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <Lbl>Estatus</Lbl>
-              <div className="flex items-center justify-between px-3 py-2.5 rounded-xl"
-                style={{ background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}` }}>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full transition-colors"
-                    style={{ background: form.estatus === "Activo" ? "#22c55e" : "#94a3b8", boxShadow: form.estatus === "Activo" ? "0 0 6px #22c55e88" : "none" }} />
-                  <span className="text-xs font-bold" style={{ color: form.estatus === "Activo" ? "#16a34a" : "#64748b" }}>
-                    {form.estatus === "Activo" ? "Activo" : "Inactivo"}
-                  </span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 8, background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: form.estatus === "Activo" ? "#22c55e" : "#94a3b8", boxShadow: form.estatus === "Activo" ? "0 0 0 3px rgba(34,197,94,0.2)" : "none" }} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: form.estatus === "Activo" ? "#16a34a" : "#64748b" }}>{form.estatus === "Activo" ? "Activo" : "Inactivo"}</span>
                 </div>
                 <button type="button" onClick={() => set("estatus", form.estatus === "Activo" ? "Inactivo" : "Activo")}
-                  className="relative flex-shrink-0 transition-all duration-300"
-                  style={{
-                    width: 44, height: 24, borderRadius: 12,
-                    background: form.estatus === "Activo" ? "#16a34a" : (isDark ? "rgba(255,255,255,0.12)" : "#cbd5e1"),
-                    border: "none", cursor: "pointer", padding: 0,
-                    boxShadow: form.estatus === "Activo" ? "0 0 0 3px rgba(22,163,74,0.2)" : "none",
-                    transition: "background .25s, box-shadow .25s",
-                  }}>
-                  <span style={{
-                    position: "absolute", top: 3,
-                    left: form.estatus === "Activo" ? 23 : 3,
-                    width: 18, height: 18, borderRadius: "50%",
-                    background: "#fff",
-                    boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
-                    transition: "left .25s",
-                    display: "block",
-                  }} />
+                  style={{ position: "relative", width: 44, height: 24, borderRadius: 12, background: form.estatus === "Activo" ? "#16a34a" : (isDark ? "rgba(255,255,255,0.12)" : "#cbd5e1"), border: "none", cursor: "pointer", padding: 0, transition: "background .25s" }}>
+                  <span style={{ position: "absolute", top: 3, left: form.estatus === "Activo" ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.25)", transition: "left .25s", display: "block" }} />
                 </button>
               </div>
             </div>
           )}
 
           {/* Contraseña */}
-          <div className="flex flex-col gap-1.5">
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <Lbl>{modo === "crear" ? "Contraseña" : "Nueva Contraseña (opcional)"}</Lbl>
-            <div className="relative">
+            <div style={{ position: "relative" }}>
               <input style={{ ...inp, paddingRight: "40px" }} type={showPass ? "text" : "password"}
                 value={form.password_nueva} onChange={e => set("password_nueva", e.target.value)}
-                placeholder={modo === "crear" ? "Mínimo 6 caracteres" : "Dejar vacío para no cambiar"}
-                onFocus={e => { e.target.style.borderColor = T.orange; e.target.style.boxShadow = `0 0 0 3px ${T.orange}18`; }}
+                placeholder={modo === "crear" ? "Mínimo 8 caracteres" : "Dejar vacío para no cambiar"}
+                onFocus={e => { e.target.style.borderColor = "#F7941E"; e.target.style.boxShadow = "0 0 0 3px rgba(247,148,30,0.15)"; }}
                 onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : T.border; e.target.style.boxShadow = "none"; }} />
               <button type="button" onClick={() => setShowPass(p => !p)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
-                style={{ color: showPass ? T.orange : (isDark ? "#64748b" : "#475569"), background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 0, color: showPass ? "#F7941E" : (isDark ? "#64748b" : "#475569") }}>
                 {showPass
                   ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                   : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 }
               </button>
             </div>
-            {/* Barra de fortaleza */}
             {form.password_nueva && (() => {
               const s = passStrength(form.password_nueva);
-              const pct = (s / 5) * 100;
               const color = s <= 1 ? "#ef4444" : s <= 2 ? "#f97316" : s <= 3 ? "#eab308" : s <= 4 ? "#84cc16" : "#22c55e";
               const label = s <= 1 ? "Muy débil" : s <= 2 ? "Débil" : s <= 3 ? "Regular" : s <= 4 ? "Fuerte" : "Muy fuerte";
               return (
-                <div className="flex flex-col gap-1 mt-1">
-                  <div className="w-full rounded-full overflow-hidden" style={{ height: 4, background: isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0" }}>
-                    <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 9999, transition: "width .3s, background .3s" }} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+                  <div style={{ height: 3, borderRadius: 9999, background: isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0" }}>
+                    <div style={{ width: `${(s/5)*100}%`, height: "100%", background: color, borderRadius: 9999, transition: "width .3s" }} />
                   </div>
-                  <span className="text-[10px] font-bold" style={{ color }}>{label}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color }}>{label}</span>
                 </div>
               );
             })()}
           </div>
 
-          {/* Mensajes */}
           {error && (
-            <div className="px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2"
-              style={{ background: isDark ? "rgba(220,38,38,0.12)" : "#fff1f1", color: "#dc2626", border: "1px solid rgba(220,38,38,0.25)" }}>
+            <div style={{ padding: "10px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 8, background: isDark ? "rgba(220,38,38,0.1)" : "#fff1f1", color: "#dc2626", border: "1px solid rgba(220,38,38,0.2)" }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               {error}
             </div>
           )}
           {exito && (
-            <div className="px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2"
-              style={{ background: isDark ? "rgba(22,163,74,0.12)" : "#f0fdf4", color: "#16a34a", border: "1px solid rgba(22,163,74,0.25)" }}>
+            <div style={{ padding: "10px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 8, background: isDark ? "rgba(22,163,74,0.1)" : "#f0fdf4", color: "#16a34a", border: "1px solid rgba(22,163,74,0.2)" }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               {exito}
             </div>
           )}
         </div>
 
-        {/* -- FOOTER -- */}
-        <div className="px-5 py-3 flex gap-2"
-          style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9"}`, background: isDark ? "rgba(255,255,255,0.02)" : "#fafbfc" }}>
-          <button onClick={onCerrar}
-            className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-95 active:scale-95"
-            style={{ background: "transparent", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "#cbd5e1"}` }}>
+        {/* Footer dentro del noBodyPadding wrapper */}
+        <div style={{ padding: "14px 24px", display: "flex", gap: 8, borderTop: "1px solid #e2e8f0", flexShrink: 0 }}>
+          <button onClick={onCerrar} style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "transparent", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "#cbd5e1"}`, cursor: "pointer" }}>
             Cancelar
           </button>
           <button onClick={guardar} disabled={loading}
-            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95 flex items-center justify-center gap-2"
-            style={{ background: `linear-gradient(135deg, ${T.orange}, #d97400)`, boxShadow: "0 4px 14px rgba(244,121,32,0.35)", opacity: loading ? 0.7 : 1 }}>
+            style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 13, fontWeight: 700, color: "#fff", background: ORANGE, border: "none", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
             {loading
-              ? <><svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Guardando...</>
+              ? <><svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Guardando...</>
               : modo === "crear" ? "Crear Empleado" : "Guardar Cambios"
             }
           </button>
         </div>
-
-      </div>
-    </div>
+    </Modal>
   );
 }
 
+// ── Modal Historial ───────────────────────────────────────────────
 function ModalHistorial({ T, isDark, empleado, onCerrar }) {
   const hoy = new Date();
-  const isoHoy  = hoy.toISOString().slice(0, 10);
+  const isoHoy   = hoy.toISOString().slice(0, 10);
   const isoLunes = (() => { const d = new Date(hoy); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })();
-  const isoMes  = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-01`;
+  const isoMes   = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-01`;
 
-  const [accesos,   setAccesos]   = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [desde,     setDesde]     = useState("");
-  const [hasta,     setHasta]     = useState("");
-  const [tipoFiltro, setTipoFiltro] = useState("todos"); // todos | activos | cerrados
+  const [accesos,    setAccesos]    = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [desde,      setDesde]      = useState("");
+  const [hasta,      setHasta]      = useState("");
+  const [tipoFiltro, setTipoFiltro] = useState("todos");
 
   const nombre = `${empleado.nombre} ${empleado.ap_paterno}`.trim();
 
@@ -347,178 +282,95 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
     apiFetch(`/api/auth/accesos/${empleado.id_empleado}`)
       .then(r => r.json())
       .then(d => setAccesos(Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : [])))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [empleado.id_empleado]);
 
-  const fmt = iso => {
-    if (!iso) return "-";
-    return new Date(iso).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
-  };
+  const fmt = iso => !iso ? "-" : new Date(iso).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
 
   const duracion = (entrada, salida) => {
     if (!salida) return null;
     const mins = Math.round((new Date(salida) - new Date(entrada)) / 60000);
-    if (mins < 60) return `${mins} min`;
-    return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+    return mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
   };
 
-  const aplicarAtajo = (atajo) => {
-    if (atajo === "hoy")    { setDesde(isoHoy);  setHasta(isoHoy);  }
-    if (atajo === "semana") { setDesde(isoLunes); setHasta(isoHoy);  }
-    if (atajo === "mes")    { setDesde(isoMes);   setHasta(isoHoy);  }
-    if (atajo === "todo")   { setDesde("");        setHasta("");       }
+  const aplicarAtajo = (a) => {
+    if (a === "hoy")    { setDesde(isoHoy);  setHasta(isoHoy);  }
+    if (a === "semana") { setDesde(isoLunes); setHasta(isoHoy);  }
+    if (a === "mes")    { setDesde(isoMes);   setHasta(isoHoy);  }
+    if (a === "todo")   { setDesde("");        setHasta("");       }
   };
 
   const filtrados = accesos.filter(a => {
     if (tipoFiltro === "activos"  && a.fecha_salida)  return false;
     if (tipoFiltro === "cerrados" && !a.fecha_salida) return false;
-    if (desde) {
-      const entrada = new Date(a.fecha_entrada);
-      const d = new Date(desde); d.setHours(0, 0, 0, 0);
-      if (entrada < d) return false;
-    }
-    if (hasta) {
-      const entrada = new Date(a.fecha_entrada);
-      const h = new Date(hasta); h.setHours(23, 59, 59, 999);
-      if (entrada > h) return false;
-    }
+    if (desde) { const d = new Date(desde); d.setHours(0,0,0,0); if (new Date(a.fecha_entrada) < d) return false; }
+    if (hasta) { const h = new Date(hasta); h.setHours(23,59,59,999); if (new Date(a.fecha_entrada) > h) return false; }
     return true;
   });
 
   const exportarCSV = () => {
-    const filas = [
-      ["Entrada", "Salida", "Duración", "Estado"],
-      ...filtrados.map(a => [
-        fmt(a.fecha_entrada),
-        fmt(a.fecha_salida),
-        duracion(a.fecha_entrada, a.fecha_salida) || "-",
-        a.fecha_salida ? "Cerrada" : "Activa",
-      ]),
-    ];
-    const csv = filas.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+    const filas = [["Entrada","Salida","Duración","Estado"], ...filtrados.map(a => [fmt(a.fecha_entrada), fmt(a.fecha_salida), duracion(a.fecha_entrada, a.fecha_salida)||"-", a.fecha_salida?"Cerrada":"Activa"])];
+    const csv  = filas.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href = url; a.download = `historial_${empleado.num_empleado || empleado.id_empleado}.csv`;
-    a.click(); URL.revokeObjectURL(url);
+    const el   = document.createElement("a");
+    el.href = url; el.download = `historial_${empleado.num_empleado||empleado.id_empleado}.csv`;
+    el.click(); URL.revokeObjectURL(url);
   };
 
-  const inpDate = {
-    background: isDark ? "rgba(255,255,255,0.05)" : "#f8fafc",
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}`,
-    color: T.text, borderRadius: "8px", padding: "6px 10px",
-    fontSize: "12px", outline: "none", colorScheme: isDark ? "dark" : "light",
-  };
-
-  const atajos = [
-    { id: "hoy",    lbl: "Hoy"    },
-    { id: "semana", lbl: "Semana" },
-    { id: "mes",    lbl: "Mes"    },
-    { id: "todo",   lbl: "Todo"   },
-  ];
-
-  const tipoActivo = (t) => tipoFiltro === t;
+  const inpDate = { background: isDark ? "rgba(255,255,255,0.05)" : "#f8fafc", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}`, color: T.text, borderRadius: "6px", padding: "6px 10px", fontSize: "12px", outline: "none", colorScheme: isDark ? "dark" : "light" };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      style={{ background: "rgba(0,0,0,0.65)" }}
-      onClick={onCerrar}>
-      <div className="w-full max-w-xl rounded-2xl overflow-hidden flex flex-col"
-        style={{
-          background: isDark ? "#141720" : "#ffffff",
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}`,
-          boxShadow: isDark ? "0 25px 80px rgba(0,0,0,0.6)" : "0 25px 80px rgba(0,0,0,0.15)",
-          maxHeight: "90vh",
-        }}
+      style={{ background: "rgba(0,0,0,0.55)" }} onClick={onCerrar}>
+      <div className="w-full max-w-xl overflow-hidden flex flex-col"
+        style={{ background: isDark ? "#141720" : "#ffffff", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}`, borderRadius: 12, boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.6)" : "0 20px 60px rgba(0,0,0,0.15)", maxHeight: "90vh" }}
         onClick={e => e.stopPropagation()}>
 
-        {/* -- HEADER -- */}
-        <div className="relative overflow-hidden flex-shrink-0">
-          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${T.orange}22 0%, transparent 60%)`, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9"}` }} />
-          <div className="relative px-5 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: `linear-gradient(135deg, ${T.orange}, #d97400)`, boxShadow: "0 4px 12px rgba(244,121,32,0.4)" }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-black" style={{ color: T.text }}>Historial de Accesos</p>
-                <p className="text-[11px] mt-0.5" style={{ color: T.textMuted }}>{nombre}</p>
-              </div>
+        {/* Header */}
+        <div style={{ background: isDark ? "#0f1117" : "#1e293b", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb"}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 4, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             </div>
-            <button onClick={onCerrar}
-              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:brightness-110"
-              style={{ background: isDark ? "rgba(255,255,255,0.07)" : "#f1f5f9", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}` }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
+            <div>
+              <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0, letterSpacing: "-0.01em" }}>Historial de Accesos</p>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.40)", margin: 0 }}>{nombre}</p>
+            </div>
           </div>
+          <button onClick={onCerrar} style={{ width: 30, height: 30, borderRadius: 4, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.12s" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.14)"; e.currentTarget.style.color = "#fff"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "rgba(255,255,255,0.55)"; }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
 
-        {/* -- FILTROS -- */}
-        <div className="px-5 py-3 flex flex-col gap-3 flex-shrink-0"
-          style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9"}`, background: isDark ? "rgba(255,255,255,0.015)" : "#fafbfc" }}>
-
-          {/* Atajos rápidos */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-widest flex-shrink-0" style={{ color: T.textFaint }}>Período</span>
-            <div className="flex gap-1.5">
-              {atajos.map(a => {
-                const activo = a.id === "todo" ? (!desde && !hasta) :
-                  a.id === "hoy"    ? (desde === isoHoy  && hasta === isoHoy)  :
-                  a.id === "semana" ? (desde === isoLunes && hasta === isoHoy)  :
-                  a.id === "mes"    ? (desde === isoMes   && hasta === isoHoy)  : false;
-                return (
-                  <button key={a.id} onClick={() => aplicarAtajo(a.id)}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all hover:brightness-110"
-                    style={{
-                      background: activo ? `${T.orange}18` : (isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"),
-                      color:      activo ? T.orange : T.textMuted,
-                      border:    `1px solid ${activo ? `${T.orange}44` : (isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0")}`,
-                    }}>
-                    {a.lbl}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Rango personalizado */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-black uppercase tracking-widest flex-shrink-0" style={{ color: T.textFaint }}>Rango</span>
-            <div className="flex items-center gap-2">
-              <input type="date" style={inpDate} value={desde} onChange={e => setDesde(e.target.value)} />
-              <span className="text-[11px]" style={{ color: T.textFaint }}>-</span>
-              <input type="date" style={inpDate} value={hasta} onChange={e => setHasta(e.target.value)} />
-              {(desde || hasta) && (
-                <button onClick={() => { setDesde(""); setHasta(""); }}
-                  className="text-[11px] font-bold px-2 py-1 rounded-lg transition-all hover:brightness-110"
-                  style={{ background: "rgba(220,38,38,0.08)", color: "#dc2626", border: "1px solid rgba(220,38,38,0.2)" }}>
-                  Limpiar
+        {/* Filtros */}
+        <div style={{ padding: "12px 20px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#e5e7eb"}`, background: isDark ? "rgba(255,255,255,0.015)" : "#fafbfc", display: "flex", flexDirection: "column", gap: 10, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>Período</span>
+            {[{ id:"todo", lbl:"Todo" }, { id:"hoy", lbl:"Hoy" }, { id:"semana", lbl:"Semana" }, { id:"mes", lbl:"Mes" }].map(a => {
+              const activo = a.id === "todo" ? (!desde && !hasta) : a.id === "hoy" ? (desde===isoHoy&&hasta===isoHoy) : a.id === "semana" ? (desde===isoLunes&&hasta===isoHoy) : (desde===isoMes&&hasta===isoHoy);
+              return (
+                <button key={a.id} onClick={() => aplicarAtajo(a.id)}
+                  style={{ padding: "3px 10px", borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: "pointer", background: activo ? "rgba(247,148,30,0.12)" : (isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"), color: activo ? "#F7941E" : T.textMuted, border: `1px solid ${activo ? "rgba(247,148,30,0.35)" : (isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0")}` }}>
+                  {a.lbl}
                 </button>
-              )}
+              );
+            })}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <input type="date" style={inpDate} value={desde} onChange={e => setDesde(e.target.value)} />
+              <span style={{ fontSize: 11, color: T.textFaint }}>–</span>
+              <input type="date" style={inpDate} value={hasta} onChange={e => setHasta(e.target.value)} />
             </div>
           </div>
-
-          {/* Tipo de sesión */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-widest flex-shrink-0" style={{ color: T.textFaint }}>Tipo</span>
-            <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}` }}>
-              {[
-                { id: "todos",    lbl: "Todos"    },
-                { id: "activos",  lbl: "Activos"  },
-                { id: "cerrados", lbl: "Cerrados" },
-              ].map((t, i) => (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>Tipo</span>
+            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}` }}>
+              {[{ id:"todos", lbl:"Todos" }, { id:"activos", lbl:"Activos" }, { id:"cerrados", lbl:"Cerrados" }].map((t, i) => (
                 <button key={t.id} onClick={() => setTipoFiltro(t.id)}
-                  className="px-3 py-1.5 text-[11px] font-bold transition-all"
-                  style={{
-                    background: tipoActivo(t.id) ? T.orange : (isDark ? "rgba(255,255,255,0.03)" : "#f8fafc"),
-                    color:      tipoActivo(t.id) ? "#fff"   : T.textMuted,
-                    borderRight: i < 2 ? `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}` : "none",
-                  }}>
+                  style={{ padding: "4px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: tipoFiltro === t.id ? "#F7941E" : (isDark ? "rgba(255,255,255,0.03)" : "#f8fafc"), color: tipoFiltro === t.id ? "#fff" : T.textMuted, border: "none", borderRight: i < 2 ? `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}` : "none" }}>
                   {t.lbl}
                 </button>
               ))}
@@ -526,64 +378,46 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
           </div>
         </div>
 
-        {/* -- LISTA -- */}
-        <div className="px-5 py-3 overflow-y-auto flex flex-col gap-2" style={{ flex: 1, minHeight: 0 }}>
+        {/* Lista */}
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 20px", display: "flex", flexDirection: "column", gap: 6 }}>
           {loading ? (
-            <div className="flex justify-center py-10">
-              <svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.orange} strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
+              <svg className="animate-spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F7941E" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
             </div>
           ) : filtrados.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-2">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.textFaint} strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <p className="text-sm font-bold" style={{ color: T.textMuted }}>Sin registros</p>
-              <p className="text-[11px]" style={{ color: T.textFaint }}>Ajusta el rango o los filtros</p>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", gap: 8 }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={T.textFaint} strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <p style={{ fontSize: 13, fontWeight: 600, color: T.textMuted, margin: 0 }}>Sin registros</p>
+              <p style={{ fontSize: 11, color: T.textFaint, margin: 0 }}>Ajusta el rango o los filtros</p>
             </div>
           ) : filtrados.map((a, i) => {
             const dur = duracion(a.fecha_entrada, a.fecha_salida);
             return (
-              <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-                style={{ background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#e2e8f0"}` }}>
-                <span className="w-2 h-2 rounded-full flex-shrink-0 mt-0.5"
-                  style={{ background: a.fecha_salida ? "#94a3b8" : "#22c55e", boxShadow: a.fecha_salida ? "none" : "0 0 5px #22c55e88" }} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[12px] font-semibold" style={{ color: T.text }}>{fmt(a.fecha_entrada)}</span>
-                    {!a.fecha_salida && (
-                      <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-                        style={{ background: "rgba(34,197,94,0.12)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.25)" }}>En sesión</span>
-                    )}
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#e5e7eb"}` }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: a.fecha_salida ? "#94a3b8" : "#22c55e", boxShadow: a.fecha_salida ? "none" : "0 0 0 3px rgba(34,197,94,0.2)" }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{fmt(a.fecha_entrada)}</span>
+                    {!a.fecha_salida && <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", padding: "1px 6px", borderRadius: 9999, background: "rgba(34,197,94,0.1)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.2)" }}>En sesión</span>}
                   </div>
-                  {a.fecha_salida && (
-                    <p className="text-[11px] mt-0.5" style={{ color: T.textFaint }}>Salida: {fmt(a.fecha_salida)}</p>
-                  )}
+                  {a.fecha_salida && <p style={{ fontSize: 11, color: T.textFaint, margin: 0 }}>Salida: {fmt(a.fecha_salida)}</p>}
                 </div>
-                {dur && (
-                  <span className="text-[11px] font-bold flex-shrink-0 px-2 py-0.5 rounded-lg"
-                    style={{ background: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9", color: T.textMuted }}>
-                    {dur}
-                  </span>
-                )}
+                {dur && <span style={{ fontSize: 11, fontWeight: 600, flexShrink: 0, padding: "2px 8px", borderRadius: 5, background: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9", color: T.textMuted }}>{dur}</span>}
               </div>
             );
           })}
         </div>
 
-        {/* -- FOOTER -- */}
-        <div className="px-5 py-3 flex items-center justify-between gap-2 flex-shrink-0"
-          style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9"}`, background: isDark ? "rgba(255,255,255,0.02)" : "#fafbfc" }}>
-          <span className="text-[11px] font-semibold" style={{ color: T.textFaint }}>
-            {filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}
-          </span>
-          <div className="flex gap-2">
+        {/* Footer */}
+        <div style={{ padding: "12px 20px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#e5e7eb"}`, background: isDark ? "rgba(255,255,255,0.02)" : "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+          <span style={{ fontSize: 11, color: T.textFaint }}>{filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}</span>
+          <div style={{ display: "flex", gap: 8 }}>
             <button onClick={exportarCSV} disabled={filtrados.length === 0}
-              className="px-3 py-2 rounded-xl text-[11px] font-bold transition-all hover:brightness-110 active:scale-95 flex items-center gap-1.5"
-              style={{ background: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}`, opacity: filtrados.length === 0 ? 0.4 : 1 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              style={{ padding: "6px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, background: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}`, cursor: "pointer", opacity: filtrados.length === 0 ? 0.4 : 1 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Exportar CSV
             </button>
-            <button onClick={onCerrar}
-              className="px-4 py-2 rounded-xl text-[11px] font-bold transition-all hover:brightness-95"
-              style={{ background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}` }}>
+            <button onClick={onCerrar} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}`, cursor: "pointer" }}>
               Cerrar
             </button>
           </div>
@@ -593,76 +427,230 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
   );
 }
 
-function TarjetaEmpleado({ emp, T, isDark, onEditar, onToggleEstatus, onHistorial }) {
-  const nombre = `${emp.nombre} ${emp.ap_paterno} ${emp.ap_materno || ""}`.trim();
+// ── Acciones Dropdown ─────────────────────────────────────────────
+function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial, onToggleEstatus }) {
+  const [open, setOpen] = useState(false);
   const activo = emp.estatus === "Activo";
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden transition-all duration-200 hover:translate-y-[-2px]"
-      style={{
-        background: isDark ? "#141720" : T.surface,
-        border: `1px solid ${activo ? (isDark ? "rgba(255,255,255,0.07)" : T.border) : (isDark ? "rgba(255,255,255,0.04)" : "#e2e8f0")}`,
-        boxShadow: isDark ? "0 2px 12px rgba(0,0,0,0.3)" : "0 1px 6px rgba(0,0,0,0.06)",
-        opacity: activo ? 1 : 0.55,
-      }}>
-
-      <div style={{ height: "2px", background: activo ? `linear-gradient(90deg,${T.orange},#ffb347)` : (isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0") }} />
-
-      <div className="p-4 flex flex-col gap-3">
-        <div className="flex items-start gap-3">
-          <Avatar nombre={nombre} size={42} isDark={isDark} />
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-bold leading-tight truncate" style={{ color: T.text }}>{nombre}</p>
-            <p className="text-[11px] mt-0.5 truncate" style={{ color: T.textMuted }}>{emp.email}</p>
-          </div>
-          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5"
-            style={{
-              background: activo ? (isDark ? "rgba(22,163,74,0.12)" : "#f0fdf4") : (isDark ? "rgba(255,255,255,0.05)" : "#f8fafc"),
-              color: activo ? "#16a34a" : "#94a3b8",
-              border: `1px solid ${activo ? "rgba(22,163,74,0.25)" : "rgba(148,163,184,0.25)"}`,
-            }}>
-            {activo ? "Activo" : "Inactivo"}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between px-3 py-2 rounded-xl"
-          style={{ background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}>
-          <span className="text-[11px] font-semibold truncate" style={{ color: T.text }}>
-            {emp.nombre_departamento || "Sin departamento"}
-          </span>
-          <span className="text-[10px] font-mono font-bold flex-shrink-0 ml-2" style={{ color: T.textFaint }}>
-            {emp.num_empleado || "-"}
-          </span>
-        </div>
-
-        <div className="flex gap-1.5">
-          <button onClick={() => onEditar(emp)}
-            className="flex-1 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110 active:scale-95"
-            style={{ background: isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`, minHeight: "36px" }}>
-            Editar
-          </button>
-          <button onClick={() => onHistorial(emp)}
-            className="flex-1 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110 active:scale-95"
-            style={{ background: isDark ? "rgba(244,121,32,0.08)" : "#fff7ed", color: T.orange, border: "1px solid rgba(244,121,32,0.2)", minHeight: "36px" }}>
-            Historial
-          </button>
-          <button onClick={() => onToggleEstatus(emp)}
-            className="flex-1 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110 active:scale-95"
-            style={{
-              background: activo ? (isDark ? "rgba(220,38,38,0.08)" : "#fef2f2") : (isDark ? "rgba(22,163,74,0.08)" : "#f0fdf4"),
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        style={{
+          width: 30, height: 30, borderRadius: 6, cursor: "pointer",
+          background: open ? (isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9") : "transparent",
+          border: `1px solid ${open ? (isDark ? "rgba(255,255,255,0.12)" : "#d1d5db") : "transparent"}`,
+          color: T.textMuted, display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "background .15s",
+        }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+        </svg>
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 30,
+          minWidth: 162, borderRadius: 8, padding: "4px 0",
+          background: isDark ? "#1e2330" : "#ffffff",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}`,
+          boxShadow: isDark ? "0 8px 24px rgba(0,0,0,0.5)" : "0 8px 24px rgba(0,0,0,0.12)",
+        }}>
+          {[
+            {
+              label: "Editar",
+              color: T.text,
+              icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+              action: () => { onEditar(emp); setOpen(false); },
+            },
+            {
+              label: "Historial",
+              color: T.text,
+              icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+              action: () => { onHistorial(emp); setOpen(false); },
+            },
+            {
+              label: activo ? "Desactivar" : "Activar",
               color: activo ? "#dc2626" : "#16a34a",
-              border: `1px solid ${activo ? "rgba(220,38,38,0.2)" : "rgba(22,163,74,0.2)"}`,
-              minHeight: "36px",
-            }}>
-            {activo ? "Desactivar" : "Activar"}
-          </button>
+              icon: activo
+                ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
+              action: () => { onToggleEstatus(emp); setOpen(false); },
+            },
+          ].map(item => (
+            <button key={item.label} onMouseDown={item.action}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "8px 14px", fontSize: 12, fontWeight: 500, color: item.color, background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
+              onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "#f8fafc"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              {item.icon}{item.label}
+            </button>
+          ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── Ícono de orden ────────────────────────────────────────────────
+function SortIcon({ dir }) {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: dir ? 1 : 0.3, flexShrink: 0 }}>
+      {dir === "asc" ? <polyline points="18 15 12 9 6 15"/> : <polyline points="6 9 12 15 18 9"/>}
+    </svg>
+  );
+}
+
+// ── Tabla de Empleados ────────────────────────────────────────────
+// Tailwind reference structure:
+//   <table class="w-full border-collapse">
+//     <thead class="bg-gray-50 border-b-2 border-gray-200">
+//       <th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500 cursor-pointer select-none">
+//     <tbody>
+//       <tr class="border-b border-gray-100 hover:bg-blue-50 transition-colors">
+//         <td class="px-4 py-2.5 text-sm text-gray-700">
+function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleEstatus }) {
+  const [sort, setSort] = useState({ col: "nombre", dir: "asc" });
+
+  const toggleSort = col => setSort(s => ({ col, dir: s.col === col && s.dir === "asc" ? "desc" : "asc" }));
+
+  const sorted = [...empleados].sort((a, b) => {
+    const map = {
+      nombre: e => `${e.nombre} ${e.ap_paterno}`,
+      id:     e => e.num_empleado || "",
+      depto:  e => e.nombre_departamento || "",
+      rol:    e => e.nombre_rol || "",
+    };
+    const fn = map[sort.col] || (() => "");
+    const cmp = fn(a).localeCompare(fn(b), "es");
+    return sort.dir === "asc" ? cmp : -cmp;
+  });
+
+  const COLS = [
+    { key: "nombre",   label: "Empleado",  sortable: true  },
+    { key: "id",       label: "ID",        sortable: true  },
+    { key: "depto",    label: "Área",      sortable: true  },
+    { key: "rol",      label: "Rol",       sortable: true  },
+    { key: "email",    label: "Correo",    sortable: false },
+    { key: "acciones", label: "",          sortable: false },
+  ];
+
+  const thS = {
+    padding: "10px 16px",
+    fontSize: 10, fontWeight: 700, letterSpacing: "0.07em",
+    textTransform: "uppercase", whiteSpace: "nowrap",
+    color: T.textMuted,
+    background: isDark ? "rgba(255,255,255,0.03)" : "#F9FAFB",
+    borderBottom: `2px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb"}`,
+    userSelect: "none",
+  };
+
+  const tdS = {
+    padding: "10px 16px",
+    fontSize: 13,
+    color: T.text,
+    borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}`,
+    verticalAlign: "middle",
+  };
+
+  return (
+    <div style={{ borderRadius: 10, overflow: "hidden", background: isDark ? "#141720" : "#ffffff", border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}`, boxShadow: isDark ? "0 1px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.05)" }}>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              {COLS.map(col => (
+                <th key={col.key}
+                  style={{ ...thS, textAlign: col.key === "acciones" ? "right" : "left", cursor: col.sortable ? "pointer" : "default" }}
+                  onClick={() => col.sortable && toggleSort(col.key)}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                    {col.label}
+                    {col.sortable && <SortIcon dir={sort.col === col.key ? sort.dir : null} />}
+                  </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((emp, i) => {
+              const nombre = `${emp.nombre} ${emp.ap_paterno} ${emp.ap_materno || ""}`.trim();
+              const activo = emp.estatus === "Activo";
+              const rowBg  = i % 2 === 0 ? (isDark ? "transparent" : "#ffffff") : (isDark ? "rgba(255,255,255,0.015)" : "#fafafa");
+
+              return (
+                <tr key={emp.id_empleado}
+                  style={{ background: rowBg, opacity: activo ? 1 : 0.55, transition: "background .12s" }}
+                  onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.04)" : "#f0f7ff"}
+                  onMouseLeave={e => e.currentTarget.style.background = rowBg}>
+
+                  {/* Empleado */}
+                  <td style={tdS}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <Avatar nombre={nombre} foto={emp.foto} size={30} isDark={isDark} />
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                        {/* Dot indicator de estado */}
+                        <span style={{
+                          width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
+                          background: activo ? "#22c55e" : "#94a3b8",
+                          boxShadow: activo ? "0 0 0 2.5px rgba(34,197,94,0.2)" : "none",
+                        }} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: T.text, whiteSpace: "nowrap" }}>{nombre}</span>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* ID */}
+                  <td style={tdS}>
+                    <span style={{ fontFamily: "'JetBrains Mono','Courier New',monospace", fontSize: 11, color: T.textMuted, background: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6", padding: "2px 7px", borderRadius: 4 }}>
+                      {emp.num_empleado || "—"}
+                    </span>
+                  </td>
+
+                  {/* Área */}
+                  <td style={{ ...tdS, color: T.textMuted }}>
+                    {emp.nombre_departamento || "—"}
+                  </td>
+
+                  {/* Rol */}
+                  <td style={tdS}>
+                    {emp.nombre_rol && (
+                      <span style={{ fontSize: 11, fontWeight: 600, background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "#e2e8f0"}`, padding: "2px 8px", borderRadius: 4 }}>
+                        {emp.nombre_rol}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Correo */}
+                  <td style={{ ...tdS, color: T.textMuted, maxWidth: 200 }}>
+                    <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {emp.email}
+                    </span>
+                  </td>
+
+                  {/* Acciones ⋯ */}
+                  <td style={{ ...tdS, textAlign: "right", width: 52 }}>
+                    <AccionesDropdown
+                      emp={emp} T={T} isDark={isDark}
+                      onEditar={onEditar}
+                      onHistorial={onHistorial}
+                      onToggleEstatus={onToggleEstatus}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Footer de tabla */}
+      <div style={{ padding: "8px 16px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}`, background: isDark ? "rgba(255,255,255,0.02)" : "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+        <span style={{ fontSize: 11, color: T.textFaint }}>{empleados.length} empleado{empleados.length !== 1 ? "s" : ""}</span>
       </div>
     </div>
   );
 }
 
+// ── Personal (página principal) ───────────────────────────────────
 export default function Personal({ T }) {
   const isDark = T.isDark;
 
@@ -670,12 +658,12 @@ export default function Personal({ T }) {
   const [departamentos, setDepartamentos] = useState([]);
   const [roles,         setRoles]         = useState([]);
   const [loading,       setLoading]       = useState(true);
-  const [filtros,       setFiltros]       = useState({ busqueda:"", departamento:"Todos", estatus:"Todos" });
+  const [filtros,       setFiltros]       = useState({ busqueda: "", departamento: "Todos", estatus: "Todos" });
   const [modal,         setModal]         = useState(null);
   const [modalHistorial, setModalHistorial] = useState(null);
 
-  const cargar = useCallback(() => {
-    setLoading(true);
+  const cargar = useCallback((mostrarLoading = true) => {
+    if (mostrarLoading) setLoading(true);
     Promise.all([
       apiFetch(`/api/auth/empleados`).then(r => r.ok ? r.json() : []),
       apiFetch(`/api/auth/departamentos`).then(r => r.ok ? r.json() : []),
@@ -684,14 +672,12 @@ export default function Personal({ T }) {
       setEmpleados(Array.isArray(emps) ? emps : []);
       setDepartamentos(Array.isArray(deps) ? deps : []);
       setRoles(Array.isArray(rols) ? rols : []);
-    }).catch(err => { console.error("Error cargando personal:", err); }).finally(() => setLoading(false));
+    }).catch(err => console.error("Error cargando personal:", err))
+      .finally(() => { if (mostrarLoading) setLoading(false); });
   }, []);
 
-  useEffect(() => {
-    cargar();
-    const id = setInterval(cargar, 30000);
-    return () => clearInterval(id);
-  }, [cargar]);
+  useEffect(() => { cargar(); }, [cargar]);
+  useAutoRefresh(() => cargar(false), 30000);
 
   const filtrados = empleados.filter(e => {
     const nombre = `${e.nombre} ${e.ap_paterno} ${e.ap_materno || ""}`.toLowerCase();
@@ -702,22 +688,21 @@ export default function Personal({ T }) {
   });
 
   const camposFiltro = [
-    { key:"busqueda",      label:"Búsqueda Rápida", type:"search",  placeholder:"Nombre o correo..." },
-    { key:"departamento",  label:"Área",             type:"select",  opts:["Todos",...departamentos.map(d=>d.nombre_departamento)] },
-    { key:"estatus",       label:"Estatus",           type:"select",  opts:["Todos","Activo","Inactivo"] },
+    { key: "busqueda",     label: "Búsqueda Rápida", type: "search", placeholder: "Nombre o correo..." },
+    { key: "departamento", label: "Área",             type: "select", opts: ["Todos", ...departamentos.map(d => d.nombre_departamento)] },
+    { key: "estatus",      label: "Estatus",          type: "select", opts: ["Todos", "Activo", "Inactivo"] },
   ];
-
-  const limpiarFiltros = () => setFiltros({ busqueda:"", departamento:"Todos", estatus:"Todos" });
 
   const activos   = empleados.filter(e => e.estatus === "Activo").length;
   const inactivos = empleados.filter(e => e.estatus !== "Activo").length;
 
-  const guardarEmpleado = async (form) => {
-    const esEditar = modal.modo === "editar";
-    const url  = esEditar ? `/api/auth/empleados/${modal.empleado.id_empleado}` : `/api/auth/empleados`;
+  const guardarEmpleado = async (form, modo, empleadoId) => {
+    const esEditar = modo === "editar";
+    const url  = esEditar ? `/api/auth/empleados/${empleadoId}` : `/api/auth/empleados`;
+    const pass = form.password_nueva.trim();
     const body = esEditar
-      ? { num_empleado: form.num_empleado, nombre: form.nombre, ap_paterno: form.ap_paterno, ap_materno: form.ap_materno, email: form.email, id_rol: form.id_rol, id_departamento: form.id_departamento, estatus: form.estatus, password_nueva: form.password_nueva.trim() || undefined }
-      : { num_empleado: form.num_empleado, nombre: form.nombre, ap_paterno: form.ap_paterno, ap_materno: form.ap_materno, email: form.email, password: form.password_nueva, id_rol: form.id_rol, id_departamento: form.id_departamento };
+      ? { num_empleado: form.num_empleado, nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento), estatus: form.estatus, password_nueva: pass || undefined }
+      : { num_empleado: form.num_empleado.trim(), nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), password: pass, id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento) };
     const res  = await apiFetch(url, { method: esEditar ? "PUT" : "POST", body });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Error al guardar");
@@ -728,106 +713,77 @@ export default function Personal({ T }) {
   const toggleEstatus = async (emp) => {
     const nuevoEstatus = emp.estatus === "Activo" ? "Inactivo" : "Activo";
     try {
-      const res = await apiFetch(`/api/auth/empleados/${emp.id_empleado}`, {
-        method: "PUT",
-        body: { estatus: nuevoEstatus },
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        console.error("Error al cambiar estatus:", data.error);
-        return;
-      }
+      const res = await apiFetch(`/api/auth/empleados/${emp.id_empleado}`, { method: "PUT", body: { estatus: nuevoEstatus } });
+      if (!res.ok) { const d = await res.json(); console.error("Error estatus:", d.error); return; }
       cargar();
-    } catch (err) {
-      console.error("Error al cambiar estatus:", err.message);
-    }
+    } catch (err) { console.error("Error estatus:", err.message); }
   };
 
-  const card = { background: isDark ? "#141720" : T.surface, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`, boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.05)" };
-  const hdr  = { background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}` };
-  const selStyle = { background: isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt, border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : T.border}`, color: T.text, borderRadius: "8px", padding: "6px 10px", fontSize: "12px", outline: "none", cursor: "pointer", colorScheme: isDark ? "dark" : "light", maxWidth: "180px", minWidth: "120px", flexShrink: 0 };
+  const { card } = useCardStyles(T);
 
   return (
-    <div className="overflow-y-auto" style={{ background: T.bg }}>
-      <div className="max-w-[1400px] mx-auto px-3 py-3 sm:px-4 sm:py-5 flex flex-col gap-3">
+    <div style={{ background: isDark ? T.bg : "#F9FAFB", minHeight: "100%", overflowY: "auto" }}>
+      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "16px 16px 24px" }}>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {/* KPI Cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 14 }}
+          className="grid-cols-2 sm:grid-cols-4">
           {[
             { label: "Total empleados", val: empleados.length,     color: "#3b82f6", bgL: "#eff6ff", bgD: "#0f1f3d" },
             { label: "Activos",         val: activos,              color: "#16a34a", bgL: "#f0fdf4", bgD: "#071a0e" },
             { label: "Inactivos",       val: inactivos,            color: "#94a3b8", bgL: "#f8fafc", bgD: "#1a1f2e" },
-            { label: "Departamentos",   val: departamentos.length, color: T.orange,  bgL: "#fff7ed", bgD: "#2d1200" },
-          ].map((s) => (
-            <div key={s.label} className="rounded-xl px-3 py-2 sm:px-4 sm:py-3"
-              style={{ background: isDark ? s.bgD : s.bgL, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}` }}>
-              <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }}>{s.label}</p>
-              <p className="text-xl sm:text-2xl font-black mt-0.5" style={{ color: s.color }}>{s.val}</p>
+            { label: "Departamentos",   val: departamentos.length, color: "#F7941E", bgL: "#fff7ed", bgD: "#2d1200" },
+          ].map(s => (
+            <div key={s.label} style={{ borderRadius: 8, padding: "10px 14px", background: isDark ? s.bgD : s.bgL, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}` }}>
+              <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: isDark ? "rgba(255,255,255,0.4)" : "#6b7280", margin: 0 }}>{s.label}</p>
+              <p style={{ fontSize: 22, fontWeight: 800, color: s.color, margin: "2px 0 0" }}>{s.val}</p>
             </div>
           ))}
         </div>
 
-        <FiltrosToolbar campos={camposFiltro} valores={filtros} onChange={(k,v) => setFiltros(p=>({...p,[k]:v}))} onLimpiar={limpiarFiltros} T={T}>
-          <button onClick={() => setModal({ modo: "crear" })}
-            style={{ display:"flex", alignItems:"center", gap:"6px", padding:"5px 14px", borderRadius:"4px",
-              fontSize:"12px", fontWeight:700, background:"#F47920", color:"#fff", border:"none", cursor:"pointer",
-              whiteSpace:"nowrap", transition:"filter 0.15s" }}
-            onMouseEnter={e => e.currentTarget.style.filter="brightness(1.08)"}
-            onMouseLeave={e => e.currentTarget.style.filter="none"}>
-            + Agregar empleado
+        {/* Toolbar */}
+        <FiltrosToolbar campos={camposFiltro} valores={filtros} onChange={(k, v) => setFiltros(p => ({ ...p, [k]: v }))} onLimpiar={() => setFiltros({ busqueda: "", departamento: "Todos", estatus: "Todos" })} T={T}>
+          <button
+            onClick={() => setModal({ modo: "crear" })}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, background: "#F7941E", color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
+            onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.08)"}
+            onMouseLeave={e => e.currentTarget.style.filter = "none"}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Agregar empleado
           </button>
         </FiltrosToolbar>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <svg className="animate-spin" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.orange} strokeWidth="2">
-              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-            </svg>
-          </div>
-        ) : filtrados.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <p className="text-sm font-bold" style={{ color: T.textMuted }}>Sin resultados</p>
-            <p className="text-xs" style={{ color: T.textFaint }}>Ajusta los filtros o agrega un nuevo empleado</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
-            {filtrados.map(emp => (
-              <TarjetaEmpleado
-                key={emp.id_empleado}
-                emp={emp}
-                T={T}
-                isDark={isDark}
-                onEditar={e => setModal({ modo: "editar", empleado: e })}
-                onToggleEstatus={toggleEstatus}
-                onHistorial={e => setModalHistorial(e)}
-              />
-            ))}
-          </div>
-        )}
-
+        {/* Contenido */}
+        <div style={{ marginTop: 10 }}>
+          {loading ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "80px 0" }}>
+              <svg className="animate-spin" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F7941E" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            </div>
+          ) : filtrados.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 0", gap: 8 }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={T.textFaint} strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <p style={{ fontSize: 13, fontWeight: 600, color: T.textMuted, margin: 0 }}>Sin resultados</p>
+              <p style={{ fontSize: 12, color: T.textFaint, margin: 0 }}>Ajusta los filtros o agrega un nuevo empleado</p>
+            </div>
+          ) : (
+            <TablaEmpleados
+              empleados={filtrados}
+              T={T}
+              isDark={isDark}
+              onEditar={e => setModal({ modo: "editar", empleado: e })}
+              onToggleEstatus={toggleEstatus}
+              onHistorial={e => setModalHistorial(e)}
+            />
+          )}
+        </div>
       </div>
 
       {modalHistorial && (
-        <ModalHistorial
-          T={T}
-          isDark={isDark}
-          empleado={modalHistorial}
-          onCerrar={() => setModalHistorial(null)}
-        />
+        <ModalHistorial T={T} isDark={isDark} empleado={modalHistorial} onCerrar={() => setModalHistorial(null)} />
       )}
-
       {modal && (
-        <ModalEmpleado
-          T={T}
-          isDark={isDark}
-          modo={modal.modo}
-          empleado={modal.empleado}
-          departamentos={departamentos}
-          roles={roles}
-          onGuardar={guardarEmpleado}
-          onCerrar={() => setModal(null)}
-        />
+        <ModalEmpleado T={T} isDark={isDark} modo={modal.modo} empleado={modal.empleado} departamentos={departamentos} roles={roles} onGuardar={(form) => guardarEmpleado(form, modal.modo, modal.empleado?.id_empleado)} onCerrar={() => setModal(null)} />
       )}
     </div>
   );
 }
-

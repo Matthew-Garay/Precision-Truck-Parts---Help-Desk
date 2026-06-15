@@ -1,9 +1,13 @@
 import jwt from "jsonwebtoken";
 
-const SECRET = process.env.JWT_SECRET;
-if (!SECRET) {
-  console.error("JWT_SECRET no definido. El servidor no puede arrancar de forma segura.");
-  process.exit(1);
+// SECRET se resuelve en tiempo de ejecución (después de dotenv.config())
+function getSecret() {
+  const s = process.env.JWT_SECRET;
+  if (!s) {
+    console.error("JWT_SECRET no definido. El servidor no puede arrancar de forma segura.");
+    process.exit(1);
+  }
+  return s;
 }
 
 export function requireAuth(req, res, next) {
@@ -11,7 +15,7 @@ export function requireAuth(req, res, next) {
   if (!header?.startsWith("Bearer "))
     return res.status(401).json({ error: "No autorizado" });
   try {
-    req.usuario = jwt.verify(header.slice(7), SECRET);
+    req.usuario = jwt.verify(header.slice(7), getSecret());
     next();
   } catch {
     return res.status(401).json({ error: "Token inválido o expirado" });

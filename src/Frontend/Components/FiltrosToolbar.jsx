@@ -13,7 +13,7 @@
 import { useRef } from "react";
 import { Search, X, SlidersHorizontal, ChevronDown } from "lucide-react";
 
-const ORANGE = "#F47920";
+
 
 // ── helpers ──────────────────────────────────────────────────
 function getLabel(campo, valor) {
@@ -37,11 +37,11 @@ function SearchField({ campo, valor, onChange, T }) {
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"3px", minWidth:"160px", flex:"1 1 160px", maxWidth:"240px" }}>
-      <label style={{ fontSize:"10px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color: activo ? ORANGE : T.textMuted }}>
+      <label style={{ fontSize:"10px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color: activo ? T.orange : T.textMuted }}>
         {campo.label}
       </label>
       <div style={{ position:"relative" }}>
-        <Search size={12} style={{ position:"absolute", left:"8px", top:"50%", transform:"translateY(-50%)", color: activo ? ORANGE : T.textFaint, pointerEvents:"none" }} />
+        <Search size={12} style={{ position:"absolute", left:"8px", top:"50%", transform:"translateY(-50%)", color: activo ? T.orange : T.textFaint, pointerEvents:"none" }} />
         <input
           ref={ref}
           type="text"
@@ -53,11 +53,11 @@ function SearchField({ campo, valor, onChange, T }) {
             paddingTop:"5px", paddingBottom:"5px",
             fontSize:"12px", fontWeight:400,
             background: isDark ? "rgba(255,255,255,0.04)" : "#F9FAFB",
-            border:`1px solid ${activo ? ORANGE : (isDark ? "rgba(255,255,255,0.12)" : "#D1D5DB")}`,
+            border:`1px solid ${activo ? T.orange : (isDark ? "rgba(255,255,255,0.12)" : "#D1D5DB")}`,
             borderRadius:"4px", color:T.text, outline:"none",
             transition:"border-color 0.15s",
           }}
-          onFocus={e => { e.target.style.borderColor = ORANGE; }}
+          onFocus={e => { e.target.style.borderColor = T.orange; }}
           onBlur={e  => { if (!valor) e.target.style.borderColor = isDark ? "rgba(255,255,255,0.12)" : "#D1D5DB"; }}
         />
         {valor && (
@@ -78,7 +78,7 @@ function SelectField({ campo, valor, onChange, T }) {
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"3px", minWidth:"110px", flexShrink:0 }}>
-      <label style={{ fontSize:"10px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color: activo ? ORANGE : T.textMuted }}>
+      <label style={{ fontSize:"10px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color: activo ? T.orange : T.textMuted }}>
         {campo.label}
       </label>
       <div style={{ position:"relative" }}>
@@ -93,8 +93,8 @@ function SelectField({ campo, valor, onChange, T }) {
             background: activo
               ? (isDark ? "rgba(244,121,32,0.10)" : "rgba(244,121,32,0.06)")
               : (isDark ? "rgba(255,255,255,0.04)" : "#F9FAFB"),
-            border:`1px solid ${activo ? ORANGE : (isDark ? "rgba(255,255,255,0.12)" : "#D1D5DB")}`,
-            borderRadius:"4px", color: activo ? ORANGE : T.text,
+            border:`1px solid ${activo ? T.orange : (isDark ? "rgba(255,255,255,0.12)" : "#D1D5DB")}`,
+            borderRadius:"4px", color: activo ? T.orange : T.text,
             outline:"none", cursor:"pointer",
             colorScheme: isDark ? "dark" : "light",
             transition:"border-color 0.15s, background 0.15s",
@@ -105,7 +105,7 @@ function SelectField({ campo, valor, onChange, T }) {
             return <option key={v} value={v}>{l}</option>;
           })}
         </select>
-        <ChevronDown size={11} style={{ position:"absolute", right:"6px", top:"50%", transform:"translateY(-50%)", color: activo ? ORANGE : T.textFaint, pointerEvents:"none" }} />
+        <ChevronDown size={11} style={{ position:"absolute", right:"6px", top:"50%", transform:"translateY(-50%)", color: activo ? T.orange : T.textFaint, pointerEvents:"none" }} />
       </div>
     </div>
   );
@@ -123,13 +123,13 @@ function FilterTag({ campo, valor, onRemove, T }) {
       fontSize:"11px", fontWeight:600, whiteSpace:"nowrap",
       background: isDark ? "rgba(244,121,32,0.12)" : "rgba(244,121,32,0.08)",
       border:`1px solid ${isDark ? "rgba(244,121,32,0.3)" : "rgba(244,121,32,0.22)"}`,
-      color: ORANGE,
+      color: T.orange,
     }}>
       <span style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#6B7280", fontWeight:500 }}>{campo.label}:</span>
       {etiqueta}
       <button onClick={() => onRemove(campo.key)}
         style={{ background:"none", border:"none", cursor:"pointer", padding:0, display:"flex", alignItems:"center", marginLeft:"1px" }}>
-        <X size={10} strokeWidth={2.5} style={{ color:ORANGE }} />
+        <X size={10} strokeWidth={2.5} style={{ color:T.orange }} />
       </button>
     </span>
   );
@@ -163,7 +163,7 @@ export default function FiltrosToolbar({ campos = [], valores = {}, onChange, on
 
         {/* Icono + label */}
         <div style={{ display:"flex", alignItems:"center", gap:"5px", flexShrink:0, alignSelf:"flex-end", paddingBottom:"6px" }}>
-          <SlidersHorizontal size={13} style={{ color:ORANGE }} />
+          <SlidersHorizontal size={13} style={{ color:T.orange }} />
           <span style={{ fontSize:"10px", fontWeight:800, textTransform:"uppercase", letterSpacing:"0.1em", color:T.textMuted }}>
             Filtros
           </span>

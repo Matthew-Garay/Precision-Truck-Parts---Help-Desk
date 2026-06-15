@@ -1,8 +1,16 @@
 node_modules/
 .env
+.env.local
+.env.*.local
 dist/
 ngrok.exe
 *.exe
+*.log
+npm-debug.log*
 storage/Evidencias_Tickets/
 storage/Fotos de Perfil/
 storage/Manuales/
+storage/_tmp_upload/
+# Estado de alertas en tiempo de ejecución — no versionar
+src/Backend/Workers/alert_state.json
+src/Backend/Workers/alert_state.json.tmp

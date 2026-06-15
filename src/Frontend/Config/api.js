@@ -7,6 +7,7 @@ const API_ROUTES = {
   LOGIN:              "/api/auth/login",
   LOGOUT:             "/api/auth/logout",
   RECUPERAR:          "/api/auth/recuperar",
+  VERIFICAR_CODIGO:   "/api/auth/verificar-codigo",
   RESET_PASSWORD:     "/api/auth/reset-password",
   PERFIL:             (id) => `/api/auth/perfil/${Number(id)}`,
   PERFIL_FOTO:        (id) => `/api/auth/perfil/${Number(id)}/foto`,
@@ -30,23 +31,32 @@ const API_ROUTES = {
   SOLICITUD:          (id) => `/api/solicitudes/${Number(id)}`,
   SOLICITUD_ESTATUS:  (id) => `/api/solicitudes/${Number(id)}/estatus`,
   SOLICITUDES_EMP:    (id) => `/api/solicitudes/empleado/${Number(id)}`,
+  SOLICITUDES_PEND:   "/api/solicitudes/pendientes",
   INSUMOS:            "/api/solicitudes/insumos",
   INVENTARIO:         "/api/solicitudes/inventario",
   // Categorias / Manuales
   CATEGORIAS:         "/api/categorias",
   MANUALES:           "/api/manuales",
+  MANUAL:             (nombre) => `/api/manuales/${encodeURIComponent(nombre)}`,
+  REFRESH_TOKEN:      "/api/auth/refresh-token",
   PING:               "/api/ping",
 };
 
 export { API_ROUTES };
 
-export const getToken   = () => sessionStorage.getItem("token");
-export const setToken   = (t) => sessionStorage.setItem("token", t);
-export const clearToken = () => sessionStorage.removeItem("token");
+// -- Token en memoria (no en storage) para mitigar XSS ------
+// El token vive solo en memoria: se pierde al recargar la página intencionalmente.
+// NO se persiste en sessionStorage ni localStorage porque cualquier XSS
+// podría leerlo. Al recargar, main.jsx debe redirigir al login.
+let _token = null;
+
+export const getToken   = () => _token;
+export const setToken   = (t) => { _token = t; };
+export const clearToken = () => { _token = null; };
 
 // Limpia toda la sesión y redirige al login
 export function clearSession() {
-  sessionStorage.removeItem("token");
+  _token = null;
   sessionStorage.removeItem("usuario");
   sessionStorage.removeItem("id_acceso");
   window.location.replace("/login");
@@ -66,8 +76,7 @@ export async function apiFetch(endpoint, options = {}) {
   if (options.body && typeof options.body === "object" && !(options.body instanceof FormData))
     headers["Content-Type"] = "application/json";
 
-  const token = getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (_token) headers["Authorization"] = `Bearer ${_token}`;
 
   // La URL final se construye concatenando la base fija con el endpoint validado
   const url = API_BASE + endpoint;
