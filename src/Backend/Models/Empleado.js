@@ -89,18 +89,40 @@ const Empleado = {
     return { rows, total };
   },
 
+  // Nunca incluir password en listados
   getAll: async () => {
     const [rows] = await pool.query(
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
               e.email, e.foto, e.estatus, e.id_rol, e.id_departamento,
-              d.nombre_departamento,
-              r.nombre_rol
+              d.nombre_departamento, r.nombre_rol
        FROM empleado e
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
-       LEFT JOIN rol r ON e.id_rol = r.id_rol
+       LEFT JOIN rol r          ON e.id_rol          = r.id_rol
        ORDER BY e.id_empleado ASC`
     );
     return rows;
+  },
+
+  // Helper reutilizable: nombre completo + departamento de un empleado
+  getResumen: async (id_empleado) => {
+    const [[row]] = await pool.query(
+      `SELECT CONCAT(e.nombre,' ',e.ap_paterno) AS nombre_empleado,
+              d.nombre_departamento
+       FROM empleado e
+       LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       WHERE e.id_empleado = ? LIMIT 1`,
+      [id_empleado]
+    );
+    return row || { nombre_empleado: "Usuario", nombre_departamento: "Sin área" };
+  },
+
+  // Helper: nombre completo de un empleado por id
+  getNombre: async (id_empleado) => {
+    const [[row]] = await pool.query(
+      `SELECT CONCAT(nombre,' ',ap_paterno) AS nombre_completo FROM empleado WHERE id_empleado = ? LIMIT 1`,
+      [id_empleado]
+    );
+    return row?.nombre_completo ?? "Soporte técnico";
   },
 
   getDepartamentos: async () => {

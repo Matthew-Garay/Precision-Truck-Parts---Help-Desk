@@ -13,11 +13,11 @@ const Solicitud = {
       const prefijo = `SOL-${anio}${mes}-`;
 
       const [rows] = await conn.query(
-        "SELECT folio_solicitud FROM solicitud WHERE folio_solicitud LIKE ? ORDER BY id_solicitud DESC LIMIT 1 FOR UPDATE",
+        "SELECT folio_solicitud FROM solicitud WHERE folio_solicitud LIKE ? ORDER BY CAST(SUBSTRING_INDEX(folio_solicitud, '-', -1) AS UNSIGNED) DESC LIMIT 1 FOR UPDATE",
         [`${prefijo}%`]
       );
       const ultimo = rows[0]?.folio_solicitud;
-      const num    = ultimo ? parseInt(ultimo.split("-")[2]) + 1 : 1;
+      const num    = ultimo ? parseInt(ultimo.split("-").pop(), 10) + 1 : 1;
       const folio  = `${prefijo}${String(num).padStart(3, "0")}`;
 
       const [result] = await conn.query(
@@ -25,6 +25,25 @@ const Solicitud = {
         [folio, prioridad, id_empleado]
       );
       const id_solicitud = result.insertId;
+      // Verificar que todos los insumos existen y tienen stock suficiente
+      for (const { id_insumo, cantidad } of insumos) {
+        const [[insumo]] = await conn.query(
+          "SELECT id_insumo, nombre, stock FROM insumo WHERE id_insumo = ? LIMIT 1 FOR UPDATE",
+          [id_insumo]
+        );
+        if (!insumo) {
+          await conn.rollback();
+          const err = new Error(`El insumo con id ${id_insumo} no existe`);
+          err.statusCode = 400;
+          throw err;
+        }
+        if (insumo.stock < cantidad) {
+          await conn.rollback();
+          const err = new Error(`Stock insuficiente para "${insumo.nombre}": disponible ${insumo.stock}, solicitado ${cantidad}`);
+          err.statusCode = 400;
+          throw err;
+        }
+      }
       for (const { id_insumo, cantidad } of insumos) {
         await conn.query(
           `INSERT INTO solicitud_insumo (id_solicitud, id_insumo, cantidad) VALUES (?, ?, ?)`,
@@ -61,6 +80,7 @@ const Solicitud = {
   getById: async (id_solicitud) => {
     const [[solicitud]] = await pool.query(
       `SELECT s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
+              s.id_empleado,
               CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
               d.nombre_departamento
        FROM solicitud s
@@ -83,7 +103,8 @@ const Solicitud = {
 
   getAll: async ({ limit = 100, offset = 0 } = {}) => {
     const [rows] = await pool.query(
-      `SELECT s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
+      `SELECT SQL_CALC_FOUND_ROWS
+              s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
               CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
               d.nombre_departamento,
               COUNT(si.id_solicitud_insumo) AS total_insumos,
@@ -97,7 +118,7 @@ const Solicitud = {
        LIMIT ? OFFSET ?`,
       [limit, offset]
     );
-    const [[{ total }]] = await pool.query("SELECT COUNT(*) AS total FROM solicitud");
+    const [[{ total }]] = await pool.query(`SELECT FOUND_ROWS() AS total`);
     return { rows, total };
   },
 

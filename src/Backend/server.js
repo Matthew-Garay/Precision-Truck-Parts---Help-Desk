@@ -2,6 +2,7 @@ import express           from "express";
 import { createServer }  from "http";
 import { Server }        from "socket.io";
 import cors              from "cors";
+import compression       from "compression";
 import helmet            from "helmet";
 import dotenv            from "dotenv";
 import jwt               from "jsonwebtoken";
@@ -10,11 +11,15 @@ import fs                from "fs";
 import { fileURLToPath } from "url";
 import pool              from "./Config/db.js";
 import { requireAuth }   from "./Middlewares/authMiddleware.js";
+import { setIO }         from "./Config/socketInstance.js";
 import { iniciarWorkers } from "./Workers/scheduledJobs.js";
 import categoriasRoutes  from "./Routes/categoriasRoutes.js";
 import authRoutes        from "./Routes/authRoutes.js";
 import ticketsRoutes     from "./Routes/ticketsRoutes.js";
 import solicitudesRoutes from "./Routes/solicitudesRoutes.js";
+import { uploadManual, MANUALES_DIR, nombreManual } from "./Middlewares/uploadManuales.js";
+import { safeResolvePath } from "./Middlewares/security.js";
+import Manual from "./Models/Manual.js";
 
 dotenv.config();
 
@@ -32,9 +37,10 @@ const PORT       = process.env.PORT || 3001;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
 
 // -- Socket.io ------------------------------------------------
-export const io = new Server(httpServer, {
+const io = new Server(httpServer, {
   cors: { origin: CORS_ORIGIN, methods: ["GET", "POST"] },
 });
+setIO(io);
 
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
@@ -53,59 +59,181 @@ io.on("connection", (socket) => {
   if (id_rol === 1) socket.join("admins");
 });
 
+// -- Handlers de proceso no controlado -----------------------
+process.on("uncaughtException",  (err) => console.error("[uncaughtException]",  err));
+process.on("unhandledRejection", (err) => console.error("[unhandledRejection]", err));
+
+// -- Trust proxy (necesario para rate-limit detrás de Nginx/Apache) ----
+// '1' = confiar en el primer proxy inverso (el inmediato)
+if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
+
 // -- Middlewares globales -------------------------------------
+app.use(compression());
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "same-site" },
+  // CORP relajado globalmente para que pdfjs pueda leer los PDFs del /storage
+  crossOriginResourcePolicy: { policy: "cross-origin" },
   referrerPolicy:            { policy: "strict-origin-when-cross-origin" },
   contentSecurityPolicy: {
     directives: {
       defaultSrc:  ["'self'"],
       scriptSrc:   ["'self'"],
+      // blob: necesario para el worker de pdfjs-dist v6
+      workerSrc:   ["'self'", "blob:"],
       styleSrc:    ["'self'", "'unsafe-inline'"],
       imgSrc:      ["'self'", "data:", "blob:"],
       fontSrc:     ["'self'", "data:"],
-      connectSrc:  ["'self'", CORS_ORIGIN],
-      objectSrc:   ["'none'"],
-      frameAncestors: ["'none'"],
+      connectSrc:  ["'self'", CORS_ORIGIN,
+                    CORS_ORIGIN.replace(/^http/, "ws"),
+                    `ws://localhost:${PORT}`,
+                    `wss://localhost:${PORT}`],
+      objectSrc:   ["'self'"],
+      frameSrc:    ["'self'", "blob:"],
+      frameAncestors: ["'self'", CORS_ORIGIN],
       upgradeInsecureRequests: [],
     },
   },
   permittedCrossDomainPolicies: { permittedPolicies: "none" },
   xContentTypeOptions: true,
-  xFrameOptions: { action: "deny" },
+  xFrameOptions: false,
 }));
 app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json({ limit: "2mb" }));
-app.use("/storage", express.static(path.resolve(__dirname, "../../storage")));
-app.use("/fotos",   express.static(path.resolve(__dirname, "../../storage/Fotos de Perfil")));
+// Excluir archivos sensibles del servidor estático
+app.use("/storage", (req, res, next) => {
+  const blocked = /(\.json|\.env)$/i;
+  if (blocked.test(req.path)) return res.status(403).json({ error: "Acceso no permitido" });
+  next();
+}, express.static(path.resolve(__dirname, "../../storage")));
+app.use("/fotos", requireAuth, express.static(path.resolve(__dirname, "../../storage/Fotos de Perfil")));
 
 // -- Rutas ----------------------------------------------------
 app.get("/api/ping", (_req, res) => res.json({ status: "ok", message: "Servidor HelpDesk activo ✅" }));
+
+// Cache-Control: no-store en rutas sensibles de auth
+app.use("/api/auth", (_req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
+
+// -- Refresh token: renueva el JWT si aun es valido ---------------
+app.post("/api/auth/refresh-token", (req, res) => {
+  const header = req.headers["authorization"];
+  if (!header?.startsWith("Bearer ")) return res.status(401).json({ error: "No autorizado" });
+  try {
+    const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET);
+    // Solo renovar los campos de identidad, sin campos de expiracion anteriores
+    const nuevoToken = jwt.sign(
+      { id_empleado: payload.id_empleado, id_rol: payload.id_rol },
+      process.env.JWT_SECRET,
+      { expiresIn: "12h" }
+    );
+    res.set("Cache-Control", "no-store");
+    res.json({ ok: true, token: nuevoToken });
+  } catch {
+    res.status(401).json({ error: "Token invalido o expirado" });
+  }
+});
 
 app.use("/api/categorias",  categoriasRoutes);
 app.use("/api/auth",        authRoutes);
 app.use("/api/tickets",     ticketsRoutes);
 app.use("/api/solicitudes", solicitudesRoutes);
 
-// -- Manuales (PDFs de storage/Manuales/) ---------------------
-app.get("/api/manuales", requireAuth, (req, res) => {
-  const dir = path.resolve(__dirname, "../../storage/Manuales");
+// -- Manuales (BD + disco) ------------------------------------------
+// GET — lista todos
+app.get("/api/manuales", requireAuth, async (_req, res) => {
   try {
-    if (!fs.existsSync(dir)) return res.json([]);
-    const archivos = fs.readdirSync(dir)
-      .filter(f => f.toLowerCase().endsWith(".pdf"))
-      .map(f => {
-        let tamaño = "-";
-        try {
-          const s = fs.statSync(path.join(dir, f)).size;
-          tamaño = s < 1024 * 1024 ? `${(s / 1024).toFixed(0)} KB` : `${(s / 1024 / 1024).toFixed(1)} MB`;
-        } catch { /* archivo no accesible */ }
-        return { nombre: f, url: `/storage/Manuales/${encodeURIComponent(f)}`, tamaño };
+    const rows = await Manual.getAll();
+    res.json(rows.map(m => ({
+      ...m,
+      url: `/storage/Manuales/${encodeURIComponent(path.basename(m.ruta_pdf))}`,
+    })));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST — subir PDF + metadatos
+app.post("/api/manuales", requireAuth, (req, res) => {
+  if (req.usuario?.id_rol !== 1) return res.status(403).json({ error: "Solo administradores" });
+  uploadManual.single("archivo")(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message || "Error al subir archivo" });
+    if (!req.file) return res.status(400).json({ error: "No se recibió ningún archivo" });
+    const { nombre, descripcion, id_categoria } = req.body;
+    if (!nombre?.trim()) {
+      await fs.promises.unlink(req.file.path).catch(() => {});
+      return res.status(400).json({ error: "El nombre es obligatorio" });
+    }
+    const idCat = parseInt(id_categoria, 10);
+    if (isNaN(idCat) || idCat < 1) {
+      await fs.promises.unlink(req.file.path).catch(() => {});
+      return res.status(400).json({ error: "La categoría es obligatoria" });
+    }
+    try {
+      // Renombrar archivo temporal al nombre formateado
+      const nombreFinal = nombreManual(nombre.trim());
+      let rutaFinal = path.join(MANUALES_DIR, nombreFinal);
+      // Evitar sobreescritura: agregar sufijo si ya existe
+      try { await fs.promises.access(rutaFinal); } catch { rutaFinal = rutaFinal; }
+      let base = nombreFinal.replace(/\.pdf$/i, "");
+      let n = 1;
+      while (true) {
+        try { await fs.promises.access(rutaFinal); rutaFinal = path.join(MANUALES_DIR, `${base}_${n++}.pdf`); }
+        catch { break; }
+      }
+      await fs.promises.rename(req.file.path, rutaFinal);
+
+      const id = await Manual.crear({
+        nombre:       nombre.trim().slice(0, 150),
+        descripcion:  descripcion?.trim() || null,
+        ruta_pdf:     rutaFinal,
+        id_categoria: idCat,
       });
-    res.json(archivos);
-  } catch (err) {
-    res.status(500).json({ error: "Error al leer manuales", detalle: err.message });
-  }
+      const rows = await Manual.getAll();
+      const manual = rows.find(m => m.id_manual === id);
+      res.status(201).json({ ok: true, manual: {
+        ...manual,
+        url: `/storage/Manuales/${encodeURIComponent(path.basename(rutaFinal))}`,
+      }});
+    } catch (e) {
+      await fs.promises.unlink(req.file.path).catch(() => {});
+      res.status(500).json({ error: e.message });
+    }
+  });
+});
+
+// PUT — editar metadatos
+app.put("/api/manuales/:id", requireAuth, async (req, res) => {
+  if (req.usuario?.id_rol !== 1) return res.status(403).json({ error: "Solo administradores" });
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
+  const { nombre, descripcion, id_categoria } = req.body;
+  if (!nombre?.trim()) return res.status(400).json({ error: "El nombre es obligatorio" });
+  const idCat = parseInt(id_categoria, 10);
+  if (isNaN(idCat) || idCat < 1) return res.status(400).json({ error: "La categoría es obligatoria" });
+  try {
+    const ok = await Manual.actualizar(id, { nombre: nombre.trim().slice(0,150), descripcion: descripcion?.trim()||null, id_categoria: idCat });
+    if (!ok) return res.status(404).json({ error: "Manual no encontrado" });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE — eliminar PDF + registro BD
+app.delete("/api/manuales/:id", requireAuth, async (req, res) => {
+  if (req.usuario?.id_rol !== 1) return res.status(403).json({ error: "Solo administradores" });
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
+  try {
+    const ruta = await Manual.getRuta(id);
+    if (!ruta) return res.status(404).json({ error: "Manual no encontrado" });
+    const ok = await Manual.eliminar(id);
+    if (!ok) return res.status(404).json({ error: "Manual no encontrado" });
+    try { await fs.promises.unlink(safeResolvePath(MANUALES_DIR, path.basename(ruta))); } catch { /* ya no existe */ }
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// -- 404 en rutas /api/ → siempre JSON, nunca HTML ------------------
+app.use("/api", (req, res) => {
+  res.status(404).json({ error: `Ruta no encontrada: ${req.method} ${req.path}` });
 });
 
 // -- Middleware global de errores -----------------------------
@@ -113,7 +241,10 @@ app.get("/api/manuales", requireAuth, (req, res) => {
 app.use((err, req, res, _next) => {
   console.error("[Error no manejado]", err);
   const status = err.status || err.statusCode || 500;
-  res.status(status).json({ error: err.message || "Error interno del servidor" });
+  const isProd = process.env.NODE_ENV === "production";
+  res.status(status).json({
+    error: isProd && status === 500 ? "Error interno del servidor" : (err.message || "Error interno del servidor"),
+  });
 });
 
 // -- Arranque -------------------------------------------------

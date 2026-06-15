@@ -277,7 +277,14 @@ export function generarPDFAccesos({ accesos, usuario, mesFiltro = "Todos", anioF
 </body></html>`;
 
   const win = window.open("", "_blank", "width=900,height=700");
-  if (!win) { alert("Permite ventanas emergentes para generar el reporte."); return; }
+  if (!win) {
+    const aviso = document.createElement("div");
+    aviso.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#1D1D1B;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;border-left:4px solid #F47920;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
+    aviso.textContent = "Permite ventanas emergentes para generar el reporte.";
+    document.body.appendChild(aviso);
+    setTimeout(() => aviso.remove(), 5000);
+    return;
+  }
   win.document.open();
   win.document.write(html);
   win.document.close();

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -8,11 +8,53 @@ html, body, #root {
   width: 100%;
   margin: 0;
   padding: 0;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
 }
 
-.bg-optimized {
-  background-size: cover;
-  background-position: center 15%;
-  background-repeat: no-repeat;
-  transform: translateZ(0);
+/* ── Tarjeta login ── */
+.login-card-wrap {
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+}
+
+/* ── Inputs ── */
+.login-input {
+  border-radius: 4px !important;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.login-input:hover:not(:focus) {
+  border-color: #F47920 !important;
+  background: #fff !important;
+}
+.login-input:focus {
+  border-color: #F47920 !important;
+  box-shadow: 0 0 0 3px rgba(244,121,32,0.12) !important;
+  background: #fff !important;
+}
+
+/* ── Botón principal ── */
+.login-btn {
+  border-radius: 4px !important;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s !important;
+}
+.login-btn:not(:disabled):hover {
+  background: #D4610A !important;
+  box-shadow: 0 4px 16px rgba(244,121,32,0.45) !important;
+}
+.login-btn:not(:disabled):active {
+  transform: scale(0.98);
+}
+.login-btn:focus-visible {
+  outline: 2px solid #F47920;
+  outline-offset: 2px;
+}
+
+/* ── Shake en error ── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60%  { transform: translateX(-5px); }
+  40%, 80%  { transform: translateX(5px); }
+}
+.login-error-shake {
+  animation: shake 0.35s ease-out;
 }

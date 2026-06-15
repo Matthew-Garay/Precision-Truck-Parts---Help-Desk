@@ -1,0 +1,776 @@
+/*
+ * PRECISION TRUCK PARTS — Design System CSS
+ * Estrategia 60-30-10 · Atomic Design · Nielsen · Mobile-First
+ *
+ * PALETA:
+ *  60% Neutros  → #FFFFFF · #F8FAFC
+ *  30% Slate    → #475569 textos · #E2E8F0 bordes
+ *  10% Acento   → #2563EB (acciones principales únicamente)
+ *
+ * SEMÁNTICOS (solo funcionales):
+ *  #DC2626 error/stock-0  ·  #D97706 alerta/stock-bajo  ·  #16A34A éxito
+ */
+
+/* ── Google Fonts: Inter (variable font para rendimiento óptimo) ─── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  /* ── Acento único ──────────────────────────────────────── */
+  --color-primary:          #2563EB;
+  --color-primary-dark:     #1D4ED8;
+  --color-primary-light:    #EFF6FF;
+  --color-primary-muted:    rgba(37,99,235,0.12);
+
+  /* ── Estructura (sidebar, headers) ────────────────────── */
+  --color-brand-navy:       #0F172A;
+  --color-brand-navy-dark:  #020617;
+  --color-brand-navy-light: #1E293B;
+  --color-brand-navy-muted: rgba(15,23,42,0.06);
+
+  /* ── 60% Neutros ───────────────────────────────────────── */
+  --color-surface:          #FFFFFF;
+  --color-neutral:          #F8FAFC;
+  --color-neutral-alt:      #F1F5F9;
+
+  /* ── 30% Slate — jerarquía tipográfica ─────────────────── */
+  --color-body:             #334155;
+  --color-muted:            #475569;
+  --color-faint:            #94A3B8;
+  --color-gray-200:         #E2E8F0;
+  --color-gray-300:         #CBD5E1;
+
+  /* ── Semánticos (estados funcionales únicamente) ────────── */
+  --color-danger:           #DC2626;
+  --color-danger-bg:        #FEF2F2;
+  --color-warning:          #D97706;
+  --color-warning-bg:       #FFFBEB;
+  --color-success:          #16A34A;
+  --color-success-bg:       #F0FDF4;
+
+  /* ── Radios: dos niveles ────────────────────────────────── */
+  --radius-sm:    4px;   /* átomos: inputs, botones, badges */
+  --radius-lg:    6px;   /* moléculas/organismos: cards, modales — enterprise */
+
+  /* ── Acento corporativo Precision Truck Parts ────────────── */
+  --color-brand-orange:      #F47920;
+  --color-brand-orange-dark: #D4610A;
+
+  /* ── Tipografía ─────────────────────────────────────────── */
+  --font-sans:    "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono", "Fira Code", "Courier New", monospace;
+
+  /* ── Escala tipográfica (Type Scale) ────────────────────── */
+  --text-h1:        22px;   /* Título de pantalla            w-700 lh-1.3 */
+  --text-h2:        16px;   /* Encabezado de sección         w-600 lh-1.4 */
+  --text-h3:        14px;   /* Título de tarjeta/card        w-600 lh-1.4 */
+  --text-body:      13px;   /* Cuerpo general                w-400 lh-1.6 */
+  --text-label:     11px;   /* Etiquetas de campo            w-600 lh-1.4 */
+  --text-mono:      12px;   /* Folios, IDs, SKUs (monospace) w-500 lh-1.5 */
+
+  --fw-normal:   400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+
+  --lh-tight:   1.3;   /* H1 */
+  --lh-snug:    1.4;   /* H2, H3, labels */
+  --lh-relaxed: 1.6;   /* body — máxima legibilidad en texto corrido */
+  --lh-tabular: 1.5;   /* tablas y datos numéricos */
+
+  /* ── Grid de espaciado: 4px ─────────────────────────────── */
+  --spacing: 4px;
+}
+
+/* ── Variables CSS globales ──────────────────────────────────── */
+:root {
+  --ptp-primary:       #2563EB;
+  --ptp-primary-dark:  #1D4ED8;
+  --ptp-primary-muted: rgba(37,99,235,0.12);
+  --ptp-navy:          #0F172A;
+  --ptp-surface:       #FFFFFF;
+  --ptp-neutral:       #F8FAFC;
+  --ptp-neutral-alt:   #F1F5F9;
+  --ptp-text:          #334155;
+  --ptp-muted:         #475569;
+  --ptp-faint:         #94A3B8;
+  --ptp-border:        #E2E8F0;
+  --ptp-border-active: #CBD5E1;
+  --ptp-radius:        4px;
+  --ptp-radius-card:   6px;  /* enterprise: máximo 6px en organismos */
+
+  /* ── Escala tipográfica (alias cortos) ──────────────────── */
+  --ptp-text-h1:        22px;
+  --ptp-text-h2:        16px;
+  --ptp-text-h3:        14px;
+  --ptp-text-body:      13px;
+  --ptp-text-label:     11px;
+  --ptp-text-mono:      12px;
+  --ptp-h-btn:         40px;
+  --ptp-h-input:       40px;
+  --ptp-orange:        #F47920;
+  --ptp-orange-dark:   #D4610A;
+  /* Nielsen #8: sombras solo para separar capas, no decorativas */
+  --ptp-shadow-sm:     0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+  --ptp-shadow-md:     0 4px 16px rgba(0,0,0,0.08);
+  --ptp-shadow-modal:  0 4px 16px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.08);
+}
+
+/* ── Reset y tipografía base ─────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Escala tipográfica global fluida:
+   1280px → ~13px  |  1600px → ~14px  |  1920px → ~15px
+   Todo rem/em en el sistema hereda esta base automáticamente  */
+html {
+  font-size: clamp(12px, 0.7vw + 0.3vh + 0.2vmin, 15px);
+}
+
+body {
+  font-family:             var(--font-sans);
+  font-size:               clamp(11px, 0.85vw, 13px);
+  line-height:             1.6;
+  color:                   var(--ptp-text);
+  background-color:        var(--ptp-neutral);
+  -webkit-font-smoothing:  antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ================================================================
+   ESCALA TIPOGRÁFICA — Clases utilitarias
+   ================================================================ */
+
+/* Uso: <h1 class="ptp-h1">Inventario</h1> */
+.ptp-h1 {
+  font-size:      var(--ptp-text-h1);
+  font-weight:    700;
+  line-height:    1.3;
+  color:          #0F172A;  /* navy — máximo contraste para títulos */
+  letter-spacing: -0.025em;
+}
+.ptp-h2 {
+  font-size:   var(--ptp-text-h2);
+  font-weight: 600;
+  line-height: 1.4;
+  color:       #0F172A;
+}
+.ptp-h3 {
+  font-size:   var(--ptp-text-h3);
+  font-weight: 600;
+  line-height: 1.4;
+  color:       var(--ptp-text);
+}
+/* Datos numéricos: KPI, totales, folios */
+.ptp-numeric {
+  font-family: var(--font-mono);
+  font-size:   var(--ptp-text-mono);
+  font-weight: 500;
+  line-height: 1.5;
+  /* font-variant-numeric activa cifras tabulares en Inter/JetBrains */
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+/* Etiqueta de campo de formulario */
+.ptp-label {
+  font-size:      var(--ptp-text-label);
+  font-weight:    600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color:          var(--ptp-muted);
+  line-height:    1.4;
+}
+
+/* ================================================================
+   ÁTOMOS
+   ================================================================ */
+
+/* ── Botón Primario — acento #2563EB ─── */
+.btn-primary {
+  background:    var(--ptp-primary);
+  color:         #fff;
+  height:        var(--ptp-h-btn);
+  padding:       0 20px;
+  border:        none;
+  border-radius: var(--ptp-radius);
+  font-size:     13px;
+  font-weight:   600;
+  cursor:        pointer;
+  display:       inline-flex;
+  align-items:   center;
+  gap:           6px;
+  transition:    background 0.15s;
+  white-space:   nowrap;
+  position:      relative;
+  overflow:      hidden;
+}
+.btn-primary:hover   { background: var(--ptp-primary-dark); }
+.btn-primary:active  { background: var(--ptp-primary-dark); filter: brightness(0.95); }
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor:  not-allowed;
+  background: var(--ptp-primary);
+}
+
+/* ── Feedback visual de carga (Nielsen #1) ───
+   Uso: agregar clase .is-loading al botón
+   El elemento interno .btn-spinner aparece automáticamente */
+.btn-primary.is-loading,
+.btn-danger.is-loading {
+  opacity: 0.7;
+  cursor:  not-allowed;
+  pointer-events: none;
+}
+
+/* ── Botón Ghost — acciones secundarias ─ */
+.btn-ghost {
+  background:    transparent;
+  color:         #334155;
+  height:        var(--ptp-h-btn);
+  padding:       0 20px;
+  border:        1px solid var(--ptp-border);
+  border-radius: var(--ptp-radius);
+  font-size:     13px;
+  font-weight:   500;
+  cursor:        pointer;
+  display:       inline-flex;
+  align-items:   center;
+  gap:           6px;
+  transition:    background 0.15s;
+}
+.btn-ghost:hover { background: var(--ptp-neutral-alt); }
+
+/* ── Botón Danger — acciones destructivas ─ */
+.btn-danger {
+  background:    #DC2626;
+  color:         #fff;
+  height:        var(--ptp-h-btn);
+  padding:       0 20px;
+  border:        none;
+  border-radius: var(--ptp-radius);
+  font-size:     13px;
+  font-weight:   600;
+  cursor:        pointer;
+  display:       inline-flex;
+  align-items:   center;
+  gap:           6px;
+  transition:    filter 0.15s;
+}
+.btn-danger:hover { filter: brightness(1.08); }
+
+/* ── Input base ───────────────────────── */
+.input-base {
+  background:    var(--ptp-neutral);
+  border:        1px solid var(--ptp-border-active);
+  border-radius: var(--ptp-radius);
+  color:         var(--ptp-text);
+  font-size:     13px;
+  padding:       0 12px;
+  height:        var(--ptp-h-input);
+  width:         100%;
+  outline:       none;
+  transition:    border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+/* Focus: ring azul (Nielsen #5 — Prevención de errores) */
+.input-base:focus {
+  border-color: var(--ptp-primary);
+  box-shadow:   0 0 0 3px var(--ptp-primary-muted);
+  background:   var(--ptp-surface);
+}
+.input-base.is-error {
+  border-color: #DC2626;
+  box-shadow:   0 0 0 3px rgba(220,38,38,0.10);
+}
+.input-error-msg {
+  font-size:   12px;
+  color:       #DC2626;
+  font-weight: 500;
+  margin-top:  2px;
+}
+
+/* ── Badge ──────────────────────────────
+   border-radius: 4px (no pill — diseño cuadrado y técnico) */
+.badge {
+  display:       inline-flex;
+  align-items:   center;
+  gap:           4px;
+  padding:       2px 8px;
+  border-radius: var(--ptp-radius);
+  font-size:     11px;
+  font-weight:   600;
+  line-height:   1.4;
+  white-space:   nowrap;
+}
+.badge-primary { background: #EFF6FF; color: #2563EB; border: 1px solid rgba(37,99,235,0.20); }
+.badge-success { background: #F0FDF4; color: #16A34A; border: 1px solid #BBF7D0; }
+.badge-danger  { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+.badge-warning { background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; }
+.badge-neutral { background: #F1F5F9; color: #475569; border: 1px solid #E2E8F0; }
+/* Legacy aliases */
+.badge-info    { background: #EFF6FF; color: #2563EB; border: 1px solid rgba(37,99,235,0.20); }
+.badge-navy    { background: rgba(15,23,42,0.06); color: #0F172A; border: 1px solid rgba(15,23,42,0.15); }
+
+/* ── Badges de Estado de Ticket (ciclo de vida) ──
+   Paleta semántica: Pendiente=Amarillo · En Proceso=Azul · Resuelto=Verde · No Resuelto=Rojo
+   Uso: <span class="badge badge-ticket-pendiente">Pendiente</span>  */
+.badge-ticket-pendiente  { background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; }
+.badge-ticket-en-proceso { background: #EFF6FF; color: #2563EB; border: 1px solid rgba(37,99,235,0.25); }
+.badge-ticket-resuelto   { background: #F0FDF4; color: #16A34A; border: 1px solid #BBF7D0; }
+.badge-ticket-no-resuelto{ background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+
+/* ================================================================
+   MOLÉCULAS
+   ================================================================ */
+
+/* ── Card ───────────────────────────────
+   Nielsen #8: sin sombra en cards planas — el borde sutil + espaciado
+   crean jerarquía sin ruido visual */
+.card {
+  background:    var(--ptp-surface);
+  border:        1px solid var(--ptp-border);
+  border-radius: var(--ptp-radius-card);
+  box-shadow:    var(--ptp-shadow-sm);
+  overflow:      hidden;
+}
+.card-elevated {
+  background:    var(--ptp-surface);
+  border:        1px solid var(--ptp-border);
+  border-radius: var(--ptp-radius-card);
+  box-shadow:    var(--ptp-shadow-md);
+  overflow:      hidden;
+}
+/* Usar card-flat cuando esté dentro de otro contenedor (evita ruido) */
+.card-flat {
+  background:    var(--ptp-surface);
+  border:        1px solid var(--ptp-border);
+  border-radius: var(--ptp-radius-card);
+  overflow:      hidden;
+}
+.card-header {
+  padding:       12px 24px;
+  border-bottom: 1px solid var(--ptp-border);
+  background:    var(--ptp-neutral);
+  display:       flex;
+  align-items:   center;
+  gap:           10px;
+}
+.card-body   { padding: 24px; }
+.card-footer {
+  padding:         12px 24px;
+  border-top:      1px solid var(--ptp-border);
+  background:      var(--ptp-neutral);
+  display:         flex;
+  align-items:     center;
+  justify-content: flex-end;
+  gap:             8px;
+}
+
+/* ── FormField: Label + Input + Error ───
+   Nielsen #5: error inline inmediatamente bajo el campo */
+.form-field       { display: flex; flex-direction: column; gap: 4px; }
+.form-field-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ptp-muted); }
+.form-field-error { font-size: 12px; color: #DC2626; font-weight: 500; }
+
+/* ================================================================
+   ORGANISMOS
+   ================================================================ */
+
+/* ── Modal ──────────────────────────────
+   Nielsen #4: Footer siempre [Ghost/Cancelar izq.] [Primario/Danger der.]
+   Header: navy corporativo (#0F172A) + barra acento naranja 3px */
+.modal-overlay {
+  position:        fixed;
+  inset:           0;
+  background:      rgba(15,23,42,0.50); /* navy translucent — más corporativo que negro */
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  z-index:         50;
+  padding:         16px;
+}
+.modal-container {
+  background:     var(--ptp-surface);
+  border-radius:  4px;                 /* enterprise: esquinas contenidas */
+  border:         1px solid var(--ptp-border);
+  box-shadow:     var(--ptp-shadow-modal);
+  width:          100%;
+  max-width:      520px;
+  overflow:       hidden;
+  max-height:     90vh;
+  display:        flex;
+  flex-direction: column;
+}
+.modal-header {
+  background:      var(--ptp-navy);
+  color:           #fff;
+  padding:         0 24px;
+  height:          48px;
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  font-size:       14px;
+  font-weight:     600;
+  letter-spacing:  -0.01em;
+  flex-shrink:     0;
+}
+/* Barra de acento naranja 3px antes del título */
+.modal-header-accent {
+  display:      block;
+  width:        3px;
+  height:       16px;
+  background:   var(--ptp-orange);
+  flex-shrink:  0;
+  margin-right: 10px;
+}
+/* Botón X de cierre dentro del header navy */
+.modal-close-btn {
+  width:           36px;
+  height:          36px;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  background:      transparent;
+  border:          none;
+  cursor:          pointer;
+  border-radius:   4px;
+  color:           rgba(255,255,255,0.50);
+  transition:      background 0.15s, color 0.15s;
+}
+.modal-close-btn:hover {
+  background: rgba(255,255,255,0.10);
+  color:      #fff;
+}
+.modal-body {
+  padding:    24px;
+  background: var(--ptp-surface);
+  overflow-y: auto;
+  flex:       1;
+}
+/* Nielsen #4: patrón único — ghost izq, confirmación der */
+.modal-footer {
+  padding:         14px 24px;
+  border-top:      1px solid var(--ptp-border);
+  display:         flex;
+  justify-content: flex-end;
+  gap:             8px;
+  background:      var(--ptp-neutral);
+  flex-shrink:     0;
+}
+
+/* ── Panel Lateral de Solicitud ─────────
+   Desktop: 360px fijo a la derecha del layout principal
+   Mobile (<768px): bottom sheet ancho completo */
+.solicitud-panel {
+  width:          360px;
+  height:         100%;
+  background:     var(--ptp-surface);
+  border-left:    1px solid var(--ptp-border);
+  display:        flex;
+  flex-direction: column;
+  overflow:       hidden;
+}
+.solicitud-panel-header {
+  padding:       16px 20px;
+  border-bottom: 1px solid var(--ptp-border);
+  background:    var(--ptp-neutral);
+  font-weight:   700;
+  font-size:     14px;
+  flex-shrink:   0;
+}
+.solicitud-panel-body {
+  flex:           1;
+  overflow-y:     auto;
+  padding:        12px;
+  display:        flex;
+  flex-direction: column;
+  gap:            8px;
+}
+.solicitud-panel-footer {
+  padding:     16px 20px;
+  border-top:  1px solid var(--ptp-border);
+  background:  var(--ptp-surface);
+  flex-shrink: 0;
+}
+
+@media (max-width: 767px) {
+  .solicitud-panel {
+    width:         100%;
+    height:        auto;
+    max-height:    65vh;
+    border-left:   none;
+    border-top:    1px solid var(--ptp-border);
+    border-radius: 6px 6px 0 0;
+    position:      fixed;
+    bottom:        0;
+    left:          0;
+    z-index:       40;
+    box-shadow:    0 -4px 24px rgba(0,0,0,0.10);
+  }
+}
+
+/* ================================================================
+   TABLA — Mobile-First (Nielsen #8 + Responsive)
+   ================================================================
+   Desktop (≥768px) : tabla HTML estándar sin bordes externos
+   Mobile  (<768px) : cada fila → tarjeta con data-label
+
+   HTML requerido para mobile:
+   <td data-label="Folio">PTP-001</td>
+   ================================================================ */
+
+.ptp-table {
+  width:           100%;
+  border-collapse: collapse;
+  font-size:       13px;
+}
+/* Nielsen #8: sin borde externo en la tabla — el contenedor (card) ya delimita */
+.ptp-table thead th {
+  background:     var(--ptp-neutral);
+  border-bottom:  2px solid var(--ptp-border);
+  padding:        10px 16px;
+  text-align:     left;
+  font-size:      11px;
+  font-weight:    700;
+  color:          var(--ptp-muted);   /* slate, no acento — estructura neutral */
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space:    nowrap;
+}
+.ptp-table tbody td {
+  padding:        12px 16px;
+  color:          var(--ptp-text);
+  border-bottom:  1px solid var(--ptp-border);
+  vertical-align: middle;
+}
+.ptp-table tbody tr:hover td { background: var(--ptp-neutral); }
+.ptp-table tbody tr:last-child td { border-bottom: none; }
+
+/* Estado semántico: Stock 0 → fila roja */
+.ptp-table tbody tr.row-danger td  { background: #FEF2F2; }
+/* Estado semántico: Stock bajo → fila ámbar */
+.ptp-table tbody tr.row-warning td { background: #FFFBEB; }
+
+/* ── Tabla → Tarjetas en Mobile ───── */
+@media (max-width: 767px) {
+  .ptp-table thead { display: none; }
+
+  .ptp-table,
+  .ptp-table tbody,
+  .ptp-table tbody tr,
+  .ptp-table tbody td { display: block; width: 100%; }
+
+  .ptp-table tbody tr {
+    background:    var(--ptp-surface);
+    border:        1px solid var(--ptp-border);
+    border-radius: var(--ptp-radius-card);
+    box-shadow:    var(--ptp-shadow-sm);
+    margin-bottom: 10px;
+    overflow:      hidden;
+  }
+  .ptp-table tbody tr.row-danger  { border-left: 3px solid #DC2626; }
+  .ptp-table tbody tr.row-warning { border-left: 3px solid #D97706; }
+
+  .ptp-table tbody td {
+    display:        flex;
+    align-items:    center;
+    justify-content:space-between;
+    padding:        10px 16px;
+    border-bottom:  1px solid var(--ptp-border);
+    gap:            12px;
+  }
+  .ptp-table tbody td:last-child { border-bottom: none; }
+
+  /* Label automático desde data-label */
+  .ptp-table tbody td::before {
+    content:        attr(data-label);
+    font-size:      10px;
+    font-weight:    700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color:          var(--ptp-faint);
+    flex-shrink:    0;
+    white-space:    nowrap;
+  }
+}
+
+/* ── Estados de contenido vacío / carga ── */
+.table-empty {
+  text-align: center;
+  padding:    48px 24px;
+  color:      var(--ptp-faint);
+  font-size:  13px;
+}
+
+/* ================================================================
+   TOUCH TARGETS — Mínimo 44×44px en móviles (WCAG 2.5.5)
+   La "Regla de los 8px" asegura que todos los espaciados sean
+   múltiplos de 8: 8, 16, 24, 32, 40, 48...
+   ================================================================ */
+@media (max-width: 767px) {
+  /* Botones y enlaces de acción: touch target mínimo 44px */
+  .btn-primary,
+  .btn-ghost,
+  .btn-danger {
+    min-height: 44px;
+    min-width:  44px;
+  }
+  /* Íconos de acción: touch target ampliado con padding invisible */
+  .btn-icon-touch {
+    min-height: 44px;
+    min-width:  44px;
+    padding:    10px;
+    display:    inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Inputs: altura mínima 44px en móvil */
+  .input-base {
+    min-height: 44px;
+  }
+  /* Separación entre items de lista clicables: regla de 8px */
+  .touch-list-item {
+    padding:    12px 16px;   /* 12=3×4px, 16=4×4px */
+    min-height: 48px;
+  }
+}
+
+/* ================================================================
+   SPACING UTILITIES — Regla de los 8px
+   Gap y padding siempre múltiplos de 8 en layout principal.
+   Use: gap-8px, gap-16px, gap-24px, gap-32px, gap-40px, gap-48px
+   ================================================================ */
+.gap-8px  { gap: 8px;  }
+.gap-16px { gap: 16px; }
+.gap-24px { gap: 24px; }
+.gap-32px { gap: 32px; }
+.gap-40px { gap: 40px; }
+.gap-48px { gap: 48px; }
+.p-8px    { padding: 8px;  }
+.p-16px   { padding: 16px; }
+.p-24px   { padding: 24px; }
+
+/* ================================================================
+   SKELETON SCREENS — Nielsen #1 (Visibilidad del estado del sistema)
+   Reemplaza spinners en tablas y listas.
+   Uso: <div class="skeleton skeleton-row" />
+   ================================================================ */
+@keyframes ptp-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.skeleton {
+  background:  var(--ptp-neutral-alt);
+  border-radius: var(--ptp-radius);
+  animation:   ptp-skeleton-pulse 1.5s ease-in-out infinite;
+}
+.skeleton-text    { height: 12px; border-radius: 4px; }
+.skeleton-heading { height: 20px; border-radius: 4px; }
+
+/* Entrada de elementos (microanimación funcional) */
+@keyframes ptp-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ptp-animate-in { animation: ptp-fade-in 0.18s ease-out forwards; }
+
+/* Animaciones del panel lateral de solicitudes */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+@keyframes slide-out {
+  0%   { transform: scale(1);    opacity: 1;   }
+  50%  { transform: scale(0.92); opacity: 0.7; }
+  100% { transform: scale(1);    opacity: 1;   }
+}
+.animate-slide-in  { animation: slide-in  0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.animate-slide-out { animation: slide-out 0.30s ease forwards; }
+
+/* ================================================================
+   ARQUITECTURA RESPONSIVA — Mobile-First
+   ================================================================
+   Breakpoints:
+   Base  (<640px)   → columna única, sin sidebar
+   sm    (≥640px)   → grid 2 col, sidebar rail (64px)
+   md    (≥768px)   → tabla HTML, sidebar visible
+   lg    (≥1024px)  → panel lateral, grid 3 col
+   xl    (≥1280px)  → layout completo 3 columnas
+
+   Sidebar:
+   <768px  → off-canvas (posición fixed, z-50, overlay bg-black/40)
+   768px   → rail 64px (solo iconos)
+   1024px  → full 220px (iconos + labels)
+   ================================================================ */
+
+/* ── Variables de layout fluido ─────────────────────────────── */
+:root {
+  --sidebar-w:      220px;
+  --panel-r-w:      240px;
+  --header-h:       clamp(62px, 6vh, 76px);
+  --sidebar-logo-h: clamp(44px, 4.5vw, 72px);
+  --fs-nav:         clamp(10.5px, 0.85vw, 13px);
+  --fs-body:        clamp(10.5px, 0.82vw, 13px);
+  --fs-label:       clamp(8.5px, 0.65vw, 11px);
+  --icon-nav:       clamp(12px, 1.05vw, 16px);
+  --content-px:     clamp(8px, 1.2vw, 16px);
+  --content-pt:     clamp(6px, 1vh, 14px);
+  --kpi-fs-val:     clamp(18px, 1.6vw, 28px);
+}
+
+html, body { overflow-x: hidden; }
+.ptp-safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* Escala de espaciado fluida para contenido principal */
+.ptp-content-area {
+  padding: clamp(8px, 1.2vh, 14px) clamp(10px, 1.5vw, 16px);
+}
+
+@media (min-width: 768px) {
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
+}
+
+/* ================================================================
+   DARK MODE — [data-theme="dark"]
+   ================================================================ */
+[data-theme="dark"] {
+  --ptp-surface:      #161B22;
+  --ptp-neutral:      #0D1117;
+  --ptp-neutral-alt:  #1C2230;
+  --ptp-text:         #E6EDF3;
+  --ptp-muted:        #8B949E;
+  --ptp-faint:        #484F58;
+  --ptp-border:       rgba(255,255,255,0.08);
+  --ptp-border-active:rgba(255,255,255,0.14);
+}
+[data-theme="dark"] .ptp-table thead th {
+  background:   #1C2230;
+  border-color: rgba(255,255,255,0.08);
+}
+[data-theme="dark"] .ptp-table tbody tr:hover td {
+  background: rgba(255,255,255,0.03);
+}
+@media (max-width: 767px) {
+  [data-theme="dark"] .ptp-table tbody tr {
+    background:   #161B22;
+    border-color: rgba(255,255,255,0.08);
+  }
+}
+
+/* ── Legacy: clases de tabla antiguas (backward compat) ─── */
+.table-header-cell {
+  background:     var(--ptp-neutral);
+  border-bottom:  1px solid var(--ptp-border);
+  padding:        10px 16px;
+  font-size:      11px;
+  font-weight:    700;
+  color:          var(--ptp-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.table-row   { border-bottom: 1px solid var(--ptp-border); }
+.table-cell  { padding: 12px 16px; font-size: 13px; color: var(--ptp-text); }
+.table-row:hover { background: var(--ptp-neutral); }
+.table-loading-row td { padding: 32px 16px; text-align: center; color: var(--ptp-muted); }
