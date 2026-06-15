@@ -88,10 +88,12 @@ function App() {
   }
 
   // -- Cierre de sesión al cerrar pestaña/navegador ---------------------
-  // sendBeacon no puede enviar headers personalizados, por eso /logout está
-  // exento de CSRF en security.js. Es seguro porque no modifica datos críticos.
+  // Usamos pagehide en lugar de beforeunload para no cerrar sesión en F5/recarga.
+  // event.persisted=true significa que la página va a bfcache (navegar atrás),
+  // en ese caso tampoco cerramos sesión.
   useEffect(() => {
-    const cerrarAlSalir = () => {
+    const cerrarAlSalir = (e) => {
+      if (e.persisted) return  // bfcache — no es cierre real
       const idAcceso = sessionStorage.getItem('id_acceso')
       if (!idAcceso) return
       navigator.sendBeacon(
@@ -102,8 +104,8 @@ function App() {
         )
       )
     }
-    window.addEventListener('beforeunload', cerrarAlSalir)
-    return () => window.removeEventListener('beforeunload', cerrarAlSalir)
+    window.addEventListener('pagehide', cerrarAlSalir)
+    return () => window.removeEventListener('pagehide', cerrarAlSalir)
   }, [])
 
   if (saliendo) return <PantallaSalida />
