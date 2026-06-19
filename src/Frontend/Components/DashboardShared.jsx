@@ -1,3 +1,39 @@
+﻿/**
+ * DashboardShared.jsx
+ *
+ * Componentes graficos y de layout compartidos entre el dashboard
+ * del administrador y el del usuario.
+ *
+ * Componentes exportados:
+ *
+ * GraficaPastel({ data, size, T })
+ *   Grafica de pastel SVG con strokeDasharray. Muestra el total en el centro.
+ *   data = [{ label, color, valor }]
+ *
+ * SeccionMetricas({ T, metricas })
+ *   Tres tarjetas para el dashboard del administrador:
+ *   tiempo promedio de resolucion, tickets por departamento con barras,
+ *   y tendencia mensual de los ultimos 6 meses con grafica de barras interactiva.
+ *
+ * SeccionMetricasUsuario({ T, tickets })
+ *   Fila de KPIs para el dashboard del usuario: total, en proceso,
+ *   resueltos, sin resolver, tasa de resolucion y tiempo promedio.
+ *
+ * SeccionEstadisticas({ T, tickets, solicitudes })
+ *   Dos tarjetas: reportes por prioridad (con barras) y reportes por
+ *   estatus (con grafica de pastel y barras). Combina tickets y solicitudes.
+ *
+ * KanbanBoard({ T, tickets, solicitudes, onVerTicket, onVerSolicitud, inline })
+ *   Tablero kanban de cuatro columnas (Urgente, Alta, Media, Baja).
+ *   Muestra tickets en proceso y solicitudes activas mezclados.
+ *   Cada card es clicable y llama a onVerTicket u onVerSolicitud.
+ *   Con inline=true se renderiza en un grid en lugar de scroll horizontal.
+ *
+ * PanelDerecho({ T, nombre, departamento, foto, tickets })
+ *   Panel lateral fijo visible en pantallas lg o mayores.
+ *   Contiene foto de perfil con estado activo, reloj, estadisticas
+ *   personales con barra de tasa de resolucion y calendario mensual.
+ */
 import { useState } from "react";
 import { User, Clock, CheckCircle2, Timer, Building2, BarChart2, Package, TrendingUp } from "lucide-react";
 import { RelojFecha, Calendario } from "../Config/theme.jsx";
@@ -131,7 +167,7 @@ function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
   );
 }
 
-// â”€â”€ GRAFICA PASTEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- GRAFICA PASTEL --
 export function GraficaPastel({ data, size = 80, T }) {
   const total  = data.reduce((s, d) => s + d.valor, 0);
   const isDark = T?.isDark;
@@ -176,7 +212,7 @@ export function GraficaPastel({ data, size = 80, T }) {
   );
 }
 
-// â”€â”€ SECCIÃ“N MÃ‰TRICAS AVANZADAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- SECCION METRICAS AVANZADAS --
 export function SeccionMetricas({ T, metricas }) {
   const isDark = T.isDark;
   if (!metricas) return null;
@@ -187,10 +223,7 @@ export function SeccionMetricas({ T, metricas }) {
 
   // Tiempo promedio formateado
   const horas = parseFloat(promedio_horas) || 0;
-  const tiempoLabel = horas === 0 ? "â€”"
-    : horas < 1 ? `${Math.round(horas * 60)} min`
-    : horas < 24 ? `${horas.toFixed(1)} h`
-    : `${(horas / 24).toFixed(1)} dias`;
+  const tiempoLabel = horas === 0 ? "-" : horas < 1 ? `${Math.round(horas * 60)} min` : horas < 24 ? `${horas.toFixed(1)} h` : `${(horas / 24).toFixed(1)} dias`;
 
   // Tendencia: etiquetas de mes abreviadas
   const MESES_CORTOS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -297,7 +330,7 @@ export function SeccionMetricas({ T, metricas }) {
   );
 }
 
-// â”€â”€ SECCIÃ“N ESTADISTICAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- SECCION ESTADISTICAS --
 export function SeccionMetricasUsuario({ T, tickets = [] }) {
   const isDark = T.isDark;
   const total     = tickets.length;
@@ -309,10 +342,7 @@ export function SeccionMetricasUsuario({ T, tickets = [] }) {
   const promedioH = conTiempo.length > 0
     ? conTiempo.reduce((s, t) => s + (new Date(t.fecha_resuelto) - new Date(t.fecha_subido)) / 36e5, 0) / conTiempo.length
     : 0;
-  const fmtTiempo = promedioH === 0 ? "â€”"
-    : promedioH < 1 ? `${Math.round(promedioH * 60)} min`
-    : promedioH < 24 ? `${promedioH.toFixed(1)} h`
-    : `${(promedioH / 24).toFixed(1)} dias`;
+  const fmtTiempo = promedioH === 0 ? "-" : promedioH < 1 ? `${Math.round(promedioH * 60)} min` : promedioH < 24 ? `${promedioH.toFixed(1)} h` : `${(promedioH / 24).toFixed(1)} dias`;
 
   const tasaRes = total > 0 ? Math.round((resueltos / total) * 100) : 0;
 
@@ -481,7 +511,7 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
   );
 }
 
-// â”€â”€ KANBAN BOARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- KANBAN BOARD --
 const PRIORIDADES = [
   { id: "Urgente", label: "Urgente", color: "#dc2626", bg: "#fee2e2", bgDark: "rgba(220,38,38,0.18)" },
   { id: "Alta",    label: "Alta",    color: "#ea580c", bg: "#ffedd5", bgDark: "rgba(234,88,12,0.18)"  },

@@ -1,3 +1,71 @@
+/**
+ * ticketsController.js
+ *
+ * Controlador principal del sistema de tickets de soporte tecnico.
+ * Gestiona el ciclo de vida completo de un ticket: creacion, consulta,
+ * actualizacion de estatus, gestion de imagenes de evidencia, calificacion
+ * y generacion de reportes y metricas.
+ *
+ * Funciones exportadas:
+ *
+ *   crearTicket
+ *     Crea un ticket con sus campos basicos. Procesa las imagenes de evidencia
+ *     subidas por multer: las mueve de la carpeta temporal a una carpeta
+ *     nombrada con el folio del ticket (ej. storage/Evidencias_Tickets/PTP-202605-001/).
+ *     Emite "ticket:confirmado" al usuario y "ticket:nuevo" a los admins.
+ *
+ *   getTicketById
+ *     Retorna el detalle completo de un ticket. Solo el dueno o un admin
+ *     puede consultarlo.
+ *
+ *   getTicketsByEmpleado
+ *     Retorna todos los tickets de un empleado especifico. Aplica control
+ *     de acceso: solo el dueno o un administrador puede consultar.
+ *
+ *   getAllTickets
+ *     Retorna todos los tickets del sistema paginados. Solo para admins.
+ *
+ *   getImagenesTicket
+ *     Retorna la lista de nombres de archivos de imagen almacenados en la
+ *     carpeta de evidencias del ticket. Aplica control de acceso.
+ *
+ *   agregarImagenesTicket
+ *     Permite agregar mas imagenes de evidencia a un ticket existente.
+ *     Numera los archivos continuando desde el ultimo numero existente.
+ *
+ *   eliminarImagenTicket
+ *     Elimina una imagen de evidencia especifica del disco. Aplica control
+ *     de acceso: solo el dueno o un admin puede eliminar.
+ *
+ *   actualizarTicket
+ *     Cambia el estatus de un ticket (solo admins). Emite eventos diferenciados:
+ *     "ticket:actualizado" para estatus Resuelto o No Resuelto,
+ *     "ticket:en_atencion" cuando pasa a En proceso.
+ *     El envio de correo electronico esta desactivado en esta version.
+ *
+ *   calificarTicket
+ *     Permite al dueno del ticket darle una calificacion del 1 al 5 estrellas.
+ *     Solo se puede calificar si el ticket esta Resuelto y no fue calificado
+ *     previamente. Emite "ticket:calificado" a los admins.
+ *
+ *   editarTicketUsuario
+ *     Permite al dueno editar titulo, descripcion, prioridad y categoria
+ *     de un ticket mientras su estatus sea "En proceso".
+ *
+ *   getAdmins
+ *     Retorna la lista de empleados con rol administrador activos.
+ *     Se usa en el formulario de actualizacion para seleccionar el tecnico.
+ *
+ *   getReporte
+ *     Retorna tickets filtrados por rango de fechas y opcionalmente por tecnico.
+ *     Incluye todos los datos necesarios para exportar el reporte a PDF.
+ *
+ *   getMetricas
+ *     Retorna estadisticas del dashboard:
+ *       - promedio de horas de resolucion de tickets resueltos
+ *       - total de tickets y resueltos agrupados por departamento
+ *       - tendencia mensual de los ultimos 6 meses desglosada por estatus
+ */
 import Ticket   from "../Models/Ticket.js";
 import Empleado from "../Models/Empleado.js";
 import { getIO } from "../Config/socketInstance.js";
@@ -170,7 +238,17 @@ export const actualizarTicket = async (req, res) => {
           // Notificar al empleado dueño y a los admins
           io.to(`empleado_${t.id_empleado}`).emit("ticket:actualizado", payload);
           io.to("admins").emit("ticket:actualizado", payload);
-          // Envío de correo desactivado
+          // Enviar correo al empleado
+          if (t.email_empleado) {
+            enviarNotificacionTicket({
+              to:         t.email_empleado,
+              nombre:     t.nombre_empleado,
+              folio:      t.folio_ticket,
+              titulo:     t.titulo,
+              estatus,
+              comentario: comentarios ?? null,
+            }).catch(err => console.error("[mailer actualizarTicket]", err.message));
+          }
         } else if (estatus === "En proceso" || comentarios) {
           const adminId     = id_resuelto_por || req.usuario?.id_empleado;
           const nombreAdmin = await Empleado.getNombre(adminId);

@@ -1,3 +1,33 @@
+/**
+ * CampanaNotificaciones.jsx
+ *
+ * Componente de la campana de notificaciones en tiempo real.
+ * Se muestra en la barra de navegacion y permite al usuario ver
+ * el historial de notificaciones recibidas durante la sesion.
+ *
+ * Comportamiento:
+ *   - Muestra un badge naranja con el conteo de notificaciones no leidas.
+ *   - La campana se anima con un efecto de bamboleo cuando llega una notificacion nueva.
+ *   - Al hacer clic se despliega un panel flotante con la lista de notificaciones.
+ *   - El panel se cierra al hacer clic fuera de el.
+ *   - Cada notificacion muestra un icono de color segun su tipo, el titulo,
+ *     el mensaje en dos lineas y la hora de recepcion.
+ *   - Las notificaciones con accion (ver ticket, calificar) muestran un boton
+ *     que al presionarlo llama a onClickNotif y cierra el panel.
+ *   - Las alertas de SLA tienen una banda roja superior y un boton rojo de urgencia.
+ *
+ * Props:
+ *   T              - tokens del tema activo (claro u oscuro)
+ *   notificaciones - arreglo de notificaciones del historial (de useTicketNotification)
+ *   onDismiss      - funcion(id) para eliminar una notificacion del historial
+ *   onDismissAll   - funcion() para limpiar todo el historial
+ *   onClickNotif   - funcion(notificacion) al hacer clic en el boton de accion
+ *
+ * Tipos de notificacion soportados (TIPO_CONFIG):
+ *   ticket:nuevo, solicitud:nueva, ticket:calificado, ticket:sla_warning,
+ *   tickets:vencidos, ticket:actualizado, ticket:en_atencion,
+ *   solicitud:actualizada, ticket:confirmado, insumo:stock_critico, ticket:sin_atender
+ */
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Bell, X, CheckCircle2, Package, Ticket, Star, Clock, AlertTriangle, Wrench } from "lucide-react";
 

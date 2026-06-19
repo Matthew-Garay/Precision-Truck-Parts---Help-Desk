@@ -1,13 +1,47 @@
 /**
  * useTicketNotification.js
- * Hook que orquesta:
- *  - Conexión Socket.io (via useSocket)
- *  - Reproducción de sonido (via NotificationService)
- *  - Toast visual (via useToast de Feedback.jsx)
- *  - Historial de notificaciones para CampanaNotificaciones (persistido en localStorage)
- *  - Verificación de existencia del ticket antes de mostrar
+ *
+ * Hook principal que orquesta el sistema completo de notificaciones en tiempo real.
+ * Combina Socket.io, sonido, toasts visuales e historial persistente.
+ *
+ * Responsabilidades:
+ *
+ * 1. Filtra eventos por rol:
+ *    Los admins solo reciben eventos de EVENTOS_ADMIN (ticket nuevo, solicitud nueva, etc.)
+ *    Los usuarios solo reciben eventos de EVENTOS_USUARIO (ticket actualizado, confirmado, etc.)
+ *
+ * 2. Deduplicacion:
+ *    Usa un Set en ref (procesandoRef) para ignorar el mismo evento que llegue
+ *    dos veces en menos de 3 segundos. La clave de deduplicacion combina
+ *    tipo + id de entidad + estatus.
+ *
+ * 3. Verificacion de existencia:
+ *    Para los eventos que llevan id_ticket, verifica que el ticket exista
+ *    en la base de datos antes de mostrar la notificacion.
+ *
+ * 4. Historial persistente:
+ *    Las notificaciones se guardan en localStorage bajo la clave
+ *    ptp_notif_{id_empleado} para que sobrevivan recargas de pagina.
+ *    Se conservan las ultimas MAX_NOTIFICACIONES (30) notificaciones.
+ *    Al cambiar de usuario se cargan las notificaciones del nuevo usuario.
+ *
+ * 5. Toast y sonido:
+ *    Usa buildNotification() para construir el mensaje y playNotificationSound()
+ *    para el audio. Las alertas de SLA y vencimientos tienen duracion infinita
+ *    (el admin debe cerrarlas manualmente).
+ *
+ * Parametros:
+ *   usuario    - objeto del usuario autenticado con id_empleado e id_rol
+ *   onNavegar  - callback opcional que recibe (tipo, data) cuando el usuario
+ *                hace clic en una notificacion del historial para navegar
+ *                a la pantalla relevante
+ *
+ * Retorna:
+ *   notificaciones - arreglo de notificaciones del historial
+ *   onDismiss      - elimina una notificacion del historial por id
+ *   onDismissAll   - elimina todas las notificaciones del historial
+ *   onClickNotif   - marca como leida y llama a onNavegar
  */
-
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useSocket } from "./useSocket.js";
 import { useToast } from "../Components/Feedback.jsx";

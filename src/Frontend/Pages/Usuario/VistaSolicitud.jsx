@@ -344,7 +344,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                   {solicitud.folio_solicitud}
                 </span>
                 <img
-                  src={isDark ? "/assets/img/logo%20blanco.png" : "/assets/img/logo%20negro.png"}
+                  src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
                   alt="logo" style={{ height: "28px", width: "auto", objectFit: "contain" }}
                 />
               </div>

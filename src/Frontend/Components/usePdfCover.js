@@ -1,3 +1,29 @@
+/**
+ * usePdfCover.js
+ *
+ * Hook de React que genera una imagen miniatura de la portada
+ * (primera pagina) de un archivo PDF usando pdfjs-dist.
+ *
+ * La libreria pdfjs-dist se carga de forma diferida (lazy import) la primera
+ * vez que se necesita. El worker se configura como blob URL para evitar
+ * problemas de CORS y CSP en entornos de desarrollo y produccion.
+ *
+ * Parametros:
+ *   url - URL del archivo PDF a renderizar. Si es null o undefined no ejecuta
+ *         la carga y mantiene loading en true.
+ *
+ * Retorna:
+ *   imgSrc  - data URL JPEG de la portada del PDF, o null si aun no esta lista
+ *   loading - true mientras se carga o renderiza el PDF
+ *   error   - true si ocurrio un error al obtener o renderizar el PDF
+ *
+ * La imagen se genera con un ancho fijo de 200px manteniendo la proporcion
+ * de aspecto de la pagina original. Se codifica como JPEG con calidad 0.85
+ * para un balance entre fidelidad visual y tamano.
+ *
+ * Al cambiar la URL se cancela cualquier operacion previa para evitar
+ * actualizaciones de estado en componentes desmontados.
+ */
 import { useEffect, useState } from "react";
 
 let pdfjsLib = null;

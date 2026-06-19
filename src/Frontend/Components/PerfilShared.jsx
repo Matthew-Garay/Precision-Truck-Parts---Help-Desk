@@ -1,3 +1,38 @@
+/**
+ * PerfilShared.jsx
+ *
+ * Utilidades compartidas entre las vistas de perfil del administrador
+ * y del usuario. Centraliza logica reutilizable para evitar duplicacion.
+ *
+ * Exportaciones:
+ *
+ * EyeBtn
+ *   Boton de ojo para alternar la visibilidad de un campo de contrasena.
+ *   Recibe show (boolean), onToggle (funcion) y textFaint (color).
+ *
+ * usePerfilStyles(T, isDark)
+ *   Hook que retorna un objeto con estilos inline precalculados para
+ *   los bloques card, hdr (header de seccion) e inp (input de formulario)
+ *   adaptados al tema activo.
+ *
+ * ModalRecorte
+ *   Modal de recorte circular de foto de perfil con soporte para arrastrar
+ *   y hacer zoom mediante un slider. Usa canvas del navegador para calcular
+ *   las coordenadas del recorte sin librerias externas.
+ *   Props: src, isDark, T, onCancelar, onConfirmar(crop)
+ *   donde crop = { x, y, size } en pixeles de la imagen original.
+ *
+ * procesarYSubirFoto(src, crop, idEmpleado, onSuccess)
+ *   Recorta la imagen en un canvas 400x400, la codifica como JPEG
+ *   y la sube al endpoint POST /api/auth/perfil/{id}/foto.
+ *   Llama a onSuccess(rutaBD) si la subida fue exitosa.
+ *
+ * generarPDFAccesos({ accesos, usuario, mesFiltro, anioFiltro })
+ *   Genera y abre una nueva ventana con el reporte HTML del historial
+ *   de accesos formateado para impresion. Incluye KPIs de sesiones,
+ *   duracion promedio y duracion maxima. Si el navegador bloquea la
+ *   ventana emergente muestra un aviso temporal en pantalla.
+ */
 import { useState, useRef } from "react";
 
 // -- EyeBtn ----------------------------------------------------

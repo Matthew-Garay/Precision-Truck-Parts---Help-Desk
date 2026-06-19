@@ -1,3 +1,68 @@
+/**
+ * Ticket.js
+ *
+ * Modelo que encapsula todas las operaciones sobre la tabla `ticket`.
+ * Un ticket representa un reporte de incidencia tecnica que un empleado
+ * crea y un administrador o tecnico atiende y cierra.
+ *
+ * Metodos:
+ *
+ *   crear({ titulo, descripcion, prioridad, id_empleado, id_categoria })
+ *     Opera dentro de una transaccion. Genera el folio con formato
+ *     PTP-{anno}{mes}-{numero} usando FOR UPDATE para evitar folios duplicados
+ *     bajo concurrencia. Inserta el ticket con estatus inicial "En proceso".
+ *
+ *   getFolioById(id_ticket)
+ *     Retorna solo el folio_ticket. Se usa cuando se necesita construir rutas
+ *     de archivos sin traer todos los campos del ticket.
+ *
+ *   getById(id_ticket)
+ *     Retorna el detalle completo del ticket con datos del empleado dueno,
+ *     departamento, categoria y tecnico que lo resolvio (si aplica).
+ *
+ *   getByEmpleado(id_empleado)
+ *     Retorna todos los tickets de un empleado ordenados del mas reciente
+ *     al mas antiguo con datos completos incluyendo tecnico y departamento.
+ *
+ *   actualizar(id_ticket, { comentarios, estatus, id_resuelto_por })
+ *     Actualiza estatus y comentarios del ticket. Si el nuevo estatus es
+ *     "Resuelto" o "No Resuelto" establece fecha_resuelto = NOW() y guarda
+ *     el id del tecnico en id_tecnico. Retorna null si el ticket no existe.
+ *     Retorna los campos actualizados (estatus, fecha_resuelto, resuelto_por).
+ *
+ *   editarPorUsuario(id_ticket, campos)
+ *     Permite al empleado editar titulo, descripcion, prioridad y categoria.
+ *     Solo funciona si el estatus actual del ticket es "En proceso".
+ *     Opcionalmente puede cambiar el estatus y comentarios.
+ *
+ *   guardarCalificacion(id_ticket, calificacion)
+ *     Guarda la calificacion (1-5) del empleado sobre la atencion recibida.
+ *     Lanza Error 409 si el ticket ya fue calificado previamente.
+ *     Lanza Error 400 si el ticket no esta en estatus "Resuelto".
+ *
+ *   cerrarVencidos()
+ *     Busca todos los tickets en estado "En proceso" que llevan mas de 2 dias
+ *     sin fecha de resolucion y los cierra como "No Resuelto".
+ *     Retorna el arreglo de tickets cerrados con datos del empleado para que
+ *     el worker pueda enviar notificaciones.
+ *
+ *   getMetricas()
+ *     Retorna tres conjuntos de datos para el dashboard administrativo:
+ *       - promedio_horas: tiempo promedio de resolucion de tickets resueltos
+ *       - porDepartamento: total y resueltos agrupados por departamento
+ *       - tendencia: conteo mensual de los ultimos 6 meses desglosado por estatus
+ *
+ *   getAdmins() / getTecnicos()
+ *     Retornan empleados con rol 1 y estatus Activo. Se usan en formularios
+ *     para seleccionar al tecnico asignado.
+ *
+ *   getReporte({ fecha_inicio, fecha_fin, id_tecnico })
+ *     Retorna tickets en un rango de fechas con filtro opcional por tecnico.
+ *     Valida el formato de las fechas con regex antes de ejecutar la consulta.
+ *
+ *   getAll({ limit, offset })
+ *     Retorna todos los tickets paginados con SQL_CALC_FOUND_ROWS.
+ */
 import pool from "../Config/db.js";
 
 const Ticket = {
@@ -268,8 +333,7 @@ const Ticket = {
 
   getAll: async ({ limit = 100, offset = 0 } = {}) => {
     const [rows] = await pool.query(
-      `SELECT SQL_CALC_FOUND_ROWS
-              t.id_ticket, t.folio_ticket, t.titulo, t.descripcion,
+      `SELECT t.id_ticket, t.folio_ticket, t.titulo, t.descripcion,
               t.estatus, t.prioridad, t.fecha_subido, t.fecha_resuelto,
               t.comentarios, t.calificacion, t.id_tecnico,
               c.nombre_categoria,
@@ -285,7 +349,7 @@ const Ticket = {
        LIMIT ? OFFSET ?`,
       [limit, offset]
     );
-    const [[{ total }]] = await pool.query(`SELECT FOUND_ROWS() AS total`);
+    const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM ticket`);
     return { rows, total };
   },
 };

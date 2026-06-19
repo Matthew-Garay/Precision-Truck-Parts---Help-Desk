@@ -1,3 +1,59 @@
+/**
+ * authController.js
+ *
+ * Controlador encargado de la autenticacion de usuarios y la gestion
+ * completa de empleados dentro del sistema HelpDesk.
+ *
+ * Funciones exportadas:
+ *
+ *   login
+ *     Recibe email y contrasena. Verifica que el empleado existe y esta activo,
+ *     compara la contrasena con el hash almacenado usando bcrypt, cierra cualquier
+ *     sesion huerfana previa, registra la nueva entrada en el historial de accesos
+ *     y retorna un JWT firmado con duracion de 12 horas junto a los datos del usuario.
+ *
+ *   logout
+ *     Recibe el id_acceso y registra la fecha de salida en el historial de accesos.
+ *     Esta ruta es publica intencionalmente porque sendBeacon (cierre de pestana)
+ *     no puede enviar el encabezado Authorization.
+ *
+ *   actualizarPerfil
+ *     Permite al propio empleado actualizar su nombre, apellidos, correo y contrasena.
+ *     Para cambiar la contrasena se requiere la contrasena actual correcta.
+ *     Verifica que el id del parametro de ruta coincide con el id del JWT para
+ *     impedir que un usuario modifique el perfil de otro.
+ *
+ *   subirFotoEmpleado
+ *     Recibe una imagen procesada por el middleware uploadFoto, elimina la foto
+ *     anterior del disco si existia, guarda la ruta relativa en la base de datos
+ *     y retorna la nueva ruta para que el frontend actualice la interfaz.
+ *
+ *   getAllEmpleados
+ *     Retorna la lista completa de empleados. Nunca incluye el campo password.
+ *
+ *   getEmpleadoById
+ *     Retorna los datos de un empleado especifico por su id.
+ *
+ *   crearEmpleado
+ *     Crea un nuevo empleado con todos sus campos obligatorios. Hashea la contrasena
+ *     con bcrypt (12 rounds) antes de guardarla. Retorna el empleado creado.
+ *
+ *   updateEmpleadoAdmin
+ *     Permite a un administrador actualizar cualquier campo de cualquier empleado,
+ *     incluyendo rol, departamento, estatus y contrasena.
+ *
+ *   getDepartamentos
+ *     Retorna el catalogo de departamentos disponibles.
+ *
+ *   getRoles
+ *     Retorna el catalogo de roles disponibles.
+ *
+ *   getAccesos
+ *     Retorna el historial de accesos paginado de un empleado especifico.
+ *
+ *   getAllAccesos
+ *     Retorna el historial de accesos paginado de todos los empleados (solo admin).
+ */
 import Empleado from "../Models/Empleado.js";
 import bcrypt   from "bcryptjs";
 import jwt      from "jsonwebtoken";
@@ -21,8 +77,8 @@ export const subirFotoEmpleado = async (req, res) => {
       const fotoBase = path.basename(emp.foto);
       try {
         const oldPath = safeResolvePath(FOTOS_DIR, fotoBase);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      } catch { /* ruta inválida, ignorar */ }
+        await fs.promises.unlink(oldPath);
+      } catch { /* ruta inválida o archivo ya no existe, ignorar */ }
     }
     const rutaBD = `${FOTOS_REL}/${req.file.filename}`;
     await Empleado.updateAdmin(id, { foto: rutaBD });

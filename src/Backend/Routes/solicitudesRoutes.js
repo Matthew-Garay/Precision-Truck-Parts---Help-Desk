@@ -1,3 +1,33 @@
+/**
+ * solicitudesRoutes.js
+ *
+ * Define todas las rutas del prefijo /api/solicitudes.
+ * Aplica csrfProtection y requireAuth a todo el router.
+ *
+ * IMPORTANTE: Las rutas con paths fijos (como /reporte, /insumos, /inventario)
+ * se declaran ANTES de las rutas dinamicas (/:id) para que Express no las
+ * interprete como si el segmento fuera un id numerico.
+ *
+ * Rutas exclusivas de administrador (requireAdmin):
+ *
+ *   GET    /reporte              - solicitudes filtradas por rango de fechas para exportar
+ *   GET    /                     - listado paginado de todas las solicitudes
+ *   POST   /insumos              - crear nuevo insumo en el inventario
+ *   PUT    /insumos/:id          - actualizar datos de un insumo
+ *   DELETE /insumos/:id          - eliminar un insumo (falla si tiene solicitudes activas)
+ *   PATCH  /:id/estatus          - cambiar estatus de una solicitud (descuenta stock si Resuelto)
+ *   GET    /pendientes           - solicitudes sin cerrar ordenadas por prioridad
+ *
+ * Rutas de usuario autenticado:
+ *
+ *   GET  /insumos/stock-bajo     - insumos con stock <= 5
+ *   GET  /insumos                - insumos disponibles (stock > 0)
+ *   GET  /inventario             - todos los insumos sin filtro
+ *   GET  /empleado/:id_empleado  - historial de solicitudes de un empleado
+ *   POST /                       - crear nueva solicitud
+ *                                  Rate limit: 20 por hora por IP
+ *   GET  /:id                    - detalle de una solicitud especifica
+ */
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { csrfProtection } from "../Middlewares/security.js";

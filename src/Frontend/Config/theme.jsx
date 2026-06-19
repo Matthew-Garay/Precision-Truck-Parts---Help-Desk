@@ -1,3 +1,24 @@
+/**
+ * theme.jsx
+ *
+ * Componentes visuales del dashboard que muestran fecha, hora y calendario.
+ * Reciben el objeto T de tokens del tema activo para adaptarse al modo claro u oscuro.
+ *
+ * Componentes exportados:
+ *
+ * RelojFecha({ T })
+ *   Muestra un reloj digital en formato 12 horas con segundos, el dia de la semana
+ *   y la fecha completa. Se actualiza cada segundo con setInterval.
+ *   El punto naranja pulsante indica que el reloj esta activo.
+ *   Usa fontVariantNumeric tabular-nums para que los digitos no salten al cambiar.
+ *
+ * Calendario({ T })
+ *   Muestra el calendario del mes actual con los dias de la semana como encabezado.
+ *   Resalta el dia de hoy con un fondo naranja degradado y sombra de color.
+ *   Los dias de fin de semana (domingo y sabado) se muestran en naranja.
+ *   El primer dia del mes se posiciona en la columna correcta de la semana
+ *   calculando el desplazamiento con celdas vacias al inicio.
+ */
 import { useState, useEffect } from "react";
 
 // -- RELOJ Y FECHA --------------------------------------------

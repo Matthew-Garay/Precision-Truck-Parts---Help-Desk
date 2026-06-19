@@ -84,12 +84,12 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
 
 function DashboardContent({ T, usuario, tickets = [], solicitudes = [], metricas, onVerTicket, onVerSolicitud }) {
   return (
-        <div className="flex flex-col h-full overflow-hidden" style={{ background: T.bg }}>
+    <div className="flex flex-col" style={{ background: T.bg, minHeight: "100%" }}>
       <div className="flex-shrink-0" style={{ padding: "var(--content-pt) var(--content-px) 0" }}>
         <SeccionMetricas T={T} metricas={metricas} />
         <SeccionEstadisticas T={T} tickets={tickets} solicitudes={solicitudes} />
       </div>
-      <div className="flex-1 min-h-0 overflow-hidden" style={{ padding: "8px var(--content-px) 12px" }}>
+      <div className="flex-shrink-0" style={{ padding: "8px var(--content-px) 12px", minHeight: "340px" }}>
         <KanbanBoard T={T} tickets={tickets} solicitudes={solicitudes} onVerTicket={onVerTicket} onVerSolicitud={onVerSolicitud} inline />
       </div>
     </div>
@@ -127,7 +127,6 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           if (tipo === "solicitud:nueva" || tipo === "solicitud:actualizada") cargarSolicitudesRef.current?.();
         }
         if (["ticket:nuevo","ticket:calificado","ticket:sla_warning","ticket:actualizado","ticket:en_atencion"].includes(tipo) && data?.id_ticket) {
-          // Buscar en memoria primero; si no, ir directo al API
           const enMemoria = ticketsRef.current.find(tk => tk.id_ticket === data.id_ticket);
           if (enMemoria) {
             setTicketVer(enMemoria);
@@ -142,8 +141,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           const s = solicitudesRef.current.find(s => s.id_solicitud === data.id_solicitud);
           if (s) setSolicitudVer(s); else cargarSolicitudesRef.current?.();
         }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, []),
+      }, [cargarTicketsRef, cargarMetricasRef, cargarSolicitudesRef, recargarHistorialRef, ticketsRef, solicitudesRef]),
     });
 
   const navigate     = useNavigate();
@@ -208,7 +206,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
       : (NAV[activo]?.label || 'Dashboard');
 
   return (
-    <div className="flex min-h-screen w-full"
+    <div className="flex h-screen w-full overflow-hidden"
       style={{ fontFamily: "'Inter','Segoe UI',sans-serif", background: T.bg }}>
 
       {/* Sidebar desktop */}
@@ -286,7 +284,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           </div>
         </header>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {ticketVer ? (
             <VistaTicket T={T} ticket={ticketVer} onVolver={() => { setTicketVer(null); cargarTickets(); }} esAdmin usuario={usuario} />
           ) : solicitudVer ? (

@@ -1,3 +1,22 @@
+/**
+ * session.js
+ *
+ * Helpers centralizados para leer y escribir los datos de sesion del usuario
+ * en sessionStorage. El token JWT se gestiona exclusivamente en api.js.
+ *
+ * Solo se persisten los campos publicos del perfil del empleado (id, nombre,
+ * rol, departamento, foto). Campos sensibles como email o password nunca
+ * se almacenan aqui para reducir la exposicion ante ataques XSS.
+ *
+ * Funciones exportadas:
+ *
+ *   getUsuario()         - retorna el objeto usuario del sessionStorage o null
+ *   setUsuario(u)        - guarda solo los campos publicos del usuario
+ *   clearUsuario()       - elimina el usuario del sessionStorage
+ *   getIdAcceso()        - retorna el id_acceso de la sesion actual
+ *   setIdAcceso(id)      - guarda el id_acceso como string
+ *   clearIdAcceso()      - elimina el id_acceso del sessionStorage
+ */
 // Helpers de sesión — centralizados aquí, nunca en main.jsx
 // NOTA: el token JWT se maneja en api.js (memoria), no aquí
 
