@@ -1,17 +1,34 @@
 /**
  * alertState.js
  *
- * Persiste los Sets de deduplicación de alertas en un archivo JSON local
- * para que sobrevivan reinicios del servidor.
+ * Persiste en disco los Sets de deduplicacion de alertas para que
+ * sobrevivan reinicios del servidor sin volver a emitir alertas ya enviadas.
  *
- * Estructura del archivo:
+ * El estado se guarda en alert_state.json dentro de este mismo directorio.
+ * Estructura del archivo JSON:
  * {
  *   "slaAlertados":        [1, 4, 7],
  *   "sinAtenderAlertados": [2, 5],
  *   "stockAlertados":      [3, 9]
  * }
+ *
+ * Cada array contiene los ids de los elementos que ya recibieron alerta
+ * para no volver a notificar al admin sobre el mismo ticket o insumo.
+ *
+ * Escritura atomica:
+ *   Para evitar corrupcion del archivo si el proceso muere durante la escritura,
+ *   se escribe primero en un archivo temporal (.tmp) y luego se renombra al
+ *   nombre final. El renombrado es una operacion atomica en todos los SO modernos.
+ *
+ * Funcion principal exportada:
+ *
+ *   crearSetsPresistentes()
+ *     Carga el estado desde disco al arrancar. Retorna un objeto con tres
+ *     Sets envueltos en objetos proxy que llaman automaticamente a guardarEstado()
+ *     despues de cada operacion add(), delete() o clear() que modifique el Set.
+ *     Esto garantiza que el archivo JSON siempre este sincronizado con la
+ *     memoria sin necesidad de llamar manualmente a ninguna funcion de guardado.
  */
-
 import fs   from "fs";
 import path from "path";
 import { fileURLToPath } from "url";

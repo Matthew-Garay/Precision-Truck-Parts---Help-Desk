@@ -1,3 +1,20 @@
+/**
+ * ModalReporte.jsx
+ *
+ * Modal para configurar y generar reportes en PDF de tickets o solicitudes.
+ * Permite al administrador definir el rango de fechas y opcionalmente
+ * filtrar por tecnico antes de generar el reporte.
+ *
+ * Props:
+ *   T         - tokens del tema activo
+ *   admins    - arreglo de empleados con rol admin para el select de tecnico.
+ *               Cada elemento debe tener { id_empleado, nombre_completo }
+ *   onClose   - funcion llamada al cerrar sin generar
+ *   onGenerar - funcion(params) llamada al confirmar. Recibe el objeto:
+ *               { fecha_inicio, fecha_fin, id_tecnico } donde id_tecnico
+ *               es "todos" o el id numerico del tecnico seleccionado
+ *   generando - si true muestra spinner y deshabilita el boton de confirmar
+ */
 import { useState } from "react";
 import { X, FileDown } from "lucide-react";
 import { NEUTRAL, SLATE, SEMANTIC, RADIUS, FONT } from "../Config/DesignSystem";

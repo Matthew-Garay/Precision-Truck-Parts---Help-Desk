@@ -705,7 +705,7 @@ body {
 /* ── Variables de layout fluido ─────────────────────────────── */
 :root {
   --sidebar-w:      220px;
-  --panel-r-w:      240px;
+  --panel-r-w:      clamp(200px, 18vw, 300px);
   --header-h:       clamp(62px, 6vh, 76px);
   --sidebar-logo-h: clamp(44px, 4.5vw, 72px);
   --fs-nav:         clamp(10.5px, 0.85vw, 13px);

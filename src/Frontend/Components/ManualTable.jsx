@@ -1,3 +1,32 @@
+/**
+ * ManualTable.jsx
+ *
+ * Tabla de manuales de incidencias con seleccion, menu de acciones
+ * y soporte para tema claro/oscuro.
+ *
+ * La fila seleccionada se resalta en naranja y abre el panel lateral
+ * ManualDetailPanel en la vista padre. Cada fila muestra:
+ *   - Icono de tipo PDF, nombre del manual con truncado por ellipsis.
+ *   - Badge de categoria con fondo naranja sutil.
+ *   - Fecha de carga y tamano del archivo.
+ *   - Menu kebab (tres puntos) con opciones Descargar, Editar y Eliminar.
+ *
+ * El menu kebab usa un overlay fijo para cerrar al hacer clic fuera
+ * sin necesidad de un portal de React.
+ *
+ * Sub-componentes internos:
+ *   KebabMenu  - menu desplegable de acciones por fila
+ *   FilaManual - fila individual de la tabla
+ *
+ * Props del componente principal ManualTable:
+ *   T                  - tokens del tema activo
+ *   manuales           - arreglo de manuales a mostrar
+ *   pdfBase            - URL base del servidor para construir las URLs de PDF
+ *   manualSeleccionado - manual actualmente seleccionado o null
+ *   onSeleccionar      - funcion(manual) al hacer clic en una fila
+ *   onEditar           - funcion(manual) al elegir Editar en el kebab
+ *   onEliminar         - funcion(manual) al elegir Eliminar en el kebab
+ */
 import { useState } from "react";
 import { MoreVertical, Download, Pencil, Trash2, FileText, Tag } from "lucide-react";
 import { NEUTRAL, SLATE, SEMANTIC, RADIUS } from "../Config/DesignSystem";

@@ -389,7 +389,7 @@ export default function SolicitudInsumo({ usuario = {}, T }) {
             </div>
 
             {/* Tabla */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm" style={{ overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 280px)" }}>
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm" style={{ overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "clamp(300px, 60vh, calc(100vh - 280px))" }}>
               <div style={{ overflowX: "auto", overflowY: "auto", flex: 1 }}>
                 <table className="w-full text-left border-collapse">
                   <thead>

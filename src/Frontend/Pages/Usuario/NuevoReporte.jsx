@@ -9,7 +9,7 @@ const PRIORIDADES = [
   { label:"Urgente", nivel:"Urgente", color:"#dc2626", bgL:"#fee2e2", bgD:"#2d0a0a" },
   { label:"Alta",    nivel:"Alta",    color:"#ea580c", bgL:"#ffedd5", bgD:"#2d1200" },
   { label:"Media",   nivel:"Media",   color:"#ca8a04", bgL:"#fef9c3", bgD:"#1f1a00" },
-  { label:"Bajo",    nivel:"Bajo",    color:"#16a34a", bgL:"#dcfce7", bgD:"#0a2d14" },
+  { label:"Baja",    nivel:"Baja",    color:"#16a34a", bgL:"#dcfce7", bgD:"#0a2d14" },
 ];
 
 const MAX_IMGS = 8;
@@ -201,13 +201,15 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
     try {
       const formData = new FormData();
       formData.append("titulo",       form.titulo.trim());
-      const tvBlock = (form.tvId || form.tvPass)
-        ? `<hr/><p><strong>TeamViewer ID:</strong> ${form.tvId}</p><p><strong>CONTRASEÑA:</strong> ${form.tvPass}</p>`
-        : "";
-      formData.append("descripcion",  form.descripcion + tvBlock);
+      formData.append("descripcion",  form.descripcion);
       formData.append("prioridad",    form.prioridad);
       formData.append("id_empleado",  usuario.id_empleado);
       formData.append("id_categoria", catObj.id);
+      // TeamViewer: se agrega como bloque al final de la descripción solo si fue ingresado
+      if (form.tvId || form.tvPass) {
+        const tvBloque = `<hr/><p><strong>Acceso remoto (TeamViewer)</strong></p><p><strong>ID:</strong> ${form.tvId || "-"}</p><p><strong>Contraseña:</strong> ${form.tvPass || "-"}</p>`;
+        formData.set("descripcion", (form.descripcion || "") + tvBloque);
+      }
 
       for (const ev of form.evidencias) {
         formData.append("evidencias", ev.file, ev.name);
@@ -328,7 +330,7 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
           <div className="flex flex-col gap-2 py-3">
             <SectionHeader title="Información del Solicitante" />
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <div className="col-span-2 md:col-span-1">
+              <div>
                 <Label>Solicitante</Label>
                 <input readOnly value={nombreCompleto}
                   style={{ ...inputStyle, opacity:.6, cursor:"default", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}/>
@@ -338,7 +340,7 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
                 <input readOnly value={area}
                   style={{ ...inputStyle, opacity:.6, cursor:"default", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}/>
               </div>
-              <div>
+              <div className="col-span-2 md:col-span-1">
                 <Label>Fecha y hora</Label>
                 <input readOnly value={new Date().toLocaleString("es-MX", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" })}
                   style={{ ...inputStyle, opacity:.6, cursor:"default", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}/>

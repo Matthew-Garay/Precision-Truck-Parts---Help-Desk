@@ -260,7 +260,7 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
       : NAV[activoIdx]?.label || 'Dashboard';
 
   return (
-    <div className="flex min-h-screen w-full"
+    <div className="flex h-screen w-full overflow-hidden"
       style={{ fontFamily: "'Inter','Segoe UI',sans-serif", background: T.bg }}>
 
       <Sidebar T={T} activo={activoIdx} onNavigate={onNavigate} onLogout={onLogout} />
@@ -333,7 +333,7 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
           </div>
         </header>
 
-        <div className="flex-1 min-h-0 overflow-hidden" style={{ background: T.bg }}>
+        <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: T.bg }}>
           {ticketVer ? (
             <VistaTicket T={T} ticket={ticketVer} onVolver={volverDeTicket} usuario={usuario} />
           ) : solicitudVer ? (
@@ -349,12 +349,12 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
           ) : activoIdx === 5 ? (
             <ConfiguracionPerfil T={T} usuario={usuario} onUsuarioActualizado={onUsuarioActualizado} />
           ) : (
-            <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex flex-col" style={{ background: T.bg, minHeight: "100%" }}>
               <div className="flex-shrink-0" style={{ padding: "var(--content-pt) var(--content-px) 0" }}>
                 <SeccionMetricasUsuario T={T} tickets={tickets} />
                 <SeccionEstadisticas T={T} tickets={tickets} solicitudes={solicitudes} />
               </div>
-              <div className="flex-1 min-h-0 overflow-hidden" style={{ padding: "8px var(--content-px) 12px" }}>
+              <div className="flex-shrink-0" style={{ padding: "8px var(--content-px) 12px", minHeight: "340px" }}>
                 <KanbanBoard T={T} tickets={tickets} solicitudes={solicitudes} onVerTicket={setTicketVer} onVerSolicitud={handleVerSolicitud} inline />
               </div>
             </div>

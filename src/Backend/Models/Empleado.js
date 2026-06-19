@@ -1,3 +1,74 @@
+/**
+ * Empleado.js
+ *
+ * Modelo que encapsula todas las operaciones sobre la tabla `empleado`
+ * y su historial de accesos en la tabla `historial_acceso`.
+ *
+ * Metodos:
+ *
+ *   findByEmail(email)
+ *     Busca un empleado por correo electronico. Incluye el nombre de su
+ *     departamento con JOIN. Retorna null si no existe.
+ *     Usado en el proceso de login y recuperacion de contrasena.
+ *
+ *   findById(id)
+ *     Busca un empleado por su id primario. Incluye departamento.
+ *     Retorna null si no existe. Incluye el campo password para poder
+ *     compararlo en el proceso de cambio de contrasena.
+ *
+ *   updatePerfil(id, campos)
+ *     Actualiza nombre, apellidos, email, password y foto del empleado.
+ *     Usa COALESCE en el SQL para que solo se sobreescriban los campos
+ *     que se pasen con valor distinto de null o undefined.
+ *     El SQL es completamente estatico, sin construccion dinamica de columnas.
+ *
+ *   updateAdmin(id, campos)
+ *     Igual que updatePerfil pero permite ademas cambiar num_empleado,
+ *     id_rol, id_departamento y estatus. Solo lo llama el controlador admin.
+ *
+ *   crear(campos)
+ *     Inserta un nuevo empleado con estatus "Activo" por defecto.
+ *     Retorna el insertId del nuevo registro.
+ *
+ *   getAll()
+ *     Retorna todos los empleados con nombre de departamento y nombre de rol.
+ *     Nunca incluye el campo password en la consulta.
+ *
+ *   getResumen(id_empleado)
+ *     Helper que retorna nombre completo y departamento concatenados en un
+ *     solo objeto. Se usa en los controladores para enriquecer los eventos
+ *     de Socket.io sin necesidad de una consulta completa del empleado.
+ *
+ *   getNombre(id_empleado)
+ *     Helper que retorna solo el nombre completo de un empleado. Se usa
+ *     en los eventos de "ticket en atencion" para incluir el nombre del tecnico.
+ *
+ *   getDepartamentos()
+ *     Retorna el catalogo de departamentos ordenado alfabeticamente.
+ *
+ *   getRoles()
+ *     Retorna el catalogo de roles ordenado por id.
+ *
+ *   cerrarSesionesHuerfanas(id_empleado)
+ *     Cierra todos los registros del historial de accesos del empleado que
+ *     no tienen fecha de salida. Se llama justo antes de registrar un nuevo
+ *     login para mantener el historial consistente.
+ *
+ *   registrarEntrada(id_empleado)
+ *     Inserta un nuevo registro en historial_acceso y retorna su id (id_acceso).
+ *     El id_acceso se envia al frontend para usarlo al hacer logout.
+ *
+ *   registrarSalida(id_acceso)
+ *     Actualiza la fecha de salida del registro de historial indicado.
+ *
+ *   getAccesos(id_empleado, { limit, offset })
+ *     Retorna el historial de accesos paginado de un empleado especifico,
+ *     junto con el total de registros para calcular la paginacion.
+ *
+ *   getAllAccesos({ limit, offset })
+ *     Retorna el historial de accesos de todos los empleados paginado.
+ *     Incluye nombre completo, email y departamento de cada empleado.
+ */
 import pool from "../Config/db.js";
 
 const Empleado = {

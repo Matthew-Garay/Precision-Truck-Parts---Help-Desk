@@ -1,3 +1,24 @@
+/**
+ * ErrorBoundary.jsx
+ *
+ * Componente de clase de React que captura errores no manejados en el
+ * arbol de componentes hijo y muestra una pantalla de error amigable
+ * en lugar de dejar la aplicacion en blanco.
+ *
+ * Comportamiento:
+ *   - Captura cualquier error de renderizado, metodo del ciclo de vida
+ *     o constructor que ocurra en los componentes descendientes.
+ *   - Muestra el logo de la empresa, un mensaje generico y un boton
+ *     para volver al login y reiniciar el estado.
+ *   - En modo desarrollo (import.meta.env.DEV) muestra ademas el stack
+ *     trace completo del error en un bloque preformateado para facilitar
+ *     la depuracion.
+ *   - Registra el error y el component stack en la consola con
+ *     console.error para que no se pierda la traza en produccion.
+ *
+ * Debe envolver el componente raiz de la aplicacion en main.jsx
+ * para proteger toda la interfaz de usuario.
+ */
 import { Component } from "react";
 
 export default class ErrorBoundary extends Component {

@@ -1,3 +1,18 @@
+/**
+ * categoriasController.js
+ *
+ * Controlador encargado de exponer el catalogo de categorias del sistema.
+ *
+ * Las categorias son usadas tanto por los tickets de soporte como por los
+ * manuales de incidencias y los insumos del inventario para clasificarlos.
+ *
+ * Funciones exportadas:
+ *
+ *   getCategorias
+ *     Consulta el modelo Categoria y retorna la lista completa de categorias
+ *     ordenada por id. En caso de error solo incluye el mensaje de detalle
+ *     cuando el entorno no es produccion, para no exponer informacion interna.
+ */
 import Categoria from "../Models/Categoria.js";
 
 export const getCategorias = async (req, res) => {

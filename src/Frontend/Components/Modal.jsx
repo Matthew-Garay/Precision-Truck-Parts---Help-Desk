@@ -1,3 +1,37 @@
+/**
+ * Modal.jsx
+ *
+ * Componente modal base reutilizable del sistema de diseno PTP.
+ * Usado en todas las paginas que necesitan un dialogo de confirmacion
+ * o un formulario emergente con header oscuro corporativo.
+ *
+ * Caracteristicas:
+ *   - Header con fondo slate-800 oscuro, icono opcional, titulo y subtitulo.
+ *   - Boton de cierre en el header (oculto cuando loading=true).
+ *   - Cuerpo scrollable con flex para que el footer siempre sea visible.
+ *   - Footer con botones Cancelar y Confirmar que solo aparece si se pasa onConfirm.
+ *   - Boton confirmar en naranja corporativo por defecto, rojo si danger=true.
+ *   - Spinner en el boton confirmar cuando loading=true.
+ *   - Cierre con tecla Escape (desactivado durante loading).
+ *   - Cierre al hacer clic en el overlay (desactivado durante loading).
+ *   - Animacion de entrada con cubic-bezier para efecto elastico suave.
+ *   - Backdrop con blur de 2px sobre el contenido de fondo.
+ *
+ * Props:
+ *   title         - titulo del modal (obligatorio)
+ *   subtitle      - linea secundaria bajo el titulo
+ *   icon          - nodo React para el icono del header
+ *   children      - contenido del cuerpo del modal
+ *   onClose       - funcion llamada al cerrar (obligatorio)
+ *   onConfirm     - funcion llamada al confirmar. Si se omite no se muestra el footer
+ *   confirmLabel  - texto del boton confirmar (default "Aceptar")
+ *   cancelLabel   - texto del boton cancelar (default "Cancelar")
+ *   loading       - si true deshabilita botones y muestra spinner
+ *   maxWidth      - ancho maximo del dialogo (default "480px")
+ *   danger        - si true el boton confirmar es rojo
+ *   noBodyPadding - si true suprime el padding del cuerpo
+ *   T             - tokens del tema activo
+ */
 import { useEffect } from "react";
 import { X } from "lucide-react";
 import { SLATE, NEUTRAL, COLORS, RADIUS } from "../Config/DesignSystem";

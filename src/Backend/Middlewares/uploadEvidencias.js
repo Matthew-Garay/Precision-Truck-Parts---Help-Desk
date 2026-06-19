@@ -1,3 +1,34 @@
+/**
+ * uploadEvidencias.js
+ *
+ * Configura el middleware de subida de imagenes de evidencia para los tickets.
+ * La validacion se realiza en dos capas independientes para mayor seguridad:
+ *
+ * Primera capa - filtro de mimetype declarado por el cliente:
+ *   Multer rechaza el archivo antes de guardarlo si el mimetype declarado
+ *   en el encabezado Content-Type no pertenece al conjunto permitido.
+ *   Tipos aceptados: image/jpeg, image/png, image/webp, image/gif
+ *   Limite de tamano: 10 MB por archivo
+ *
+ * Segunda capa - validacion de bytes magicos:
+ *   Despues de que multer guarda el archivo en disco, la funcion validarMagicBytes
+ *   lee los bytes iniciales del archivo con la libreria file-type y verifica que
+ *   el contenido real corresponda a una imagen valida. Esto impide que un atacante
+ *   renombre un archivo malicioso con extension .jpg para evadir el filtro.
+ *   Si la validacion falla, se eliminan todos los archivos subidos en la peticion.
+ *
+ * Flujo de almacenamiento:
+ *   Los archivos se guardan inicialmente en storage/Evidencias_Tickets/_tmp_upload/
+ *   con nombres unicos basados en timestamp y un sufijo aleatorio.
+ *   El controlador ticketsController.js los mueve a la carpeta definitiva
+ *   nombrada con el folio del ticket (ej. PTP-202605-001/) despues de crear
+ *   el ticket en la base de datos.
+ *
+ * Exportaciones:
+ *   uploadEvidencias - objeto con metodo array(campo, maxCount) que retorna
+ *                      un arreglo [middlewareMulter, middlewareMagicBytes]
+ *   EVIDENCIAS_BASE  - ruta absoluta del directorio base de evidencias
+ */
 import multer             from "multer";
 import path               from "path";
 import fs                 from "fs";

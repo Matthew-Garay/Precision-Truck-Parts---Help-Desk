@@ -1,17 +1,29 @@
-import { useEffect, useRef, useCallback } from "react";
-
 /**
- * useAutoRefresh — ejecuta `fn` al montar y cada `intervaloMs` ms.
- * - Se pausa automáticamente cuando la pestaña está oculta (visibilitychange)
- *   para evitar requests innecesarios y ahorrar recursos.
- * - Se reactiva y ejecuta inmediatamente al volver a la pestaña si pasó
- *   más tiempo del intervalo mientras estuvo oculta.
- * - Cancela el intervalo al desmontar.
+ * useAutoRefresh.js
  *
- * @param {function} fn          - función async o sync a ejecutar
- * @param {number}   intervaloMs - intervalo en ms (default 30000)
- * @param {Array}    deps        - dependencias extra (como useEffect)
+ * Hook de React que ejecuta una funcion de forma periodica y se pausa
+ * automaticamente cuando la pestana del navegador no esta visible.
+ *
+ * Comportamiento:
+ *   - Ejecuta fn() inmediatamente al montar el componente.
+ *   - Repite la ejecucion cada intervaloMs milisegundos.
+ *   - Cuando el usuario cambia de pestana (visibilitychange a "hidden")
+ *     cancela el intervalo para evitar peticiones HTTP innecesarias.
+ *   - Cuando el usuario vuelve a la pestana, si paso mas tiempo del
+ *     intervalo desde la ultima ejecucion, ejecuta fn() de inmediato
+ *     para que los datos esten frescos. Luego reinicia el intervalo.
+ *   - Cancela el intervalo y el listener al desmontar el componente.
+ *
+ * Parametros:
+ *   fn          - funcion a ejecutar (puede ser async, los errores no se capturan aqui)
+ *   intervaloMs - intervalo en milisegundos (default: 30000 = 30 segundos)
+ *   deps        - arreglo de dependencias adicionales que reinician el hook
+ *                 (igual que el segundo argumento de useEffect)
+ *
+ * Uso tipico:
+ *   useAutoRefresh(() => cargarTickets(), 30000);
  */
+import { useEffect, useRef, useCallback } from "react";
 export function useAutoRefresh(fn, intervaloMs = 30000, deps = []) {
   const fnRef        = useRef(fn);
   const intervalRef  = useRef(null);
@@ -43,7 +55,6 @@ export function useAutoRefresh(fn, intervaloMs = 30000, deps = []) {
       if (document.visibilityState === "hidden") {
         detener();
       } else {
-        // Si pasó más tiempo del intervalo mientras estuvo oculta, refresca ya
         if (!ultimaRef.current || Date.now() - ultimaRef.current >= intervaloMs) {
           ejecutar();
         }
@@ -56,6 +67,5 @@ export function useAutoRefresh(fn, intervaloMs = 30000, deps = []) {
       detener();
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [intervaloMs, ...deps]);
+  }, [ejecutar, iniciar, detener, intervaloMs, ...deps]);
 }

@@ -1,3 +1,38 @@
+/**
+ * main.jsx
+ *
+ * Punto de entrada del frontend de PrecisionTrucks HelpDesk.
+ * Monta el arbol de React en el elemento #root del index.html.
+ *
+ * Responsabilidades:
+ *
+ * 1. Proveedores globales:
+ *    - ThemeProvider  : gestiona el tema claro/oscuro y lo sincroniza con localStorage
+ *    - ToastProvider  : expone la API de toasts visuales a todo el arbol
+ *    - BrowserRouter  : provee el historial de navegacion del lado del cliente
+ *    - ErrorBoundary  : captura errores de renderizado y muestra pantalla de error
+ *
+ * 2. Rutas protegidas:
+ *    RutaAdmin  : redirige a /login si el usuario no tiene rol 'admin'
+ *    RutaUsuario: redirige a /login si el usuario no tiene rol 'usuario'
+ *
+ * 3. Arbol de rutas:
+ *    /login           - pantalla de autenticacion
+ *    /admin/*         - dashboard completo del administrador (componente persistente)
+ *    /usuario/*       - dashboard completo del usuario (componente persistente)
+ *    /                - redirige segun el rol almacenado en sessionStorage
+ *    /*               - cualquier ruta desconocida redirige a /login
+ *
+ * 4. Ciclo de sesion:
+ *    - Al montar, renueva el JWT via POST /api/auth/refresh-token para detectar
+ *      expiración despues de una recarga de pagina.
+ *    - Al cerrar la pestana (evento pagehide), envia el logout con navigator.sendBeacon
+ *      para cerrar la sesion del historial_acceso de forma no bloqueante.
+ *    - El logout manual muestra PantallaSalida durante 1.2 segundos antes de redirigir.
+ *
+ * 5. Favicon:
+ *    Se establece dinamicamente dentro de useEffect para evitar errores en entornos SSR.
+ */
 import { StrictMode, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
@@ -11,10 +46,9 @@ import ErrorBoundary   from './Frontend/Components/ErrorBoundary'
 import { ToastProvider } from './Frontend/Components/Feedback.jsx'
 import { ThemeProvider } from './Frontend/Config/ThemeContext.jsx'
 import { useTheme } from './Frontend/Config/themeContext.js'
-import PantallaSalida    from './Frontend/Components/PantallaSalida.jsx'
 import { getUsuario, setUsuario, setIdAcceso } from './Frontend/Config/session.js'
 
-const useThemeCtx = () => useTheme()
+const useThemeCtx = useTheme
 
 // -- Rutas protegidas ------------------------------------------
 function RutaAdmin({ onLogout, onUsuarioActualizado, usuarioActual }) {

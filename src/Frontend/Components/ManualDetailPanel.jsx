@@ -1,3 +1,24 @@
+/**
+ * ManualDetailPanel.jsx
+ *
+ * Panel lateral deslizable (drawer) que muestra el detalle completo
+ * de un manual de incidencias seleccionado en la tabla.
+ *
+ * Se abre desde el lado derecho con animacion CSS. Incluye:
+ *   - Portada del PDF generada con usePdfCover (miniatura de la primera pagina)
+ *     con fondo difuminado del mismo PDF para rellenar el espacio.
+ *   - Titulo, badge de categoria y metadatos (descripcion, fecha, tamano).
+ *   - Boton primario para abrir el visor PDF en linea.
+ *   - Enlace de descarga directa del PDF.
+ *
+ * Props:
+ *   T        - tokens del tema activo
+ *   manual   - objeto del manual seleccionado con nombre, descripcion,
+ *              nombre_categoria, fecha_cambio
+ *   pdfUrl   - URL completa del archivo PDF para previsualizar y descargar
+ *   onClose  - funcion llamada al cerrar el panel o hacer clic en el overlay
+ *   onVerPdf - funcion llamada al hacer clic en el boton "Ver PDF"
+ */
 import { useState } from "react";
 import { X, Eye, Download, Tag, Calendar, HardDrive, FileText, AlignLeft } from "lucide-react";
 import { usePdfCover } from "./usePdfCover";

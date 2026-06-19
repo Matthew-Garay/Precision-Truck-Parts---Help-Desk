@@ -1,11 +1,35 @@
 /**
  * NotificationService.js
- * Servicio centralizado de notificaciones en tiempo real.
- * Maneja: sonido (Web Audio API), toast visual y registro en historial.
  *
- * Integración: se consume desde useTicketNotification.js
+ * Servicio centralizado de notificaciones en tiempo real.
+ * Es consumido por useTicketNotification.js y no debe usarse directamente
+ * desde los componentes de pagina.
+ *
+ * Responsabilidades:
+ *
+ * 1. Sonido (Web Audio API)
+ *    playNotificationSound(tipo) genera tonos programaticamente usando
+ *    osciladores del AudioContext del navegador. Cada tipo de evento tiene
+ *    su propia configuracion de notas, frecuencias, duracion y forma de onda.
+ *    No depende de archivos de audio externos.
+ *    El AudioContext se desbloquea en el primer gesto del usuario (click o
+ *    keydown) para cumplir con la politica de autoplay de los navegadores.
+ *
+ * 2. Configuracion visual (NOTIFICATION_DISPLAY)
+ *    Mapa que asocia cada tipo de evento Socket.io con su titulo, mensaje
+ *    y tipo de toast (info, success, warning, error). Los mensajes son
+ *    funciones que reciben el payload del evento y retornan el texto final.
+ *
+ * 3. Verificacion de existencia (verifyTicketExists)
+ *    Antes de mostrar una notificacion de ticket, verifica que el ticket
+ *    aun existe en la base de datos consultando el endpoint del ticket.
+ *    Evita notificaciones fantasma por eventos de Socket.io desincronizados.
+ *
+ * 4. Construccion de notificacion (buildNotification)
+ *    Toma el tipo de evento y el payload, aplica las funciones de titulo
+ *    y mensaje del mapa NOTIFICATION_DISPLAY y retorna el objeto final
+ *    { toastTipo, titulo, mensaje } listo para mostrar.
  */
-
 import { apiFetch, API_ROUTES } from "./api.js";
 
 // ── AudioContext compartido ────────────────────────────────────

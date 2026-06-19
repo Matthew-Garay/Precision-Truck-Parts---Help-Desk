@@ -1,3 +1,43 @@
+/**
+ * authRoutes.js
+ *
+ * Define todas las rutas del prefijo /api/auth.
+ * Aplica csrfProtection a todo el router.
+ *
+ * Rutas publicas (sin autenticacion JWT):
+ *
+ *   POST /login
+ *     Rate limit: 10 intentos por 15 minutos por IP.
+ *     Validacion: schemaLogin (email valido, password no vacio).
+ *
+ *   POST /logout
+ *     Publica intencionalmente: sendBeacon (cierre de pestana del navegador)
+ *     no puede enviar el encabezado Authorization. El riesgo es bajo porque
+ *     solo cierra un registro de historial_acceso por id_acceso, sin
+ *     modificar datos criticos.
+ *
+ *   POST /recuperar
+ *   POST /verificar-codigo
+ *   POST /reset-password
+ *     Rate limit: 5 intentos por 15 minutos por IP.
+ *
+ * Rutas protegidas (requieren JWT valido via requireAuth):
+ *
+ *   PUT  /perfil/:id          - actualiza perfil del propio empleado
+ *   POST /perfil/:id/foto     - sube foto de perfil del propio empleado
+ *   GET  /accesos/:id         - historial de accesos (dueno o admin)
+ *   GET  /departamentos       - catalogo de departamentos
+ *   GET  /roles               - catalogo de roles
+ *   GET  /empleados/:id       - datos de un empleado especifico
+ *
+ * Rutas exclusivas de administrador (requireAdmin despues de requireAuth):
+ *
+ *   GET  /accesos             - historial global de todos los empleados
+ *   GET  /empleados           - listado completo de empleados
+ *   PUT  /empleados/:id       - edicion de cualquier empleado
+ *   POST /empleados           - creacion de nuevo empleado
+ *   POST /empleados/:id/foto  - el admin puede cambiar la foto de cualquier empleado
+ */
 import { Router }    from "express";
 import rateLimit     from "express-rate-limit";
 import { csrfProtection } from "../Middlewares/security.js";

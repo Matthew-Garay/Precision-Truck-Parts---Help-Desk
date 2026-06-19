@@ -1,3 +1,32 @@
+/**
+ * security.js
+ *
+ * Expone dos utilidades de seguridad reutilizables en todo el backend.
+ *
+ * csrfProtection
+ *   Middleware de proteccion CSRF basado en encabezado personalizado.
+ *   Verifica que las peticiones de mutacion (POST, PUT, PATCH, DELETE) incluyan
+ *   el encabezado "x-requested-with". Los navegadores no incluyen encabezados
+ *   personalizados en peticiones cross-origin sin una preflight CORS exitosa,
+ *   lo que hace que un sitio malicioso no pueda enviar peticiones silenciosas.
+ *
+ *   Rutas exentas (no requieren sesion previa ni encabezado):
+ *     /login, /logout, /recuperar, /verificar-codigo, /reset-password
+ *
+ *   La comparacion es por ruta exacta (req.path relativo al router montado)
+ *   y no por sufijo, para evitar bypass con rutas como /api/admin/login.
+ *
+ * safeResolvePath
+ *   Resuelve una ruta de archivo a partir de un directorio base y partes
+ *   adicionales, y verifica que el resultado quede estrictamente dentro del
+ *   directorio base. Previene ataques de path traversal de la siguiente forma:
+ *     1. Rechaza null bytes en cualquiera de las partes de la ruta.
+ *     2. Normaliza cada parte con path.normalize para colapsar segmentos ".."
+ *        y elimina prefijos de traversal residuales con una expresion regular.
+ *     3. Resuelve la ruta final y compara con el directorio base.
+ *        Si la ruta resuelta no empieza con el directorio base mas el separador,
+ *        lanza un Error con el mensaje "Ruta no permitida".
+ */
 import path from "path";
 
 /**

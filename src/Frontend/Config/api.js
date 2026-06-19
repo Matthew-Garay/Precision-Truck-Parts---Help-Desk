@@ -1,3 +1,41 @@
+/**
+ * api.js
+ *
+ * Modulo central de comunicacion HTTP con el servidor backend.
+ * Centraliza en un solo lugar la URL base, todas las rutas de la API,
+ * el manejo del token JWT y la funcion de fetch con autenticacion.
+ *
+ * API_BASE
+ *   URL base del servidor tomada de la variable de entorno VITE_API_URL.
+ *   Si esta vacia (modo desarrollo con proxy de Vite) se usa string vacio
+ *   para que las peticiones vayan al mismo origen.
+ *
+ * API_ROUTES
+ *   Lista blanca de todas las rutas permitidas de la API. Las rutas que
+ *   dependen de un id reciben una funcion que acepta el id y retorna el
+ *   string con Number(id) aplicado para evitar inyeccion de segmentos.
+ *
+ * Manejo del token JWT:
+ *   El token se guarda en sessionStorage bajo la clave "_tk" para que
+ *   sobreviva recargas de pagina (F5) pero se elimine al cerrar la pestana.
+ *   Se mantiene ademas en la variable _token en memoria para acceso sincrono.
+ *   getToken()   - retorna el token actual o null
+ *   setToken(t)  - guarda el token en memoria y sessionStorage
+ *   clearToken() - elimina el token de ambos lugares
+ *
+ * clearSession()
+ *   Elimina todos los datos de sesion (token, usuario, id_acceso) y redirige
+ *   al login. Se llama automaticamente cuando el servidor retorna 401.
+ *
+ * apiFetch(endpoint, options)
+ *   Wrapper sobre fetch() que:
+ *     1. Valida que el endpoint sea un string que empiece con /api/
+ *     2. Agrega el encabezado x-requested-with en peticiones de mutacion
+ *        (POST, PUT, PATCH, DELETE) para la proteccion CSRF del servidor
+ *     3. Serializa automaticamente el body a JSON si es un objeto plano
+ *     4. Adjunta el token JWT en el encabezado Authorization si existe
+ *     5. Si el servidor responde 401 llama a clearSession() y redirige al login
+ */
 // Base URL fija desde variable de entorno — nunca proviene de input del usuario
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
@@ -37,7 +75,7 @@ const API_ROUTES = {
   // Categorias / Manuales
   CATEGORIAS:         "/api/categorias",
   MANUALES:           "/api/manuales",
-  MANUAL:             (nombre) => `/api/manuales/${encodeURIComponent(nombre)}`,
+  MANUAL:             (id) => `/api/manuales/${Number(id)}`,
   REFRESH_TOKEN:      "/api/auth/refresh-token",
   PING:               "/api/ping",
 };
