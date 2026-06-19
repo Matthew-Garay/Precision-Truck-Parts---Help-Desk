@@ -1,3 +1,46 @@
+/**
+ * scheduledJobs.js
+ *
+ * Modulo que inicia y gestiona todos los trabajos periodicos en segundo plano
+ * del servidor. Se invoca una sola vez desde server.js al arrancar, recibiendo
+ * la instancia de Socket.io para poder emitir eventos en tiempo real.
+ *
+ * Trabajos registrados:
+ *
+ * 1. Alertas SLA (cada 30 minutos)
+ *    Busca tickets en estado "En proceso" que llevan mas de 2790 minutos
+ *    abiertos (equivalente a ~46.5 horas, anticipando el vencimiento a las 48h).
+ *    Calcula el tiempo restante y emite el evento "ticket:sla_warning" a la
+ *    sala "admins" por Socket.io. Usa el Set slaAlertados para no emitir la
+ *    misma alerta mas de una vez por ticket dentro de su ciclo de vida.
+ *
+ * 2. Cierre automatico de tickets vencidos (cada hora)
+ *    Busca tickets en proceso que superaron las 48 horas sin resolverse y
+ *    los cierra automaticamente como "No Resuelto" via Ticket.cerrarVencidos().
+ *    Notifica al empleado dueno por Socket.io y por correo electronico.
+ *    Emite "tickets:vencidos" a los admins con el total cerrado.
+ *    Se ejecuta DESPUES del worker SLA para que la alerta se emita antes
+ *    de que el ticket sea marcado como cerrado.
+ *
+ * 3. Limpieza de sesiones huerfanas (cada hora)
+ *    Cierra registros de historial_acceso que tienen mas de 12 horas sin
+ *    fecha de salida. Esto ocurre cuando el navegador se cierra abruptamente
+ *    sin que el logout llegue al servidor.
+ *
+ * 4. Alertas de stock critico (cada hora)
+ *    Busca insumos con 5 o menos unidades en stock y emite el evento
+ *    "insumo:stock_critico" a los admins por cada uno no alertado previamente.
+ *    Usa el Set stockAlertados para no repetir alertas del mismo insumo.
+ *
+ * 5. Tickets sin atender en 24 horas (cada hora)
+ *    Busca tickets en proceso sin tecnico asignado que llevan mas de 24 horas
+ *    creados y emite el evento "ticket:sin_atender" a los admins.
+ *    Usa el Set sinAtenderAlertados para evitar alertas repetidas.
+ *
+ * Todos los intervalos usan .unref() para que no impidan el cierre
+ * natural del proceso de Node.js cuando se recibe una senal de terminacion.
+ * Los Sets de deduplicacion provienen de alertState.js y sobreviven reinicios.
+ */
 import pool   from "../Config/db.js";
 import Ticket from "../Models/Ticket.js";
 import Insumo from "../Models/Insumo.js";

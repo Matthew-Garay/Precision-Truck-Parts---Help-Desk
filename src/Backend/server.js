@@ -1,3 +1,60 @@
+/**
+ * server.js
+ *
+ * Punto de entrada del servidor backend de PrecisionTrucks HelpDesk.
+ *
+ * Responsabilidades en orden de ejecucion:
+ *
+ * 1. Valida que las variables de entorno criticas esten definidas antes de arrancar.
+ *    Si alguna falta el proceso termina inmediatamente con codigo 1.
+ *
+ * 2. Crea la aplicacion Express, el servidor HTTP nativo y la instancia de Socket.io
+ *    montada sobre ese servidor HTTP (no sobre Express directamente).
+ *
+ * 3. Configura la autenticacion de Socket.io: cada conexion entrante debe presentar
+ *    un JWT valido en socket.handshake.auth.token. El socket se une automaticamente
+ *    a la sala "empleado_{id}" y, si el rol es 1 (admin), tambien a la sala "admins".
+ *    Esto permite enviar notificaciones dirigidas por rol o por empleado especifico.
+ *
+ * 4. Aplica middlewares globales:
+ *    - compression : comprime las respuestas HTTP con gzip/deflate
+ *    - helmet      : establece cabeceras de seguridad HTTP (CSP, CORP, HSTS, etc.)
+ *                    CORP se relaja a "cross-origin" para que el visor de PDF pueda
+ *                    leer los archivos servidos desde /storage
+ *    - cors        : restringe las peticiones al origen definido en CORS_ORIGIN
+ *    - express.json: parsea el cuerpo JSON con limite de 2 MB
+ *
+ * 5. Sirve archivos estaticos:
+ *    - /storage : archivos de evidencias, manuales y fotos (bloquea .json y .env)
+ *    - /fotos   : carpeta de fotos de perfil, requiere autenticacion JWT
+ *
+ * 6. Registra todas las rutas de la API bajo los prefijos:
+ *    /api/auth        - autenticacion, empleados y recuperacion de contrasena
+ *    /api/categorias  - catalogo de categorias
+ *    /api/tickets     - gestion completa de tickets de soporte
+ *    /api/solicitudes - solicitudes de insumos e inventario
+ *    /api/manuales    - subida, edicion y eliminacion de manuales PDF (inline en este archivo)
+ *
+ * 7. Implementa el endpoint POST /api/auth/refresh-token que renueva un JWT
+ *    aun valido generando uno nuevo con 12 horas de vigencia.
+ *
+ * 8. Inicia los workers de tareas programadas (scheduledJobs) pasandoles la
+ *    instancia de io para que puedan emitir eventos de Socket.io.
+ *
+ * 9. Escucha en el puerto definido en la variable PORT (por defecto 3001).
+ *
+ * Variables de entorno requeridas:
+ *   JWT_SECRET   - clave secreta para firmar y verificar tokens JWT
+ *   DB_HOST      - host de la base de datos MySQL
+ *   DB_USER      - usuario de la base de datos
+ *   DB_PASSWORD  - contrasena de la base de datos
+ *   DB_NAME      - nombre de la base de datos
+ *
+ * Variables de entorno opcionales:
+ *   PORT         - puerto de escucha (default: 3001)
+ *   CORS_ORIGIN  - origen permitido para CORS (default: http://localhost:5173)
+ *   NODE_ENV     - entorno de ejecucion (production activa trust proxy y oculta detalles de error)
+ */
 import express           from "express";
 import { createServer }  from "http";
 import { Server }        from "socket.io";
@@ -170,10 +227,8 @@ app.post("/api/manuales", requireAuth, (req, res) => {
     try {
       // Renombrar archivo temporal al nombre formateado
       const nombreFinal = nombreManual(nombre.trim());
+      const base = nombreFinal.replace(/\.pdf$/i, "");
       let rutaFinal = path.join(MANUALES_DIR, nombreFinal);
-      // Evitar sobreescritura: agregar sufijo si ya existe
-      try { await fs.promises.access(rutaFinal); } catch { rutaFinal = rutaFinal; }
-      let base = nombreFinal.replace(/\.pdf$/i, "");
       let n = 1;
       while (true) {
         try { await fs.promises.access(rutaFinal); rutaFinal = path.join(MANUALES_DIR, `${base}_${n++}.pdf`); }

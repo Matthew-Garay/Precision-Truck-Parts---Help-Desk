@@ -1,3 +1,62 @@
+/**
+ * validate.js
+ *
+ * Define la fabrica de middlewares de validacion basada en esquemas Zod
+ * y exporta todos los esquemas de validacion usados en el sistema.
+ *
+ * validate(schema)
+ *   Retorna un middleware de Express que aplica schema.safeParse al cuerpo
+ *   de la peticion (req.body). Si la validacion falla retorna 422 Unprocessable
+ *   Entity con la lista de errores indicando el campo afectado y el mensaje.
+ *   Si la validacion pasa reemplaza req.body con los datos normalizados por Zod
+ *   (valores coercionados, strings recortados, opcionales con defaults aplicados)
+ *   para que el controlador reciba datos siempre limpios y del tipo correcto.
+ *
+ * Esquemas exportados:
+ *
+ *   schemaLogin
+ *     Valida email con formato correcto y password no vacio.
+ *
+ *   schemaLogout
+ *     Valida que id_acceso sea un entero positivo.
+ *
+ *   schemaActualizarPerfil
+ *     Valida campos opcionales del perfil del empleado. Aplica refinement
+ *     para exigir password_actual cuando se envia password_nueva.
+ *
+ *   schemaCrearEmpleado
+ *     Valida todos los campos obligatorios del nuevo empleado incluyendo
+ *     minimo 8 caracteres para la contrasena.
+ *
+ *   schemaUpdateEmpleadoAdmin
+ *     Igual que schemaCrearEmpleado pero todos los campos son opcionales
+ *     ya que el admin puede actualizar solo algunos campos.
+ *
+ *   schemaCrearTicket
+ *     Valida titulo (max 200), descripcion (max 5000), prioridad (enum)
+ *     y id_categoria (entero positivo).
+ *
+ *   schemaActualizarTicket
+ *     Valida estatus (enum: En proceso, Resuelto, No Resuelto), comentarios
+ *     opcionales y id del tecnico que resuelve.
+ *
+ *   schemaCalificarTicket
+ *     Valida calificacion como entero entre 1 y 5.
+ *
+ *   schemaEditarTicket
+ *     Combina campos de creacion con estatus y comentarios opcionales.
+ *
+ *   schemaCrearSolicitud
+ *     Valida prioridad, id_empleado y el arreglo de insumos (minimo 1,
+ *     maximo 50 items, cada uno con id_insumo y cantidad >= 1).
+ *
+ *   schemaActualizarEstatusSolicitud
+ *     Valida que el estatus sea uno de los tres valores permitidos.
+ *
+ *   schemaInsumo
+ *     Valida todos los campos de un insumo del inventario incluyendo estado
+ *     (enum: Excelente, Bueno, Regular, Malo) y stock como entero >= 0.
+ */
 import { z } from "zod";
 
 /**
@@ -68,7 +127,7 @@ export const schemaUpdateEmpleadoAdmin = z.object({
 export const schemaCrearTicket = z.object({
   titulo:       z.string().trim().min(1, "El título es requerido").max(200),
   descripcion:  z.string().trim().min(1, "La descripción es requerida").max(5000, "La descripción no puede superar 5000 caracteres"),
-  prioridad:    z.enum(["Urgente", "Alta", "Media", "Bajo"]),
+  prioridad:    z.enum(["Urgente", "Alta", "Media", "Baja"]),
   id_categoria: z.number({ coerce: true }).int().positive(),
 });
 
@@ -85,7 +144,7 @@ export const schemaCalificarTicket = z.object({
 export const schemaEditarTicket = z.object({
   titulo:       z.string().trim().min(1).max(200),
   descripcion:  z.string().trim().min(1).max(5000, "La descripción no puede superar 5000 caracteres"),
-  prioridad:    z.enum(["Urgente", "Alta", "Media", "Bajo"]),
+  prioridad:    z.enum(["Urgente", "Alta", "Media", "Baja"]),
   id_categoria: z.number({ coerce: true }).int().positive(),
   estatus:      z.enum(["En proceso", "Resuelto", "No Resuelto"]).optional(),
   comentarios:  z.string().max(10000).nullable().optional(),

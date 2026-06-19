@@ -1,3 +1,25 @@
+/**
+ * PantallaSalida.jsx
+ *
+ * Pantalla de transicion animada que se muestra durante el proceso de
+ * cierre de sesion antes de redirigir al login.
+ *
+ * Se renderiza sobre toda la interfaz (posicion fixed, z-index 9999)
+ * reemplazando el contenido del dashboard. Dura aproximadamente 1.2 segundos,
+ * que es el tiempo que main.jsx espera antes de llamar a clearSession()
+ * y navegar a /login.
+ *
+ * Elementos visuales:
+ *   - Fondo negro con un degradado radial naranja sutil en el centro.
+ *   - Logo de la empresa con efecto de brillo y animacion de entrada.
+ *   - Nombre de la empresa y mensaje de despedida con animacion de entrada.
+ *   - Barra de progreso que llena de izquierda a derecha en 1.2 segundos
+ *     con un efecto shimmer de brillo que recorre la barra.
+ *   - Spinner de carga circular naranja.
+ *
+ * No recibe props. Todas las animaciones son CSS puro definidas en
+ * un bloque de style inline dentro del componente.
+ */
 export default function PantallaSalida() {
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center"

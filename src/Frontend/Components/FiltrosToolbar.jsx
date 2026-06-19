@@ -1,14 +1,33 @@
 /**
- * FiltrosToolbar — Barra horizontal corporativa de filtros
- * Precision Truck Parts HelpDesk · Design System
+ * FiltrosToolbar.jsx
+ *
+ * Barra horizontal de filtros reutilizable para todas las vistas de tabla
+ * del sistema. Soporta campos de busqueda por texto y campos de seleccion.
+ *
+ * Comportamiento:
+ *   - Muestra los campos de filtro en fila con etiquetas en mayusculas.
+ *   - Los campos activos (con valor distinto de vacio o "Todos") se resaltan
+ *     en naranja corporativo para indicar que hay un filtro aplicado.
+ *   - Debajo de los campos muestra tags naranja con los filtros activos.
+ *     Cada tag tiene un boton X para eliminar ese filtro individualmente.
+ *   - El boton "Limpiar filtros" solo aparece cuando hay al menos un filtro activo.
+ *   - El slot children permite agregar botones extra al lado derecho de la barra
+ *     (por ejemplo el boton "Generar Reporte").
+ *
+ * Sub-componentes internos:
+ *   SearchField  - input de texto con icono de lupa y boton X para limpiar
+ *   SelectField  - select nativo con icono de chevron y resaltado cuando tiene valor
+ *   FilterTag    - etiqueta naranja de filtro activo con boton para eliminar
  *
  * Props:
- *  campos   : [{ key, label, type:"search"|"select", opts?:string[]|{value,label}[], placeholder? }]
- *  valores  : { [key]: string }
- *  onChange : (key, value) => void
- *  onLimpiar: () => void
- *  T        : tema (tokens light/dark)
- *  children : slot derecho (botones extra como Generar Reporte)
+ *   campos    - arreglo de definiciones de campo:
+ *               { key, label, type: "search" | "select", opts?, placeholder? }
+ *               opts puede ser string[] o { value, label }[]
+ *   valores   - objeto { [key]: string } con los valores actuales de cada campo
+ *   onChange  - funcion(key, value) llamada cuando cambia un campo
+ *   onLimpiar - funcion() llamada al hacer clic en "Limpiar filtros"
+ *   T         - tokens del tema activo
+ *   children  - slot derecho para botones adicionales
  */
 import { useRef } from "react";
 import { Search, X, SlidersHorizontal, ChevronDown } from "lucide-react";

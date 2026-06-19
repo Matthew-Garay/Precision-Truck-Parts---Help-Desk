@@ -1,3 +1,47 @@
+/**
+ * Feedback.jsx
+ *
+ * Sistema completo de retroalimentacion visual para el usuario.
+ * Exporta cuatro componentes independientes que comparten los mismos
+ * tokens de color y principios del sistema de diseno.
+ *
+ * Modal
+ *   Dialogo modal con header navy corporativo, cuerpo scrollable y footer
+ *   con botones Cancelar y Confirmar. Soporta:
+ *   - Variante destructiva (danger=true) que pinta el boton confirmar en rojo
+ *   - Estado de carga (loading=true) que deshabilita botones y muestra spinner
+ *   - Guardia de cambios sin guardar (dirty=true) que muestra un dialogo de
+ *     confirmacion antes de cerrar si hay cambios pendientes
+ *   - Tres tamanos: "sm" (380px), "md" (520px), "lg" (700px)
+ *   - Cierre con tecla Escape
+ *
+ * ModalConfirm
+ *   Variante simplificada de Modal para acciones destructivas rapidas.
+ *   Muestra un icono de alerta y el mensaje de confirmacion.
+ *
+ * ToastProvider
+ *   Proveedor de contexto que debe envolver el arbol del dashboard.
+ *   Expone la API de toasts via useToast():
+ *     toast.success(mensaje, { title, duration })
+ *     toast.error(mensaje, { title, duration })
+ *     toast.warning(mensaje, { title, duration })
+ *     toast.info(mensaje, { title, duration })
+ *     toast.dismiss(id)
+ *   Los toasts se auto-descartan despues de 4.5 segundos por defecto.
+ *   Con duration=0 son persistentes hasta que el usuario los cierre.
+ *   Al hacer hover se pausa el temporizador de auto-descarte.
+ *   Se muestran en la esquina superior derecha con animacion slide-in.
+ *
+ * Tooltip
+ *   Tooltip simple que aparece despues de un delay configurable (default 350ms).
+ *   Soporta cuatro posiciones: top, bottom, left, right.
+ *   Fondo oscuro fijo para garantizar contraste en ambos temas.
+ *
+ * InlineAlert
+ *   Banner de estado inline para mostrar dentro de formularios o secciones.
+ *   Mismo sistema de tipos que el toast (success, error, warning, info).
+ *   Soporta titulo, mensaje y boton de cierre opcional.
+ */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X, CheckCircle2, AlertTriangle, XCircle, Info, AlertCircle, Loader2 } from "lucide-react";
 import { ToastCtx } from "./toastContext.js";

@@ -1,14 +1,35 @@
 /**
- * SkeletonTable — Nielsen #1: Visibilidad del estado del sistema
+ * SkeletonTable.jsx
  *
- * Reemplaza spinners en tablas mientras los datos cargan desde el backend.
- * Preserva la estructura visual de la tabla, reduciendo el "layout shift"
- * y la percepción de tiempo de espera (UX centrado en el usuario).
+ * Componentes de esqueleto de carga para tablas y tarjetas.
+ * Implementan la heuristica de Nielsen numero 1 (visibilidad del estado del sistema)
+ * mostrando placeholders animados que preservan el layout mientras los datos cargan.
  *
- * Props:
- *   cols  : number  — cantidad de columnas de la tabla
- *   rows  : number  — filas skeleton a renderizar (default: 6)
- *   hasActions : boolean — si la última columna es de acciones (botones)
+ * Usar skeletons en lugar de spinners en tablas y listas para reducir el layout
+ * shift y mejorar la percepcion del tiempo de carga por parte del usuario.
+ *
+ * SkeletonTable (exportacion por defecto)
+ *   Renderiza filas de tabla con celdas que contienen barras animadas.
+ *   Los anchos de las barras varian entre celdas para simular contenido real.
+ *   La ultima columna puede ser de acciones (hasActions=true) mostrando
+ *   dos botones cuadrados skeleton en lugar de una barra de texto.
+ *   Se inyecta directamente dentro de un elemento tbody existente.
+ *
+ *   Props:
+ *     cols       - numero de columnas de la tabla
+ *     rows       - filas skeleton a renderizar (default 6)
+ *     hasActions - si true la ultima columna muestra botones skeleton
+ *
+ * SkeletonCards
+ *   Renderiza tarjetas skeleton para vistas de KPI o listas en modo movil.
+ *   Cada tarjeta tiene tres barras de diferente ancho para simular
+ *   una etiqueta, un valor principal y una descripcion.
+ *
+ *   Props:
+ *     count - numero de cards skeleton a renderizar (default 4)
+ *
+ * Las animaciones usan la clase CSS .skeleton definida en design-system.css
+ * y las variables CSS --ptp-border y --ptp-surface para adaptarse al tema activo.
  */
 export default function SkeletonTable({ cols = 4, rows = 6, hasActions = false }) {
   // Anchos variados crean ilusión de contenido real (mejor UX percibido)

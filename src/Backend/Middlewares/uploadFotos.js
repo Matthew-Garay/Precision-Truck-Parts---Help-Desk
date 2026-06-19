@@ -1,3 +1,29 @@
+/**
+ * uploadFotos.js
+ *
+ * Configura el middleware de subida de fotos de perfil para los empleados.
+ * Sigue la misma arquitectura de doble validacion que uploadEvidencias.js
+ * pero con reglas especificas para fotos de perfil.
+ *
+ * Diferencias respecto a uploadEvidencias:
+ *   - Los archivos se guardan directamente en storage/Fotos de Perfil/ sin
+ *     carpeta temporal intermedia.
+ *   - El nombre del archivo se genera de forma determinista y segura con el
+ *     patron: emp_{id}_{timestamp}{random}{ext}
+ *     Se valida que el id del parametro de ruta sea un entero positivo y que
+ *     el nombre resultante solo contenga caracteres alfanumericos, puntos,
+ *     guiones y guiones bajos.
+ *   - Solo acepta JPEG, PNG y WebP. No acepta GIF.
+ *   - El limite de tamano es de 5 MB (la mitad que para evidencias).
+ *   - Si la validacion de bytes magicos falla, el archivo guardado en disco
+ *     se elimina antes de retornar el error 400.
+ *
+ * Exportaciones:
+ *   uploadFoto  - objeto con metodo single(campo) que retorna un arreglo
+ *                 [middlewareMulter, middlewareMagicBytes]
+ *   FOTOS_DIR   - ruta absoluta del directorio de fotos de perfil
+ *   FOTOS_REL   - nombre relativo de la carpeta (usado para construir la ruta en BD)
+ */
 import multer             from "multer";
 import path               from "path";
 import fs                 from "fs";

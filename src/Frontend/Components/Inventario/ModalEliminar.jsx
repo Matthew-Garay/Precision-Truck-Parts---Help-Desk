@@ -1,3 +1,20 @@
+/**
+ * ModalEliminar.jsx
+ *
+ * Modal de confirmacion para eliminar un insumo del inventario.
+ * Muestra un aviso de advertencia sobre la irreversibilidad de la accion
+ * y los datos del insumo que sera eliminado antes de confirmar.
+ *
+ * Usa el componente Modal como base con la prop danger=true para pintar
+ * el boton de confirmacion en rojo.
+ *
+ * Props:
+ *   insumo    - objeto del insumo a eliminar con al menos { nombre, marca, modelo }
+ *   loading   - si true el boton muestra texto de progreso y se deshabilita
+ *   onClose   - funcion llamada al cancelar o cerrar el modal
+ *   onConfirm - funcion llamada al confirmar la eliminacion
+ *   T         - tokens del tema activo
+ */
 import { Trash2, AlertTriangle } from "lucide-react";
 import Modal from "../Modal";
 

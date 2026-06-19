@@ -79,7 +79,6 @@ function ModalRecuperar({ onCerrar }) {
         setError(data.error || "Error al restablecer"); return;
       }
       setExito(true);
-      sessionStorage.setItem("pwd_actual", pass1);
     } catch { setError("No se pudo conectar con el servidor"); }
     finally { setLoading(false); }
   };
@@ -392,7 +391,6 @@ export default function Login({ onLogin }) {
       }
       setEntrando(true);
       setIntentos(0);
-      sessionStorage.setItem("pwd_actual", password);
       if (navigator.vibrate) navigator.vibrate(50);
       setTimeout(() => { setEntrando(false); onLogin(data.usuario, data.id_acceso, data.token); }, 1500);
     } catch { setError("No se pudo conectar con el servidor"); triggerShake(); }

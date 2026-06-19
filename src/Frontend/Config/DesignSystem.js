@@ -1,3 +1,45 @@
+/**
+ * DesignSystem.js
+ *
+ * Sistema de diseno centralizado de Precision Truck Parts HelpDesk.
+ * Define todos los tokens visuales, estilos de componentes atomicos,
+ * moleculas, organismos y patrones de UX que se aplican en toda la aplicacion.
+ *
+ * Principios aplicados:
+ *
+ * Estrategia cromatica 60-30-10:
+ *   60% Neutros    - fondos blancos y grises claro para contenedores
+ *   30% Slate      - texto y bordes en escala de grises azulados
+ *   10% Acento     - azul #2563EB exclusivamente para acciones principales
+ *
+ * Colores semanticos (solo para estados funcionales):
+ *   #DC2626 - Error critico (stock agotado, eliminacion)
+ *   #D97706 - Alerta (stock bajo, advertencia)
+ *   #16A34A - Confirmacion (operacion exitosa)
+ *
+ * Acento corporativo:
+ *   Naranja #F47920 de Precision Truck Parts para CTAs corporativos
+ *   y elementos de identidad de marca.
+ *
+ * Heuristicas de Nielsen aplicadas:
+ *   #1  Visibilidad del estado del sistema  - skeletons, loading en botones
+ *   #4  Consistencia                        - patron unico Cancelar/Confirmar
+ *   #5  Prevencion de errores               - focus rings, validacion inline
+ *   #8  Estetica minimalista               - espaciado en lugar de bordes
+ *
+ * Exportaciones organizadas por categoria:
+ *   NEUTRAL, SLATE, ACCENT, BRAND    - escalas de color
+ *   TICKET_STATUS, SEMANTIC          - colores por estado
+ *   COLORS                           - alias unificado de compatibilidad
+ *   FONT, SPACE, RADIUS, SHADOWS     - tipografia, espaciado y forma
+ *   BTN_PRIMARY/GHOST/DANGER/LOADING - atomos de boton
+ *   INPUT_BASE, INPUT_FOCUS/BLUR     - atomo de campo de texto
+ *   BADGE                            - atomo de etiqueta de estado
+ *   FORM_FIELD, ICON_ACTION, CARD    - moleculas
+ *   NAVBAR, SIDEBAR, TABLE, MODAL    - organismos
+ *   CONFIRM_PATTERN, LOADING_PATTERNS- patrones de UX
+ *   BREAKPOINTS                      - puntos de quiebre responsive
+ */
 // ================================================================
 //  PRECISION TRUCK PARTS — Design System
 //  Atomic Design · Regla 60-30-10 · Heurísticas de Nielsen · Mobile-First

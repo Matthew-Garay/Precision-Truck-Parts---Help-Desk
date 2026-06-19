@@ -1,3 +1,26 @@
+/**
+ * mailer.js
+ *
+ * Configura el servicio de envio de correos electronicos mediante nodemailer
+ * y expone dos funciones para los dos tipos de notificacion del sistema.
+ *
+ * Variables de entorno requeridas:
+ *   SMTP_HOST - servidor SMTP (ej. smtp.gmail.com)
+ *   SMTP_PORT - puerto SMTP (587 para TLS, 465 para SSL)
+ *   SMTP_USER - usuario / direccion de autenticacion SMTP
+ *   SMTP_PASS - contrasena o token de aplicacion SMTP
+ *   SMTP_FROM - direccion remitente que aparecera en el correo
+ *
+ * Si SMTP_USER no esta configurado las funciones retornan sin enviar nada,
+ * lo que permite ejecutar el sistema en desarrollo sin servidor de correo.
+ *
+ * El logo de la empresa se lee del disco de forma diferida (lazy) la primera vez
+ * que se necesita y se cachea en memoria para las llamadas siguientes.
+ *
+ * Funciones exportadas:
+ *   enviarNotificacionTicket  - notifica al empleado cuando su ticket cambia de estatus
+ *   enviarCodigoRecuperacion  - envia el codigo de 6 digitos para restablecer contrasena
+ */
 import nodemailer from "nodemailer";
 import fs         from "fs";
 import path       from "path";

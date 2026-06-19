@@ -1,3 +1,46 @@
+/**
+ * Solicitud.js
+ *
+ * Modelo que encapsula todas las operaciones sobre las tablas `solicitud`
+ * y `solicitud_insumo`. Una solicitud es una peticion de insumos que un
+ * empleado crea y un administrador aprueba o rechaza.
+ *
+ * Metodos:
+ *
+ *   crear({ prioridad, id_empleado, insumos })
+ *     Opera dentro de una transaccion completa con los siguientes pasos:
+ *       1. Bloquea con FOR UPDATE los folios del mes actual para evitar
+ *          duplicados bajo concurrencia (race condition entre peticiones simultaneas).
+ *       2. Calcula el siguiente numero secuencial y genera el folio con el
+ *          formato SOL-{anno}{mes}-{numero} (ej. SOL-202605-001).
+ *       3. Inserta el registro principal en la tabla solicitud.
+ *       4. Verifica que todos los insumos del arreglo existen y tienen
+ *          stock suficiente para la cantidad solicitada.
+ *       5. Inserta los registros de detalle en solicitud_insumo.
+ *       6. Hace commit si todo sale bien, o rollback si cualquier paso falla.
+ *     Lanza Error con statusCode 400 si algun insumo no existe o su stock
+ *     es insuficiente, para que el controlador retorne 400 en lugar de 500.
+ *
+ *   getByEmpleado(id_empleado)
+ *     Retorna el historial de solicitudes de un empleado con los nombres de
+ *     los insumos concatenados, total de piezas y total de items distintos.
+ *     Ordenado del mas reciente al mas antiguo.
+ *
+ *   getById(id_solicitud)
+ *     Retorna el encabezado de la solicitud con datos del empleado y departamento,
+ *     mas el arreglo de detalle con cada insumo, su cantidad y datos del insumo.
+ *     Retorna null si la solicitud no existe.
+ *
+ *   getAll({ limit, offset })
+ *     Retorna todas las solicitudes paginadas usando SQL_CALC_FOUND_ROWS para
+ *     obtener el total sin ejecutar una segunda consulta SELECT COUNT(*).
+ *
+ *   actualizarEstatus(id_solicitud, estatus)
+ *     Actualiza el estatus de una solicitud validando que el valor pertenezca
+ *     al conjunto de estatus permitidos (En proceso, Resuelto, No Resuelto).
+ *     No descuenta stock; eso lo hace el controlador en una transaccion propia.
+ *     Retorna true si se afecto al menos un registro.
+ */
 import pool from "../Config/db.js";
 
 const Solicitud = {
@@ -103,8 +146,7 @@ const Solicitud = {
 
   getAll: async ({ limit = 100, offset = 0 } = {}) => {
     const [rows] = await pool.query(
-      `SELECT SQL_CALC_FOUND_ROWS
-              s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
+      `SELECT s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
               CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
               d.nombre_departamento,
               COUNT(si.id_solicitud_insumo) AS total_insumos,
@@ -118,7 +160,7 @@ const Solicitud = {
        LIMIT ? OFFSET ?`,
       [limit, offset]
     );
-    const [[{ total }]] = await pool.query(`SELECT FOUND_ROWS() AS total`);
+    const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM solicitud`);
     return { rows, total };
   },
 

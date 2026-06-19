@@ -1,3 +1,20 @@
+/**
+ * Icons.jsx
+ *
+ * Iconos SVG personalizados del sistema HelpDesk que no estan disponibles
+ * en la libreria lucide-react o que requieren un diseno especifico.
+ *
+ * EyeIcon
+ *   Icono de ojo abierto para mostrar contrasena en el campo de login.
+ *   Renderiza el clasico ojo con iris circular.
+ *
+ * EyeOffIcon
+ *   Icono de ojo tachado para ocultar contrasena en el campo de login.
+ *   Renderiza el ojo con una linea diagonal que lo atraviesa.
+ *
+ * Ambos iconos usan currentColor para heredar el color del padre
+ * y tienen dimensiones de 16x16 (h-4 w-4 de Tailwind).
+ */
 // ================================================================
 //  ICONS - Precision Truck Parts HelpDesk
 //  Uso: import { EyeIcon, EyeOffIcon, GoogleIcon, LogoIcon } from '../Components/Icons'

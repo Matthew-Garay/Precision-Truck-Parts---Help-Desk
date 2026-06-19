@@ -1,3 +1,35 @@
+/**
+ * themeTokens.js
+ *
+ * Define los tokens de color para los dos temas de la aplicacion: claro y oscuro.
+ * Es un archivo JS puro sin JSX para no interferir con el Fast Refresh de Vite.
+ *
+ * Cada objeto de tema contiene:
+ *   isDark       - bandera booleana para que los componentes puedan hacer logica condicional
+ *   orange       - naranja corporativo de Precision Truck Parts (#F47920)
+ *   orangeDark   - naranja oscuro para hover y estados activos
+ *   orangeMuted  - naranja transparente para fondos y focus rings
+ *   navy         - azul marino muy oscuro para la sidebar y elementos de estructura
+ *   bg           - color de fondo de la pagina completa
+ *   surface      - color de fondo de tarjetas y contenedores
+ *   surfaceAlt   - variante alternativa de surface para filas alternas y headers de tabla
+ *   surfaceHover - color al hacer hover sobre un elemento interactivo
+ *   border       - color de borde de separadores y contenedores
+ *   borderFocus  - color de borde cuando un input tiene el foco
+ *   text         - color de texto principal
+ *   textMuted    - color de texto secundario (subtitulos, metadatos)
+ *   textFaint    - color de texto muy tenue (placeholders, info muy secundaria)
+ *   sidebar      - color de fondo de la barra lateral
+ *   sidebarText  - color del texto de los items de la sidebar sin seleccionar
+ *   sidebarHover - color de fondo al hacer hover sobre un item de la sidebar
+ *   shadowSm/Md/Lg - sombras de diferente intensidad para tarjetas y modales
+ *   radius/radiusSm/radiusLg - radios de borde para bordes redondeados
+ *
+ * Uso:
+ *   import { useTheme } from "./themeContext.js";
+ *   const { T } = useTheme();
+ *   <div style={{ background: T.surface, color: T.text }}>
+ */
 // Tokens de color — archivo .js puro (sin JSX) para no romper Fast Refresh
 
 export const LIGHT = {

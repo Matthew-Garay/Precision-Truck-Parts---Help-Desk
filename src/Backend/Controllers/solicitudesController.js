@@ -1,3 +1,66 @@
+/**
+ * solicitudesController.js
+ *
+ * Controlador que gestiona las solicitudes de insumos, el inventario
+ * y las operaciones CRUD sobre los insumos del almacen.
+ *
+ * Funciones exportadas:
+ *
+ *   getInsumos
+ *     Retorna unicamente los insumos que tienen stock mayor a cero.
+ *     Se usa en el formulario de nueva solicitud para mostrar solo lo disponible.
+ *
+ *   getInventario
+ *     Retorna todos los insumos sin filtro de stock, incluyendo los agotados.
+ *     Se usa en la vista de inventario del administrador.
+ *
+ *   getInsumosStockBajo
+ *     Retorna los insumos con stock igual o menor a 5 con su nivel de alerta.
+ *     Usado por el dashboard para mostrar alertas de reabastecimiento.
+ *
+ *   crearSolicitud
+ *     Valida que el empleado solicitante coincide con el del JWT (un usuario
+ *     normal no puede crear solicitudes en nombre de otro). Crea la solicitud
+ *     en la base de datos y emite el evento "solicitud:nueva" a los admins
+ *     por Socket.io para notificacion en tiempo real.
+ *
+ *   getSolicitudesByEmpleado
+ *     Retorna el historial de solicitudes de un empleado. Solo el dueno o
+ *     un administrador puede consultar.
+ *
+ *   getSolicitudById
+ *     Retorna el detalle completo de una solicitud con todos sus insumos.
+ *     Aplica el mismo control de acceso que getSolicitudesByEmpleado.
+ *
+ *   getSolicitudesPendientes
+ *     Retorna solicitudes que no estan cerradas (ni Resuelto ni No Resuelto),
+ *     ordenadas por prioridad (Urgente > Alta > Media > Baja) y luego por fecha.
+ *
+ *   getAllSolicitudes
+ *     Retorna todas las solicitudes paginadas. Solo para administradores.
+ *
+ *   actualizarEstatusSolicitud
+ *     Si el nuevo estatus es "Resuelto", ejecuta una transaccion que descuenta
+ *     el stock de los insumos involucrados, verifica si alguno quedo en nivel
+ *     critico (stock <= 5) y emite alertas de stock por Socket.io. Para otros
+ *     estatus solo actualiza el campo. En ambos casos emite "solicitud:actualizada"
+ *     tanto al empleado dueno como a los admins.
+ *
+ *   crearInsumo
+ *     Crea un nuevo insumo en el inventario y retorna el registro completo
+ *     con nombre de categoria. Solo para administradores.
+ *
+ *   actualizarInsumo
+ *     Actualiza los campos de un insumo existente. Solo para administradores.
+ *
+ *   eliminarInsumo
+ *     Elimina un insumo verificando primero que no tenga solicitudes activas
+ *     pendientes que lo referencien. Si las tiene retorna 409 Conflict.
+ *
+ *   getReporteSolicitudes
+ *     Retorna solicitudes filtradas por rango de fechas con datos agregados
+ *     (total de insumos, total de piezas, detalle concatenado) para exportacion.
+ */
 import Solicitud from "../Models/Solicitud.js";
 import Insumo    from "../Models/Insumo.js";
 import Empleado  from "../Models/Empleado.js";

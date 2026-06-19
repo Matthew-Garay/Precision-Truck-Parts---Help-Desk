@@ -1,3 +1,19 @@
+/**
+ * ModalInsumo.jsx
+ *
+ * Modal de formulario para crear o editar un insumo del inventario.
+ * Detecta automaticamente si es modo creacion (insumo sin id_insumo)
+ * o edicion (insumo con id_insumo) y ajusta el titulo y el boton.
+ *
+ * Props:
+ *   insumo      - objeto del insumo a editar, o null/undefined para crear uno nuevo.
+ *                 Campos esperados: id_insumo, num_serie, nombre, marca, modelo,
+ *                 stock, estado, id_categoria
+ *   categorias  - arreglo de categorias disponibles { id_categoria, nombre_categoria }
+ *   onClose     - funcion llamada al cancelar o cerrar el modal
+ *   onSave      - funcion(insumoGuardado, esEdicion) llamada al guardar con exito
+ *   T           - tokens del tema activo
+ */
 import { useState, useEffect, useRef } from "react";
 import { Package, Pencil } from "lucide-react";
 import { apiFetch } from "../../Config/api";

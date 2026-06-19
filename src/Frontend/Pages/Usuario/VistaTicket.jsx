@@ -526,7 +526,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
     setEstatus(ticket.estatus);
     setFechaResueltoState(ticket.fecha_resuelto || null);
     setResueltoporState(ticket.resuelto_por || null);
-  }, [ticket.id_ticket, ticket.calificacion]);
+  }, [ticket.id_ticket, ticket.calificacion, ticket.estatus, ticket.comentarios, ticket.resuelto_por]);
 
   const fmtFecha = (d) => new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" });
   const fmtHora  = (d) => new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
@@ -919,8 +919,8 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
   useEffect(() => {
     const token = getToken();
     if (!token || !ticket.id_ticket) return;
-    const SOCKET_URL = import.meta.env.VITE_API_URL;
-    if (!SOCKET_URL) return;
+    // Derivar la URL del socket igual que en useSocket.js
+    const SOCKET_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(":5173", ":3001");
     const socket = io(SOCKET_URL, {
       auth: { token },
       transports: ["websocket", "polling"],
@@ -928,7 +928,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
     });
     const handleActualizado = (d) => {
       if (d?.id_ticket !== ticket.id_ticket) return;
-      if (d.estatus)       setEstatus(d.estatus);
+      if (d.estatus)        setEstatus(d.estatus);
       if (d.fecha_resuelto) setFechaResueltoState(d.fecha_resuelto);
       if (d.resuelto_por)   setResueltoporState(d.resuelto_por);
       else if (d.nombre_tecnico) setResueltoporState(d.nombre_tecnico);

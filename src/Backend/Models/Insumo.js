@@ -1,3 +1,46 @@
+/**
+ * Insumo.js
+ *
+ * Modelo que encapsula todas las operaciones sobre la tabla `insumo`.
+ * Los insumos son los articulos del inventario que los empleados pueden
+ * solicitar a traves del sistema de solicitudes.
+ *
+ * Metodos:
+ *
+ *   getAll()
+ *     Retorna todos los insumos con nombre de categoria, ordenados
+ *     alfabeticamente por nombre. Incluye insumos con stock cero.
+ *
+ *   getDisponibles()
+ *     Igual que getAll pero filtra unicamente los insumos con stock > 0.
+ *     Se usa en el formulario de nueva solicitud.
+ *
+ *   crear(campos)
+ *     Inserta un nuevo insumo. Los campos opcionales num_serie, marca y modelo
+ *     se guardan como NULL si vienen vacios o no se proporcionan.
+ *     Retorna el insertId del nuevo registro.
+ *
+ *   actualizar(id, campos)
+ *     Actualiza todos los campos de un insumo existente.
+ *     Retorna true si se afecto al menos un registro, false si el id no existe.
+ *
+ *   getStockBajo(umbral)
+ *     Retorna insumos con stock igual o menor al umbral (5 por defecto).
+ *     Incluye la columna calculada nivel_alerta con valor "agotado" (stock = 0)
+ *     o "bajo" (stock entre 1 y el umbral). Limitado a 50 registros.
+ *
+ *   descontarStock(conn, insumos)
+ *     Funcion transaccional que recibe una conexion de base de datos con una
+ *     transaccion ya abierta y un arreglo de { id_insumo, cantidad }.
+ *     Para cada insumo hace SELECT ... FOR UPDATE para bloquear el registro
+ *     durante la transaccion y verifica que el stock sea suficiente antes de
+ *     decrementarlo. Si el stock es insuficiente lanza un Error con statusCode 400.
+ *     No hace commit ni rollback, eso lo maneja el llamador.
+ *
+ *   eliminar(id)
+ *     Elimina un insumo por su id.
+ *     Retorna true si fue eliminado, false si el id no existia.
+ */
 import pool from "../Config/db.js";
 
 const Insumo = {

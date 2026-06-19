@@ -1,42 +1,33 @@
 /**
- * Card — Design System PTP · Corporate Minimalist
- * ─────────────────────────────────────────────────────────────
- *  REGLA DE ORO: Todo panel, widget, tabla o formulario del
- *  sistema DEBE usar este componente o useCardStyles(T).
- *  Nunca definir cardStyle / hdr inline en cada página.
- * ─────────────────────────────────────────────────────────────
+ * Card.jsx
  *
- *  Variantes:
- *    "default"  → shadow-sm  (uso general)
- *    "elevated" → shadow-md  (métricas, secciones destacadas)
- *    "flat"     → sin sombra (ítems anidados, tablas internas)
+ * Componente base de tarjeta del sistema de diseno de Precision Truck Parts.
+ * Todo panel, widget, tabla o formulario del sistema debe usar este componente
+ * o el hook useCardStyles(T) para mantener consistencia visual en toda la app.
  *
- *  Estructura:
- *    <Card>          → contenedor raíz  (rounded-xl + border + shadow)
- *    <Card.Header>   → franja superior  (fondo surfaceAlt + border-bottom)
- *    <Card.Body>     → cuerpo           (padding 24px por defecto  = p-6)
- *    <Card.Footer>   → franja inferior  (fondo surfaceAlt + border-top)
+ * Variantes:
+ *   "default"  - sombra ligera para uso general
+ *   "elevated" - sombra media para metricas y secciones destacadas
+ *   "flat"     - sin sombra para items anidados dentro de otras cards
  *
- *  Hook auxiliar useCardStyles(T, variant):
- *    Devuelve { card, hdr, ftr } como objetos de estilo inline.
- *    Úsalo solo cuando el JSX de <Card> no sea posible
- *    (ej. componentes que ya usan un <div> externo propio).
+ * Sub-componentes:
+ *   Card.Header - franja superior con fondo surfaceAlt, borde inferior y slots
+ *                 para acento de color, icono, titulo y acciones a la derecha
+ *   Card.Body   - cuerpo de la card con padding configurable (default 24px)
+ *   Card.Footer - franja inferior con fondo surfaceAlt, borde superior
+ *                 y alineacion de botones a la derecha
  *
- *  Uso básico:
- *    import Card, { useCardStyles } from "../../Components/Card";
+ * Hook useCardStyles(T, variant)
+ *   Retorna { card, hdr, ftr } como objetos de estilo inline.
+ *   Usar cuando el JSX de Card no sea posible, por ejemplo en componentes
+ *   que ya tienen un div externo propio.
  *
- *    // Opción A — componente (preferida)
- *    <Card T={T} variant="elevated">
- *      <Card.Header T={T} title="Métricas" accent={T.orange} />
- *      <Card.Body>…contenido…</Card.Body>
- *      <Card.Footer T={T}><button>Acción</button></Card.Footer>
- *    </Card>
- *
- *    // Opción B — hook (cuando <Card> no aplique)
- *    const { card, hdr } = useCardStyles(T);
- *    <div className="rounded-xl overflow-hidden" style={card}>
- *      <div style={hdr}>…</div>
- *    </div>
+ * Props de Card:
+ *   T         - tokens del tema activo (obligatorio)
+ *   variant   - variante de sombra: "default" | "elevated" | "flat"
+ *   style     - estilos adicionales para el contenedor
+ *   className - clases CSS adicionales
+ *   children  - contenido de la card
  */
 
 // ── Tokens de sombra por variante ────────────────────────────

@@ -1,3 +1,32 @@
+/**
+ * ConfiguracionPerfilShared.jsx
+ *
+ * Vista de configuracion de perfil compartida entre el administrador
+ * y el usuario. Se instancia desde Admin/ConfiguracionPerfil.jsx
+ * y Usuario/ConfiguracionPerfil.jsx pasando el prop rol adecuado.
+ *
+ * Secciones:
+ *   - Banner de perfil con foto editable, nombre, correo y departamento.
+ *   - Datos personales: nombre, apellidos y correo electronico.
+ *   - Cambiar contrasena: campo de contrasena actual (de solo lectura,
+ *     leido desde sessionStorage), nueva contrasena y confirmacion.
+ *   - Historial de accesos: tabla paginada con fecha de entrada, salida
+ *     y duracion de cada sesion. Los admins pueden filtrar por mes y anio.
+ *     Boton para exportar el historial como PDF via generarPDFAccesos.
+ *
+ * La foto se edita mediante el flujo: seleccionar archivo -> ModalRecorte
+ * para ajustar encuadre -> procesarYSubirFoto para subir al servidor.
+ *
+ * Los datos del empleado y el historial de accesos se recargan automaticamente
+ * cada 30 segundos con setInterval.
+ *
+ * Props:
+ *   T                   - tokens del tema activo
+ *   usuario             - objeto del usuario de sesion
+ *   onUsuarioActualizado - callback(usuarioActualizado) para propagar cambios
+ *                          al componente raiz del dashboard
+ *   rol                 - "Administrador" o "Usuario" (default: "Usuario")
+ */
 import { useState, useEffect } from "react";
 import { User } from "lucide-react";
 import API, { apiFetch } from "../Config/api";
