@@ -23,7 +23,8 @@
 // Solo guardamos los campos mínimos necesarios en sessionStorage;
 // datos sensibles como email no se persisten para reducir exposición ante XSS.
 const CAMPOS_PUBLICOS = ["id_empleado", "num_empleado", "nombre", "ap_paterno", "ap_materno",
-                         "foto", "id_rol", "rol", "departamento", "id_departamento"];
+                         "foto", "id_rol", "rol", "departamento", "id_departamento",
+                         "id_sucursal", "sucursal", "nombre_sucursal"];
 
 function filtrarUsuario(u) {
   if (!u || typeof u !== "object") return null;

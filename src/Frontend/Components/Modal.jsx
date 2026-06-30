@@ -1,66 +1,32 @@
 /**
- * Modal.jsx
- *
- * Componente modal base reutilizable del sistema de diseno PTP.
- * Usado en todas las paginas que necesitan un dialogo de confirmacion
- * o un formulario emergente con header oscuro corporativo.
- *
- * Caracteristicas:
- *   - Header con fondo slate-800 oscuro, icono opcional, titulo y subtitulo.
- *   - Boton de cierre en el header (oculto cuando loading=true).
- *   - Cuerpo scrollable con flex para que el footer siempre sea visible.
- *   - Footer con botones Cancelar y Confirmar que solo aparece si se pasa onConfirm.
- *   - Boton confirmar en naranja corporativo por defecto, rojo si danger=true.
- *   - Spinner en el boton confirmar cuando loading=true.
- *   - Cierre con tecla Escape (desactivado durante loading).
- *   - Cierre al hacer clic en el overlay (desactivado durante loading).
- *   - Animacion de entrada con cubic-bezier para efecto elastico suave.
- *   - Backdrop con blur de 2px sobre el contenido de fondo.
- *
- * Props:
- *   title         - titulo del modal (obligatorio)
- *   subtitle      - linea secundaria bajo el titulo
- *   icon          - nodo React para el icono del header
- *   children      - contenido del cuerpo del modal
- *   onClose       - funcion llamada al cerrar (obligatorio)
- *   onConfirm     - funcion llamada al confirmar. Si se omite no se muestra el footer
- *   confirmLabel  - texto del boton confirmar (default "Aceptar")
- *   cancelLabel   - texto del boton cancelar (default "Cancelar")
- *   loading       - si true deshabilita botones y muestra spinner
- *   maxWidth      - ancho maximo del dialogo (default "480px")
- *   danger        - si true el boton confirmar es rojo
- *   noBodyPadding - si true suprime el padding del cuerpo
- *   T             - tokens del tema activo
- */
-import { useEffect } from "react";
-import { X } from "lucide-react";
-import { SLATE, NEUTRAL, COLORS, RADIUS } from "../Config/DesignSystem";
-
-const CSS = `
-  @keyframes modalIn {
-    from { opacity: 0; transform: scale(0.97) translateY(6px); }
-    to   { opacity: 1; transform: scale(1)    translateY(0);   }
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-`;
-
-/**
- * Modal — Componente base reutilizable · Design System PTP
+ * Modal.jsx — Componente base reutilizable · Design System PTP
  *
  * Props mínimas  : title + children + onClose
  * Props opcionales:
- *   T             {object}    — tokens del tema activo (LIGHT | DARK)
- *   subtitle      {string}    — línea secundaria bajo el título
- *   icon          {ReactNode} — icono junto al título
- *   onConfirm     {function}  — activa el footer; si se omite no hay footer
- *   confirmLabel  {string}    — texto botón confirmar  (default "Aceptar")
- *   cancelLabel   {string}    — texto botón cancelar   (default "Cancelar")
- *   loading       {boolean}   — spinner + deshabilita ambos botones
- *   maxWidth      {string}    — ancho máximo del contenedor (default "480px")
- *   danger        {boolean}   — botón confirmar en rojo (acciones destructivas)
- *   noBodyPadding {boolean}   — suprime padding del body (contenido con scroll propio)
+ *   isOpen        — controla visibilidad (default true para backward-compat)
+ *   T             — tokens del tema activo
+ *   subtitle      — línea secundaria bajo el título
+ *   icon          — ReactNode junto al título
+ *   onConfirm     — activa el footer; si se omite no hay footer
+ *   confirmLabel  — texto botón confirmar  (default "Aceptar")
+ *   cancelLabel   — texto botón cancelar   (default "Cancelar")
+ *   loading       — spinner + deshabilita ambos botones
+ *   maxWidth      — ancho máximo del contenedor (default "480px")
+ *   danger        — botón confirmar en rojo (acciones destructivas)
+ *   noBodyPadding — suprime padding del body
+ *
+ * Funcionalidad accesible:
+ *   - Cierra con Escape
+ *   - Cierra al hacer click en el overlay
+ *   - Bloquea scroll del body mientras está abierto
+ *   - Trap de foco: Tab/Shift+Tab circula dentro del modal
+ *   - Focus inicial en el contenedor al montar
  */
+import { useEffect, useRef } from "react";
+import { X } from "lucide-react";
+
 export default function Modal({
+  isOpen        = true,
   title,
   subtitle,
   icon,
@@ -75,139 +41,115 @@ export default function Modal({
   noBodyPadding = false,
   T             = null,
 }) {
-  const surface    = T?.surface    ?? NEUTRAL.white;
-  const surfaceAlt = T?.surfaceAlt ?? NEUTRAL.slate50;
-  const border     = T?.border     ?? SLATE[200];
-  const textMuted  = T?.textMuted  ?? SLATE[600];
-  const isDark     = T?.isDark     ?? false;
+  const dialogRef = useRef(null);
 
-  const ORANGE    = COLORS.orange;
-  const confirmBg = danger ? COLORS.danger : ORANGE;
-
+  /* Bloquear scroll del body mientras el modal está abierto */
   useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [isOpen]);
+
+  /* Cerrar con Escape */
+  useEffect(() => {
+    if (!isOpen) return;
     const handler = (e) => { if (e.key === "Escape" && !loading) onClose(); };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [onClose, loading]);
+  }, [isOpen, onClose, loading]);
+
+  /* Focus inicial */
+  useEffect(() => {
+    if (isOpen) dialogRef.current?.focus();
+  }, [isOpen]);
+
+  /* Trap de foco: mantiene Tab/Shift+Tab dentro del modal */
+  useEffect(() => {
+    if (!isOpen) return;
+    const el = dialogRef.current;
+    if (!el) return;
+    const focusable = 'button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+    const trap = (e) => {
+      if (e.key !== "Tab") return;
+      const nodes = [...el.querySelectorAll(focusable)];
+      if (!nodes.length) return;
+      const first = nodes[0];
+      const last  = nodes[nodes.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first.focus();
+      }
+    };
+    document.addEventListener("keydown", trap);
+    return () => document.removeEventListener("keydown", trap);
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-labelledby="modal-title"
+      aria-labelledby="ptp-modal-title"
+      className="ptp-modal-overlay"
       onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}
-      style={{
-        position: "fixed", inset: 0, zIndex: 50,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "16px",
-        background: isDark ? "rgba(0,0,0,0.65)" : "rgba(15,23,42,0.50)",
-        backdropFilter: "blur(2px)",
-        WebkitBackdropFilter: "blur(2px)",
-      }}
     >
-      <div style={{
-        width: "100%", maxWidth,
-        background: surface,
-        borderRadius: RADIUS.lg,
-        border: `1px solid ${border}`,
-        boxShadow: isDark
-          ? "0 20px 48px rgba(0,0,0,0.55), 0 4px 16px rgba(0,0,0,0.30)"
-          : "0 20px 48px rgba(0,0,0,0.14), 0 4px 16px rgba(0,0,0,0.06)",
-        overflow: "hidden",
-        display: "flex", flexDirection: "column",
-        maxHeight: "90vh",
-        animation: "modalIn 0.18s cubic-bezier(0.16,1,0.3,1)",
-      }}>
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="ptp-modal-container"
+        style={{ maxWidth }}
+      >
+        {/* ── Accent bar ──────────────────────────────────── */}
+        <div className="ptp-modal-accent-bar" aria-hidden="true" />
 
-        {/* ── Header slate-800 ───────────────────────────────── */}
-        <div style={{
-          padding: "16px 24px",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          borderBottom: `1px solid ${border}`,
-          background: isDark ? "#0f1117" : "#1e293b",
-          flexShrink: 0,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* ── Header ──────────────────────────────────────── */}
+        <div role="banner" className="ptp-modal-header">
+          <div className="ptp-modal-header-left">
             {icon && (
-              <div style={{
-                width: 30, height: 30, borderRadius: RADIUS.sm, flexShrink: 0,
-                background: "rgba(255,255,255,0.08)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
+              <div aria-hidden="true" className="ptp-modal-icon">
                 {icon}
               </div>
             )}
-            <div>
-              <p id="modal-title" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: "-0.01em" }}>
-                {title}
-              </p>
+            <div style={{ minWidth: 0 }}>
+              <p id="ptp-modal-title" className="ptp-modal-title">{title}</p>
               {subtitle && (
-                <p style={{ margin: "2px 0 0", fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 400 }}>
-                  {subtitle}
-                </p>
+                <p className="ptp-modal-subtitle">{subtitle}</p>
               )}
             </div>
           </div>
 
           {!loading && (
             <button
+              type="button"
               onClick={onClose}
               aria-label="Cerrar modal"
-              style={{
-                background: "rgba(255,255,255,0.08)",
-                border: "1px solid rgba(255,255,255,0.14)",
-                borderRadius: RADIUS.sm,
-                padding: "5px",
-                color: "rgba(255,255,255,0.55)",
-                cursor: "pointer",
-                display: "flex",
-                transition: "background 0.12s",
-                flexShrink: 0,
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.14)"; e.currentTarget.style.color = "#fff"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "rgba(255,255,255,0.55)"; }}
+              className="ptp-modal-close-btn"
             >
               <X size={14} strokeWidth={2} />
             </button>
           )}
         </div>
 
-        {/* ── Body ───────────────────────────────────────────── */}
-        <div style={
-          noBodyPadding
-            ? { overflowY: "auto", flex: 1, minHeight: 0 }
-            : { padding: "24px", overflowY: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "16px" }
-        }>
+        {/* ── Body ────────────────────────────────────────── */}
+        <div
+          role="region"
+          aria-label="Contenido del modal"
+          className={noBodyPadding ? "ptp-modal-body ptp-modal-body--no-pad" : "ptp-modal-body"}
+        >
           {children}
         </div>
 
-        {/* ── Footer ─────────────────────────────────────────── */}
+        {/* ── Footer ──────────────────────────────────────── */}
         {onConfirm && (
-          <div style={{
-            padding: "14px 24px",
-            borderTop: `1px solid ${border}`,
-            background: isDark ? "rgba(255,255,255,0.02)" : surfaceAlt,
-            display: "flex", justifyContent: "flex-end", gap: "8px",
-            flexShrink: 0,
-          }}>
+          <div role="contentinfo" className="ptp-modal-footer">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              style={{
-                height: "36px", padding: "0 16px",
-                borderRadius: RADIUS.sm,
-                border: `1px solid ${border}`,
-                background: "transparent",
-                color: textMuted,
-                fontSize: "13px", fontWeight: 500,
-                cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.5 : 1,
-                transition: "background 0.12s",
-              }}
-              onMouseEnter={e => { if (!loading) e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : NEUTRAL.slate100; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+              className="btn-ghost ptp-modal-btn-cancel"
             >
               {cancelLabel}
             </button>
@@ -216,30 +158,12 @@ export default function Modal({
               type="button"
               onClick={onConfirm}
               disabled={loading}
-              style={{
-                height: "36px", padding: "0 16px",
-                borderRadius: RADIUS.sm,
-                border: "none",
-                background: confirmBg,
-                color: "#fff",
-                fontSize: "13px", fontWeight: 600,
-                cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.75 : 1,
-                display: "flex", alignItems: "center", gap: "6px",
-                transition: "filter 0.15s",
-              }}
-              onMouseEnter={e => { if (!loading) e.currentTarget.style.filter = "brightness(0.9)"; }}
-              onMouseLeave={e => { e.currentTarget.style.filter = "none"; }}
+              aria-label={loading ? "Procesando" : confirmLabel}
+              className={`ptp-modal-btn-confirm${danger ? " ptp-modal-btn-confirm--danger" : ""}`}
             >
               {loading ? (
                 <>
-                  <span style={{
-                    width: "12px", height: "12px", flexShrink: 0,
-                    border: "2px solid rgba(255,255,255,0.30)",
-                    borderTopColor: "#fff",
-                    borderRadius: "50%",
-                    animation: "spin 0.7s linear infinite",
-                  }} />
+                  <span aria-hidden="true" className="ptp-spinner" />
                   Procesando…
                 </>
               ) : confirmLabel}
@@ -247,8 +171,6 @@ export default function Modal({
           </div>
         )}
       </div>
-
-      <style>{CSS}</style>
     </div>
   );
 }

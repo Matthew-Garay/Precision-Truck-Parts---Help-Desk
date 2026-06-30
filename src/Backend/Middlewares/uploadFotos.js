@@ -27,6 +27,7 @@
 import multer             from "multer";
 import path               from "path";
 import fs                 from "fs";
+import crypto             from "crypto";
 import { fileURLToPath }  from "url";
 import { fileTypeFromFile } from "file-type";
 import { safeResolvePath }  from "./security.js";
@@ -49,7 +50,7 @@ const storage = multer.diskStorage({
     const ext = file.mimetype === "image/png"  ? ".png"
               : file.mimetype === "image/webp" ? ".webp"
               : ".jpg";
-    const rand = Math.random().toString(36).replace(/[^a-z0-9]/g, "").slice(0, 6).padStart(6, "0");
+    const rand = crypto.randomBytes(6).toString("hex");
     const nombreSeguro = `emp_${idSeguro}_${Date.now()}${rand}${ext}`;
     if (/[^a-zA-Z0-9._-]/.test(nombreSeguro)) return cb(new Error("Nombre de archivo invalido"));
     // Validar que la ruta destino esté dentro de FOTOS_DIR

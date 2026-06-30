@@ -59,13 +59,29 @@ import bcrypt   from "bcryptjs";
 import jwt      from "jsonwebtoken";
 import path     from "path";
 import fs       from "fs";
+import crypto   from "crypto";
 import { safeResolvePath } from "../Middlewares/security.js";
 import { uploadFoto, FOTOS_DIR, FOTOS_REL } from "../Middlewares/uploadFotos.js";
+import { revocarToken } from "../Middlewares/authMiddleware.js";
 
 export { uploadFoto };
 
 const isProd = () => process.env.NODE_ENV === "production";
 const errDetalle = (err) => isProd() ? {} : { detalle: err.message };
+
+export const refreshToken = async (req, res) => {
+  try {
+    const jti   = crypto.randomUUID();
+    const token = jwt.sign(
+      { id_empleado: req.usuario.id_empleado, id_rol: req.usuario.id_rol, jti },
+      process.env.JWT_SECRET,
+      { expiresIn: "12h" }
+    );
+    res.json({ ok: true, token });
+  } catch (err) {
+    res.status(500).json({ error: "Error al renovar token", ...errDetalle(err) });
+  }
+};
 
 export const subirFotoEmpleado = async (req, res) => {
   const id = parseInt(req.params.id, 10);
@@ -105,8 +121,9 @@ export const login = async (req, res) => {
     await Empleado.cerrarSesionesHuerfanas(empleado.id_empleado);
     const id_acceso = await Empleado.registrarEntrada(empleado.id_empleado);
 
+    const jti   = crypto.randomUUID();
     const token = jwt.sign(
-      { id_empleado: empleado.id_empleado, id_rol: empleado.id_rol },
+      { id_empleado: empleado.id_empleado, id_rol: empleado.id_rol, jti },
       process.env.JWT_SECRET,
       { expiresIn: "12h" }
     );
@@ -127,6 +144,8 @@ export const login = async (req, res) => {
         rol:             empleado.id_rol === 1 ? "admin" : "usuario",
         departamento:    empleado.nombre_departamento,
         id_departamento: empleado.id_departamento,
+        id_sucursal:     empleado.id_sucursal || null,
+        sucursal:        empleado.nombre_sucursal || null,
       },
     });
   } catch (err) {
@@ -139,6 +158,15 @@ export const logout = async (req, res) => {
   if (!id_acceso) return res.status(400).json({ error: "id_acceso requerido" });
   try {
     await Empleado.registrarSalida(id_acceso);
+    // Revocar el JWT actual si viene en el header (previene reutilización)
+    const header = req.headers["authorization"];
+    if (header?.startsWith("Bearer ")) {
+      try {
+        const payload = jwt.decode(header.slice(7));
+        if (payload?.jti && payload?.exp)
+          await revocarToken(payload.jti, payload.id_empleado, payload.exp);
+      } catch { /* ignorar errores de decode */ }
+    }
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Error del servidor", ...errDetalle(err) });
@@ -150,7 +178,7 @@ export const getAccesos = async (req, res) => {
   const idNum  = parseInt(id, 10);
   if (isNaN(idNum) || idNum <= 0)
     return res.status(400).json({ error: "ID inválido" });
-  const limit  = Math.min(parseInt(req.query.limit) || 500, 1000);
+  const limit  = Math.min(parseInt(req.query.limit) || 50, 200);
   const page   = Math.max(parseInt(req.query.page)  || 1, 1);
   const offset = (page - 1) * limit;
   try {
@@ -190,6 +218,15 @@ export const getDepartamentos = async (req, res) => {
   }
 };
 
+export const getSucursales = async (req, res) => {
+  try {
+    const sucursales = await Empleado.getSucursales();
+    res.json(sucursales);
+  } catch (err) {
+    res.status(500).json({ error: "Error del servidor", ...errDetalle(err) });
+  }
+};
+
 export const getRoles = async (req, res) => {
   try {
     const roles = await Empleado.getRoles();
@@ -202,7 +239,7 @@ export const getRoles = async (req, res) => {
 export const updateEmpleadoAdmin = async (req, res) => {
   const idNum = parseInt(req.params.id, 10);
   if (isNaN(idNum) || idNum <= 0) return res.status(400).json({ error: "ID inválido" });
-  const { num_empleado, nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, estatus, password_nueva } = req.body;
+  const { num_empleado, nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password_nueva } = req.body;
   try {
     const empleado = await Empleado.findById(idNum);
     if (!empleado) return res.status(404).json({ error: "Empleado no encontrado" });
@@ -215,6 +252,7 @@ export const updateEmpleadoAdmin = async (req, res) => {
       email:           email           || undefined,
       id_rol:          id_rol          ? parseInt(id_rol, 10)          : undefined,
       id_departamento: id_departamento ? parseInt(id_departamento, 10) : undefined,
+      id_sucursal:     id_sucursal     ? parseInt(id_sucursal, 10)     : null,
       estatus:         estatus         || undefined,
       password:        passwordHash,
     });
@@ -227,14 +265,14 @@ export const updateEmpleadoAdmin = async (req, res) => {
 };
 
 export const crearEmpleado = async (req, res) => {
-  const { num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento } = req.body;
+  const { num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento, id_sucursal } = req.body;
   if (!num_empleado || !nombre || !ap_paterno || !email || !password || !id_rol || !id_departamento)
     return res.status(400).json({ error: "Todos los campos son requeridos" });
   if (password.length < 8)
     return res.status(400).json({ error: "La contraseña debe tener al menos 8 caracteres" });
   try {
     const hash = await bcrypt.hash(password, 12);
-    const id = await Empleado.crear({ num_empleado, nombre, ap_paterno, ap_materno: ap_materno || "", email, password: hash, id_rol: parseInt(id_rol), id_departamento: parseInt(id_departamento) });
+    const id = await Empleado.crear({ num_empleado, nombre, ap_paterno, ap_materno: ap_materno || "", email, password: hash, id_rol: parseInt(id_rol), id_departamento: parseInt(id_departamento), id_sucursal: id_sucursal ? parseInt(id_sucursal) : null });
     const nuevo = await Empleado.findById(id);
     res.status(201).json({ ok: true, empleado: nuevo });
   } catch (err) {
@@ -244,7 +282,7 @@ export const crearEmpleado = async (req, res) => {
 };
 
 export const getAllAccesos = async (req, res) => {
-  const limit  = Math.min(parseInt(req.query.limit) || 500, 1000);
+  const limit  = Math.min(parseInt(req.query.limit) || 50, 200);
   const page   = Math.max(parseInt(req.query.page)  || 1, 1);
   const offset = (page - 1) * limit;
   try {
@@ -288,6 +326,9 @@ export const actualizarPerfil = async (req, res) => {
         rol:             actualizado.id_rol === 1 ? "admin" : "usuario",
         departamento:    actualizado.nombre_departamento,
         id_departamento: actualizado.id_departamento,
+        id_sucursal:     actualizado.id_sucursal || null,
+        sucursal:        actualizado.nombre_sucursal || null,
+        nombre_sucursal: actualizado.nombre_sucursal || null,
       },
     });
   } catch (err) {

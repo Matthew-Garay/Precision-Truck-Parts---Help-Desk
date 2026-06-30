@@ -23,7 +23,7 @@ const NAV = [
   { icon: LayoutDashboard, label: "Dashboard",               path: "/usuario/dashboard"        },
   { icon: FilePlus,        label: "Nuevo Reporte",            path: "/usuario/nuevo"            },
   { icon: ClipboardList,   label: "Historial de Incidencias", path: "/usuario/historial"        },
-  { icon: Package,         label: "Gestión de Insumos",      path: "/usuario/insumos"          },
+  { icon: Package,         label: "Gestión de Insumos",       path: "/usuario/insumos"          },
   { icon: BookOpen,        label: "Manuales de Incidencias",  path: "/usuario/manuales"         },
   { icon: Settings,        label: "Configuración",            path: "/usuario/configuracion"    },
 ];
@@ -35,7 +35,7 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
 
       {/* Logo */}
       <div className="flex flex-col items-center justify-center px-4"
-        style={{ borderBottom: `1px solid rgba(255,255,255,0.06)`, paddingTop: "clamp(8px,1.5vh,16px)", paddingBottom: "clamp(8px,1.5vh,16px)" }}>
+        style={{ borderBottom: `1px solid rgba(255,255,255,0.06)`, paddingTop: "clamp(16px,2.5vh,28px)", paddingBottom: "clamp(14px,2vh,24px)" }}>
         <button onClick={() => onNavigate("/usuario/dashboard")} className="focus:outline-none" style={{ cursor: "pointer" }}>
           <img src="/assets/img/logo.png" alt="PTP"
             className="object-contain"
@@ -53,9 +53,10 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
       )}
 
       <p className="px-5 pb-2 font-bold uppercase tracking-[0.18em]"
-        style={{ color: "rgba(255,255,255,0.2)", fontSize: "var(--fs-label)", paddingTop: "clamp(8px,1.5vh,20px)" }}>
+        style={{ color: "rgba(255,255,255,0.45)", fontSize: "var(--fs-label)", paddingTop: "clamp(8px,1.5vh,20px)" }}>
         Menú principal
       </p>
+      <div style={{ height: "1px", background: "rgba(255,255,255,0.18)", marginLeft: "20px", marginRight: "20px", marginBottom: "6px" }} />
 
       <nav className="flex flex-col gap-0.5 flex-1 px-3">
         {NAV.map((item, i) => (
@@ -94,7 +95,7 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
           onClick={onLogout}
         >
           <LogOut size={16} strokeWidth={1.8} style={{ flexShrink: 0 }} />
-          <span style={{ fontSize: "12.5px", fontWeight: 500 }}>Cerrar sesión</span>
+          <span style={{ fontSize: "var(--fs-nav)", fontWeight: 500 }}>Cerrar sesión</span>
         </button>
       </div>
     </div>
@@ -103,8 +104,8 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
 
 function Sidebar({ T, activo, onNavigate, onLogout }) {
   return (
-    <aside className="hidden lg:flex flex-shrink-0 flex-col sticky top-0 h-screen"
-      style={{ width: "var(--sidebar-w)", background: T.sidebar, boxShadow: "2px 0 12px rgba(0,0,0,0.15)" }}>
+    <aside className="hidden lg:flex flex-shrink-0 flex-col sticky top-0 h-screen overflow-hidden"
+      style={{ width: "var(--sidebar-w)", minWidth: 0, background: T.sidebar, boxShadow: "2px 0 12px rgba(0,0,0,0.15)" }}>
       <SidebarContent T={T} activo={activo} onNavigate={onNavigate} onLogout={onLogout} />
     </aside>
   );
@@ -114,9 +115,9 @@ function SidebarMobile({ T, activo, onNavigate, open, onClose, onLogout }) {
   if (!open) return null;
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden" onClick={onClose} />
-      <aside className="fixed top-0 left-0 z-50 flex flex-col h-screen md:hidden"
-        style={{ width: "260px", background: T.sidebar }}>
+      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={onClose} />
+      <aside className="fixed top-0 left-0 z-50 flex flex-col h-screen lg:hidden"
+        style={{ width: "min(260px, 80vw)", background: T.sidebar }}>
         <SidebarContent T={T} activo={activo} onNavigate={onNavigate} onClose={onClose} onLogout={onLogout} />
       </aside>
     </>
@@ -146,12 +147,12 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
     useTicketNotification({
       usuario,
       onNavegar: useCallback((tipo, data) => {
-        if (["ticket:actualizado", "ticket:en_atencion", "solicitud:actualizada"].includes(tipo)) {
+        if (["ticket:actualizado", "ticket:en_atencion", "ticket:confirmado", "solicitud:actualizada"].includes(tipo)) {
           cargarTicketsRef.current?.();
           recargarHistorialRef.current?.();
           if (tipo === "solicitud:actualizada") cargarSolicitudesRef.current?.();
         }
-        if (["ticket:actualizado", "ticket:en_atencion"].includes(tipo) && data?.id_ticket) {
+        if (["ticket:actualizado", "ticket:en_atencion", "ticket:confirmado"].includes(tipo) && data?.id_ticket) {
           const enMemoria = ticketsRef.current.find(tk => tk.id_ticket === data.id_ticket);
           if (enMemoria) {
             setTicketVer(enMemoria);
@@ -174,19 +175,32 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
 
   const activo    = NAV.findIndex(n => location.pathname.startsWith(n.path));
   const activoIdx = activo === -1 ? 0 : activo;
-  const onNavigate = (path) => { setTicketVer(null); setSolicitudVer(null); navigate(path); };
+  const onNavigate = (path) => {
+    // Solo limpiar ticket/solicitud si navegamos a una sección diferente
+    if (path !== location.pathname) {
+      setTicketVer(null);
+      setSolicitudVer(null);
+    }
+    navigate(path);
+  };
 
   const solicitudVerRef = useRef(null);
+  const skipResetRef    = useRef(false);
 
   useEffect(() => {
-    // Solo resetear si no hay una solicitud pendiente de mostrar
+    if (skipResetRef.current) {
+      skipResetRef.current = false;
+      return;
+    }
     if (solicitudVerRef.current) {
       setSolicitudVer(solicitudVerRef.current);
       solicitudVerRef.current = null;
       return;
     }
-    setTicketVer(null);
+    // Solo limpiar vistas si no hay un ticket abierto desde historial
+    if (!ticketVer) setTicketVer(null);
     setSolicitudVer(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   const nombreCompleto = [usuario.nombre, usuario.ap_paterno, usuario.ap_materno].filter(Boolean).join(" ") || "-";
@@ -199,8 +213,9 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
     if (!usuario?.id_empleado) return;
     apiFetch(`/api/tickets/empleado/${usuario.id_empleado}`)
       .then(r => r.json())
-      .then(data => {
-        if (!Array.isArray(data)) return;
+      .then(res => {
+        const data = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : null;
+        if (!data) return;
         setErrorRed(false);
         setUltimaActualizacion(new Date());
         setTickets(prev => JSON.stringify(prev) === JSON.stringify(data) ? prev : data);
@@ -261,7 +276,7 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
 
   return (
     <div className="flex h-screen w-full overflow-hidden"
-      style={{ fontFamily: "'Inter','Segoe UI',sans-serif", background: T.bg }}>
+      style={{ fontFamily: "var(--font-sans, 'Inter','Segoe UI',sans-serif)", background: T.bg }}>
 
       <Sidebar T={T} activo={activoIdx} onNavigate={onNavigate} onLogout={onLogout} />
       <SidebarMobile T={T} activo={activoIdx} onNavigate={onNavigate}
@@ -279,7 +294,7 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
             </div>
           )}
           <div className="flex items-center gap-2 min-w-0">
-            <button className="md:hidden flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0"
+            <button className="lg:hidden flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0"
               style={{ background: T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}
               onClick={() => setSidebarOpen(true)}>
               <Menu size={17} />
@@ -339,9 +354,23 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
           ) : solicitudVer ? (
             <VistaSolicitud T={T} id_solicitud={solicitudVer.id_solicitud} onBack={volverDeSolicitud} />
           ) : activoIdx === 1 ? (
-            <NuevoReporte T={T} solicitante={nombreCompleto} area={departamento} usuario={usuario} onSuccess={irDashboard} />
+            <NuevoReporte T={T} solicitante={nombreCompleto} area={departamento} usuario={usuario}
+              onSuccess={irDashboard}
+              onVerTicket={(id_ticket) => {
+                apiFetch(API_ROUTES.TICKET(id_ticket))
+                  .then(r => r.ok ? r.json() : null)
+                  .then(t => {
+                    if (t?.id_ticket) {
+                      skipResetRef.current = true;
+                      setTicketVer(t);
+                      navigate('/usuario/dashboard');
+                    } else irDashboard();
+                  })
+                  .catch(irDashboard);
+              }}
+            />
           ) : activoIdx === 2 ? (
-            <HistorialIncidencias T={T} usuario={usuario} onVerTicket={setTicketVer} onRecargarRef={recargarHistorialRef} />
+            <HistorialIncidencias T={T} usuario={usuario} onVerTicket={(t) => { skipResetRef.current = true; setTicketVer(t); }} onRecargarRef={recargarHistorialRef} />
           ) : activoIdx === 3 ? (
             <SolicitudInsumo T={T} usuario={usuario} />
           ) : activoIdx === 4 ? (

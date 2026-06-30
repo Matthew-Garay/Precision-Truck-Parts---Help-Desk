@@ -2,7 +2,7 @@
  * mailer.js
  *
  * Configura el servicio de envio de correos electronicos mediante nodemailer
- * y expone dos funciones para los dos tipos de notificacion del sistema.
+ * y expone la funcion para el envio del codigo de recuperacion de contrasena.
  *
  * Variables de entorno requeridas:
  *   SMTP_HOST - servidor SMTP (ej. smtp.gmail.com)
@@ -11,15 +11,11 @@
  *   SMTP_PASS - contrasena o token de aplicacion SMTP
  *   SMTP_FROM - direccion remitente que aparecera en el correo
  *
- * Si SMTP_USER no esta configurado las funciones retornan sin enviar nada,
+ * Si SMTP_USER no esta configurado la funcion retorna sin enviar nada,
  * lo que permite ejecutar el sistema en desarrollo sin servidor de correo.
  *
- * El logo de la empresa se lee del disco de forma diferida (lazy) la primera vez
- * que se necesita y se cachea en memoria para las llamadas siguientes.
- *
  * Funciones exportadas:
- *   enviarNotificacionTicket  - notifica al empleado cuando su ticket cambia de estatus
- *   enviarCodigoRecuperacion  - envia el codigo de 6 digitos para restablecer contrasena
+ *   enviarCodigoRecuperacion - envia el codigo de 6 digitos para restablecer contrasena
  */
 import nodemailer from "nodemailer";
 import fs         from "fs";
@@ -36,7 +32,8 @@ async function getLogoB64() {
     const logoPath = path.resolve(__dirname, "../../../public/assets/img/log.png");
     const buf = await fs.promises.readFile(logoPath);
     LOGO_B64 = buf.toString("base64");
-  } catch {
+  } catch (err) {
+    console.error("[mailer] No se pudo cargar el logo:", err.message);
     LOGO_B64 = "";
   }
   return LOGO_B64;
@@ -137,68 +134,6 @@ const wrap = (body, logoSrc) => `
   </table>
 </body>
 </html>`;
-
-// ── Notificación de cambio de estatus de ticket ───────────────
-export async function enviarNotificacionTicket({ to, nombre, folio, titulo, estatus, comentario }) {
-  if (!process.env.SMTP_USER) return;
-
-  const logoB64  = await getLogoB64();
-  const logoSrc  = logoB64 ? `data:image/png;base64,${logoB64}` : "";
-
-  const colorEstatus = estatus === "Resuelto" ? "#16a34a" : estatus === "No Resuelto" ? "#dc2626" : "#ea580c";
-  const bgEstatus    = estatus === "Resuelto" ? "#dcfce7" : estatus === "No Resuelto" ? "#fee2e2"  : "#ffedd5";
-  const labelEstatus = estatus === "Resuelto" ? "Resuelto" : estatus === "No Resuelto" ? "No Resuelto" : "En proceso";
-
-  const body = `
-    <p style="color:#1D1D1B;font-size:15px;font-weight:700;margin:0 0 4px;">Estimado(a) ${escHtml(nombre)},</p>
-    <p style="color:#6B7280;font-size:13px;margin:0 0 24px;">Su ticket ha sido actualizado en el sistema HelpDesk.</p>
-
-    <table width="100%" cellpadding="0" cellspacing="0"
-      style="background:#F9FAFB;border:1px solid #E5E7EB;margin-bottom:20px;">
-      <tr><td style="height:3px;background:linear-gradient(90deg,#F47920,#CC5200);"></td></tr>
-      <tr>
-        <td style="padding:18px 22px;">
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td>
-                <p style="color:#9CA3AF;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 3px;">Folio</p>
-                <p style="color:#F47920;font-family:monospace;font-size:17px;font-weight:900;margin:0;">${escHtml(folio)}</p>
-              </td>
-              <td align="right">
-                <span style="display:inline-block;background:${bgEstatus};color:${colorEstatus};
-                             border:1px solid ${colorEstatus};padding:4px 14px;
-                             font-size:11px;font-weight:700;">
-                  ${labelEstatus}
-                </span>
-              </td>
-            </tr>
-          </table>
-          <div style="height:1px;background:#E5E7EB;margin:14px 0;"></div>
-          <p style="color:#9CA3AF;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 4px;">Titulo</p>
-          <p style="color:#1D1D1B;font-size:13px;font-weight:600;margin:0;">${escHtml(titulo)}</p>
-        </td>
-      </tr>
-    </table>
-
-    ${comentario ? `
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
-      <tr>
-        <td style="border-left:4px solid #F47920;padding:12px 16px;background:#FFF7ED;">
-          <p style="color:#9CA3AF;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 5px;">Comentario del tecnico</p>
-          <p style="color:#374151;font-size:13px;line-height:1.6;margin:0;">${escHtml(comentario)}</p>
-        </td>
-      </tr>
-    </table>` : ""}
-
-    <p style="color:#9CA3AF;font-size:11px;margin:0;line-height:1.6;">Ingrese al sistema para ver el detalle completo y calificar la atención recibida.</p>`;
-
-  await transporter.sendMail({
-    from:    process.env.SMTP_FROM,
-    to,
-    subject: `Ticket ${folio} - ${estatus} | Precision Truck Parts HelpDesk`,
-    html:    wrap(body, logoSrc),
-  });
-}
 
 // ── Código de recuperación de contraseña ─────────────────────
 export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
@@ -351,7 +286,7 @@ export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
   await transporter.sendMail({
     from:    process.env.SMTP_FROM,
     to,
-    subject: "Codigo de recuperacion de contraseña",
+    subject: "=?UTF-8?Q?C=C3=B3digo_de_recuperaci=C3=B3n_de_contrase=C3=B1a?=",
     html,
     attachments: logoB64 ? [{
       filename:    "logo.png",

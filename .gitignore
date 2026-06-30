@@ -1,16 +1,110 @@
+# ════════════════════════════════════════════════
+#   PrecisionTrucks HelpDesk — .gitignore
+#   Arquitectura: Monorepo (Vite + Express + MySQL)
+# ════════════════════════════════════════════════
+
+# ── Dependencias ─────────────────────────────────
 node_modules/
+.pnp
+.pnp.js
+
+# ── Build outputs ────────────────────────────────
+dist/
+dist-ssr/
+build/
+*.tsbuildinfo
+
+# ── Variables de entorno (NUNCA versionar) ───────
 .env
 .env.local
 .env.*.local
-dist/
-ngrok.exe
-*.exe
-*.log
-npm-debug.log*
-storage/Evidencias_Tickets/
-storage/Fotos de Perfil/
-storage/Manuales/
-storage/_tmp_upload/
-# Estado de alertas en tiempo de ejecución — no versionar
+.env.production
+.env.staging
+
+# ── Estado en tiempo de ejecución ────────────────
 src/Backend/Workers/alert_state.json
 src/Backend/Workers/alert_state.json.tmp
+src/Backend/Workers/reset_tokens.json
+src/Backend/Workers/reset_tokens.json.tmp
+
+# ── Storage (archivos subidos por usuarios) ──────
+storage/Evidencias_Tickets/*
+storage/Fotos de Perfil/*
+storage/Insumos/*
+storage/Manuales/*
+storage/_tmp_upload/*
+# Mantener estructura de carpetas
+!storage/Evidencias_Tickets/.gitkeep
+!storage/Fotos de Perfil/.gitkeep
+!storage/Insumos/.gitkeep
+!storage/Manuales/.gitkeep
+!storage/_tmp_upload/.gitkeep
+
+# ── Logs ─────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ── Cache de herramientas ─────────────────────────
+.vite/
+.eslintcache
+.stylelintcache
+*.cache
+
+# ── Editores e IDEs ───────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.kate-swp
+
+# ── Sistema Operativo ─────────────────────────────
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# ── Binarios y ejecutables ────────────────────────
+*.exe
+*.dll
+*.so
+*.dylib
+
+# ── Certificados y llaves ─────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+
+# ── Cobertura de tests ────────────────────────────
+coverage/
+.nyc_output/
+
+# ── Misc ──────────────────────────────────────────
+ngrok.exe
+*.local

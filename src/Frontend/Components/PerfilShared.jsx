@@ -191,7 +191,7 @@ export function procesarYSubirFoto(src, crop, idEmpleado, onSuccess) {
       canvas.toBlob(async blob => {
         if (!blob) { reject(new Error("canvas.toBlob fallo")); return; }
         try {
-          const token = sessionStorage.getItem("token");
+          const token = sessionStorage.getItem("_tk");
           const fd = new FormData();
           fd.append("foto", blob, "foto.jpg");
           const res = await fetch(UPLOAD_PATH, {
@@ -214,7 +214,20 @@ export function procesarYSubirFoto(src, crop, idEmpleado, onSuccess) {
 }
 
 // -- Generador de PDF de accesos -------------------------------
-export function generarPDFAccesos({ accesos, usuario, mesFiltro = "Todos", anioFiltro = "Todos" }) {
+export function generarPDFAccesos({ accesos, usuario, fechaInicio, fechaFin }) {
+  // Filtrar por rango de fechas si se proporcionan
+  if (fechaInicio || fechaFin) {
+    const desde = fechaInicio ? new Date(fechaInicio + "T00:00:00") : null;
+    const hasta = fechaFin    ? new Date(fechaFin    + "T23:59:59") : null;
+    accesos = accesos.filter(a => {
+      if (!a.fecha_entrada) return true;
+      const d = new Date(a.fecha_entrada);
+      if (desde && d < desde) return false;
+      if (hasta && d > hasta) return false;
+      return true;
+    });
+  }
+  const mesFiltro = "Todos", anioFiltro = "Todos";
   const origin = window.location.origin;
   const nombreCompleto = [usuario.nombre, usuario.ap_paterno, usuario.ap_materno].filter(Boolean).join(" ");
 
@@ -229,7 +242,10 @@ export function generarPDFAccesos({ accesos, usuario, mesFiltro = "Todos", anioF
   const durPromedio = duraciones.length > 0 ? Math.round(duraciones.reduce((s, d) => s + d, 0) / duraciones.length) : 0;
   const durMax      = duraciones.length > 0 ? Math.max(...duraciones) : 0;
 
-  const periodoLabel = [mesFiltro !== "Todos" ? mesFiltro : "", anioFiltro !== "Todos" ? anioFiltro : ""].filter(Boolean).join(" ") || "Todos";
+  const periodoLabel = fechaInicio || fechaFin
+    ? [fechaInicio ? new Date(fechaInicio + "T00:00:00").toLocaleDateString("es-MX", { day:"2-digit", month:"long", year:"numeric" }) : "Inicio",
+       fechaFin    ? new Date(fechaFin    + "T00:00:00").toLocaleDateString("es-MX", { day:"2-digit", month:"long", year:"numeric" }) : "Hoy"].join(" — ")
+    : "Todos los registros";
 
   const filas = accesos.map((a, i) => {
     const entrada = a.fecha_entrada ? new Date(a.fecha_entrada) : null;
