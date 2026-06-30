@@ -44,6 +44,8 @@ import UsuarioDashboard from './Frontend/Pages/Usuario/Dashboard'
 import API_BASE, { setToken, clearSession, apiFetch } from './Frontend/Config/api'
 import ErrorBoundary   from './Frontend/Components/ErrorBoundary'
 import PantallaSalida  from './Frontend/Components/PantallaSalida'
+import PrintTicketPage    from './Frontend/Pages/PrintTicketPage'
+import PrintSolicitudPage from './Frontend/Pages/PrintSolicitudPage'
 import { ToastProvider } from './Frontend/Components/Feedback.jsx'
 import { ThemeProvider } from './Frontend/Config/ThemeContext.jsx'
 import { useTheme } from './Frontend/Config/themeContext.js'
@@ -161,6 +163,10 @@ function App() {
 
       {/* Usuario - un solo componente persistente para todas las sub-rutas */}
       <Route path="/usuario/*" element={<RutaUsuario onLogout={handleLogout} onUsuarioActualizado={handleUsuarioActualizado} usuarioActual={usuarioActual} />} />
+
+      {/* Rutas standalone para impresión — sin guards de sesión */}
+      <Route path="/print/ticket/:folio"    element={<PrintTicketPage />} />
+      <Route path="/print/solicitud/:folio" element={<PrintSolicitudPage />} />
 
       {/* Raíz → redirige según sesión */}
       <Route path="/" element={<Navigate to={(() => {

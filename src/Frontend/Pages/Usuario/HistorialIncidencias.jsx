@@ -36,7 +36,10 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
       setCargando(true);
       return apiFetch(`/api/tickets/empleado/${usuario.id_empleado}`)
         .then(r => r.json())
-        .then(d => { if (Array.isArray(d)) setTickets(prev => JSON.stringify(prev) === JSON.stringify(d) ? prev : d); })
+        .then(d => {
+          const arr = Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : null;
+          if (arr) setTickets(prev => JSON.stringify(prev) === JSON.stringify(arr) ? prev : arr);
+        })
         .catch(() => {})
         .finally(() => setCargando(false));
     };
@@ -66,6 +69,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
 
   const limpiar = () => { setFiltros({ busqueda:"", estatus:"Todos", prioridad:"Todos", categoria:"Todos" }); setPagina(1); };
   const hayFiltros = filtros.busqueda || filtros.estatus!=="Todos" || filtros.prioridad!=="Todos" || filtros.categoria!=="Todos";
+  const handleFiltroChange = (k, v) => { setFiltros(p => ({...p,[k]:v})); setPagina(1); };
 
   const filtrados = tickets.filter(t => {
     if (filtros.busqueda) {
@@ -160,6 +164,14 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
     </body></html>`;
     setModalReporte(false);
     const win = window.open("","_blank","width=900,height=700");
+    if (!win) {
+      const aviso = document.createElement("div");
+      aviso.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#1D1D1B;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;border-left:4px solid #F47920;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
+      aviso.textContent = "Permite ventanas emergentes para generar el reporte.";
+      document.body.appendChild(aviso);
+      setTimeout(() => aviso.remove(), 5000);
+      return;
+    }
     win.document.write(html); win.document.close();
     win.onload = () => { win.focus(); win.print(); };
   };
@@ -295,7 +307,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
         </div>
 
         {/* ── Filtros ── */}
-        <FiltrosToolbar campos={camposFiltro} valores={filtros} onChange={(k,v) => setFiltros(p=>({...p,[k]:v}))} onLimpiar={limpiar} T={T}>
+        <FiltrosToolbar campos={camposFiltro} valores={filtros} onChange={handleFiltroChange} onLimpiar={limpiar} T={T}>
           <button onClick={() => setModalReporte(true)}
             style={{ display:"flex", alignItems:"center", gap:"5px", padding:"5px 12px", borderRadius:"4px",
               fontSize:"12px", fontWeight:700, background:"#F47920", color:"#fff", border:"none", cursor:"pointer",

@@ -32,6 +32,11 @@
  */
 import { apiFetch, API_ROUTES } from "./api.js";
 
+// ── Preferencia de mute (persiste en localStorage) ───────────
+const MUTE_KEY = "ptp_notif_mute";
+export const isMuted  = ()        => localStorage.getItem(MUTE_KEY) === "1";
+export const setMuted = (val)     => val ? localStorage.setItem(MUTE_KEY,"1") : localStorage.removeItem(MUTE_KEY);
+
 // ── AudioContext compartido ────────────────────────────────────
 // Se reutiliza la misma instancia para no saturar el límite del navegador.
 let _audioCtx = null;
@@ -123,6 +128,14 @@ const SOUND_CONFIG = {
     vol: 0.07,
     tipo: "sine",
   },
+  "ticket:cancelado": {
+    notas: [
+      { freq: 500, inicio: 0,    dur: 0.12 },
+      { freq: 380, inicio: 0.15, dur: 0.14 },
+    ],
+    vol: 0.08,
+    tipo: "triangle",
+  },
   "insumo:stock_critico": {
     notas: [
       { freq: 380, inicio: 0,    dur: 0.14 },
@@ -156,6 +169,7 @@ const SOUND_CONFIG = {
  * @param {string} tipo — clave del evento Socket.io
  */
 export function playNotificationSound(tipo) {
+  if (isMuted()) return;
   try {
     const ctx = getAudioCtx();
     const cfg = SOUND_CONFIG[tipo] ?? SOUND_CONFIG.default;
@@ -240,7 +254,7 @@ export const NOTIFICATION_DISPLAY = {
     toastTipo: (d) =>
       d.estatus === "Resuelto"
         ? "success"
-        : d.estatus === "No Resuelto"
+        : d.estatus === "No Resuelto" || d.estatus === "Rechazado"
         ? "error"
         : "info",
     titulo: (d) => `Solicitud de insumo: ${d.estatus}`,
@@ -250,6 +264,11 @@ export const NOTIFICATION_DISPLAY = {
     toastTipo: "success",
     titulo: () => "Reporte recibido",
     mensaje: (d) => `Tu ticket #${d.folio_ticket} fue registrado. Prioridad: ${d.prioridad}`,
+  },
+  "ticket:cancelado": {
+    toastTipo: "warning",
+    titulo: () => "Ticket cancelado",
+    mensaje: (d) => `#${d.folio_ticket} — ${d.titulo ?? ""} fue cancelado`,
   },
   "insumo:stock_critico": {
     toastTipo: "warning",

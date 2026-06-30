@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import API, { apiFetch } from "../../Config/api";
 import { RADIUS, SLATE } from "../../Config/DesignSystem";
-import { usePdfCover } from "../../Components/usePdfCover";
+import { usePdfCover } from "../../Components/hooks/usePdfCover";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 
 const BRAND = "#F47920";

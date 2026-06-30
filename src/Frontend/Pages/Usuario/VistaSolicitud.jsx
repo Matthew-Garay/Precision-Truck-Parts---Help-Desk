@@ -1,16 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ArrowLeft, Package, User, Calendar, Tag, AlertTriangle,
-  CheckCircle2, XCircle, Clock, Loader2, ChevronDown
+  CheckCircle2, XCircle, Clock, Loader2, ChevronDown, Check, X as XIcon
 } from "lucide-react";
-import { apiFetch, API_ROUTES } from "../../Config/api";
-import API from "../../Config/api";
+import { apiFetch, API_ROUTES, getToken } from "../../Config/api";
 
 const ESTATUS_META = {
   "Pendiente":   { color: "#d97706", bgL: "#fef3c7", bgD: "rgba(217,119,6,0.15)",  borderL: "#fde68a", borderD: "rgba(217,119,6,0.3)",   icon: Clock        },
   "En proceso":  { color: "#3b82f6", bgL: "#eff6ff", bgD: "rgba(59,130,246,0.15)", borderL: "#bfdbfe", borderD: "rgba(59,130,246,0.3)",  icon: Loader2      },
   "Resuelto":    { color: "#16a34a", bgL: "#dcfce7", bgD: "rgba(22,163,74,0.15)",  borderL: "#86efac", borderD: "rgba(22,163,74,0.3)",   icon: CheckCircle2 },
   "No Resuelto": { color: "#dc2626", bgL: "#fee2e2", bgD: "rgba(220,38,38,0.15)",  borderL: "#fca5a5", borderD: "rgba(220,38,38,0.3)",   icon: XCircle      },
+  "Rechazado":   { color: "#7c3aed", bgL: "#ede9fe", bgD: "rgba(124,58,237,0.15)", borderL: "#c4b5fd", borderD: "rgba(124,58,237,0.3)",  icon: XCircle      },
 };
 
 const PRIO_META = {
@@ -21,7 +21,7 @@ const PRIO_META = {
 };
 
 const PASOS = ["Pendiente", "En proceso", "Resuelto"];
-const ESTATUS_OPTS = ["En proceso", "Resuelto", "No Resuelto"];
+const ESTATUS_OPTS = ["En proceso", "Resuelto", "No Resuelto", "Rechazado"];
 
 export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBack }) {
   const isDark  = T?.isDark ?? false;
@@ -33,16 +33,31 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
   const [updating,  setUpdating]  = useState(false);
   const [guardado,  setGuardado]  = useState(false);
   const [dropdown,  setDropdown]  = useState(false);
+  // aprobacion parcial: mapa id_solicitud_insumo -> true/false
+  const [aprobados,    setAprobados]    = useState({});
+  const [guardandoItems, setGuardandoItems] = useState(false);
+  const [itemsGuardados, setItemsGuardados] = useState(false);
 
-  useEffect(() => {
+  const cargar = useCallback(() => {
     if (!id_solicitud) return;
     setLoading(true);
     apiFetch(API_ROUTES.SOLICITUD(id_solicitud))
       .then(r => r.json())
-      .then(d => { if (d.error) setError(d.error); else setSolicitud(d); })
+      .then(d => {
+        if (d.error) { setError(d.error); return; }
+        setSolicitud(d);
+        // Inicializar mapa de aprobados: null/undefined => true (aprobado por defecto)
+        const mapa = {};
+        (d.detalle || []).forEach(item => {
+          mapa[item.id_solicitud_insumo] = item.aprobado == null ? true : Boolean(item.aprobado);
+        });
+        setAprobados(mapa);
+      })
       .catch(() => setError("Error al cargar la solicitud"))
       .finally(() => setLoading(false));
   }, [id_solicitud]);
+
+  useEffect(() => { cargar(); }, [cargar]);
 
   const cambiarEstatus = async (nuevoEstatus) => {
     if (!solicitud) return;
@@ -60,6 +75,29 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
       }
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const guardarAprobados = async () => {
+    if (!solicitud) return;
+    setGuardandoItems(true);
+    try {
+      const items = (solicitud.detalle || []).map(d => ({
+        id_solicitud_insumo: d.id_solicitud_insumo,
+        aprobado: aprobados[d.id_solicitud_insumo] ? 1 : 0,
+      }));
+      const r = await apiFetch(API_ROUTES.SOLICITUD_ITEMS(solicitud.id_solicitud), {
+        method: "PATCH",
+        body: { items },
+      });
+      if (r.ok) {
+        setItemsGuardados(true);
+        setTimeout(() => setItemsGuardados(false), 2500);
+        // Recargar para reflejar cambios
+        cargar();
+      }
+    } finally {
+      setGuardandoItems(false);
     }
   };
 
@@ -105,11 +143,24 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
 
   const pasoActual = solicitud.estatus === "Resuelto" ? 2
     : solicitud.estatus === "En proceso" ? 1 : 0;
-  const cerrado = solicitud.estatus === "Resuelto" || solicitud.estatus === "No Resuelto";
+  const cerrado = solicitud.estatus === "Resuelto" || solicitud.estatus === "No Resuelto" || solicitud.estatus === "Rechazado";
+
+  const aprobadosCount = Object.values(aprobados).filter(Boolean).length;
+  const totalItems = solicitud.detalle?.length ?? 0;
 
   const EstatusIcon = estatusMeta.icon;
   const fmtFecha = (d) => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
   const fmtFechaHora = (d) => d ? new Date(d).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }) : "—";
+
+  const generarReportePrintView = () => {
+    const token = getToken?.() || sessionStorage.getItem("token") || "";
+    const url = `/print/solicitud/${solicitud.folio_solicitud}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+    const win = window.open(url, "_blank", "width=1000,height=800");
+    if (!win) {
+      // Fallback: generar HTML inline
+      generarReporte();
+    }
+  };
 
   const generarReporte = () => {
     const origin   = window.location.origin;
@@ -334,7 +385,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                 </span>
               </div>
 
-              <h1 className="text-sm sm:text-lg md:text-xl font-black leading-snug flex-1" style={{ color: T?.text }}>
+              <h1 className="text-sm font-black leading-snug flex-1" style={{ color: T?.text }}>
                 Solicitud de Insumos
               </h1>
 
@@ -412,38 +463,115 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                   <div className="w-1 h-3.5 rounded-full flex-shrink-0" style={{ background: orange }} />
                   <p className="text-[10px] font-black uppercase tracking-widest" style={labelStyle}>Insumos Solicitados</p>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: T?.bg, color: T?.textMuted, border: `1px solid ${T?.border}` }}>
-                  {solicitud.detalle?.length ?? 0} ítem{solicitud.detalle?.length !== 1 ? "s" : ""}
-                </span>
+                <div className="flex items-center gap-2">
+                  {esAdmin && !cerrado && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: isDark ? "rgba(22,163,74,0.12)" : "#dcfce7", color: "#16a34a", border: "1px solid rgba(22,163,74,0.3)" }}>
+                      {aprobadosCount}/{totalItems} aprobados
+                    </span>
+                  )}
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: T?.bg, color: T?.textMuted, border: `1px solid ${T?.border}` }}>
+                    {totalItems} ítem{totalItems !== 1 ? "s" : ""}
+                  </span>
+                </div>
               </div>
+
+              {/* Aviso aprobación parcial — solo admin, solicitud abierta */}
+              {esAdmin && !cerrado && (
+                <div className="px-4 py-2 flex items-center gap-2"
+                  style={{ background: isDark ? "rgba(59,130,246,0.06)" : "#eff6ff", borderBottom: `1px solid ${T?.border}` }}>
+                  <p className="text-[10px] flex-1" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#64748b" }}>
+                    Marca los insumos a aprobar. Al resolver, solo se descontará el stock de los marcados.
+                  </p>
+                  <button
+                    onClick={() => {
+                      const todosAprobados = (solicitud.detalle || []).every(d => aprobados[d.id_solicitud_insumo] !== false);
+                      const nuevoVal = !todosAprobados;
+                      const nuevo = {};
+                      (solicitud.detalle || []).forEach(d => { nuevo[d.id_solicitud_insumo] = nuevoVal; });
+                      setAprobados(nuevo);
+                    }}
+                    className="text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0 transition-all hover:brightness-110"
+                    style={{ background: isDark ? "rgba(255,255,255,0.06)" : T?.surfaceAlt, color: T?.textMuted, border: `1px solid ${T?.border}` }}>
+                    {(solicitud.detalle || []).every(d => aprobados[d.id_solicitud_insumo] !== false) ? "Desmarcar todos" : "Aprobar todos"}
+                  </button>
+                </div>
+              )}
 
               <div className="divide-y" style={{ borderColor: isDark ? "rgba(255,255,255,0.07)" : T?.border }}>
                 {!solicitud.detalle?.length ? (
                   <p className="px-4 py-8 text-center text-xs" style={labelStyle}>Sin insumos registrados</p>
-                ) : solicitud.detalle.map((d, i) => (
-                  <div key={d.id_solicitud_insumo ?? i} className="px-4 py-3 flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: isDark ? "rgba(244,121,32,0.10)" : "#fff7ed", border: "1px solid rgba(244,121,32,0.2)" }}>
-                      <Package size={15} style={{ color: orange }} />
+                ) : solicitud.detalle.map((d, i) => {
+                  const aprobado = aprobados[d.id_solicitud_insumo] !== false;
+                  return (
+                    <div key={d.id_solicitud_insumo ?? i}
+                      className="px-4 py-3 flex items-center gap-3 transition-all"
+                      style={{ opacity: esAdmin && !cerrado && !aprobado ? 0.45 : 1 }}>
+
+                      {/* Checkbox admin solicitud abierta */}
+                      {esAdmin && !cerrado && (
+                        <button
+                          onClick={() => setAprobados(prev => ({ ...prev, [d.id_solicitud_insumo]: !aprobado }))}
+                          className="flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all active:scale-90"
+                          style={{
+                            background: aprobado ? "#16a34a" : isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9",
+                            border: `2px solid ${aprobado ? "#16a34a" : isDark ? "rgba(255,255,255,0.2)" : "#d1d5db"}`,
+                            boxShadow: aprobado ? "0 1px 4px rgba(22,163,74,0.4)" : "none",
+                          }}>
+                          {aprobado && <Check size={11} color="#fff" strokeWidth={3} />}
+                        </button>
+                      )}
+
+                      {/* Indicador estado en solicitud cerrada */}
+                      {cerrado && d.aprobado != null && (
+                        <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
+                          style={{ background: d.aprobado ? "rgba(22,163,74,0.15)" : "rgba(220,38,38,0.15)" }}>
+                          {d.aprobado
+                            ? <Check size={10} style={{ color: "#16a34a" }} strokeWidth={3} />
+                            : <XIcon size={10} style={{ color: "#dc2626" }} strokeWidth={3} />}
+                        </div>
+                      )}
+
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: isDark ? "rgba(244,121,32,0.10)" : "#fff7ed", border: "1px solid rgba(244,121,32,0.2)" }}>
+                        <Package size={15} style={{ color: orange }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-bold truncate" style={valStyle}>{d.nombre}</p>
+                        <p className="text-[11px] mt-0.5" style={labelStyle}>
+                          {[d.marca, d.modelo].filter(Boolean).join(" · ") || "Sin especificaciones"}
+                          {d.num_serie ? ` · S/N: ${d.num_serie}` : ""}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-[18px] font-black leading-none" style={{ color: orange }}>×{d.cantidad}</p>
+                        <p className="text-[9px] font-bold uppercase tracking-wider mt-0.5"
+                          style={{ color: d.stock > 0 ? "#16a34a" : "#dc2626" }}>
+                          {d.stock > 0 ? `Stock: ${d.stock}` : "Agotado"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-bold truncate" style={valStyle}>{d.nombre}</p>
-                      <p className="text-[11px] mt-0.5" style={labelStyle}>
-                        {[d.marca, d.modelo].filter(Boolean).join(" · ") || "Sin especificaciones"}
-                        {d.num_serie ? ` · S/N: ${d.num_serie}` : ""}
-                      </p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-[18px] font-black leading-none" style={{ color: orange }}>×{d.cantidad}</p>
-                      <p className="text-[9px] font-bold uppercase tracking-wider mt-0.5"
-                        style={{ color: d.stock > 0 ? "#16a34a" : "#dc2626" }}>
-                        {d.stock > 0 ? `Stock: ${d.stock}` : "Agotado"}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+
+              {/* Botón guardar selección — solo admin, solicitud abierta */}
+              {esAdmin && !cerrado && (
+                <div className="px-4 py-3" style={{ borderTop: `1px solid ${T?.border}` }}>
+                  {itemsGuardados && (
+                    <p className="text-[10px] font-semibold mb-1.5 flex items-center gap-1" style={{ color: "#16a34a" }}>
+                      <CheckCircle2 size={10} /> Selección guardada
+                    </p>
+                  )}
+                  <button onClick={guardarAprobados} disabled={guardandoItems}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[11px] font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
+                    style={{ background: isDark ? "rgba(22,163,74,0.12)" : "#dcfce7", color: "#16a34a", border: "1px solid rgba(22,163,74,0.3)" }}>
+                    <Check size={12} strokeWidth={2.5} />
+                    {guardandoItems ? "Guardando..." : `Guardar selección (${aprobadosCount}/${totalItems})`}
+                  </button>
+                </div>
+              )}
 
               {/* Total */}
               <div className="px-4 py-2.5 flex items-center justify-between"
@@ -604,7 +732,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
               <div className="px-5 py-5">
                 <p className="text-[11px] mb-3" style={{ color: T?.textFaint }}>Genera un PDF con toda la información de esta solicitud.</p>
                 <button
-                  onClick={generarReporte}
+                  onClick={generarReportePrintView}
                   className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-xs font-bold transition-all active:scale-95"
                   style={{
                     background: isDark ? "rgba(220,38,38,0.12)" : "#fef2f2",

@@ -32,16 +32,31 @@ import { Router }      from "express";
 import rateLimit       from "express-rate-limit";
 import { csrfProtection } from "../Middlewares/security.js";
 import { requireAuth, requireAdmin } from "../Middlewares/authMiddleware.js";
-import { validate, schemaCrearTicket, schemaActualizarTicket, schemaCalificarTicket, schemaEditarTicket } from "../Middlewares/validate.js";
-import { crearTicket, getTicketsByEmpleado, getImagenesTicket, agregarImagenesTicket, eliminarImagenTicket, getAllTickets, actualizarTicket, calificarTicket, editarTicketUsuario, getMetricas, getAdmins, getReporte, getTicketById } from "../Controllers/ticketsController.js";
+import { validate, schemaCrearTicket, schemaActualizarTicket, schemaCalificarTicket, schemaEditarTicket, schemaFiltrosTickets } from "../Middlewares/validate.js";
+import { crearTicket, getTicketsByEmpleado, getImagenesTicket, agregarImagenesTicket, eliminarImagenTicket, getAllTickets, actualizarTicket, calificarTicket, editarTicketUsuario, getMetricas, getAdmins, getReporte, getTicketById, getTicketByFolio, cancelarTicket, getRendimientoTecnicos, getHistorialTicket } from "../Controllers/ticketsController.js";
 import { uploadEvidencias } from "../Middlewares/uploadEvidencias.js";
 
-// Middleware: solo el propio empleado o un admin puede acceder
+// Middleware: solo el propio empleado o un admin puede acceder (por id_empleado en params)
 function requireOwnerOrAdmin(req, res, next) {
   const idParam = parseInt(req.params.id_empleado, 10);
   const { id_empleado, id_rol } = req.usuario;
   if (id_rol === 1 || id_empleado === idParam) return next();
   return res.status(403).json({ error: "Acceso no autorizado" });
+}
+
+// Middleware: verifica que el usuario sea dueño del ticket o admin (por id_ticket en params)
+async function requireTicketOwnerOrAdmin(req, res, next) {
+  if (req.usuario.id_rol === 1) return next();
+  const idTicket = parseInt(req.params.id_ticket, 10);
+  if (isNaN(idTicket)) return res.status(400).json({ error: "ID inválido" });
+  try {
+    const [rows] = await (await import("../Config/db.js")).default.query(
+      "SELECT id_empleado FROM ticket WHERE id_ticket = ? LIMIT 1", [idTicket]
+    );
+    if (!rows[0] || rows[0].id_empleado !== req.usuario.id_empleado)
+      return res.status(403).json({ error: "Acceso no autorizado" });
+    next();
+  } catch { res.status(500).json({ error: "Error de autorización" }); }
 }
 
 const router = Router();
@@ -61,13 +76,20 @@ const ticketLimiter = rateLimit({
 // IMPORTANTE: registradas ANTES de las rutas dinámicas /:id_ticket
 // para evitar que Express intercepte "/metricas", "/admins", etc.
 // como si fueran un id_ticket.
-router.get("/metricas", requireAdmin, getMetricas);
-router.get("/admins",   requireAdmin, getAdmins);
-router.get("/reporte",  requireAdmin, getReporte);
-router.get("/",         requireAdmin, getAllTickets);
+router.get("/metricas",    requireAdmin, getMetricas);
+router.get("/admins",     requireAdmin, getAdmins);
+router.get("/reporte",    requireAdmin, getReporte);
+router.get("/rendimiento", requireAdmin, getRendimientoTecnicos);
+router.get("/",           requireAdmin, (req, res, next) => {
+  const r = schemaFiltrosTickets.safeParse(req.query);
+  if (!r.success) return res.status(422).json({ error: "Parámetros inválidos", errores: r.error.errors.map(e => ({ campo: e.path.join("."), mensaje: e.message })) });
+  req.queryValidado = r.data;
+  next();
+}, getAllTickets);
 router.patch("/:id_ticket", requireAdmin, validate(schemaActualizarTicket), actualizarTicket);
 
 // ── Rutas con paths fijos — deben ir ANTES de /:id_ticket ────
+router.get("/folio/:folio", getTicketByFolio);  // PrintTicketPage / Puppeteer
 router.get("/empleado/:id_empleado", requireOwnerOrAdmin, getTicketsByEmpleado);
 router.post("/", ticketLimiter, ...uploadEvidencias.array("evidencias", 8), validate(schemaCrearTicket), crearTicket);
 
@@ -75,7 +97,9 @@ router.post("/", ticketLimiter, ...uploadEvidencias.array("evidencias", 8), vali
 router.get("/:id_ticket/imagenes",                        getImagenesTicket);
 router.post("/:id_ticket/imagenes", ...uploadEvidencias.array("evidencias", 8), agregarImagenesTicket);
 router.delete("/:id_ticket/imagenes/:nombre",              eliminarImagenTicket);
+router.get("/:id_ticket/historial", requireTicketOwnerOrAdmin, getHistorialTicket);
 router.patch("/:id_ticket/calificar", validate(schemaCalificarTicket), calificarTicket);
+router.patch("/:id_ticket/cancelar", cancelarTicket);
 router.put("/:id_ticket/editar",      validate(schemaEditarTicket),    editarTicketUsuario);
 
 // ── Ruta dinámica — debe ir AL FINAL ─────────────────────────

@@ -36,16 +36,16 @@ function SupplyRow({ supply, isAdded, onAdd, animatingId }) {
       className={`border-b border-slate-100 transition-colors hover:bg-slate-50 ${isAdded ? "bg-blue-50/40" : ""}`}
     >
       {/* ID / Nombre */}
-      <td className="px-4 py-3">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[11px] font-mono text-slate-400 select-all">
+      <td className="px-3 py-1.5">
+        <div className="flex flex-col gap-0">
+          <span className="text-[10px] font-mono text-slate-400 select-all">
             #{String(supply.id_insumo).padStart(4, "0")}
           </span>
-          <span className="text-[13px] font-semibold text-slate-800 leading-tight">
+          <span className="text-[11px] font-semibold text-slate-800 leading-tight">
             {supply.nombre}
           </span>
           {(supply.marca || supply.modelo) && (
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[10px] text-slate-400">
               {[supply.marca, supply.modelo].filter(Boolean).join(" · ")}
             </span>
           )}
@@ -53,26 +53,26 @@ function SupplyRow({ supply, isAdded, onAdd, animatingId }) {
       </td>
 
       {/* Categoría */}
-      <td className="px-4 py-3">
+      <td className="px-3 py-1.5">
         {supply.nombre_categoria ? (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
-            <Tag size={9} />
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+            <Tag size={8} />
             {supply.nombre_categoria}
           </span>
         ) : (
-          <span className="text-slate-300 text-[11px]">—</span>
+          <span className="text-slate-300 text-[10px]">—</span>
         )}
       </td>
 
       {/* Stock con barra */}
-      <td className="px-4 py-3 w-36">
+      <td className="px-3 py-1.5 w-32">
         <StockBar stock={supply.stock} maxStock={100} />
       </td>
 
       {/* Estado */}
-      <td className="px-4 py-3">
+      <td className="px-3 py-1.5">
         <span
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border"
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border"
           style={{ background: badge.bg, color: badge.color, borderColor: badge.border }}
         >
           <span className="w-1.5 h-1.5 rounded-full" style={{ background: badge.color }} />
@@ -81,11 +81,11 @@ function SupplyRow({ supply, isAdded, onAdd, animatingId }) {
       </td>
 
       {/* Acción */}
-      <td className="px-4 py-3">
+      <td className="px-3 py-1.5">
         {isExhausted ? (
           <button
             disabled
-            className="px-3 py-1.5 rounded text-[11px] font-bold cursor-not-allowed bg-slate-100 text-slate-300 border border-slate-200"
+            className="px-2.5 py-1 rounded text-[10px] font-bold cursor-not-allowed bg-slate-100 text-slate-300 border border-slate-200"
             style={{ filter: "grayscale(1)", opacity: 0.6 }}
           >
             Agotado
@@ -93,14 +93,14 @@ function SupplyRow({ supply, isAdded, onAdd, animatingId }) {
         ) : isAdded ? (
           <button
             onClick={() => onAdd(supply.id_insumo)}
-            className="px-3 py-1.5 rounded text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors"
+            className="px-2.5 py-1 rounded text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors"
           >
             + Agregar otro
           </button>
         ) : (
           <button
             onClick={() => onAdd(supply.id_insumo)}
-            className={`px-3 py-1.5 rounded text-[11px] font-bold bg-blue-600 text-white border-0 hover:bg-blue-700 active:scale-95 transition-all ${isAnimating ? "animate-slide-out" : ""}`}
+            className={`px-2.5 py-1 rounded text-[10px] font-bold bg-blue-600 text-white border-0 hover:bg-blue-700 active:scale-95 transition-all ${isAnimating ? "animate-slide-out" : ""}`}
           >
             <span className="flex items-center gap-1">
               <Plus size={11} /> Agregar
@@ -243,8 +243,9 @@ export default function SolicitudInsumo({ usuario = {}, T }) {
       prioridad:   priority || "Media",
       id_empleado: parseInt(usuario.id_empleado, 10),
       insumos:     Object.entries(requestCart).map(([id, qty]) => ({
-        id_insumo: parseInt(id, 10),
-        cantidad:  parseInt(qty, 10),
+        id_insumo:   parseInt(id, 10),
+        cantidad:    parseInt(qty, 10),
+        descripcion: justification.trim() || null,
       })),
     };
 
@@ -259,7 +260,7 @@ export default function SolicitudInsumo({ usuario = {}, T }) {
         setResultModal({ success: false, message: errorMsg });
         return;
       }
-      setResultModal({ success: true, folio: data.folio_solicitud });
+      setResultModal({ success: true, folio: data.folio_solicitud, id_solicitud: data.id_solicitud });
       setRequestCart({});
       setPriority("");
       setJustification("");
@@ -284,16 +285,16 @@ export default function SolicitudInsumo({ usuario = {}, T }) {
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#f8fafc", overflow: "hidden" }}>
-      <div style={{ maxWidth: "1400px", width: "100%", margin: "0 auto", padding: "24px 16px", display: "flex", flexDirection: "column", gap: "16px", flex: 1, minHeight: 0, overflowY: "auto" }}>
+      <div style={{ maxWidth: "1400px", width: "100%", margin: "0 auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "10px", flex: 1, minHeight: 0, overflowY: "auto" }}>
 
         {/* ── Pestañas ─────────────────────────────────────────── */}
-        <div className="flex gap-1 mb-5 bg-white border border-slate-200 rounded-xl p-1 w-fit shadow-sm">
+        <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 w-fit shadow-sm">
           {[
             { id: "nueva",     label: "Nueva Solicitud", icon: Plus    },
             { id: "historial", label: "Mis Solicitudes",  icon: History },
           ].map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-bold transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
               style={{
                 background: tab === id ? "#2563eb" : "transparent",
                 color:      tab === id ? "#fff"    : "#64748b",
@@ -304,7 +305,7 @@ export default function SolicitudInsumo({ usuario = {}, T }) {
         </div>
 
         {/* ── Layout principal 75 / 25 ─────────────────────────── */}
-        <div className="flex flex-col lg:flex-row gap-4 items-start" style={{ flex: 1, minHeight: 0 }}>
+        <div className="flex flex-col lg:flex-row gap-3 items-start" style={{ flex: 1, minHeight: 0 }}>
 
           {/* ════ COLUMNA IZQUIERDA — Data Table (75%) ════════════ */}
           <div className="w-full lg:w-3/4" style={{ display: "flex", flexDirection: "column", gap: "12px", flex: 1, minHeight: 0 }}>
@@ -395,7 +396,7 @@ export default function SolicitudInsumo({ usuario = {}, T }) {
                   <thead>
                     <tr className="bg-slate-800 text-white" style={{ position: "sticky", top: 0, zIndex: 10 }}>
                       {["ID / Nombre", "Categoría", "Stock Actual", "Estado", "Acción"].map(col => (
-                        <th key={col} className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-300 whitespace-nowrap">
+                        <th key={col} className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-300 whitespace-nowrap">
                           {col}
                         </th>
                       ))}
@@ -597,7 +598,7 @@ export default function SolicitudInsumo({ usuario = {}, T }) {
       {resultModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/50"
-          onClick={() => setResultModal(null)}
+          onClick={() => { if (resultModal.success && resultModal.id_solicitud) { setSolicitudVer({ id_solicitud: resultModal.id_solicitud }); } setResultModal(null); }}
         >
           <div
             className="w-full max-w-sm bg-white rounded-xl overflow-hidden shadow-2xl border border-slate-200"
@@ -627,11 +628,11 @@ export default function SolicitudInsumo({ usuario = {}, T }) {
                 )}
               </div>
               <button
-                onClick={() => setResultModal(null)}
+                onClick={() => { if (resultModal.success && resultModal.id_solicitud) { setSolicitudVer({ id_solicitud: resultModal.id_solicitud }); } setResultModal(null); }}
                 className="w-full h-10 rounded-lg text-[13px] font-bold text-white transition-all hover:brightness-110"
                 style={{ background: resultModal.success ? "#16a34a" : "#dc2626" }}
               >
-                {resultModal.success ? "Aceptar" : "Cerrar"}
+                {resultModal.success ? "Ver solicitud" : "Cerrar"}
               </button>
             </div>
           </div>

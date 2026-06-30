@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Camera, Plus, X, ChevronLeft, ChevronRight, Trash2,
+import { Camera, X, ChevronLeft, ChevronRight, Trash2,
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
-  AlignLeft, AlignCenter, AlignRight, Minus } from "lucide-react";
+  AlignLeft, AlignCenter, AlignRight, Minus, ArrowRight, ArrowLeft, Send } from "lucide-react";
 import { apiFetch } from "../../Config/api";
 
 const PRIORIDADES = [
@@ -17,7 +17,41 @@ const MAX_PALABRAS = 500;
 const EMPTY = { titulo:"", descripcion:"", palabras:0, prioridad:"", categoria:"", evidencias:[], tvId:"", tvPass:"" };
 const contarPalabras = t => t.trim() ? t.trim().split(/\s+/).length : 0;
 
-export default function NuevoReporte({ T, solicitante, area = "-", usuario = {}, onSuccess }) {
+const PASOS = [
+  { num: 1, label: "¿Qué sucede?",   desc: "Datos básicos" },
+  { num: 2, label: "Describe el error", desc: "Descripción" },
+  { num: 3, label: "Evidencias",      desc: "Archivos adjuntos" },
+];
+
+const AYUDA = {
+  titulo:      "Escribe un resumen breve del problema. Ej: 'No enciende la PC de caja 3'.",
+  categoria:   "Selecciona el área o tipo de equipo que presenta la falla.",
+  prioridad:   "Urgente: bloquea el trabajo por completo. Alta: afecta varias personas. Media: molestia menor. Baja: puede esperar.",
+  descripcion: "Explica cuándo ocurrió, qué estabas haciendo y qué mensaje de error apareció. Entre más detalle, más rápido se resuelve.",
+  evidencias:  "Adjunta fotos de la pantalla o del equipo dañado. Máximo 8 imágenes. No son obligatorias pero ayudan al técnico.",
+};
+
+function AyudaTooltip({ texto, isDark, children }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <span className="relative inline-flex items-center"
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+      style={{ cursor: "default" }}>
+      {children}
+      {visible && (
+        <span
+          className="absolute z-50 bottom-full left-0 mb-2 w-56 text-[11px] leading-relaxed rounded-xl px-3 py-2 shadow-xl pointer-events-none"
+          style={{ background: isDark ? "#1e2330" : "#1e293b", color: "#f1f5f9", border: "1px solid rgba(255,255,255,0.1)", whiteSpace: "normal" }}>
+          {texto}
+          <span className="absolute top-full left-4 border-4 border-transparent" style={{ borderTopColor: isDark ? "#1e2330" : "#1e293b" }} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+export default function NuevoReporte({ T, solicitante, area = "-", usuario = {}, onSuccess, onVerTicket }) {
   const nombreCompleto = [usuario.nombre, usuario.ap_paterno, usuario.ap_materno].filter(Boolean).join(" ") || solicitante || "-";
   const [form,       setForm]       = useState(EMPTY);
   const [visor,      setVisor]      = useState(null);
@@ -28,6 +62,8 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
   const [modal,      setModal]      = useState(null);
   const [enviando,   setEnviando]   = useState(false);
   const [modalLimpiar, setModalLimpiar] = useState(false);
+  const [tvVisible,    setTvVisible]    = useState(false);
+  const [paso,         setPaso]         = useState(1);
   const fileRef  = useRef();
   const editorRef = useRef(null);
   const location  = useLocation();
@@ -43,7 +79,7 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
   }, []);
 
   useEffect(() => {
-    apiFetch(`/api/categorias`)
+    apiFetch(`/api/categorias?tipo=ticket`)
       .then(r => r.json())
       .then(data => setCategorias(
         Array.isArray(data) ? data.map(c => ({ id: c.id_categoria, valor: c.nombre_categoria, label: c.nombre_categoria })) : []
@@ -63,36 +99,68 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
   const quitarError = k => setErrores(p => { const n = {...p}; delete n[k]; return n; });
   const set = (k, v) => { setForm(f => ({...f, [k]:v})); quitarError(k); };
 
-  // Helper: obtiene o crea un elemento de bloque (p/div) que contiene el rango actual
-  const getOrCreateBlock = (range) => {
-    let node = range.commonAncestorContainer;
-    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-    while (node && node !== editorRef.current) {
-      if (["P", "DIV", "LI"].includes(node.tagName)) return node;
-      node = node.parentElement;
-    }
-    // Si no hay bloque, envuelve el contenido en un <p>
-    const p = document.createElement("p");
-    range.surroundContents(p);
-    return p;
-  };
   const limpiar = () => {
     setForm(EMPTY);
     setErrores({});
     setModalLimpiar(false);
+    setTvVisible(false);
+    setPaso(1);
     if (editorRef.current) editorRef.current.innerHTML = "";
+  };
+
+  const validarPaso = (p) => {
+    const e = {};
+    if (p === 1) {
+      if (!form.titulo.trim()) e.titulo    = "El título es requerido";
+      if (!form.prioridad)     e.prioridad = "Selecciona una prioridad";
+      if (!form.categoria)     e.categoria = "Selecciona una categoría";
+    }
+    if (p === 2) {
+      const textoPlano = editorRef.current?.innerText?.trim() || "";
+      if (!textoPlano) e.descripcion = "La descripción es requerida";
+    }
+    return e;
+  };
+
+  const avanzar = () => {
+    const e = validarPaso(paso);
+    if (Object.keys(e).length) { setErrores(e); return; }
+    setErrores({});
+    setPaso(p => Math.min(3, p + 1));
+  };
+
+  const retroceder = () => {
+    setErrores({});
+    setPaso(p => Math.max(1, p - 1));
   };
 
   const fmt = useCallback((cmd) => {
     const el = editorRef.current;
     if (!el) return;
     el.focus();
-    // execCommand está deprecado — usamos Selection API con fallback
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
-    const range = sel.getRangeAt(0);
+
+    // Usamos execCommand como fallback robusto — sigue funcionando en todos los
+    // navegadores modernos para los comandos básicos de texto, aunque esté
+    // marcado como deprecado. La alternativa manual con Range.surroundContents
+    // lanza DOMException cuando la selección cruza múltiples nodos (ej. texto
+    // parcialmente dentro de un <strong>), lo que rompe silenciosamente el editor.
+    const EXEC_MAP = {
+      bold:                "bold",
+      italic:              "italic",
+      underline:           "underline",
+      strikeThrough:       "strikeThrough",
+      insertUnorderedList: "insertUnorderedList",
+      insertOrderedList:   "insertOrderedList",
+      justifyLeft:         "justifyLeft",
+      justifyCenter:       "justifyCenter",
+      justifyRight:        "justifyRight",
+      removeFormat:        "removeFormat",
+    };
 
     if (cmd === "insertHorizontalRule") {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const range = sel.getRangeAt(0);
       const hr = document.createElement("hr");
       range.deleteContents();
       range.insertNode(hr);
@@ -104,67 +172,11 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
       return;
     }
 
-    if (cmd === "removeFormat") {
-      // Desenvuelve todos los elementos de formato dentro del rango
-      const fragment = range.extractContents();
-      const text = document.createTextNode(fragment.textContent ?? "");
-      range.insertNode(text);
-      range.selectNodeContents(text);
-      sel.removeAllRanges();
-      sel.addRange(range);
+    if (EXEC_MAP[cmd]) {
+      // eslint-disable-next-line no-restricted-globals
+      document.execCommand(EXEC_MAP[cmd], false, null);
       el.dispatchEvent(new Event("input", { bubbles: true }));
-      return;
     }
-
-    // Comandos de formato inline: bold, italic, underline, strikeThrough
-    const TAG_MAP = {
-      bold:          "strong",
-      italic:        "em",
-      underline:     "u",
-      strikeThrough: "s",
-    };
-    // Comandos de bloque: listas y alineación
-    const BLOCK_MAP = {
-      insertUnorderedList: () => {
-        const ul = document.createElement("ul");
-        const li = document.createElement("li");
-        li.appendChild(range.extractContents());
-        ul.appendChild(li);
-        range.insertNode(ul);
-        range.selectNodeContents(li);
-        range.collapse(false);
-      },
-      insertOrderedList: () => {
-        const ol = document.createElement("ol");
-        const li = document.createElement("li");
-        li.appendChild(range.extractContents());
-        ol.appendChild(li);
-        range.insertNode(ol);
-        range.selectNodeContents(li);
-        range.collapse(false);
-      },
-      justifyLeft:   () => { const b = getOrCreateBlock(range); if (b) b.style.textAlign = "left";   },
-      justifyCenter: () => { const b = getOrCreateBlock(range); if (b) b.style.textAlign = "center"; },
-      justifyRight:  () => { const b = getOrCreateBlock(range); if (b) b.style.textAlign = "right";  },
-    };
-
-    if (BLOCK_MAP[cmd]) {
-      BLOCK_MAP[cmd]();
-      sel.removeAllRanges();
-      sel.addRange(range);
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-      return;
-    }
-
-    const tag = TAG_MAP[cmd];
-    if (!tag) return;
-    const wrapper = document.createElement(tag);
-    wrapper.appendChild(range.extractContents());
-    range.insertNode(wrapper);
-    range.selectNodeContents(wrapper);
-    sel.removeAllRanges();
-    sel.addRange(range);
-    el.dispatchEvent(new Event("input", { bubbles: true }));
   }, []);
 
   const onEditorInput = () => {
@@ -192,7 +204,7 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
     if (!textoPlano)          e.descripcion = "La descripción es requerida";
     if (!form.prioridad)      e.prioridad   = "Selecciona una prioridad";
     if (!form.categoria)      e.categoria   = "Selecciona una categoría";
-    if (Object.keys(e).length) { setErrores(e); return; }
+    if (Object.keys(e).length) { setErrores(e); setPaso(Object.keys(e).some(k => k !== "descripcion") ? 1 : 2); return; }
 
     const catObj = categorias.find(c => c.valor === form.categoria);
     if (!catObj) { setErrores(e => ({ ...e, categoria: "Categoría no válida" })); return; }
@@ -218,9 +230,8 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
       const res  = await apiFetch(`/api/tickets`, { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) { setModal({ ok: false, titulo: "Error al enviar", msg: data.error ?? JSON.stringify(data) }); return; }
-      setModal({ ok: true, titulo: "Reporte enviado", folio: data.folio_ticket, prioridad: form.prioridad, categoria: catObj.label });
+      setModal({ ok: true, titulo: "Reporte enviado", folio: data.folio_ticket, id_ticket: data.id_ticket, prioridad: form.prioridad, categoria: catObj.label });
       limpiar();
-      setTimeout(() => { onSuccess?.(); }, 1800);
     } catch (err) {
       console.error("[NuevoReporte] Error al enviar:", err);
       setModal({ ok: false, titulo: "Sin conexión", msg: err?.message || "No se pudo conectar con el servidor" });
@@ -229,13 +240,17 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
     }
   };
 
+  const MIME_PERMITIDOS = new Set(["image/jpeg","image/png","image/gif","image/webp"]);
+
   const agregarImgs = files => {
     const libres = MAX_IMGS - form.evidencias.length;
-    // Guardar el File original + URL de previsualización - sin doble conversión base64
-    Array.from(files).slice(0, libres).forEach(file => {
-      const src = URL.createObjectURL(file);
-      setForm(f => ({ ...f, evidencias: [...f.evidencias, { src, name: file.name, file }] }));
-    });
+    Array.from(files)
+      .filter(f => MIME_PERMITIDOS.has(f.type))
+      .slice(0, libres)
+      .forEach(file => {
+        const src = URL.createObjectURL(file);
+        setForm(f => ({ ...f, evidencias: [...f.evidencias, { src, name: file.name, file }] }));
+      });
   };
 
   const handleDrop = e => {
@@ -252,17 +267,15 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
     if (visor !== null) setVisor(evs.length === 0 ? null : Math.min(i, evs.length - 1));
   };
 
-  const slots = [...form.evidencias];
-  if (slots.length < MAX_IMGS) slots.push(null);
-
-  const card = {
+const card = {
     background: isDark ? "#141720" : T.surface,
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb"}`,
+    border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : T.border}`,
+    boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.4)" : "0 1px 6px rgba(0,0,0,0.06)",
   };
 
   const inputStyle = {
-    background: isDark ? "rgba(255,255,255,0.05)" : "#fff",
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "#d1d5db"}`,
+    background: isDark ? "rgba(255,255,255,0.05)" : T.surface,
+    border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : T.border}`,
     color: textColor,
     borderRadius: "2px",
     fontSize: "12px",
@@ -272,20 +285,23 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
     transition: "border-color .15s, box-shadow .15s",
   };
 
-  const onFocus = e => { e.target.style.borderColor = "#FF6600"; e.target.style.boxShadow = "0 0 0 2px rgba(255,102,0,0.1)"; };
-  const onBlur  = e => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.15)" : "#d1d5db"; e.target.style.boxShadow = "none"; };
+  const onFocus = e => { e.target.style.borderColor = T.orange; e.target.style.boxShadow = "0 0 0 2px rgba(255,102,0,0.1)"; };
+  const onBlur  = e => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.15)" : T.border; e.target.style.boxShadow = "none"; };
 
   const SectionHeader = ({ title }) => (
-    <div className="flex items-center gap-2 mb-1.5">
+    <div className="flex items-center gap-2 mb-3">
       <div className="w-0.5 h-4 rounded-full flex-shrink-0" style={{ background:"#F47920" }}/>
       <span className="text-[10px] font-black uppercase tracking-widest" style={{ color:dividerText }}>{title}</span>
       <div className="flex-1 h-px" style={{ background:dividerLine }}/>
     </div>
   );
 
-  const Label = ({ children, required }) => (
+  const Label = ({ children, required, ayuda }) => (
     <label className="block text-xs font-semibold mb-1" style={{ color: isDark ? "rgba(255,255,255,0.75)" : T.text }}>
-      {children}{required && <span className="text-red-400 ml-0.5">*</span>}
+      {ayuda ? (
+        <AyudaTooltip texto={ayuda} isDark={isDark}>{children}</AyudaTooltip>
+      ) : children}
+      {required && <span className="text-red-400 ml-0.5">*</span>}
     </label>
   );
 
@@ -294,7 +310,7 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
     : null;
 
   return (
-    <div className="h-full overflow-y-auto p-2 md:p-4"
+    <div className="h-full overflow-y-auto py-6 px-2 md:py-8 md:px-4"
       style={{ background:T.bg }}
       onDragOver={e => { e.preventDefault(); setDragging(true); }}
       onDragEnter={e => { e.preventDefault(); setDragging(true); }}
@@ -308,19 +324,19 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
             <path d="M26 8v24M14 20l12-12 12 12" stroke="#F47920" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M6 40v3a3 3 0 003 3h34a3 3 0 003-3v-3" stroke="#F47920" strokeWidth="3" strokeLinecap="round"/>
           </svg>
-          <p className="text-xl font-black" style={{ color:"#F47920" }}>Suelta las imágenes</p>
+          <p className="text-base font-black" style={{ color:"#F47920" }}>Suelta las imágenes</p>
           <p className="text-sm" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#64748b" }}>Se agregarán a Evidencias fotográficas</p>
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto rounded-sm p-3" style={card}>
+      <div className="max-w-5xl mx-auto rounded-sm p-3" style={card}>
         {/* Header */}
-        <div className="flex items-center gap-3 px-3 py-2.5 sm:px-4"
+        <div className="flex items-center gap-3 px-3 py-3 sm:px-4"
           style={{ background: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff", borderBottom:`1px solid ${isDark ? "rgba(59,130,246,0.2)" : "#bfdbfe"}` }}>
-          <img src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"} alt="Logo" className="object-contain flex-shrink-0" style={{ width:"40px", height:"40px" }}/>
+          <img src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"} alt="Logo" className="object-contain flex-shrink-0" style={{ width:"68px", height:"68px" }}/>
           <div className="min-w-0">
-            <p className="text-xs sm:text-sm font-black tracking-tight" style={{ color: isDark ? "#93c5fd" : "#1d4ed8" }}>FORMULARIO DE INCIDENCIAS</p>
-            <p className="text-[10px] font-medium mt-0.5 hidden sm:block" style={{ color: isDark ? "rgba(147,197,253,0.6)" : "#3b82f6" }}>Completa el formulario para habilitar el envío.</p>
+            <p className="text-sm font-black tracking-tight" style={{ color: isDark ? "#93c5fd" : "#1d4ed8" }}>FORMULARIO DE INCIDENCIAS</p>
+            <p className="text-[11px] font-medium mt-0.5" style={{ color: isDark ? "rgba(147,197,253,0.6)" : "#3b82f6" }}>Completa el formulario para habilitar el envío.</p>
           </div>
         </div>
 
@@ -329,18 +345,38 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
           {/* ── SECCIÓN 1: Información del Solicitante ── */}
           <div className="flex flex-col gap-2 py-3">
             <SectionHeader title="Información del Solicitante" />
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="sm:col-span-2 md:col-span-1">
                 <Label>Solicitante</Label>
-                <input readOnly value={nombreCompleto}
-                  style={{ ...inputStyle, opacity:.6, cursor:"default", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}/>
+                <div
+                  style={{
+                    ...inputStyle,
+                    opacity: .6,
+                    cursor: "default",
+                    background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    display: "block",
+                    lineHeight: "1.4",
+                    padding: "7px 10px",
+                  }}
+                  title={nombreCompleto}
+                >
+                  {nombreCompleto}
+                </div>
               </div>
               <div>
                 <Label>Área</Label>
                 <input readOnly value={area}
                   style={{ ...inputStyle, opacity:.6, cursor:"default", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}/>
               </div>
-              <div className="col-span-2 md:col-span-1">
+              <div>
+                <Label>Sucursal</Label>
+                <input readOnly value={usuario.sucursal || usuario.nombre_sucursal || "-"}
+                  style={{ ...inputStyle, opacity:.6, cursor:"default", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}/>
+              </div>
+              <div>
                 <Label>Fecha y hora</Label>
                 <input readOnly value={new Date().toLocaleString("es-MX", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" })}
                   style={{ ...inputStyle, opacity:.6, cursor:"default", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}/>
@@ -350,60 +386,34 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
 
           <hr style={{ border:"none", borderTop:`1px solid ${dividerLine}`, margin:0 }}/>
 
-          {/* ── SECCIÓN 2: Detalles de la Falla ── */}
-          <div className="flex flex-col gap-2 py-3">
-            <SectionHeader title="Detalles de la Falla" />
+          {/* ── DOS COLUMNAS: Izquierda = Detalles | Derecha = Descripción & Evidencias ── */}
+          <div className="relative grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-6 py-3">
 
-            {/* Título */}
-            <div>
-              <Label required>Título del problema</Label>
-              <input
-                style={{ ...inputStyle, borderColor: errores.titulo ? "#ef4444" : inputBorder }}
-                placeholder="Ej. Falla en impresora de recepción"
-                value={form.titulo} onChange={e => set("titulo", e.target.value)}
-                onFocus={onFocus} onBlur={onBlur}/>
-              <Err campo="titulo"/>
-            </div>
+            {/* ── COLUMNA IZQUIERDA: Detalles de la Falla ── */}
+            <div className="flex flex-col gap-2">
+              <SectionHeader title="Detalles de la Falla" />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-
-              {/* Prioridad */}
+              {/* Título */}
               <div>
-                <Label required>Nivel de prioridad</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                  {PRIORIDADES.map(p => {
-                    const sel = form.prioridad === p.nivel;
-                    return (
-                      <button key={p.nivel} type="button" onClick={() => set("prioridad", p.nivel)}
-                        className="flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl text-[11px] font-bold transition-all select-none"
-                        style={{
-                          background: sel ? (isDark ? p.bgD : p.bgL) : inputBg,
-                          border:    `2.5px solid ${sel ? p.color : errores.prioridad ? "#ef4444" : inputBorder}`,
-                          color:      sel ? p.color : dividerText,
-                          boxShadow:  sel ? `0 0 0 3px ${p.color}20, 0 4px 14px ${p.color}40` : "none",
-                          transform:  sel ? "translateY(-2px) scale(1.02)" : "none",
-                        }}>
-                        <span className="w-3 h-3 rounded-full"
-                          style={{ background:p.color, boxShadow:sel ? `0 0 12px ${p.color}90` : "none" }}/>
-                        {p.label}
-                        {sel && <span className="text-[10px] leading-none">✓</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-                <Err campo="prioridad"/>
+                <Label required ayuda={AYUDA.titulo}>Título del problema</Label>
+                <input
+                  style={{ ...inputStyle, borderColor: errores.titulo ? "#ef4444" : inputBorder }}
+                  placeholder="Ej. Falla en impresora de recepción"
+                  value={form.titulo} onChange={e => set("titulo", e.target.value)}
+                  onFocus={onFocus} onBlur={onBlur}/>
+                <Err campo="titulo"/>
               </div>
 
               {/* Categoría */}
               <div className="relative">
-                <Label required>Categoría</Label>
+                <Label required ayuda={AYUDA.categoria}>Categoría</Label>
                 <button type="button"
                   onClick={() => { setCatOpen(o => !o); quitarError("categoria"); }}
                   onBlur={() => setTimeout(() => setCatOpen(false), 120)}
                   className="w-full flex items-center justify-between gap-2 transition-all"
                   style={{
                     ...inputStyle,
-                    border: `1px solid ${catOpen ? "#FF6600" : errores.categoria ? "#ef4444" : isDark ? "rgba(255,255,255,0.15)" : "#d1d5db"}`,
+                    border: `1px solid ${catOpen ? T.orange : errores.categoria ? "#ef4444" : isDark ? "rgba(255,255,255,0.15)" : T.border}`,
                     color: catSel ? textColor : dividerText,
                     boxShadow: catOpen ? "0 0 0 2px rgba(255,102,0,0.1)" : "none",
                     cursor: "pointer",
@@ -449,20 +459,81 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
                 )}
                 <Err campo="categoria"/>
               </div>
+
+              {/* Prioridad – Segmented Control */}
+              <div>
+                <Label required ayuda={AYUDA.prioridad}>Nivel de prioridad</Label>
+                <div className="flex rounded-lg overflow-hidden"
+                  style={{ border:`1.5px solid ${errores.prioridad ? "#ef4444" : isDark ? "rgba(255,255,255,0.12)" : T.border}` }}>
+                  {PRIORIDADES.map((p, idx) => {
+                    const sel = form.prioridad === p.nivel;
+                    return (
+                      <button key={p.nivel} type="button" onClick={() => set("prioridad", p.nivel)}
+                        className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold transition-all select-none"
+                        style={{
+                          background: sel ? (isDark ? p.bgD : p.bgL) : "transparent",
+                          color: sel ? p.color : dividerText,
+                          borderRight: idx < PRIORIDADES.length - 1 ? `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}` : "none",
+                          transition: "background .15s, color .15s",
+                        }}>
+                        <PRIORIDAD_ICON nivel={p.nivel} color={sel ? p.color : dividerText} />
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <Err campo="prioridad"/>
+              </div>
+
+              {/* TeamViewer – colapsable */}
+              <div className="mt-1">
+                <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
+                  <div
+                    onClick={() => { setTvVisible(v => !v); if (tvVisible) { set("tvId",""); set("tvPass",""); } }}
+                    className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-all"
+                    style={{
+                      background: tvVisible ? "#FF6600" : "transparent",
+                      border: `2px solid ${tvVisible ? "#FF6600" : isDark ? "rgba(255,255,255,0.3)" : "#d1d5db"}`,
+                    }}>
+                    {tvVisible && <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 5-5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  <span className="text-[11px] font-semibold" style={{ color: dividerText }}>
+                    ¿Necesitas asistencia remota (TeamViewer)?
+                  </span>
+                </label>
+                {tvVisible && (
+                  <div className="flex flex-col gap-1.5 mt-2">
+                    <input
+                      value={form.tvId}
+                      onChange={e => set("tvId", e.target.value)}
+                      placeholder="TeamViewer ID"
+                      style={{ ...inputStyle }}
+                      onFocus={onFocus} onBlur={onBlur}
+                    />
+                    <input
+                      value={form.tvPass}
+                      onChange={e => set("tvPass", e.target.value)}
+                      placeholder="Contraseña"
+                      style={{ ...inputStyle }}
+                      onFocus={onFocus} onBlur={onBlur}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          <hr style={{ border:"none", borderTop:`1px solid ${dividerLine}`, margin:0 }}/>
+            {/* Divisor vertical solo en md+ */}
+            <div className="hidden md:block absolute left-1/2 top-3 bottom-3 w-px" style={{ background: dividerLine }}/>
 
-          {/* ── SECCIÓN 3: Descripción & Evidencias ── */}
-          <div className="flex flex-col gap-2 py-3">
-            <SectionHeader title="Descripción y Evidencias" />
+            {/* ── COLUMNA DERECHA: Descripción & Evidencias ── */}
+            <div className="flex flex-col gap-2 mt-4 md:mt-0">
+              <SectionHeader title="Descripción y Evidencias" />
 
             <div>
-              <Label required>Descripción detallada</Label>
+              <Label required ayuda={AYUDA.descripcion}>Descripción detallada</Label>
                 <div style={{
-                  border: `1px solid ${errores.descripcion ? "#ef4444" : isDark ? "rgba(255,255,255,0.15)" : "#d1d5db"}`,
-                  borderRadius: "2px", overflow: "hidden", background: isDark ? "rgba(255,255,255,0.05)" : "#fff",
+                  border: `1px solid ${errores.descripcion ? "#ef4444" : isDark ? "rgba(255,255,255,0.15)" : T.border}`,
+                  borderRadius: "2px", overflow: "hidden", background: isDark ? "rgba(255,255,255,0.05)" : T.surface,
                   transition: "border-color .15s, box-shadow .15s",
                 }}>
                   {/* Toolbar */}
@@ -512,12 +583,12 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
                     suppressContentEditableWarning
                     onInput={onEditorInput}
                     onFocus={e => {
-                      e.currentTarget.parentElement.style.borderColor = "#FF6600";
+                      e.currentTarget.parentElement.style.borderColor = T.orange;
                       e.currentTarget.parentElement.style.boxShadow   = "0 0 0 2px rgba(255,102,0,0.1)";
                       quitarError("descripcion");
                     }}
                     onBlur={e => {
-                      e.currentTarget.parentElement.style.borderColor = errores.descripcion ? "#ef4444" : isDark ? "rgba(255,255,255,0.15)" : "#d1d5db";
+                      e.currentTarget.parentElement.style.borderColor = errores.descripcion ? "#ef4444" : isDark ? "rgba(255,255,255,0.15)" : T.border;
                       e.currentTarget.parentElement.style.boxShadow   = "none";
                     }}
                     className="outline-none px-3 py-2 text-xs leading-relaxed"
@@ -534,88 +605,85 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
                 `}</style>
                 <div className="flex items-center justify-between mt-1.5">
                   <Err campo="descripcion"/>
-                  <span className="ml-auto text-[11px] font-bold px-2.5 py-0.5 rounded-full"
-                    style={{
-                      background: form.palabras >= MAX_PALABRAS ? "#fee2e2" : form.palabras >= 450 ? "#fef9c3" : isDark ? "rgba(255,255,255,0.06)" : T.bg,
-                      color:      form.palabras >= MAX_PALABRAS ? "#dc2626" : form.palabras >= 450 ? "#ca8a04" : T.textMuted,
-                      border: `1px solid ${form.palabras >= MAX_PALABRAS ? "#fca5a5" : form.palabras >= 450 ? "#fde047" : dividerLine}`,
-                    }}>
-                    {form.palabras} / {MAX_PALABRAS} palabras
+                  {(() => {
+                    const pct  = form.palabras / MAX_PALABRAS;
+                    const enRojo    = form.palabras >= MAX_PALABRAS;
+                    const enNaranja = !enRojo && form.palabras >= 400;
+                    const enAmarillo= !enRojo && !enNaranja && form.palabras >= 300;
+                    const textC = enRojo ? "#dc2626" : enNaranja ? "#ea580c" : enAmarillo ? "#ca8a04" : T.textMuted;
+                    const bgC   = enRojo ? (isDark?"rgba(220,38,38,0.15)":"#fee2e2") : enNaranja ? (isDark?"rgba(234,88,12,0.15)":"#ffedd5") : enAmarillo ? (isDark?"rgba(202,138,4,0.12)":"#fef9c3") : isDark ? "rgba(255,255,255,0.06)" : T.bg;
+                    const borderC = enRojo ? "#fca5a5" : enNaranja ? "#fdba74" : enAmarillo ? "#fde047" : dividerLine;
+                    return (
+                      <span className="ml-auto text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 transition-all"
+                        style={{ background: bgC, color: textC, border: `1px solid ${borderC}` }}>
+                        {(enRojo || enNaranja) && (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 8v4m0 4h.01" stroke={textC} strokeWidth="2.5" strokeLinecap="round"/>
+                            <circle cx="12" cy="12" r="9" stroke={textC} strokeWidth="2"/>
+                          </svg>
+                        )}
+                        {form.palabras} / {MAX_PALABRAS}
+                        <span style={{ opacity: 0.6, fontWeight: 400 }}>palabras</span>
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Evidencias – zona drag & drop amplia + thumbnails */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label ayuda={AYUDA.evidencias}>Fotografías adjuntas</Label>
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
+                    style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.bg, color: dividerText, border:`1px solid ${dividerLine}` }}>
+                    {form.evidencias.length}/{MAX_IMGS}
                   </span>
                 </div>
-            </div>
 
-            {/* TeamViewer */}
-            <div className="flex flex-col gap-2">
-              <span className="text-[11px] font-semibold" style={{ color: dividerText }}>TeamViewer <span style={{ fontWeight:400 }}>(opcional)</span></span>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  value={form.tvId}
-                  onChange={e => set("tvId", e.target.value)}
-                  placeholder="TeamViewer ID"
-                  style={{ ...inputStyle }}
-                  onFocus={onFocus} onBlur={onBlur}
-                />
-                <input
-                  value={form.tvPass}
-                  onChange={e => set("tvPass", e.target.value)}
-                  placeholder="Contraseña"
-                  style={{ ...inputStyle }}
-                  onFocus={onFocus} onBlur={onBlur}
-                />
-              </div>
-            </div>
-
-          {/* Evidencias */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <Label>Fotografías adjuntas</Label>
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
-                style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.bg, color:dividerText, border:`1px solid ${dividerLine}` }}>
-                {form.evidencias.length}/{MAX_IMGS}
-              </span>
-            </div>
-            <div className="grid gap-1.5" style={{ gridTemplateColumns:"repeat(auto-fill,minmax(72px,1fr))" }}>
-              {slots.map((img, i) =>
-                img === null ? (
-                  <label key="add"
-                    className="aspect-square rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all"
-                    style={{ border:`2px dashed ${inputBorder}`, background: isDark ? "rgba(255,255,255,0.02)" : "rgba(244,121,32,0.02)" }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor="#F47920"; e.currentTarget.style.background="rgba(244,121,32,0.06)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor=inputBorder; e.currentTarget.style.background= isDark ? "rgba(255,255,255,0.02)" : "rgba(244,121,32,0.02)"; }}>
+                {/* Zona principal drag & drop */}
+                {form.evidencias.length < MAX_IMGS && (
+                  <label className="flex flex-col items-center justify-center gap-2 w-full py-5 rounded-xl cursor-pointer transition-all mb-3"
+                    style={{
+                      border: `2px dashed ${dragging ? "#F47920" : isDark ? "rgba(255,255,255,0.15)" : "#d1d5db"}`,
+                      background: dragging ? "rgba(244,121,32,0.06)" : isDark ? "rgba(255,255,255,0.02)" : "rgba(244,121,32,0.02)",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor="#F47920"; e.currentTarget.style.background="rgba(244,121,32,0.05)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor= isDark ? "rgba(255,255,255,0.15)" : "#d1d5db"; e.currentTarget.style.background= isDark ? "rgba(255,255,255,0.02)" : "rgba(244,121,32,0.02)"; }}>
                     <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
                       onChange={e => { agregarImgs(e.target.files); e.target.value=""; }}/>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background:"rgba(244,121,32,0.1)" }}>
-                      {form.evidencias.length === 0 ? <Camera size={20} style={{ color:T.orange }}/> : <Plus size={18} style={{ color:T.orange }}/>}
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background:"rgba(244,121,32,0.1)" }}>
+                      <Camera size={22} style={{ color:"#F47920" }}/>
                     </div>
-                    <span className="text-[11px] font-semibold" style={{ color:T.orange }}>
-                      {form.evidencias.length === 0 ? "Agregar foto" : "Agregar"}
-                    </span>
+                    <p className="text-xs font-semibold" style={{ color:"#F47920" }}>Haz clic o arrastra imágenes aquí</p>
+                    <p className="text-[11px]" style={{ color:iconColor }}>PNG, JPG · Máx. {MAX_IMGS} fotos</p>
                   </label>
-                ) : (
-                  <div key={i} className="relative group">
-                    <div className="aspect-square rounded-xl overflow-hidden cursor-pointer"
-                      style={{ border:`1.5px solid ${isDark ? "rgba(255,255,255,0.12)" : T.border}`, boxShadow: isDark ? "0 4px 16px rgba(0,0,0,0.5)" : "0 2px 8px rgba(0,0,0,0.08)" }}
-                      onClick={() => setVisor(i)}>
-                      <img src={img.src} alt={img.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"/>
-                    </div>
-                    {/* X de borrar siempre visible */}
-                    <button type="button"
-                      onClick={e => { e.stopPropagation(); borrarImg(i); }}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-                      style={{ background:"#dc2626", color:"#fff", boxShadow:"0 2px 6px rgba(220,38,38,0.5)", zIndex:10 }}>
-                      <X size={10} strokeWidth={3}/>
-                    </button>
-                  </div>
-                )
-              )}
-            </div>
-            <p className="text-[11px] mt-2" style={{ color:iconColor }}>
-              Arrastra imágenes desde tu computadora a cualquier parte de la página · Máx. {MAX_IMGS} fotos
-            </p>
-          </div>
+                )}
 
-          </div>{/* ── fin sección 3 ── */}
+                {/* Thumbnails */}
+                {form.evidencias.length > 0 && (
+                  <div className="grid gap-2" style={{ gridTemplateColumns:"repeat(auto-fill,minmax(70px,1fr))" }}>
+                    {form.evidencias.map((img, i) => (
+                      <div key={i} className="relative group">
+                        <div className="aspect-square rounded-xl overflow-hidden cursor-pointer"
+                          style={{ border:`1.5px solid ${isDark ? "rgba(255,255,255,0.12)" : T.border}`, boxShadow: isDark ? "0 4px 16px rgba(0,0,0,0.5)" : "0 2px 8px rgba(0,0,0,0.08)" }}
+                          onClick={() => setVisor(i)}>
+                          <img src={img.src} alt={img.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"/>
+                        </div>
+                        <button type="button"
+                          onClick={e => { e.stopPropagation(); borrarImg(i); }}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                          style={{ background:"#dc2626", color:"#fff", boxShadow:"0 2px 6px rgba(220,38,38,0.5)", zIndex:10 }}>
+                          <X size={10} strokeWidth={3}/>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>{/* ── fin columna derecha ── */}
+
+          </div>{/* ── fin grid dos columnas ── */}
 
           {/* Botones */}
           <div className="flex flex-col gap-3 pt-3" style={{ borderTop:`1px solid ${dividerLine}` }}>
@@ -628,9 +696,9 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
               </p>
             <div className="flex flex-col sm:flex-row gap-2 w-full">
                 <button type="button" onClick={() => setModalLimpiar(true)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2 rounded-sm text-sm font-semibold transition-all hover:brightness-95 active:scale-95"
-                  style={{ background: isDark ? "rgba(255,255,255,0.06)" : "#f3f4f6", color: isDark ? "rgba(255,255,255,0.7)" : "#374151", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#d1d5db"}` }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 rounded-sm text-xs font-semibold transition-all hover:opacity-80 active:scale-95"
+                  style={{ background: "transparent", color: isDark ? "rgba(255,255,255,0.4)" : "#9ca3af", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb"}` }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                     <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                   Limpiar
@@ -717,7 +785,7 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
                 }
               </div>
               <div className="w-full">
-                <p className="text-base font-black" style={{ color:T.text }}>{modal.titulo}</p>
+                <p className="text-xs font-black" style={{ color:T.text }}>{modal.titulo}</p>
                 {modal.ok
                   ? <div className="mt-3 flex flex-col gap-2.5 text-left">
                       <div className="h-1 rounded-full" style={{ background:"linear-gradient(90deg,#3b82f6,#60a5fa)", boxShadow:"0 2px 8px rgba(59,130,246,0.3)" }}/>
@@ -748,10 +816,10 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
                   : <p className="text-sm mt-1" style={{ color:T.textMuted }}>{modal.msg}</p>
                 }
               </div>
-              <button onClick={() => setModal(null)}
+              <button onClick={() => { setModal(null); if (modal.ok && modal.id_ticket && onVerTicket) { onVerTicket(modal.id_ticket); } else { onSuccess?.(); } }}
                 className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95"
                 style={{ background: modal.ok ? "#16a34a" : "#dc2626" }}>
-                {modal.ok ? "Aceptar" : "Cerrar"}
+                {modal.ok ? (onVerTicket ? "Ver mi ticket" : "Aceptar") : "Cerrar"}
               </button>
             </div>
           </div>
@@ -816,5 +884,31 @@ function ToolBtn({ children, onClick, title, isDark, T }) {
 
 function Divider({ dividerLine }) {
   return <div className="w-px h-4 mx-0.5" style={{ background: dividerLine }}/>;
+}
+
+function PRIORIDAD_ICON({ nivel, color }) {
+  const s = { stroke: color, strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" };
+  if (nivel === "Urgente") return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2L12 14" {...s}/>
+      <circle cx="12" cy="19" r="1.5" fill={color} stroke="none"/>
+      <path d="M5 5l14 14M19 5L5 19" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.35"/>
+    </svg>
+  );
+  if (nivel === "Alta") return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M12 19V5M6 11l6-6 6 6" {...s}/>
+    </svg>
+  );
+  if (nivel === "Media") return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M5 12h14M5 7h14" {...s}/>
+    </svg>
+  );
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M12 5v14M18 13l-6 6-6-6" {...s}/>
+    </svg>
+  );
 }
 

@@ -1,53 +1,33 @@
 /**
  * Insumo.js
  *
- * Modelo que encapsula todas las operaciones sobre la tabla `insumo`.
- * Los insumos son los articulos del inventario que los empleados pueden
- * solicitar a traves del sistema de solicitudes.
+ * Columnas reales de la tabla `insumo` en precisión_helpdesk:
+ *   id_insumo, num_serie, nombre, descripcion, marca, modelo,
+ *   stock, estado, id_categoria, proveedor, imagen_url
  *
- * Metodos:
- *
- *   getAll()
- *     Retorna todos los insumos con nombre de categoria, ordenados
- *     alfabeticamente por nombre. Incluye insumos con stock cero.
- *
- *   getDisponibles()
- *     Igual que getAll pero filtra unicamente los insumos con stock > 0.
- *     Se usa en el formulario de nueva solicitud.
- *
- *   crear(campos)
- *     Inserta un nuevo insumo. Los campos opcionales num_serie, marca y modelo
- *     se guardan como NULL si vienen vacios o no se proporcionan.
- *     Retorna el insertId del nuevo registro.
- *
- *   actualizar(id, campos)
- *     Actualiza todos los campos de un insumo existente.
- *     Retorna true si se afecto al menos un registro, false si el id no existe.
- *
- *   getStockBajo(umbral)
- *     Retorna insumos con stock igual o menor al umbral (5 por defecto).
- *     Incluye la columna calculada nivel_alerta con valor "agotado" (stock = 0)
- *     o "bajo" (stock entre 1 y el umbral). Limitado a 50 registros.
- *
- *   descontarStock(conn, insumos)
- *     Funcion transaccional que recibe una conexion de base de datos con una
- *     transaccion ya abierta y un arreglo de { id_insumo, cantidad }.
- *     Para cada insumo hace SELECT ... FOR UPDATE para bloquear el registro
- *     durante la transaccion y verifica que el stock sea suficiente antes de
- *     decrementarlo. Si el stock es insuficiente lanza un Error con statusCode 400.
- *     No hace commit ni rollback, eso lo maneja el llamador.
- *
- *   eliminar(id)
- *     Elimina un insumo por su id.
- *     Retorna true si fue eliminado, false si el id no existia.
+ * DISPONIBILIDAD — campo calculado (NO almacenado):
+ *   Se deriva del stock con CASE WHEN en cada SELECT:
+ *     stock = 0   → "Sin stock"
+ *     stock <= 5  → "Stock bajo"
+ *     stock > 5   → "Disponible"
  */
 import pool from "../Config/db.js";
 
+const DISPONIBILIDAD_EXPR = `CASE
+    WHEN i.stock  = 0 THEN 'Sin stock'
+    WHEN i.stock <= 5 THEN 'Stock bajo'
+    ELSE 'Disponible'
+  END AS disponibilidad`;
+
 const Insumo = {
+
   getAll: async () => {
     const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.num_serie, i.nombre, i.marca, i.modelo,
-              i.stock, i.estado, c.nombre_categoria
+      `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion,
+              i.marca, i.modelo, i.stock, i.estado,
+              i.id_categoria, i.proveedor, i.imagen_url,
+              c.nombre_categoria,
+              ${DISPONIBILIDAD_EXPR}
        FROM insumo i
        LEFT JOIN categoria c ON i.id_categoria = c.id_categoria
        ORDER BY i.nombre ASC`
@@ -57,8 +37,10 @@ const Insumo = {
 
   getDisponibles: async () => {
     const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.nombre, i.marca, i.modelo, i.stock, i.estado,
-              c.nombre_categoria
+      `SELECT i.id_insumo, i.nombre, i.marca, i.modelo,
+              i.stock, i.estado, i.id_categoria, i.proveedor,
+              c.nombre_categoria,
+              ${DISPONIBILIDAD_EXPR}
        FROM insumo i
        LEFT JOIN categoria c ON i.id_categoria = c.id_categoria
        WHERE i.stock > 0
@@ -67,27 +49,54 @@ const Insumo = {
     return rows;
   },
 
-  crear: async ({ num_serie, nombre, marca, modelo, stock, estado, id_categoria }) => {
+  crear: async ({ num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, proveedor, imagen_url }) => {
     const [r] = await pool.query(
-      `INSERT INTO insumo (num_serie, nombre, marca, modelo, stock, estado, id_categoria)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [num_serie || null, nombre, marca || null, modelo || null, stock, estado, id_categoria]
+      `INSERT INTO insumo
+         (num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, proveedor, imagen_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        num_serie   || null,
+        nombre,
+        descripcion || null,
+        marca       || null,
+        modelo      || null,
+        stock,
+        estado,
+        id_categoria,
+        proveedor   || null,
+        imagen_url  || null,
+      ]
     );
     return r.insertId;
   },
 
-  actualizar: async (id, { num_serie, nombre, marca, modelo, stock, estado, id_categoria }) => {
+  actualizar: async (id, { num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, proveedor, imagen_url }) => {
     const [r] = await pool.query(
-      `UPDATE insumo SET num_serie=?, nombre=?, marca=?, modelo=?, stock=?, estado=?, id_categoria=?
-       WHERE id_insumo=?`,
-      [num_serie || null, nombre, marca || null, modelo || null, stock, estado, id_categoria, id]
+      `UPDATE insumo
+          SET num_serie=?, nombre=?, descripcion=?, marca=?, modelo=?,
+              stock=?, estado=?, id_categoria=?, proveedor=?, imagen_url=?
+        WHERE id_insumo=?`,
+      [
+        num_serie   || null,
+        nombre,
+        descripcion || null,
+        marca       || null,
+        modelo      || null,
+        stock,
+        estado,
+        id_categoria,
+        proveedor   || null,
+        imagen_url  || null,
+        id,
+      ]
     );
     return r.affectedRows > 0;
   },
 
   getStockBajo: async (umbral = 5) => {
     const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.nombre, i.marca, i.modelo, i.stock, c.nombre_categoria,
+      `SELECT i.id_insumo, i.nombre, i.marca, i.modelo, i.stock,
+              c.nombre_categoria,
               CASE WHEN i.stock = 0 THEN 'agotado' ELSE 'bajo' END AS nivel_alerta
        FROM insumo i
        LEFT JOIN categoria c ON i.id_categoria = c.id_categoria
@@ -99,7 +108,6 @@ const Insumo = {
     return rows;
   },
 
-  // Descuenta stock de los insumos de una solicitud aprobada (dentro de una conexión con transacción abierta)
   descontarStock: async (conn, insumos) => {
     for (const { id_insumo, cantidad } of insumos) {
       const [[row]] = await conn.query(

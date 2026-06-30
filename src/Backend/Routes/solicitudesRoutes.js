@@ -35,8 +35,9 @@ import { requireAuth, requireAdmin } from "../Middlewares/authMiddleware.js";
 import { validate, schemaCrearSolicitud, schemaActualizarEstatusSolicitud, schemaInsumo } from "../Middlewares/validate.js";
 import {
   getInsumos, getInventario, getInsumosStockBajo, crearSolicitud, getSolicitudesByEmpleado,
-  getSolicitudById, getAllSolicitudes, getSolicitudesPendientes, actualizarEstatusSolicitud,
-  crearInsumo, actualizarInsumo, eliminarInsumo, getReporteSolicitudes
+  getSolicitudById, getSolicitudByFolio, getAllSolicitudes, getSolicitudesPendientes,
+  actualizarEstatusSolicitud, aprobarItemsSolicitud, crearInsumo, actualizarInsumo,
+  eliminarInsumo, getReporteSolicitudes
 } from "../Controllers/solicitudesController.js";
 
 const router = Router();
@@ -69,6 +70,7 @@ router.post("/insumos",       requireAdmin, validate(schemaInsumo), crearInsumo)
 router.put("/insumos/:id",    requireAdmin, validate(schemaInsumo), actualizarInsumo);
 router.delete("/insumos/:id", requireAdmin, eliminarInsumo);
 router.patch("/:id/estatus",  requireAdmin, validate(schemaActualizarEstatusSolicitud), actualizarEstatusSolicitud);
+router.patch("/:id/items",    requireAdmin, aprobarItemsSolicitud);
 
 // ── Rutas de usuario autenticado ──────────────────────────────
 // Rutas con paths fijos van antes de /:id para evitar ambigüedad
@@ -78,6 +80,7 @@ router.get("/inventario",         getInventario);
 router.get("/pendientes",         requireAdmin, getSolicitudesPendientes);
 router.get("/empleado/:id_empleado", requireOwnerOrAdmin, getSolicitudesByEmpleado);
 router.post("/", solicitudLimiter, validate(schemaCrearSolicitud), crearSolicitud);
+router.get("/folio/:folio", getSolicitudByFolio);
 router.get("/:id", getSolicitudById);
 
 export default router;

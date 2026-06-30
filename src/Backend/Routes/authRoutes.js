@@ -45,8 +45,8 @@ import { requireAuth, requireAdmin } from "../Middlewares/authMiddleware.js";
 import { validate, schemaLogin, schemaLogout, schemaActualizarPerfil, schemaCrearEmpleado, schemaUpdateEmpleadoAdmin } from "../Middlewares/validate.js";
 import {
   login, logout, actualizarPerfil, getAccesos, getAllAccesos,
-  getAllEmpleados, getEmpleadoById, getDepartamentos, getRoles, updateEmpleadoAdmin, crearEmpleado,
-  subirFotoEmpleado, uploadFoto
+  getAllEmpleados, getEmpleadoById, getDepartamentos, getRoles, getSucursales, updateEmpleadoAdmin, crearEmpleado,
+  subirFotoEmpleado, uploadFoto, refreshToken
 } from "../Controllers/authController.js";
 import { solicitarRecuperacion, verificarCodigo, resetPassword } from "../Controllers/resetController.js";
 
@@ -77,6 +77,14 @@ const recuperarLimiter = rateLimit({
   message: { error: "Demasiadas solicitudes. Intenta en 15 minutos." },
 });
 
+const logoutLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Demasiadas peticiones." },
+});
+
 // Rutas públicas
 router.post("/login",            loginLimiter,     validate(schemaLogin), login);
 router.post("/recuperar",        recuperarLimiter, solicitarRecuperacion);
@@ -85,7 +93,10 @@ router.post("/reset-password",   recuperarLimiter, resetPassword);
 // logout es público intencionalmente: sendBeacon (cierre de pestaña) no puede
 // enviar headers de Authorization. El riesgo es bajo — solo cierra una sesión
 // de historial_acceso por id_acceso, no modifica datos críticos.
-router.post("/logout", validate(schemaLogout), logout);
+router.post("/logout", logoutLimiter, validate(schemaLogout), logout);
+
+// Renovar JWT — requiere token válido en Authorization
+router.post("/refresh-token", requireAuth, refreshToken);
 
 // Rutas protegidas
 router.use(requireAuth);
@@ -93,6 +104,7 @@ router.put("/perfil/:id",          validate(schemaActualizarPerfil), actualizarP
 router.post("/perfil/:id/foto",    ...uploadFoto.single("foto"), subirFotoEmpleado);
 router.get("/accesos/:id",         requireOwnerOrAdmin, getAccesos);
 router.get("/departamentos",       getDepartamentos);
+router.get("/sucursales",          getSucursales);
 router.get("/roles",               getRoles);
 router.get("/empleados/:id",       getEmpleadoById);
 

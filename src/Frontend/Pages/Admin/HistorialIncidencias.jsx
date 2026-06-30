@@ -21,7 +21,7 @@ function Estrellas({ n, isDark }) {
 
 export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onRecargarRef }) {
   const [tickets,       setTickets]       = useState([]);
-  const [filtros, setFiltros] = useState({ busqueda:"", estatus:"Todos", prioridad:"Todos", usuario:"Todos", area:"Todos" });
+  const [filtros, setFiltros] = useState({ busqueda:"", estatus:"Todos", prioridad:"Todos", tecnico:"Todos", usuario:"Todos", area:"Todos", sucursal:"Todos" });
   const [modalReporte, setModalReporte] = useState(false);
   const [admins, setAdmins] = useState([]);
   const [generando, setGenerando] = useState(false);
@@ -50,6 +50,9 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
 
   useEffect(() => { cargarRef.current = cargar; }, [cargar]);
 
+  // Carga inicial y cuando cambia la página
+  useEffect(() => { cargar(pagina); }, [pagina, cargar]);
+
   useEffect(() => {
     if (onRecargarRef) onRecargarRef.current = () => cargarRef.current?.(pagina);
   }, [pagina, onRecargarRef]);
@@ -71,21 +74,26 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
   const pctSat    = califs.length > 0
     ? Math.round((califs.reduce((a,t) => a + t.calificacion, 0) / (califs.length * 5)) * 100) : 0;
 
-  const usuariosOpts = [{value:"Todos",label:"Todos"},...Array.from(new Set(tickets.map(t=>t.nombre_empleado).filter(Boolean))).map(v=>({value:v,label:v}))];
-  const areasOpts    = [{value:"Todos",label:"Todos"},...Array.from(new Set(tickets.map(t=>t.nombre_departamento).filter(Boolean))).map(v=>({value:v,label:v}))];
+  const usuariosOpts  = [{value:"Todos",label:"Todos"},...Array.from(new Set(tickets.map(t=>t.nombre_empleado).filter(Boolean))).map(v=>({value:v,label:v}))];
+  const areasOpts     = [{value:"Todos",label:"Todos"},...Array.from(new Set(tickets.map(t=>t.nombre_departamento).filter(Boolean))).map(v=>({value:v,label:v}))];
+  const sucursalesOpts = [{value:"Todos",label:"Todos"},...Array.from(new Set(tickets.map(t=>t.nombre_sucursal).filter(Boolean))).map(v=>({value:v,label:v}))];
+
+  const tecnicosOpts = [{value:"Todos",label:"Todos"},...Array.from(new Set(tickets.map(t=>t.resuelto_por).filter(Boolean))).map(v=>({value:v,label:v}))];
 
   const camposFiltro = [
     { key:"busqueda",  label:"Búsqueda Rápida", type:"search",  placeholder:"Título o folio..." },
-    { key:"estatus",   label:"Estatus",          type:"select",  opts:["Todos","Resuelto","En proceso","No Resuelto"] },
+    { key:"estatus",   label:"Estatus",          type:"select",  opts:["Todos","Resuelto","En proceso","No Resuelto","Cancelado"] },
     { key:"prioridad", label:"Prioridad",         type:"select",  opts:["Todos","Urgente","Alta","Media","Baja"] },
+    { key:"tecnico",   label:"Técnico",           type:"select",  opts:tecnicosOpts },
     { key:"usuario",   label:"Usuario",           type:"select",  opts:usuariosOpts },
     { key:"area",      label:"Área",              type:"select",  opts:areasOpts },
+    { key:"sucursal",  label:"Sucursal",           type:"select",  opts:sucursalesOpts },
   ];
 
-  const limpiar = () => setFiltros({ busqueda:"", estatus:"Todos", prioridad:"Todos", usuario:"Todos", area:"Todos" });
+  const limpiar = () => setFiltros({ busqueda:"", estatus:"Todos", prioridad:"Todos", tecnico:"Todos", usuario:"Todos", area:"Todos", sucursal:"Todos" });
 
   const hayFiltros = filtros.busqueda || filtros.estatus!=="Todos" || filtros.prioridad!=="Todos"
-    || filtros.usuario!=="Todos" || filtros.area!=="Todos";
+    || filtros.tecnico!=="Todos" || filtros.usuario!=="Todos" || filtros.area!=="Todos" || filtros.sucursal!=="Todos";
 
   const filtrados = tickets.filter(t => {
     if (filtros.busqueda) {
@@ -94,8 +102,10 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
     }
     if (filtros.prioridad !== "Todos" && t.prioridad           !== filtros.prioridad) return false;
     if (filtros.estatus   !== "Todos" && t.estatus             !== filtros.estatus)   return false;
+    if (filtros.tecnico   !== "Todos" && (t.resuelto_por ?? "Sin asignar") !== filtros.tecnico) return false;
     if (filtros.usuario   !== "Todos" && t.nombre_empleado     !== filtros.usuario)   return false;
     if (filtros.area      !== "Todos" && t.nombre_departamento !== filtros.area)      return false;
+    if (filtros.sucursal  !== "Todos" && (t.nombre_sucursal ?? "Sin sucursal") !== filtros.sucursal) return false;
     return true;
   });
 
@@ -104,6 +114,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
   const generarReporte = async (params) => {
     const { fecha_inicio, fecha_fin, id_tecnico } = params;
     if (!fecha_inicio || !fecha_fin) return;
+    if (fecha_inicio > fecha_fin) return;
     setGenerando(true);
     let datos = [];
     try {

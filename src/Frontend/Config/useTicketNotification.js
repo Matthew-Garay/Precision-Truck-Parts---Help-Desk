@@ -68,6 +68,7 @@ const EVENTOS_USUARIO = new Set([
   "ticket:en_atencion",
   "solicitud:actualizada",
   "ticket:confirmado",
+  "ticket:cancelado",
 ]);
 
 // Eventos que requieren verificar si el ticket aun existe en BD
@@ -77,6 +78,7 @@ const EVENTOS_CON_TICKET_ID = new Set([
   "ticket:calificado",
   "ticket:sla_warning",
   "ticket:confirmado",
+  "ticket:cancelado",
   "ticket:sin_atender",
 ]);
 
@@ -95,7 +97,8 @@ function cargarDelStorage(id_empleado) {
     const TIPOS_VALIDOS = new Set([
       "ticket:nuevo", "solicitud:nueva", "ticket:calificado", "tickets:vencidos",
       "ticket:sla_warning", "insumo:stock_critico", "ticket:sin_atender",
-      "ticket:actualizado", "ticket:en_atencion", "solicitud:actualizada", "ticket:confirmado",
+      "ticket:actualizado", "ticket:en_atencion", "solicitud:actualizada",
+      "ticket:confirmado", "ticket:cancelado",
     ]);
     return parsed.filter(n => n?.tipo && n?.data && TIPOS_VALIDOS.has(n.tipo));
   } catch { return []; }
@@ -117,12 +120,11 @@ export function useTicketNotification({ usuario, onNavegar }) {
   const esAdminRef = useRef(esAdmin);
   esAdminRef.current = esAdmin;
 
-  const [notificaciones, setNotificaciones] = useState(
-    () => cargarDelStorage(idEmpleado)
-  );
+  const [notificaciones, setNotificaciones] = useState([]);
 
-  // Cuando cambia el usuario (login diferente), recargar sus notificaciones
+  // Cargar notificaciones cuando se conoce el id del empleado
   useEffect(() => {
+    if (!idEmpleado) return;
     setNotificaciones(cargarDelStorage(idEmpleado));
   }, [idEmpleado]);
 

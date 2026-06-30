@@ -80,6 +80,13 @@ export function validate(schema) {
 
 // -- SCHEMAS --------------------------------------------------
 
+// Política de contraseña corporativa: mín 8 chars, 1 mayúscula, 1 número, 1 símbolo
+const passwordPolicy = z.string()
+  .min(8, "Mínimo 8 caracteres")
+  .refine(p => /[A-Z]/.test(p), "Debe contener al menos una mayúscula")
+  .refine(p => /[0-9]/.test(p), "Debe contener al menos un número")
+  .refine(p => /[^A-Za-z0-9]/.test(p), "Debe contener al menos un carácter especial");
+
 export const schemaLogin = z.object({
   email:    z.string().trim().email("Correo inválido"),
   password: z.string().min(1, "La contraseña es requerida"),
@@ -95,7 +102,7 @@ export const schemaActualizarPerfil = z.object({
   ap_materno:      z.string().trim().max(80).optional(),
   email:           z.string().trim().email().optional(),
   password_actual: z.string().min(1).optional(),
-  password_nueva:  z.string().min(8, "Mínimo 8 caracteres").optional(),
+  password_nueva:  passwordPolicy.optional(),
 }).refine(
   (d) => !d.password_nueva || !!d.password_actual,
   { message: "La contraseña actual es requerida para cambiarla", path: ["password_actual"] }
@@ -107,9 +114,10 @@ export const schemaCrearEmpleado = z.object({
   ap_paterno:      z.string().trim().min(1).max(80),
   ap_materno:      z.string().trim().max(80).optional().default(""),
   email:           z.string().trim().email(),
-  password:        z.string().min(8, "Mínimo 8 caracteres"),
+  password:        passwordPolicy,
   id_rol:          z.number({ coerce: true }).int().positive(),
   id_departamento: z.number({ coerce: true }).int().positive(),
+  id_sucursal:     z.number({ coerce: true }).int().positive().nullable().optional(),
 });
 
 export const schemaUpdateEmpleadoAdmin = z.object({
@@ -121,7 +129,7 @@ export const schemaUpdateEmpleadoAdmin = z.object({
   id_rol:          z.number({ coerce: true }).int().positive().optional(),
   id_departamento: z.number({ coerce: true }).int().positive().optional(),
   estatus:         z.enum(["Activo", "Inactivo"]).optional(),
-  password_nueva:  z.string().min(8).optional(),
+  password_nueva:  passwordPolicy.optional(),
 });
 
 export const schemaCrearTicket = z.object({
@@ -132,7 +140,9 @@ export const schemaCrearTicket = z.object({
 });
 
 export const schemaActualizarTicket = z.object({
-  estatus:         z.enum(["En proceso", "Resuelto", "No Resuelto"]),
+  // "Cancelado" se incluye aquí aunque la ruta PATCH /:id_ticket solo
+  // lo usa el admin. La ruta /cancelar tiene su propio endpoint.
+  estatus:         z.enum(["En proceso", "Resuelto", "No Resuelto", "Cancelado"]),
   comentarios:     z.string().max(10000).nullable().optional(),
   id_resuelto_por: z.number({ coerce: true }).int().positive().nullable().optional(),
 });
@@ -146,7 +156,7 @@ export const schemaEditarTicket = z.object({
   descripcion:  z.string().trim().min(1).max(5000, "La descripción no puede superar 5000 caracteres"),
   prioridad:    z.enum(["Urgente", "Alta", "Media", "Baja"]),
   id_categoria: z.number({ coerce: true }).int().positive(),
-  estatus:      z.enum(["En proceso", "Resuelto", "No Resuelto"]).optional(),
+  estatus:      z.enum(["En proceso", "Resuelto", "No Resuelto", "Cancelado"]).optional(),
   comentarios:  z.string().max(10000).nullable().optional(),
 });
 
@@ -161,15 +171,29 @@ export const schemaCrearSolicitud = z.object({
 });
 
 export const schemaActualizarEstatusSolicitud = z.object({
-  estatus: z.enum(["En proceso", "Resuelto", "No Resuelto"]),
+  estatus: z.enum(["En proceso", "Resuelto", "No Resuelto", "Rechazado"]),
+});
+
+// Schema para filtros de búsqueda en tickets (#16)
+export const schemaFiltrosTickets = z.object({
+  page:       z.number({ coerce: true }).int().positive().optional().default(1),
+  limit:      z.number({ coerce: true }).int().positive().max(500).optional().default(50),
+  estatus:    z.enum(["En proceso", "Resuelto", "No Resuelto", "Cancelado"]).optional(),
+  prioridad:  z.enum(["Urgente", "Alta", "Media", "Baja"]).optional(),
+  q:          z.string().trim().max(200).optional(),
+  fecha_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato YYYY-MM-DD").optional(),
+  fecha_fin:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato YYYY-MM-DD").optional(),
 });
 
 export const schemaInsumo = z.object({
   num_serie:    z.string().trim().max(100).optional().default(""),
   nombre:       z.string().trim().min(1, "Nombre requerido").max(150),
-  marca:        z.string().trim().max(80).optional().default(""),
-  modelo:       z.string().trim().max(80).optional().default(""),
+  descripcion:  z.string().trim().max(1000).optional().nullable().default(null),
+  marca:        z.string().trim().max(100).optional().default(""),
+  modelo:       z.string().trim().max(100).optional().default(""),
   stock:        z.number({ coerce: true }).int().min(0),
   estado:       z.enum(["Excelente", "Bueno", "Regular", "Malo"]),
   id_categoria: z.number({ coerce: true }).int().positive(),
+  proveedor:    z.string().trim().max(255).optional().nullable().default(null),
+  imagen_url:   z.string().trim().max(255).optional().nullable().default(null),
 });

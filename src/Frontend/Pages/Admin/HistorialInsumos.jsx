@@ -26,9 +26,12 @@ export default function HistorialInsumos({ T, onVerSolicitud }) {
   const [paramReporte, setParamReporte] = useState({ fecha_inicio: "", fecha_fin: "" });
   const [generando,    setGenerando]    = useState(false);
 
-  const cargar = useCallback((pag = 1) => {
+  const cargar = useCallback((pag = 1, traerTodos = false) => {
     setCargando(true);
-    apiFetch(`/api/solicitudes?limit=${LIMIT}&page=${pag}`)
+    // Si hay búsqueda activa o se pide explícitamente, traer todos para filtrar localmente
+    const limit = traerTodos ? 500 : LIMIT;
+    const page  = traerTodos ? 1   : pag;
+    apiFetch(`/api/solicitudes?limit=${limit}&page=${page}`)
       .then(r => r.json())
       .then(d => {
         const lista = Array.isArray(d?.data) ? d.data : (Array.isArray(d) ? d : []);
@@ -39,7 +42,20 @@ export default function HistorialInsumos({ T, onVerSolicitud }) {
       .finally(() => setCargando(false));
   }, []);
 
-  useEffect(() => { cargar(pagina); }, [pagina, cargar]);
+  // Recargar con todos los registros cuando se activa búsqueda de texto
+  useEffect(() => {
+    if (filtros.busqueda) {
+      cargar(1, true);
+    } else {
+      cargar(pagina);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtros.busqueda]);
+
+  useEffect(() => {
+    if (!filtros.busqueda) cargar(pagina);
+  }, [pagina, cargar, filtros.busqueda]);
+
   useAutoRefresh(() => cargar(pagina), 30000, [pagina]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / LIMIT));
@@ -49,7 +65,7 @@ export default function HistorialInsumos({ T, onVerSolicitud }) {
   const areasOpts    = [{ value: "Todos", label: "Todos" }, ...Array.from(new Set(solicitudes.map(s => s.nombre_departamento).filter(Boolean))).map(v => ({ value: v, label: v }))];
 
   const camposFiltro = [
-    { key: "busqueda",  label: "Búsqueda rápida", type: "search", placeholder: "Título o folio..." },
+    { key: "busqueda",  label: "Búsqueda rápida", type: "search", placeholder: "Folio, insumo o empleado..." },
     { key: "estatus",   label: "Estatus",          type: "select", opts: ["Todos", "Pendiente", "En proceso", "Resuelto", "No Resuelto"] },
     { key: "prioridad", label: "Prioridad",         type: "select", opts: ["Todos", "Urgente", "Alta", "Media", "Baja"] },
     { key: "usuario",   label: "Usuario",           type: "select", opts: usuariosOpts },
@@ -224,12 +240,17 @@ export default function HistorialInsumos({ T, onVerSolicitud }) {
   const filtrados = solicitudes.filter(s => {
     if (filtros.busqueda) {
       const q = filtros.busqueda.toLowerCase();
-      if (!s.folio_solicitud?.toLowerCase().includes(q) && !s.titulo?.toLowerCase().includes(q)) return false;
+      if (
+        !s.folio_solicitud?.toLowerCase().includes(q) &&
+        !s.insumos_nombres?.toLowerCase().includes(q) &&
+        !s.nombre_empleado?.toLowerCase().includes(q) &&
+        !s.nombre_departamento?.toLowerCase().includes(q)
+      ) return false;
     }
-    if (filtros.estatus   !== "Todos" && s.estatus           !== filtros.estatus)   return false;
-    if (filtros.prioridad !== "Todos" && s.prioridad         !== filtros.prioridad) return false;
-    if (filtros.usuario   !== "Todos" && s.nombre_empleado   !== filtros.usuario)   return false;
-    if (filtros.area      !== "Todos" && s.nombre_departamento !== filtros.area)    return false;
+    if (filtros.estatus   !== "Todos" && s.estatus             !== filtros.estatus)   return false;
+    if (filtros.prioridad !== "Todos" && s.prioridad           !== filtros.prioridad) return false;
+    if (filtros.usuario   !== "Todos" && s.nombre_empleado     !== filtros.usuario)   return false;
+    if (filtros.area      !== "Todos" && s.nombre_departamento !== filtros.area)      return false;
     return true;
   });
 
@@ -297,7 +318,8 @@ export default function HistorialInsumos({ T, onVerSolicitud }) {
               )}
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
                 style={{ background: T.bg, color: T.textMuted, border: `1px solid ${T.border}` }}>
-                {filtrados.length} resultado{filtrados.length !== 1 ? "s" : ""} · pág. {pagina}/{totalPaginas}
+                {filtrados.length} resultado{filtrados.length !== 1 ? "s" : ""}
+                {!filtros.busqueda && ` · pág. ${pagina}/${totalPaginas}`}
               </span>
             </div>
           </div>
@@ -401,8 +423,8 @@ export default function HistorialInsumos({ T, onVerSolicitud }) {
           </div>
         </div>
 
-        {/* Paginación */}
-        {totalPaginas > 1 && (
+        {/* Paginación — se oculta cuando hay búsqueda activa (filtrado local sobre todos los datos) */}
+        {totalPaginas > 1 && !filtros.busqueda && (
           <div className="flex items-center justify-center gap-2 py-2">
             <button onClick={() => irPagina(1)} disabled={pagina === 1}
               className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"

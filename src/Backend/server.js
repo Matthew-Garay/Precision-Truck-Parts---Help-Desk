@@ -35,13 +35,12 @@
  *    /api/solicitudes - solicitudes de insumos e inventario
  *    /api/manuales    - subida, edicion y eliminacion de manuales PDF (inline en este archivo)
  *
- * 7. Implementa el endpoint POST /api/auth/refresh-token que renueva un JWT
- *    aun valido generando uno nuevo con 12 horas de vigencia.
- *
- * 8. Inicia los workers de tareas programadas (scheduledJobs) pasandoles la
+ * 7. Inicia los workers de tareas programadas (scheduledJobs) pasandoles la
  *    instancia de io para que puedan emitir eventos de Socket.io.
  *
- * 9. Escucha en el puerto definido en la variable PORT (por defecto 3001).
+ * 8. Escucha en el puerto definido en la variable PORT (por defecto 3001).
+ *
+ * Nota: POST /api/auth/refresh-token esta implementado en authRoutes.js.
  *
  * Variables de entorno requeridas:
  *   JWT_SECRET   - clave secreta para firmar y verificar tokens JWT
@@ -64,7 +63,6 @@ import helmet            from "helmet";
 import dotenv            from "dotenv";
 import jwt               from "jsonwebtoken";
 import path              from "path";
-import fs                from "fs";
 import { fileURLToPath } from "url";
 import pool              from "./Config/db.js";
 import { requireAuth }   from "./Middlewares/authMiddleware.js";
@@ -74,9 +72,7 @@ import categoriasRoutes  from "./Routes/categoriasRoutes.js";
 import authRoutes        from "./Routes/authRoutes.js";
 import ticketsRoutes     from "./Routes/ticketsRoutes.js";
 import solicitudesRoutes from "./Routes/solicitudesRoutes.js";
-import { uploadManual, MANUALES_DIR, nombreManual } from "./Middlewares/uploadManuales.js";
-import { safeResolvePath } from "./Middlewares/security.js";
-import Manual from "./Models/Manual.js";
+import manualesRoutes    from "./Routes/manualesRoutes.js";
 
 dotenv.config();
 
@@ -119,6 +115,48 @@ io.on("connection", (socket) => {
 // -- Handlers de proceso no controlado -----------------------
 process.on("uncaughtException",  (err) => console.error("[uncaughtException]",  err));
 process.on("unhandledRejection", (err) => console.error("[unhandledRejection]", err));
+
+// -- Graceful shutdown: SIGTERM (PM2/Docker) y SIGINT (Ctrl+C) ----
+// Cierra conexiones activas y el pool MySQL antes de salir.
+// Timeout de 10s para evitar colgarse indefinidamente.
+const shutdown = (signal) => {
+  console.log(`\n[Shutdown] ${signal} recibido. Cerrando...`);
+  httpServer.close(async () => {
+    console.log("[Shutdown] Servidor HTTP cerrado.");
+    try { await pool.end(); console.log("[Shutdown] Pool MySQL cerrado."); }
+    catch (err) { console.error("[Shutdown] Error cerrando pool:", err.message); }
+    process.exit(0);
+  });
+  setTimeout(() => { console.error("[Shutdown] Timeout forzado."); process.exit(1); }, 10_000).unref();
+};
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT",  () => shutdown("SIGINT"));
+
+// -- Graceful shutdown: cierra el servidor y el pool MySQL ----
+// Se llama al recibir SIGTERM (Docker/PM2) o SIGINT (Ctrl+C).
+// Da 10 segundos a las peticiones activas para terminar antes
+// de forzar la salida.
+const shutdown = (signal) => {
+  console.log(`\n[Shutdown] Señal ${signal} recibida. Cerrando servidor...`);
+  httpServer.close(async () => {
+    console.log("[Shutdown] Servidor HTTP cerrado.");
+    try {
+      await pool.end();
+      console.log("[Shutdown] Pool MySQL cerrado.");
+    } catch (err) {
+      console.error("[Shutdown] Error cerrando pool MySQL:", err.message);
+    }
+    process.exit(0);
+  });
+  // Forzar salida si tarda más de 10 segundos
+  setTimeout(() => {
+    console.error("[Shutdown] Timeout forzado. Saliendo.");
+    process.exit(1);
+  }, 10_000).unref();
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT",  () => shutdown("SIGINT"));
 
 // -- Trust proxy (necesario para rate-limit detrás de Nginx/Apache) ----
 // '1' = confiar en el primer proxy inverso (el inmediato)
@@ -166,125 +204,33 @@ app.use("/fotos", requireAuth, express.static(path.resolve(__dirname, "../../sto
 // -- Rutas ----------------------------------------------------
 app.get("/api/ping", (_req, res) => res.json({ status: "ok", message: "Servidor HelpDesk activo ✅" }));
 
+// Health endpoint: estado del pool de conexiones
+app.get("/api/health", requireAuth, (_req, res) => {
+  const poolInfo = pool.pool?.pool ?? {};
+  res.json({
+    status:      "ok",
+    uptime:      Math.floor(process.uptime()),
+    memory_mb:   Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    connections: {
+      total:   poolInfo._allConnections?.length    ?? "n/a",
+      free:    poolInfo._freeConnections?.length   ?? "n/a",
+      queue:   poolInfo._connectionQueue?.length   ?? "n/a",
+    },
+    node_env: process.env.NODE_ENV || "development",
+  });
+});
+
 // Cache-Control: no-store en rutas sensibles de auth
 app.use("/api/auth", (_req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
 });
 
-// -- Refresh token: renueva el JWT si aun es valido ---------------
-app.post("/api/auth/refresh-token", (req, res) => {
-  const header = req.headers["authorization"];
-  if (!header?.startsWith("Bearer ")) return res.status(401).json({ error: "No autorizado" });
-  try {
-    const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET);
-    // Solo renovar los campos de identidad, sin campos de expiracion anteriores
-    const nuevoToken = jwt.sign(
-      { id_empleado: payload.id_empleado, id_rol: payload.id_rol },
-      process.env.JWT_SECRET,
-      { expiresIn: "12h" }
-    );
-    res.set("Cache-Control", "no-store");
-    res.json({ ok: true, token: nuevoToken });
-  } catch {
-    res.status(401).json({ error: "Token invalido o expirado" });
-  }
-});
-
 app.use("/api/categorias",  categoriasRoutes);
 app.use("/api/auth",        authRoutes);
 app.use("/api/tickets",     ticketsRoutes);
 app.use("/api/solicitudes", solicitudesRoutes);
-
-// -- Manuales (BD + disco) ------------------------------------------
-// GET — lista todos
-app.get("/api/manuales", requireAuth, async (_req, res) => {
-  try {
-    const rows = await Manual.getAll();
-    res.json(rows.map(m => ({
-      ...m,
-      url: `/storage/Manuales/${encodeURIComponent(path.basename(m.ruta_pdf))}`,
-    })));
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// POST — subir PDF + metadatos
-app.post("/api/manuales", requireAuth, (req, res) => {
-  if (req.usuario?.id_rol !== 1) return res.status(403).json({ error: "Solo administradores" });
-  uploadManual.single("archivo")(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: err.message || "Error al subir archivo" });
-    if (!req.file) return res.status(400).json({ error: "No se recibió ningún archivo" });
-    const { nombre, descripcion, id_categoria } = req.body;
-    if (!nombre?.trim()) {
-      await fs.promises.unlink(req.file.path).catch(() => {});
-      return res.status(400).json({ error: "El nombre es obligatorio" });
-    }
-    const idCat = parseInt(id_categoria, 10);
-    if (isNaN(idCat) || idCat < 1) {
-      await fs.promises.unlink(req.file.path).catch(() => {});
-      return res.status(400).json({ error: "La categoría es obligatoria" });
-    }
-    try {
-      // Renombrar archivo temporal al nombre formateado
-      const nombreFinal = nombreManual(nombre.trim());
-      const base = nombreFinal.replace(/\.pdf$/i, "");
-      let rutaFinal = path.join(MANUALES_DIR, nombreFinal);
-      let n = 1;
-      while (true) {
-        try { await fs.promises.access(rutaFinal); rutaFinal = path.join(MANUALES_DIR, `${base}_${n++}.pdf`); }
-        catch { break; }
-      }
-      await fs.promises.rename(req.file.path, rutaFinal);
-
-      const id = await Manual.crear({
-        nombre:       nombre.trim().slice(0, 150),
-        descripcion:  descripcion?.trim() || null,
-        ruta_pdf:     rutaFinal,
-        id_categoria: idCat,
-      });
-      const rows = await Manual.getAll();
-      const manual = rows.find(m => m.id_manual === id);
-      res.status(201).json({ ok: true, manual: {
-        ...manual,
-        url: `/storage/Manuales/${encodeURIComponent(path.basename(rutaFinal))}`,
-      }});
-    } catch (e) {
-      await fs.promises.unlink(req.file.path).catch(() => {});
-      res.status(500).json({ error: e.message });
-    }
-  });
-});
-
-// PUT — editar metadatos
-app.put("/api/manuales/:id", requireAuth, async (req, res) => {
-  if (req.usuario?.id_rol !== 1) return res.status(403).json({ error: "Solo administradores" });
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
-  const { nombre, descripcion, id_categoria } = req.body;
-  if (!nombre?.trim()) return res.status(400).json({ error: "El nombre es obligatorio" });
-  const idCat = parseInt(id_categoria, 10);
-  if (isNaN(idCat) || idCat < 1) return res.status(400).json({ error: "La categoría es obligatoria" });
-  try {
-    const ok = await Manual.actualizar(id, { nombre: nombre.trim().slice(0,150), descripcion: descripcion?.trim()||null, id_categoria: idCat });
-    if (!ok) return res.status(404).json({ error: "Manual no encontrado" });
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// DELETE — eliminar PDF + registro BD
-app.delete("/api/manuales/:id", requireAuth, async (req, res) => {
-  if (req.usuario?.id_rol !== 1) return res.status(403).json({ error: "Solo administradores" });
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
-  try {
-    const ruta = await Manual.getRuta(id);
-    if (!ruta) return res.status(404).json({ error: "Manual no encontrado" });
-    const ok = await Manual.eliminar(id);
-    if (!ok) return res.status(404).json({ error: "Manual no encontrado" });
-    try { await fs.promises.unlink(safeResolvePath(MANUALES_DIR, path.basename(ruta))); } catch { /* ya no existe */ }
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
+app.use("/api/manuales",    manualesRoutes);
 
 // -- 404 en rutas /api/ → siempre JSON, nunca HTML ------------------
 app.use("/api", (req, res) => {

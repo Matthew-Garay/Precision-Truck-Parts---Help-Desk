@@ -5,35 +5,23 @@
  * Se muestra en la barra de navegacion y permite al usuario ver
  * el historial de notificaciones recibidas durante la sesion.
  *
- * Comportamiento:
- *   - Muestra un badge naranja con el conteo de notificaciones no leidas.
- *   - La campana se anima con un efecto de bamboleo cuando llega una notificacion nueva.
- *   - Al hacer clic se despliega un panel flotante con la lista de notificaciones.
- *   - El panel se cierra al hacer clic fuera de el.
- *   - Cada notificacion muestra un icono de color segun su tipo, el titulo,
- *     el mensaje en dos lineas y la hora de recepcion.
- *   - Las notificaciones con accion (ver ticket, calificar) muestran un boton
- *     que al presionarlo llama a onClickNotif y cierra el panel.
- *   - Las alertas de SLA tienen una banda roja superior y un boton rojo de urgencia.
- *
- * Props:
- *   T              - tokens del tema activo (claro u oscuro)
- *   notificaciones - arreglo de notificaciones del historial (de useTicketNotification)
- *   onDismiss      - funcion(id) para eliminar una notificacion del historial
- *   onDismissAll   - funcion() para limpiar todo el historial
- *   onClickNotif   - funcion(notificacion) al hacer clic en el boton de accion
- *
- * Tipos de notificacion soportados (TIPO_CONFIG):
- *   ticket:nuevo, solicitud:nueva, ticket:calificado, ticket:sla_warning,
- *   tickets:vencidos, ticket:actualizado, ticket:en_atencion,
- *   solicitud:actualizada, ticket:confirmado, insumo:stock_critico, ticket:sin_atender
+ * Correcciones aplicadas:
+ *   - Panel siempre posicionado como absolute relativo al boton (nunca fixed),
+ *     usando clamp() para ancho responsivo. Elimina la logica de window.innerWidth
+ *     evaluada solo al montar que causaba posicion incorrecta.
+ *   - Cierre-fuera reemplazado: ya no usa capture:true que se disparaba antes
+ *     del click del boton de accion. Ahora usa un flag (accionRef) para que el
+ *     handler de cierre ignore el evento que origino una accion interna.
+ *   - Botones de accion cambiados de onMouseDown+preventDefault a onClick para
+ *     que el flujo de evento sea el estandar y no interfiera con el cierre.
+ *   - Tipografia unificada via var(--font-sans).
  */
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Bell, X, CheckCircle2, Package, Ticket, Star, Clock, AlertTriangle, Wrench } from "lucide-react";
+import { Bell, X, CheckCircle2, Package, Ticket, Star, Clock, AlertTriangle, Wrench, VolumeX, Volume2 } from "lucide-react";
+import { isMuted, setMuted } from "../Config/NotificationService.js";
 
 // -- Configuración de cada tipo de notificación ---------------------------
 const TIPO_CONFIG = {
-  // ADMIN: nuevo ticket con nombre y área
   "ticket:nuevo": {
     icon:   Ticket,
     color:  () => "#F47920",
@@ -42,7 +30,6 @@ const TIPO_CONFIG = {
     sub:    (d) => `${d.nombre_empleado || "Usuario"} · ${d.departamento || "Sin área"}\n#${d.folio_ticket} · ${d.prioridad} — ${d.titulo}`,
     accion: "Ver ticket",
   },
-  // ADMIN: nueva solicitud de insumo con nombre y área
   "solicitud:nueva": {
     icon:   Package,
     color:  () => "#3b82f6",
@@ -51,7 +38,6 @@ const TIPO_CONFIG = {
     sub:    (d) => `${d.nombre_empleado || "Usuario"} · ${d.departamento || "Sin área"}\n#${d.folio_solicitud} · ${d.prioridad} · ${d.total_insumos} insumo${d.total_insumos !== 1 ? "s" : ""}`,
     accion: "Ver solicitud",
   },
-  // ADMIN: ticket calificado
   "ticket:calificado": {
     icon:   Star,
     color:  () => "#f59e0b",
@@ -63,7 +49,6 @@ const TIPO_CONFIG = {
     },
     accion: "Ver ticket",
   },
-  // ADMIN: alerta SLA próximo a vencer
   "ticket:sla_warning": {
     icon:   AlertTriangle,
     color:  () => "#dc2626",
@@ -72,7 +57,6 @@ const TIPO_CONFIG = {
     sub:    (d) => `${d.mensaje || `Advertencia: El ticket #${d.folio_ticket} está próximo a superar el tiempo de respuesta acordado (SLA).`}\nTiempo restante: ${d.tiempo_restante} · Prioridad: ${d.prioridad}`,
     accion: "Ver ticket",
   },
-  // ADMIN: tickets cerrados automáticamente
   "tickets:vencidos": {
     icon:   Clock,
     color:  () => "#dc2626",
@@ -81,7 +65,6 @@ const TIPO_CONFIG = {
     sub:    (d) => `${d.total} ticket${d.total !== 1 ? "s" : ""} marcado${d.total !== 1 ? "s" : ""} como "No Resuelto" por superar el SLA de 48h.`,
     accion: null,
   },
-  // USUARIO: su ticket fue resuelto o cerrado → debe calificar
   "ticket:actualizado": {
     icon:   CheckCircle2,
     color:  (d) => d.estatus === "Resuelto" ? "#16a34a" : "#dc2626",
@@ -98,7 +81,6 @@ const TIPO_CONFIG = {
     },
     accion: (d) => d.estatus === "Resuelto" ? "Calificar atencion" : "Ver ticket",
   },
-  // USUARIO: su ticket está siendo atendido por un técnico
   "ticket:en_atencion": {
     icon:   Wrench,
     color:  () => "#8b5cf6",
@@ -107,16 +89,14 @@ const TIPO_CONFIG = {
     sub:    (d) => `#${d.folio_ticket} — ${d.titulo}\nTécnico asignado: ${d.nombre_tecnico || "Soporte técnico"}`,
     accion: "Ver ticket",
   },
-  // USUARIO: su solicitud fue actualizada
   "solicitud:actualizada": {
     icon:   Package,
-    color:  (d) => d.estatus === "Resuelto" ? "#16a34a" : d.estatus === "No Resuelto" ? "#dc2626" : "#F47920",
-    bg:     (d) => d.estatus === "Resuelto" ? "rgba(22,163,74,0.12)" : d.estatus === "No Resuelto" ? "rgba(220,38,38,0.12)" : "rgba(244,121,32,0.12)",
+    color:  (d) => d.estatus === "Resuelto" ? "#16a34a" : (d.estatus === "No Resuelto" || d.estatus === "Rechazado") ? "#dc2626" : "#F47920",
+    bg:     (d) => d.estatus === "Resuelto" ? "rgba(22,163,74,0.12)" : (d.estatus === "No Resuelto" || d.estatus === "Rechazado") ? "rgba(220,38,38,0.12)" : "rgba(244,121,32,0.12)",
     titulo: (d) => `Solicitud de insumo: ${d.estatus}`,
     sub:    (d) => `#${d.folio_solicitud}`,
     accion: null,
   },
-  // USUARIO: confirmación inmediata de ticket creado
   "ticket:confirmado": {
     icon:   CheckCircle2,
     color:  () => "#16a34a",
@@ -125,7 +105,6 @@ const TIPO_CONFIG = {
     sub:    (d) => `#${d.folio_ticket} — ${d.titulo}\nPrioridad: ${d.prioridad} · En revisión por soporte`,
     accion: "Ver ticket",
   },
-  // ADMIN: stock crítico de insumo
   "insumo:stock_critico": {
     icon:   Package,
     color:  (d) => d.stock === 0 ? "#dc2626" : "#f59e0b",
@@ -136,7 +115,14 @@ const TIPO_CONFIG = {
       : `"${d.nombre}" tiene solo ${d.stock} unidad${d.stock !== 1 ? "es" : ""} restante${d.stock !== 1 ? "s" : ""}`,
     accion: null,
   },
-  // ADMIN: ticket sin técnico asignado más de 24h
+  "ticket:cancelado": {
+    icon:   X,
+    color:  () => "#6b7280",
+    bg:     () => "rgba(107,114,128,0.10)",
+    titulo: () => "Ticket cancelado",
+    sub:    (d) => `#${d.folio_ticket}${d.titulo ? ` — ${d.titulo}` : ""}`,
+    accion: null,
+  },
   "ticket:sin_atender": {
     icon:   Clock,
     color:  () => "#f59e0b",
@@ -149,12 +135,24 @@ const TIPO_CONFIG = {
 
 // -- Componente principal -------------------------------------------------
 export default function CampanaNotificaciones({ T, notificaciones, onDismiss, onDismissAll, onClickNotif }) {
-  const [abierto, setAbierto] = useState(false);
+  const [abierto, setAbierto]   = useState(false);
   const [animando, setAnimando] = useState(false);
-  const ref      = useRef(null);
-  const prevLen  = useRef(notificaciones.length);
-  const isDark   = T.isDark;
-  const noLeidas = notificaciones.length;
+  const [muted, setMutedState]  = useState(() => isMuted());
+
+  const toggleMute = useCallback(() => {
+    const next = !muted;
+    setMuted(next);
+    setMutedState(next);
+  }, [muted]);
+
+  const btnRef    = useRef(null);  // botón de la campana
+  const panelRef  = useRef(null);  // panel flotante
+  const prevLen   = useRef(notificaciones.length);
+  // Flag para que el handler de cierre-fuera ignore el evento que originó
+  // un clic en un botón interno (evita cerrar antes de que onClick se ejecute)
+  const accionRef = useRef(false);
+  const isDark    = T.isDark;
+  const noLeidas  = notificaciones.length;
 
   // Animar campana cuando llega una notificación nueva
   useEffect(() => {
@@ -165,27 +163,40 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
     prevLen.current = notificaciones.length;
   }, [notificaciones]);
 
-  // Cerrar al hacer click fuera
+  // Cerrar al hacer clic fuera del botón y del panel
+  // Usa mousedown sin capture para no interceptar clicks internos antes de
+  // que React los procese. El flag accionRef protege los clics de acción.
   useEffect(() => {
     if (!abierto) return;
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setAbierto(false); };
+    const handler = (e) => {
+      if (accionRef.current) { accionRef.current = false; return; }
+      const enBoton = btnRef.current?.contains(e.target);
+      const enPanel = panelRef.current?.contains(e.target);
+      if (!enBoton && !enPanel) setAbierto(false);
+    };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [abierto]);
 
+  // Marca el flag ANTES del mousedown externo y luego ejecuta la acción
   const handleClickNotif = useCallback((n) => {
-    onClickNotif?.(n);
+    accionRef.current = true;
     setAbierto(false);
+    setTimeout(() => { accionRef.current = false; onClickNotif?.(n); }, 80);
   }, [onClickNotif]);
 
   return (
-    <div className="relative" ref={ref}>
+    // relative es imprescindible para que el panel absolute se posicione
+    // correctamente respecto al botón en todos los tamaños de pantalla
+    <div className="relative">
 
       {/* -- Botón campana -- */}
       <button
+        ref={btnRef}
         onClick={() => setAbierto(v => !v)}
         className="relative flex items-center justify-center w-9 h-9 rounded-xl transition-all hover:brightness-110 active:scale-95"
         style={{
+          fontFamily: "var(--font-sans, 'Inter','Segoe UI',sans-serif)",
           background: abierto ? "rgba(244,121,32,0.15)" : T.surfaceAlt,
           border: `1px solid ${abierto ? "rgba(244,121,32,0.4)" : T.border}`,
           color: abierto ? T.orange : T.textMuted,
@@ -226,15 +237,19 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
         }
       `}</style>
 
-      {/* -- Panel desplegable -- */}
+      {/* -- Panel desplegable --
+          Siempre absolute relativo al wrapper .relative.
+          clamp(280px, 88vw, 420px) garantiza que nunca desborde en móvil
+          ni sea demasiado estrecho en desktop. */}
       {abierto && (
         <div
-          className="fixed sm:absolute left-2 right-2 sm:left-auto sm:right-0 z-50 rounded-2xl overflow-hidden"
+          ref={panelRef}
+          className="absolute z-50 rounded-2xl overflow-hidden"
           style={{
-            top: "60px",
-            width: "auto",
-            maxWidth: "100vw",
-            minWidth: "min(340px, calc(100vw - 16px))",
+            top: "calc(100% + 8px)",
+            right: 0,
+            width: "clamp(280px, 88vw, 420px)",
+            fontFamily: "var(--font-sans, 'Inter','Segoe UI',sans-serif)",
             background: isDark ? "#141720" : T.surface,
             border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : T.border}`,
             boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.6)" : "0 8px 32px rgba(0,0,0,0.15)",
@@ -258,14 +273,23 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
                 </span>
               )}
             </div>
-            {noLeidas > 0 && (
+            <div className="flex items-center gap-2">
               <button
-                onClick={onDismissAll}
-                className="text-[10px] font-bold transition-colors hover:underline"
-                style={{ color: T.textMuted }}>
-                Limpiar todo
+                onClick={toggleMute}
+                title={muted ? "Activar sonido" : "Silenciar"}
+                className="flex items-center justify-center w-6 h-6 rounded-lg transition-all hover:brightness-110"
+                style={{ background: muted ? "rgba(220,38,38,0.12)" : T.bg, color: muted ? "#dc2626" : T.textFaint, border: `1px solid ${T.border}` }}>
+                {muted ? <VolumeX size={11} /> : <Volume2 size={11} />}
               </button>
-            )}
+              {noLeidas > 0 && (
+                <button
+                  onClick={onDismissAll}
+                  className="text-[10px] font-bold transition-colors hover:underline"
+                  style={{ color: T.textMuted }}>
+                  Limpiar
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Lista */}
@@ -286,9 +310,7 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
               const sub    = cfg.sub(n.data) ?? "";
               const accion = typeof cfg.accion === "function" ? cfg.accion(n.data) : cfg.accion;
 
-              // Botón calificar solo para ticket resuelto del usuario
               const esCalificable = n.tipo === "ticket:actualizado" && n.data.estatus === "Resuelto";
-              // Botón "Ver" para admin en ticket nuevo / solicitud / calificado / sla
               const tieneAccion = accion && (
                 n.tipo === "ticket:nuevo" ||
                 n.tipo === "solicitud:nueva" ||
@@ -299,8 +321,6 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
                 n.tipo === "ticket:confirmado" ||
                 n.tipo === "ticket:sin_atender"
               );
-
-              // Color especial para SLA warning
               const esSLA = n.tipo === "ticket:sla_warning";
 
               return (
@@ -339,7 +359,6 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
                       <p className="text-[11px] font-black leading-tight" style={{ color }}>
                         {titulo}
                       </p>
-                      {/* Sub con saltos de línea */}
                       {sub.split("\n").map((linea, li) => (
                         <p
                           key={li}
@@ -356,9 +375,10 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
                       </p>
                     </div>
 
-                    {/* Cerrar */}
+                    {/* Cerrar — onClick en lugar de onMouseDown para no
+                        activar el handler de cierre-fuera antes de tiempo */}
                     <button
-                      onMouseDown={(e) => { e.stopPropagation(); onDismiss(n.id); }}
+                      onClick={(e) => { e.stopPropagation(); onDismiss(n.id); }}
                       className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center transition-colors"
                       style={{ color: T.textFaint }}
                       onMouseEnter={e => e.currentTarget.style.color = T.text}
@@ -367,18 +387,21 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
                     </button>
                   </div>
 
-                  {/* Botón de acción */}
+                  {/* Botón de acción — onClick estándar; handleClickNotif
+                      establece el flag antes de setAbierto(false) para que
+                      el listener externo no interfiera */}
                   {tieneAccion && (
                     <button
-                      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); handleClickNotif(n); }}
+                      onClick={(e) => { e.stopPropagation(); handleClickNotif(n); }}
                       className="mx-3 mb-2 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[10px] font-bold transition-all hover:brightness-110 active:scale-95"
-                      style={
-                        esCalificable
+                      style={{
+                        fontFamily: "var(--font-sans, 'Inter','Segoe UI',sans-serif)",
+                        ...(esCalificable
                           ? { background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#fff", boxShadow: "0 2px 8px rgba(245,158,11,0.35)" }
                           : esSLA
                           ? { background: "linear-gradient(135deg, #dc2626, #b91c1c)", color: "#fff", boxShadow: "0 2px 8px rgba(220,38,38,0.35)" }
-                          : { background: isDark ? "rgba(255,255,255,0.08)" : T.surfaceAlt, color: T.orange, border: `1px solid rgba(244,121,32,0.3)` }
-                      }>
+                          : { background: isDark ? "rgba(255,255,255,0.08)" : T.surfaceAlt, color: T.orange, border: `1px solid rgba(244,121,32,0.3)` })
+                      }}>
                       {esCalificable && <Star size={10} />}
                       {esSLA && <AlertTriangle size={10} />}
                       {accion}

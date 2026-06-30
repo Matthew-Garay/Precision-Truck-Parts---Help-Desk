@@ -52,7 +52,7 @@ function passStrength(p) {
 }
 
 // ── Modal Empleado ────────────────────────────────────────────────
-function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, onGuardar, onCerrar }) {
+function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucursales, onGuardar, onCerrar }) {
   const ORANGE = "#F7941E";
   const [form, setForm] = useState({
     num_empleado:    empleado?.num_empleado    || "",
@@ -62,6 +62,7 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, onGuar
     email:           empleado?.email           || "",
     id_rol:          empleado?.id_rol          ? String(empleado.id_rol) : "",
     id_departamento: empleado?.id_departamento ? String(empleado.id_departamento) : "",
+    id_sucursal:     empleado?.id_sucursal     ? String(empleado.id_sucursal) : "",
     estatus:         empleado?.estatus         || "Activo",
     password_nueva:  "",
   });
@@ -181,6 +182,18 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, onGuar
                 </select>
               </div>
             ))}
+          </div>
+
+          {/* Sucursal */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            <Lbl>Sucursal</Lbl>
+            <select style={{ ...inp, cursor: "pointer", colorScheme: isDark ? "dark" : "light" }}
+              value={form.id_sucursal} onChange={e => set("id_sucursal", e.target.value)}
+              onFocus={e => { e.target.style.borderColor = "#F7941E"; e.target.style.boxShadow = "0 0 0 3px rgba(247,148,30,0.15)"; }}
+              onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : T.border; e.target.style.boxShadow = "none"; }}>
+              <option value="">Sin sucursal</option>
+              {sucursales.map(s => <option key={s.id_sucursal} value={s.id_sucursal}>{s.nombre_sucursal}</option>)}
+            </select>
           </div>
 
           {/* Estatus toggle (solo editar) */}
@@ -335,7 +348,7 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             </div>
             <div>
-              <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0, letterSpacing: "-0.01em" }}>Historial de Accesos</p>
+              <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: 0, letterSpacing: "-0.01em" }}>Historial de Accesos</p>
               <p style={{ fontSize: 11, color: "rgba(255,255,255,0.40)", margin: 0 }}>{nombre}</p>
             </div>
           </div>
@@ -515,10 +528,11 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
 
   const sorted = [...empleados].sort((a, b) => {
     const map = {
-      nombre: e => `${e.nombre} ${e.ap_paterno}`,
-      id:     e => e.num_empleado || "",
-      depto:  e => e.nombre_departamento || "",
-      rol:    e => e.nombre_rol || "",
+      nombre:   e => `${e.nombre} ${e.ap_paterno}`,
+      id:       e => e.num_empleado || "",
+      depto:    e => e.nombre_departamento || "",
+      sucursal: e => e.nombre_sucursal || "",
+      rol:      e => e.nombre_rol || "",
     };
     const fn = map[sort.col] || (() => "");
     const cmp = fn(a).localeCompare(fn(b), "es");
@@ -526,12 +540,13 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
   });
 
   const COLS = [
-    { key: "nombre",   label: "Empleado",  sortable: true  },
-    { key: "id",       label: "ID",        sortable: true  },
-    { key: "depto",    label: "Área",      sortable: true  },
-    { key: "rol",      label: "Rol",       sortable: true  },
-    { key: "email",    label: "Correo",    sortable: false },
-    { key: "acciones", label: "",          sortable: false },
+    { key: "nombre",    label: "Empleado",  sortable: true  },
+    { key: "id",        label: "ID",        sortable: true  },
+    { key: "depto",     label: "Área",      sortable: true  },
+    { key: "sucursal",  label: "Sucursal",  sortable: true  },
+    { key: "rol",       label: "Rol",       sortable: true  },
+    { key: "email",     label: "Correo",    sortable: false },
+    { key: "acciones",  label: "",          sortable: false },
   ];
 
   const thS = {
@@ -546,7 +561,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
 
   const tdS = {
     padding: "10px 16px",
-    fontSize: 13,
+    fontSize: 11,
     color: T.text,
     borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}`,
     verticalAlign: "middle",
@@ -610,6 +625,11 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
                     {emp.nombre_departamento || "—"}
                   </td>
 
+                  {/* Sucursal */}
+                  <td style={{ ...tdS, color: T.textMuted }}>
+                    {emp.nombre_sucursal || "—"}
+                  </td>
+
                   {/* Rol */}
                   <td style={tdS}>
                     {emp.nombre_rol && (
@@ -657,6 +677,7 @@ export default function Personal({ T }) {
   const [empleados,     setEmpleados]     = useState([]);
   const [departamentos, setDepartamentos] = useState([]);
   const [roles,         setRoles]         = useState([]);
+  const [sucursales,    setSucursales]    = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [filtros,       setFiltros]       = useState({ busqueda: "", departamento: "Todos", estatus: "Todos" });
   const [modal,         setModal]         = useState(null);
@@ -668,10 +689,12 @@ export default function Personal({ T }) {
       apiFetch(`/api/auth/empleados`).then(r => r.ok ? r.json() : []),
       apiFetch(`/api/auth/departamentos`).then(r => r.ok ? r.json() : []),
       apiFetch(`/api/auth/roles`).then(r => r.ok ? r.json() : []),
-    ]).then(([emps, deps, rols]) => {
+      apiFetch(`/api/auth/sucursales`).then(r => r.ok ? r.json() : []),
+    ]).then(([emps, deps, rols, sucs]) => {
       setEmpleados(Array.isArray(emps) ? emps : []);
       setDepartamentos(Array.isArray(deps) ? deps : []);
       setRoles(Array.isArray(rols) ? rols : []);
+      setSucursales(Array.isArray(sucs) ? sucs : []);
     }).catch(err => console.error("Error cargando personal:", err))
       .finally(() => { if (mostrarLoading) setLoading(false); });
   }, []);
@@ -701,8 +724,8 @@ export default function Personal({ T }) {
     const url  = esEditar ? `/api/auth/empleados/${empleadoId}` : `/api/auth/empleados`;
     const pass = form.password_nueva.trim();
     const body = esEditar
-      ? { num_empleado: form.num_empleado, nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento), estatus: form.estatus, password_nueva: pass || undefined }
-      : { num_empleado: form.num_empleado.trim(), nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), password: pass, id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento) };
+      ? { num_empleado: form.num_empleado, nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento), id_sucursal: form.id_sucursal ? Number(form.id_sucursal) : null, estatus: form.estatus, password_nueva: pass || undefined }
+      : { num_empleado: form.num_empleado.trim(), nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), password: pass, id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento), id_sucursal: form.id_sucursal ? Number(form.id_sucursal) : null };
     const res  = await apiFetch(url, { method: esEditar ? "PUT" : "POST", body });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Error al guardar");
@@ -736,7 +759,7 @@ export default function Personal({ T }) {
           ].map(s => (
             <div key={s.label} style={{ borderRadius: 8, padding: "10px 14px", background: isDark ? s.bgD : s.bgL, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}` }}>
               <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: isDark ? "rgba(255,255,255,0.4)" : "#6b7280", margin: 0 }}>{s.label}</p>
-              <p style={{ fontSize: 22, fontWeight: 800, color: s.color, margin: "2px 0 0" }}>{s.val}</p>
+              <p style={{ fontSize: 18, fontWeight: 800, color: s.color, margin: "2px 0 0" }}>{s.val}</p>
             </div>
           ))}
         </div>
@@ -782,7 +805,7 @@ export default function Personal({ T }) {
         <ModalHistorial T={T} isDark={isDark} empleado={modalHistorial} onCerrar={() => setModalHistorial(null)} />
       )}
       {modal && (
-        <ModalEmpleado T={T} isDark={isDark} modo={modal.modo} empleado={modal.empleado} departamentos={departamentos} roles={roles} onGuardar={(form) => guardarEmpleado(form, modal.modo, modal.empleado?.id_empleado)} onCerrar={() => setModal(null)} />
+        <ModalEmpleado T={T} isDark={isDark} modo={modal.modo} empleado={modal.empleado} departamentos={departamentos} roles={roles} sucursales={sucursales} onGuardar={(form) => guardarEmpleado(form, modal.modo, modal.empleado?.id_empleado)} onCerrar={() => setModal(null)} />
       )}
     </div>
   );

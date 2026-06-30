@@ -17,7 +17,7 @@
  * 2. Cierre automatico de tickets vencidos (cada hora)
  *    Busca tickets en proceso que superaron las 48 horas sin resolverse y
  *    los cierra automaticamente como "No Resuelto" via Ticket.cerrarVencidos().
- *    Notifica al empleado dueno por Socket.io y por correo electronico.
+ *    Notifica al empleado dueno y a los admins por Socket.io.
  *    Emite "tickets:vencidos" a los admins con el total cerrado.
  *    Se ejecuta DESPUES del worker SLA para que la alerta se emita antes
  *    de que el ticket sea marcado como cerrado.
@@ -44,14 +44,18 @@
 import pool   from "../Config/db.js";
 import Ticket from "../Models/Ticket.js";
 import Insumo from "../Models/Insumo.js";
-import { enviarNotificacionTicket } from "../Config/mailer.js";
-import { crearSetsPresistentes }    from "./alertState.js";
+import { crearSetsPersistentes } from "./alertState.js";
+import { limpiarTokensRevocados } from "../Middlewares/authMiddleware.js";
 
 export function iniciarWorkers(io) {
   // Sets persistentes en disco — sobreviven reinicios del servidor
-  const { slaAlertados, sinAtenderAlertados, stockAlertados } = crearSetsPresistentes();
+  const { slaAlertados, sinAtenderAlertados, stockAlertados } = crearSetsPersistentes();
 
-  // -- Alertas SLA: tickets próximos a vencer (~47h) ------------
+  // -- Alertas SLA: tickets próximos a vencer (~46.5h) ------------
+  // DISEÑO INTENCIONAL: La alerta se emite a las 2790 min (~46.5h) para
+  // que el admin tenga al menos 1.5 horas de margen antes del cierre
+  // automático que ocurre a las 48h exactas (INTERVAL 2 DAY en BD).
+  // El orden de ejecución importa: SLA primero, vencidos después.
   const ivSLA = setInterval(async () => {
     try {
       const [proximos] = await pool.query(
@@ -107,24 +111,17 @@ export function iniciarWorkers(io) {
       if (vencidos.length === 0) return;
       console.log(`Tickets cerrados automaticamente: ${vencidos.length}`);
       vencidos.forEach(t => {
-        io.to(`empleado_${t.id_empleado}`).emit("ticket:actualizado", {
+        const payload = {
           id_ticket:      t.id_ticket,
           folio_ticket:   t.folio_ticket,
           titulo:         t.titulo,
           estatus:        "No Resuelto",
           fecha_resuelto: new Date().toISOString(),
           resuelto_por:   null,
-        });
-        if (t.email_empleado) {
-          enviarNotificacionTicket({
-            to:         t.email_empleado,
-            nombre:     t.nombre_empleado,
-            folio:      t.folio_ticket,
-            titulo:     t.titulo,
-            estatus:    "No Resuelto",
-            comentario: "El ticket fue cerrado automáticamente por vencimiento de tiempo.",
-          }).catch(err => console.error("[mailer vencido]", err.message));
-        }
+        };
+        io.to(`empleado_${t.id_empleado}`).emit("ticket:actualizado", payload);
+        // Notificar a admins para que recarguen Kanban/historial
+        io.to("admins").emit("ticket:actualizado", payload);
       });
       io.to("admins").emit("tickets:vencidos", { total: vencidos.length });
     } catch (err) {
@@ -146,6 +143,12 @@ export function iniciarWorkers(io) {
         console.log(`Sesiones huerfanas cerradas: ${result.affectedRows}`);
     } catch (err) {
       console.error("Error limpiando sesiones huérfanas:", err.message);
+    }
+    // Limpiar tokens JWT revocados ya expirados
+    try {
+      await limpiarTokensRevocados();
+    } catch (err) {
+      console.error("Error limpiando tokens revocados:", err.message);
     }
   }, 60 * 60 * 1000);
   ivSesiones.unref();

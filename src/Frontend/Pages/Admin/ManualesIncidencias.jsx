@@ -4,9 +4,9 @@ import {
   Trash2, Pencil, Download, MoreVertical, Eye, Tag, Clock,
 } from "lucide-react";
 import { apiFetch, API_ROUTES } from "../../Config/api";
-import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import API from "../../Config/api";
-import { usePdfCover } from "../../Components/usePdfCover";
+import { useAutoRefresh } from "../../Config/useAutoRefresh";
+import { usePdfCover } from "../../Components/hooks/usePdfCover";
 import {
   FONT, RADIUS, NEUTRAL, SLATE, SEMANTIC,
   BTN_PRIMARY, BTN_GHOST, BTN_DANGER, MODAL,
@@ -461,7 +461,7 @@ export default function ManualesAdmin({ T }) {
   const cargar = async () => {
     setLoading(true);
     try {
-      const [rM, rC] = await Promise.all([apiFetch(API_ROUTES.MANUALES), apiFetch(API_ROUTES.CATEGORIAS)]);
+      const [rM, rC] = await Promise.all([apiFetch(API_ROUTES.MANUALES), apiFetch(`/api/categorias?tipo=manual`)]);
       const dm = await rM.json(); setManuales(Array.isArray(dm) ? dm : []);
       const dc = await rC.json(); setCategorias(Array.isArray(dc) ? dc : []);
     } catch { setManuales([]); } finally { setLoading(false); }
@@ -517,7 +517,7 @@ export default function ManualesAdmin({ T }) {
             <path d="M26 8v24M14 20l12-12 12 12" stroke="#F47920" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M6 40v3a3 3 0 003 3h34a3 3 0 003-3v-3" stroke="#F47920" strokeWidth="3" strokeLinecap="round"/>
           </svg>
-          <p style={{ fontSize: 20, fontWeight: 900, color: "#F47920", margin: 0 }}>Suelta las imágenes</p>
+          <p style={{ fontSize: 18, fontWeight: 900, color: "#F47920", margin: 0 }}>Suelta las imágenes</p>
           <p style={{ fontSize: 13, color: isDark ? "rgba(255,255,255,0.5)" : "#64748b", margin: 0 }}>Se agregarán a Evidencias fotográficas</p>
         </div>
       )}
@@ -528,7 +528,7 @@ export default function ManualesAdmin({ T }) {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <BookOpen size={18} color="rgba(255,255,255,0.55)" />
             <div>
-              <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0, letterSpacing: "-0.01em" }}>Gestión de Manuales</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: 0, letterSpacing: "-0.01em" }}>Gestión de Manuales</p>
               <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", margin: 0, fontWeight: 400 }}>
                 {manuales.length} documento{manuales.length !== 1 ? "s" : ""} · {categorias.length} categoría{categorias.length !== 1 ? "s" : ""}
               </p>
