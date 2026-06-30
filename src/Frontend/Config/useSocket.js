@@ -38,16 +38,17 @@ export function useSocket(id_empleado, onEvento) {
   const cbRef     = useRef(onEvento);
   cbRef.current   = onEvento;
 
+  const tokenRef = useRef(getToken());
+
   useEffect(() => {
     if (!id_empleado) return;
 
     const token = getToken();
     if (!token) return;
+    tokenRef.current = token;
 
-    // Si VITE_API_URL está vacío (proxy de Vite en dev), usar window.location.origin
     const SOCKET_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(":5173", ":3001");
 
-    // Desconectar socket anterior si existe (token renovado o cambio de usuario)
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
@@ -70,6 +71,7 @@ export function useSocket(id_empleado, onEvento) {
     socket.on("ticket:en_atencion",   d => cbRef.current?.({ tipo: "ticket:en_atencion",   data: d }));
     socket.on("solicitud:actualizada",d => cbRef.current?.({ tipo: "solicitud:actualizada", data: d }));
     socket.on("ticket:confirmado",    d => cbRef.current?.({ tipo: "ticket:confirmado",    data: d }));
+    socket.on("ticket:cancelado",     d => cbRef.current?.({ tipo: "ticket:cancelado",     data: d }));
 
     // Eventos que escucha el admin
     socket.on("ticket:nuevo",         d => cbRef.current?.({ tipo: "ticket:nuevo",         data: d }));
@@ -81,9 +83,8 @@ export function useSocket(id_empleado, onEvento) {
     socket.on("ticket:sin_atender",   d => cbRef.current?.({ tipo: "ticket:sin_atender",   data: d }));
 
     return () => { socket.disconnect(); socketRef.current = null; };
-  // token se pasa como dep para que el socket se recree cuando el JWT se renueva
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id_empleado, getToken()]);
+  }, [id_empleado, tokenRef.current]);
 
   return socketRef;
 }

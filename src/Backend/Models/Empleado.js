@@ -76,9 +76,10 @@ const Empleado = {
     const [rows] = await pool.query(
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
               e.email, e.password, e.foto, e.estatus, e.id_rol, e.id_departamento,
-              d.nombre_departamento
+              e.id_sucursal, d.nombre_departamento, s.nombre_sucursal
        FROM empleado e
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal
        WHERE e.email = ? LIMIT 1`,
       [email]
     );
@@ -89,9 +90,10 @@ const Empleado = {
     const [rows] = await pool.query(
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
               e.email, e.password, e.foto, e.estatus, e.id_rol, e.id_departamento,
-              d.nombre_departamento
+              e.id_sucursal, d.nombre_departamento, s.nombre_sucursal
        FROM empleado e
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal
        WHERE e.id_empleado = ? LIMIT 1`,
       [id]
     );
@@ -144,7 +146,7 @@ const Empleado = {
     );
   },
 
-  getAccesos: async (id_empleado, { limit = 500, offset = 0 } = {}) => {
+  getAccesos: async (id_empleado, { limit = 50, offset = 0 } = {}) => {
     const [rows] = await pool.query(
       `SELECT id_acceso, fecha_entrada, fecha_salida
        FROM historial_acceso
@@ -164,13 +166,19 @@ const Empleado = {
   getAll: async () => {
     const [rows] = await pool.query(
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
-              e.email, e.foto, e.estatus, e.id_rol, e.id_departamento,
-              d.nombre_departamento, r.nombre_rol
+              e.email, e.foto, e.estatus, e.id_rol, e.id_departamento, e.id_sucursal,
+              d.nombre_departamento, r.nombre_rol, s.nombre_sucursal
        FROM empleado e
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
        LEFT JOIN rol r          ON e.id_rol          = r.id_rol
+       LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal
        ORDER BY e.id_empleado ASC`
     );
+    return rows;
+  },
+
+  getSucursales: async () => {
+    const [rows] = await pool.query(`SELECT id_sucursal, nombre_sucursal FROM sucursal ORDER BY nombre_sucursal ASC`);
     return rows;
   },
 
@@ -190,7 +198,7 @@ const Empleado = {
   // Helper: nombre completo de un empleado por id
   getNombre: async (id_empleado) => {
     const [[row]] = await pool.query(
-      `SELECT CONCAT(nombre,' ',ap_paterno) AS nombre_completo FROM empleado WHERE id_empleado = ? LIMIT 1`,
+      `SELECT CONCAT(nombre,' ',ap_paterno,IFNULL(CONCAT(' ',ap_materno),'')) AS nombre_completo FROM empleado WHERE id_empleado = ? LIMIT 1`,
       [id_empleado]
     );
     return row?.nombre_completo ?? "Soporte técnico";
@@ -206,7 +214,7 @@ const Empleado = {
     return rows;
   },
 
-  updateAdmin: async (id, { num_empleado, nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, estatus, password, foto }) => {
+  updateAdmin: async (id, { num_empleado, nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password, foto }) => {
     // SQL estático - sin construcción dinámica de nombres de columna
     await pool.query(
       `UPDATE empleado
@@ -217,6 +225,7 @@ const Empleado = {
            email           = COALESCE(?, email),
            id_rol          = COALESCE(?, id_rol),
            id_departamento = COALESCE(?, id_departamento),
+           id_sucursal     = ?,
            estatus         = COALESCE(?, estatus),
            password        = COALESCE(?, password),
            foto            = COALESCE(?, foto)
@@ -229,6 +238,7 @@ const Empleado = {
         email           ?? null,
         id_rol          ?? null,
         id_departamento ?? null,
+        id_sucursal     ?? null,
         estatus         ?? null,
         password        ?? null,
         foto            ?? null,
@@ -237,19 +247,19 @@ const Empleado = {
     );
   },
 
-  crear: async ({ num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento }) => {
+  crear: async ({ num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento, id_sucursal }) => {
     const [result] = await pool.query(
-      `INSERT INTO empleado (num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento, estatus)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Activo')`,
-      [num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento]
+      `INSERT INTO empleado (num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento, id_sucursal, estatus)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Activo')`,
+      [num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento, id_sucursal ?? null]
     );
     return result.insertId;
   },
 
-  getAllAccesos: async ({ limit = 500, offset = 0 } = {}) => {
+  getAllAccesos: async ({ limit = 50, offset = 0 } = {}) => {
     const [rows] = await pool.query(
       `SELECT a.id_acceso, a.id_empleado, a.fecha_entrada, a.fecha_salida,
-              CONCAT(e.nombre,' ',e.ap_paterno,' ',e.ap_materno) AS nombre_empleado,
+              CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
               e.email, d.nombre_departamento
        FROM historial_acceso a
        JOIN empleado e ON a.id_empleado = e.id_empleado

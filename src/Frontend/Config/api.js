@@ -56,18 +56,22 @@ const API_ROUTES = {
   ROLES:              "/api/auth/roles",
   ACCESOS:            (id) => `/api/auth/accesos/${Number(id)}`,
   ACCESOS_ALL:        "/api/auth/accesos",
+  SUCURSALES:         "/api/auth/sucursales",
   // Tickets
   TICKETS:            "/api/tickets",
   TICKET:             (id) => `/api/tickets/${Number(id)}`,
   TICKET_CALIFICAR:   (id) => `/api/tickets/${Number(id)}/calificar`,
   TICKET_EDITAR:      (id) => `/api/tickets/${Number(id)}/editar`,
   TICKET_IMAGENES:    (id) => `/api/tickets/${Number(id)}/imagenes`,
+  TICKET_CANCELAR:    (id) => `/api/tickets/${Number(id)}/cancelar`,
   TICKETS_EMPLEADO:   (id) => `/api/tickets/empleado/${Number(id)}`,
   TICKETS_METRICAS:   "/api/tickets/metricas",
+  TICKETS_RENDIMIENTO: "/api/tickets/rendimiento",
   // Solicitudes
   SOLICITUDES:        "/api/solicitudes",
   SOLICITUD:          (id) => `/api/solicitudes/${Number(id)}`,
   SOLICITUD_ESTATUS:  (id) => `/api/solicitudes/${Number(id)}/estatus`,
+  SOLICITUD_ITEMS:    (id) => `/api/solicitudes/${Number(id)}/items`,
   SOLICITUDES_EMP:    (id) => `/api/solicitudes/empleado/${Number(id)}`,
   SOLICITUDES_PEND:   "/api/solicitudes/pendientes",
   INSUMOS:            "/api/solicitudes/insumos",
@@ -82,13 +86,16 @@ const API_ROUTES = {
 
 export { API_ROUTES };
 
-// -- Token en sessionStorage para sobrevivir recargas ------
-// sessionStorage: persiste en recarga (F5) pero se borra al cerrar la pestaña.
-// Es aceptable porque el usuario ya autenticó en esta pestaña.
-let _token = sessionStorage.getItem("_tk") || null;
+// -- Token: variable de módulo + sessionStorage como respaldo para F5 --------
+// El token vive en memoria (_token) para acceso síncrono rápido.
+// Se persiste en sessionStorage bajo "_tk" SOLO para sobrevivir recargas (F5):
+// sessionStorage es accesible por JavaScript (XSS puede leerlo), por lo que
+// NO se debe guardar aquí nada más sensible. Si el riesgo XSS es crítico
+// la única mitigación real es usar httpOnly cookies gestionadas por el servidor.
+let _token = null;
 
-export const getToken   = () => _token;
-export const setToken   = (t) => { _token = t; sessionStorage.setItem("_tk", t); };
+export const getToken   = () => _token ?? sessionStorage.getItem("_tk") ?? null;
+export const setToken   = (t) => { _token = t; if (t) sessionStorage.setItem("_tk", t); else sessionStorage.removeItem("_tk"); };
 export const clearToken = () => { _token = null; sessionStorage.removeItem("_tk"); };
 
 // Limpia toda la sesión y redirige al login
@@ -96,7 +103,7 @@ export function clearSession() {
   _token = null;
   sessionStorage.removeItem("usuario");
   sessionStorage.removeItem("id_acceso");
-  sessionStorage.removeItem("_tk");
+  sessionStorage.removeItem("pwd_actual");
   window.location.replace("/login");
 }
 
@@ -115,6 +122,10 @@ export async function apiFetch(endpoint, options = {}) {
     headers["Content-Type"] = "application/json";
 
   if (_token) headers["Authorization"] = `Bearer ${_token}`;
+  else {
+    const stored = sessionStorage.getItem("_tk");
+    if (stored) { _token = stored; headers["Authorization"] = `Bearer ${stored}`; }
+  }
 
   // La URL final se construye concatenando la base fija con el endpoint validado
   const url = API_BASE + endpoint;

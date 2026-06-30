@@ -44,8 +44,8 @@
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X, CheckCircle2, AlertTriangle, XCircle, Info, AlertCircle, Loader2 } from "lucide-react";
-import { ToastCtx } from "./toastContext.js";
-export { useToast } from "./useToast.js";
+import { ToastCtx } from "./context/ToastContext.js";
+export { useToast } from "./hooks/useToast.js";
 
 // ================================================================
 //  FEEDBACK SYSTEM — Corporativo / Industrial
@@ -532,7 +532,7 @@ export function ToastProvider({ children, T }) {
   const isDark = T?.isDark ?? false;
 
   const add = useCallback((type, message, opts = {}) => {
-    const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const id = `${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
     setToasts(p => [...p.slice(-7), { id, type, message, ...opts }]);
     return id;
   }, []);

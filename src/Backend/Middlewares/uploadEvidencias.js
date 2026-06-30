@@ -32,6 +32,7 @@
 import multer             from "multer";
 import path               from "path";
 import fs                 from "fs";
+import crypto             from "crypto";
 import { fileURLToPath }  from "url";
 import { fileTypeFromFile } from "file-type";
 import { safeResolvePath }  from "./security.js";
@@ -52,7 +53,8 @@ const storage = multer.diskStorage({
               : file.mimetype === "image/webp" ? ".webp"
               : file.mimetype === "image/gif"  ? ".gif"
               : ".jpg";
-    cb(null, `ev_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`);
+    const rand = crypto.randomBytes(6).toString("hex");
+    cb(null, `ev_${Date.now()}_${rand}${ext}`);
   },
 });
 

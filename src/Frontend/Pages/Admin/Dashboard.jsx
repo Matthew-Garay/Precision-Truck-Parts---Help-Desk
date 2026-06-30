@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Users, Package, FileText, BookOpen, Settings,
-  LogOut, Menu, X, Sun, Moon
+  LogOut, Menu, X, Sun, Moon, ClipboardList, TrendingUp
 } from "lucide-react";
 import VistaTicket from "./VistaTicket";
 import VistaSolicitud from "./VistaSolicitud";
@@ -12,6 +12,7 @@ import Personal from "./Personal";
 import ManualesIncidencias from "./ManualesIncidencias";
 import ConfiguracionPerfil from "./ConfiguracionPerfil";
 import HistorialInsumos from "./HistorialInsumos";
+import RendimientoTecnicos from "./RendimientoTecnicos";
 import { apiFetch, API_ROUTES } from "../../Config/api";
 import { useTheme } from "../../Config/themeContext.js";
 import { SeccionEstadisticas, SeccionMetricas, KanbanBoard, PanelDerecho } from "../../Components/DashboardShared.jsx";
@@ -19,20 +20,21 @@ import CampanaNotificaciones from "../../Components/CampanaNotificaciones.jsx";
 import { useTicketNotification } from "../../Config/useTicketNotification.js";
 
 const NAV = [
-  { icon: LayoutDashboard, label: "Dashboard",               path: "/admin/dashboard"      },
-  { icon: FileText,        label: "Historial de Incidencias", path: "/admin/historial"      },
-  { icon: Package,         label: "Historial de Insumos",    path: "/admin/insumos"        },
-  { icon: Package,         label: "Inventario",              path: "/admin/inventario"     },
-  { icon: Users,           label: "Personal",                path: "/admin/personal"       },
-  { icon: BookOpen,        label: "Manuales de Incidencias",  path: "/admin/manuales"       },
-  { icon: Settings,        label: "Configuración",            path: "/admin/configuracion"  },
+  { icon: LayoutDashboard, label: "Dashboard",               path: "/admin/dashboard"     },
+  { icon: FileText,        label: "Historial de Incidencias", path: "/admin/historial"     },
+  { icon: ClipboardList,   label: "Historial de Insumos",    path: "/admin/insumos"       },
+  { icon: Package,         label: "Inventario",              path: "/admin/inventario"    },
+  { icon: TrendingUp,      label: "Rendimiento Técnicos",    path: "/admin/rendimiento"   },
+  { icon: Users,           label: "Personal",                path: "/admin/personal"      },
+  { icon: BookOpen,        label: "Manuales de Incidencias", path: "/admin/manuales"      },
+  { icon: Settings,        label: "Configuración",           path: "/admin/configuracion" },
 ];
 
 function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
   return (
-    <div className="relative flex flex-col h-full">
+    <div className="relative flex flex-col h-full" style={{ fontFamily: "var(--font-sans, 'Inter','Segoe UI',sans-serif)" }}>
       <div className="flex flex-col items-center justify-center px-4"
-        style={{ borderBottom: `1px solid rgba(255,255,255,0.06)`, paddingTop: "clamp(8px,1.5vh,16px)", paddingBottom: "clamp(8px,1.5vh,16px)" }}>
+        style={{ borderBottom: `1px solid rgba(255,255,255,0.06)`, paddingTop: "clamp(16px,2.5vh,28px)", paddingBottom: "clamp(14px,2vh,24px)" }}>
         <button onClick={() => onNavigate("/admin/dashboard")} className="focus:outline-none" style={{ cursor: "pointer" }}>
           <img src="/assets/img/logo.png" alt="PTP"
             className="object-contain"
@@ -48,7 +50,8 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
         </button>
       )}
       <p className="px-5 pb-2 font-bold uppercase tracking-[0.18em]"
-        style={{ color: "rgba(255,255,255,0.2)", fontSize: "var(--fs-label)", paddingTop: "clamp(8px,1.5vh,20px)" }}>Panel Administrador</p>
+        style={{ color: "rgba(255,255,255,0.45)", fontSize: "var(--fs-label)", paddingTop: "clamp(8px,1.5vh,20px)" }}>Panel Administrador</p>
+      <div style={{ height: "1px", background: "rgba(255,255,255,0.18)", marginLeft: "20px", marginRight: "20px", marginBottom: "6px" }} />
       <nav className="flex flex-col gap-0.5 flex-1 px-3">
         {NAV.map((item, i) => (
           <button key={i} onClick={() => { onNavigate(item.path); onClose?.(); }}
@@ -59,28 +62,28 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
               boxShadow: activo === i ? `0 4px 12px rgba(244,121,32,0.35)` : "none",
               paddingTop: "clamp(6px,0.9vh,10px)",
               paddingBottom: "clamp(6px,0.9vh,10px)",
+              fontFamily: "var(--font-sans, 'Inter','Segoe UI',sans-serif)",
             }}
             onMouseEnter={e => { if (activo !== i) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#fff"; }}}
             onMouseLeave={e => { if (activo !== i) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.sidebarText; }}}>
             <item.icon size={16} strokeWidth={activo === i ? 2.5 : 1.8} style={{ flexShrink: 0, width: "var(--icon-nav)", height: "var(--icon-nav)" }} />
-            <span style={{ fontSize: "var(--fs-nav)", fontWeight: activo === i ? 700 : 500 }}>{item.label}</span>
+            <span style={{ fontSize: "var(--fs-nav)", fontWeight: activo === i ? 700 : 500, lineHeight: "1.3", flex: 1 }}>{item.label}</span>
           </button>
         ))}
       </nav>
       <div className="px-3 pb-4 pt-2" style={{ borderTop: `1px solid rgba(255,255,255,0.06)` }}>
         <button className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full"
-          style={{ color: T.sidebarText }}
+          style={{ color: T.sidebarText, fontFamily: "var(--font-sans, 'Inter','Segoe UI',sans-serif)" }}
           onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.1)"; e.currentTarget.style.color = "#ef4444"; }}
           onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.sidebarText; }}
           onClick={onLogout}>
           <LogOut size={16} strokeWidth={1.8} style={{ flexShrink: 0 }} />
-          <span style={{ fontSize: "12.5px", fontWeight: 500 }}>Cerrar sesión</span>
+          <span style={{ fontSize: "var(--fs-nav)", fontWeight: 500 }}>Cerrar sesión</span>
         </button>
       </div>
     </div>
   );
 }
-
 
 function DashboardContent({ T, usuario, tickets = [], solicitudes = [], metricas, onVerTicket, onVerSolicitud }) {
   return (
@@ -106,14 +109,20 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
   const [solicitudVer, setSolicitudVer] = useState(null);
   const [errorRed, setErrorRed]       = useState(false);
   const [ultimaActualizacion, setUltimaActualizacion] = useState(null);
-  const recargarHistorialRef = useRef(null);
+
+  const recargarHistorialRef  = useRef(null);
   const cargarTicketsRef      = useRef(null);
   const cargarMetricasRef     = useRef(null);
   const cargarSolicitudesRef  = useRef(null);
-  const ticketsRef          = useRef(tickets);
-  ticketsRef.current        = tickets;
-  const solicitudesRef      = useRef(solicitudes);
-  solicitudesRef.current    = solicitudes;
+  const ticketsRef            = useRef(tickets);
+  ticketsRef.current          = tickets;
+  const solicitudesRef        = useRef(solicitudes);
+  solicitudesRef.current      = solicitudes;
+
+  // navigate y location deben declararse ANTES de useTicketNotification
+  // para que onNavegar pueda hacer referencia a navigate en su closure.
+  const navigate  = useNavigate();
+  const location  = useLocation();
 
   const { notificaciones, onDismiss, onDismissAll, onClickNotif } =
     useTicketNotification({
@@ -126,29 +135,39 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           recargarHistorialRef.current?.();
           if (tipo === "solicitud:nueva" || tipo === "solicitud:actualizada") cargarSolicitudesRef.current?.();
         }
-        if (["ticket:nuevo","ticket:calificado","ticket:sla_warning","ticket:actualizado","ticket:en_atencion"].includes(tipo) && data?.id_ticket) {
+
+        // Abrir detalle del ticket desde cualquier sección activa:
+        // primero navegar al dashboard (donde VistaTicket se renderiza),
+        // luego setear el ticket para mostrarlo.
+        if (["ticket:nuevo","ticket:calificado","ticket:sla_warning","ticket:actualizado","ticket:en_atencion","ticket:sin_atender"].includes(tipo) && data?.id_ticket) {
+          const abrirTicket = (t) => {
+            if (!t?.id_ticket) return;
+            navigate("/admin/dashboard");
+            setTicketVer(t);
+          };
           const enMemoria = ticketsRef.current.find(tk => tk.id_ticket === data.id_ticket);
           if (enMemoria) {
-            setTicketVer(enMemoria);
+            abrirTicket(enMemoria);
           } else {
             apiFetch(API_ROUTES.TICKET(data.id_ticket))
               .then(r => r.ok ? r.json() : null)
-              .then(t => { if (t?.id_ticket) setTicketVer(t); })
+              .then(abrirTicket)
               .catch(() => {});
           }
         }
+
         if (tipo === "solicitud:nueva" && data?.id_solicitud) {
           const s = solicitudesRef.current.find(s => s.id_solicitud === data.id_solicitud);
-          if (s) setSolicitudVer(s); else cargarSolicitudesRef.current?.();
+          if (s) { navigate("/admin/dashboard"); setSolicitudVer(s); }
+          else cargarSolicitudesRef.current?.();
         }
-      }, [cargarTicketsRef, cargarMetricasRef, cargarSolicitudesRef, recargarHistorialRef, ticketsRef, solicitudesRef]),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [navigate]),
     });
 
-  const navigate     = useNavigate();
-  const location     = useLocation();
-  const activoIdx    = NAV.findIndex(n => n.path === location.pathname);
-  const activo       = activoIdx === -1 ? 0 : activoIdx;
-  const onNavigate   = (path) => { setTicketVer(null); setSolicitudVer(null); navigate(path); };
+  const activoIdx  = NAV.findIndex(n => n.path === location.pathname);
+  const activo     = activoIdx === -1 ? 0 : activoIdx;
+  const onNavigate = (path) => { setTicketVer(null); setSolicitudVer(null); navigate(path); };
 
   useEffect(() => {
     setTicketVer(null); setSolicitudVer(null);
@@ -203,24 +222,25 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
     ? ticketVer.folio_ticket
     : solicitudVer
       ? solicitudVer.folio_solicitud
-      : (NAV[activo]?.label || 'Dashboard');
+      : (NAV[activo]?.label || "Dashboard");
 
   return (
-    <div className="flex h-screen w-full overflow-hidden"
-      style={{ fontFamily: "'Inter','Segoe UI',sans-serif", background: T.bg }}>
-
-      {/* Sidebar desktop */}
-      <aside className="hidden lg:flex flex-shrink-0 flex-col sticky top-0 h-screen"
-        style={{ width: "var(--sidebar-w)", background: "#000000", boxShadow: "2px 0 12px rgba(0,0,0,0.15)" }}>
+    <div
+      className="flex h-screen w-full overflow-hidden"
+      style={{ fontFamily: "var(--font-sans, 'Inter','Segoe UI',sans-serif)", background: T.bg }}
+    >
+      {/* Sidebar desktop — visible en lg+ */}
+      <aside className="hidden lg:flex flex-shrink-0 flex-col sticky top-0 h-screen overflow-hidden"
+        style={{ width: "var(--sidebar-w)", minWidth: 0, background: "#000000", boxShadow: "2px 0 12px rgba(0,0,0,0.15)" }}>
         <SidebarContent T={T} activo={activo} onNavigate={onNavigate} onLogout={onLogout} />
       </aside>
 
-      {/* Sidebar mobile */}
+      {/* Sidebar mobile — drawer off-canvas */}
       {sidebarOpen && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={() => setSidebarOpen(false)} />
-          <aside className="fixed top-0 left-0 z-50 flex flex-col h-screen md:hidden"
-            style={{ width: "260px", background: "#000000" }}>
+          <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />
+          <aside className="fixed top-0 left-0 z-50 flex flex-col h-screen lg:hidden"
+            style={{ width: "min(260px, 80vw)", background: "#000000" }}>
             <SidebarContent T={T} activo={activo} onNavigate={onNavigate} onClose={() => setSidebarOpen(false)} onLogout={onLogout} />
           </aside>
         </>
@@ -229,8 +249,10 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
       {/* Contenido principal */}
       <div className="flex flex-col flex-1 min-w-0">
 
-        <header className="sticky top-0 z-30 flex items-center justify-between px-3 md:px-5"
-          style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, height: "var(--header-h)", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
+        <header
+          className="sticky top-0 z-30 flex items-center justify-between px-3 md:px-5"
+          style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, height: "var(--header-h)", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}
+        >
           {errorRed && (
             <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 py-1 text-xs font-bold"
               style={{ background: "#dc2626", color: "#fff" }}>
@@ -241,9 +263,11 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
 
           {/* Izquierda: hamburguesa + título */}
           <div className="flex items-center gap-2 min-w-0">
-            <button className="md:hidden flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0"
+            <button
+              className="lg:hidden flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0"
               style={{ background: T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}
-              onClick={() => setSidebarOpen(true)}>
+              onClick={() => setSidebarOpen(true)}
+            >
               <Menu size={17} />
             </button>
             <div className="flex flex-col justify-center min-w-0">
@@ -262,15 +286,17 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           {/* Derecha: hora + modo + campana */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {ultimaActualizacion && !errorRed && (
-              <span className="hidden lg:flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg"
+              <span className="hidden xl:flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg"
                 style={{ color: T.textFaint, background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#16a34a" }}/>
                 {ultimaActualizacion.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
               </span>
             )}
-            <button onClick={() => toggleDark(!dark)}
+            <button
+              onClick={() => toggleDark(!dark)}
               className="flex items-center justify-center h-9 rounded-xl transition-all px-2 gap-1.5"
-              style={{ background: T.surfaceAlt, color: dark ? "#f59e0b" : T.textMuted, border: `1px solid ${T.border}` }}>
+              style={{ background: T.surfaceAlt, color: dark ? "#f59e0b" : T.textMuted, border: `1px solid ${T.border}` }}
+            >
               {dark ? <Sun size={14} /> : <Moon size={14} />}
               <span className="hidden md:inline text-[11px] font-semibold">{dark ? "Claro" : "Oscuro"}</span>
             </button>
@@ -298,10 +324,12 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           ) : activo === 3 ? (
             <Inventario T={T} />
           ) : activo === 4 ? (
-            <Personal T={T} />
+            <RendimientoTecnicos T={T} />
           ) : activo === 5 ? (
-            <ManualesIncidencias T={T} />
+            <Personal T={T} />
           ) : activo === 6 ? (
+            <ManualesIncidencias T={T} />
+          ) : activo === 7 ? (
             <ConfiguracionPerfil T={T} usuario={usuario} onUsuarioActualizado={onUsuarioActualizado} />
           ) : (
             <div className="flex items-center justify-center flex-col gap-3 py-20">

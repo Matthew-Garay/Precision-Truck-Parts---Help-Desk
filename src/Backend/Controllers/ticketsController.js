@@ -1,71 +1,3 @@
-/**
- * ticketsController.js
- *
- * Controlador principal del sistema de tickets de soporte tecnico.
- * Gestiona el ciclo de vida completo de un ticket: creacion, consulta,
- * actualizacion de estatus, gestion de imagenes de evidencia, calificacion
- * y generacion de reportes y metricas.
- *
- * Funciones exportadas:
- *
- *   crearTicket
- *     Crea un ticket con sus campos basicos. Procesa las imagenes de evidencia
- *     subidas por multer: las mueve de la carpeta temporal a una carpeta
- *     nombrada con el folio del ticket (ej. storage/Evidencias_Tickets/PTP-202605-001/).
- *     Emite "ticket:confirmado" al usuario y "ticket:nuevo" a los admins.
- *
- *   getTicketById
- *     Retorna el detalle completo de un ticket. Solo el dueno o un admin
- *     puede consultarlo.
- *
- *   getTicketsByEmpleado
- *     Retorna todos los tickets de un empleado especifico. Aplica control
- *     de acceso: solo el dueno o un administrador puede consultar.
- *
- *   getAllTickets
- *     Retorna todos los tickets del sistema paginados. Solo para admins.
- *
- *   getImagenesTicket
- *     Retorna la lista de nombres de archivos de imagen almacenados en la
- *     carpeta de evidencias del ticket. Aplica control de acceso.
- *
- *   agregarImagenesTicket
- *     Permite agregar mas imagenes de evidencia a un ticket existente.
- *     Numera los archivos continuando desde el ultimo numero existente.
- *
- *   eliminarImagenTicket
- *     Elimina una imagen de evidencia especifica del disco. Aplica control
- *     de acceso: solo el dueno o un admin puede eliminar.
- *
- *   actualizarTicket
- *     Cambia el estatus de un ticket (solo admins). Emite eventos diferenciados:
- *     "ticket:actualizado" para estatus Resuelto o No Resuelto,
- *     "ticket:en_atencion" cuando pasa a En proceso.
- *     El envio de correo electronico esta desactivado en esta version.
- *
- *   calificarTicket
- *     Permite al dueno del ticket darle una calificacion del 1 al 5 estrellas.
- *     Solo se puede calificar si el ticket esta Resuelto y no fue calificado
- *     previamente. Emite "ticket:calificado" a los admins.
- *
- *   editarTicketUsuario
- *     Permite al dueno editar titulo, descripcion, prioridad y categoria
- *     de un ticket mientras su estatus sea "En proceso".
- *
- *   getAdmins
- *     Retorna la lista de empleados con rol administrador activos.
- *     Se usa en el formulario de actualizacion para seleccionar el tecnico.
- *
- *   getReporte
- *     Retorna tickets filtrados por rango de fechas y opcionalmente por tecnico.
- *     Incluye todos los datos necesarios para exportar el reporte a PDF.
- *
- *   getMetricas
- *     Retorna estadisticas del dashboard:
- *       - promedio de horas de resolucion de tickets resueltos
- *       - total de tickets y resueltos agrupados por departamento
- *       - tendencia mensual de los ultimos 6 meses desglosada por estatus
- */
 import Ticket   from "../Models/Ticket.js";
 import Empleado from "../Models/Empleado.js";
 import { getIO } from "../Config/socketInstance.js";
@@ -74,7 +6,45 @@ import fs       from "fs";
 import { safeResolvePath } from "../Middlewares/security.js";
 import { EVIDENCIAS_BASE } from "../Middlewares/uploadEvidencias.js";
 import pool from "../Config/db.js";
-import { enviarNotificacionTicket } from "../Config/mailer.js";
+import { cache } from "../Config/cache.js";
+
+export const getTicketByFolio = async (req, res) => {
+  try {
+    const folio = req.params.folio?.trim().toUpperCase();
+    if (!folio) return res.status(400).json({ error: "Folio inválido" });
+
+    const [rows] = await pool.query(
+      `SELECT t.*,
+              CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
+              d.nombre_departamento,
+              c.nombre_categoria,
+              TRIM(CONCAT(tec.nombre,' ',tec.ap_paterno,IF(tec.ap_materno IS NOT NULL AND tec.ap_materno != '',CONCAT(' ',tec.ap_materno),''))) AS resuelto_por
+       FROM ticket t
+       JOIN empleado e      ON t.id_empleado    = e.id_empleado
+       JOIN departamento d  ON e.id_departamento = d.id_departamento
+       JOIN categoria c     ON t.id_categoria   = c.id_categoria
+       LEFT JOIN empleado tec ON tec.id_empleado = t.id_tecnico
+       WHERE t.folio_ticket = ? LIMIT 1`,
+      [folio]
+    );
+    if (!rows[0]) return res.status(404).json({ error: "Ticket no encontrado" });
+    const ticket = rows[0];
+
+    const { id_rol, id_empleado } = req.usuario;
+    if (id_rol !== 1 && ticket.id_empleado !== id_empleado)
+      return res.status(403).json({ error: "Acceso no autorizado" });
+
+    const dir = safeResolvePath(EVIDENCIAS_BASE, folio);
+    const imagenes = fs.existsSync(dir)
+      ? fs.readdirSync(dir).filter(f => /\.(jpg|jpeg|png|gif|webp)$/i.test(f)).sort()
+      : [];
+
+    res.json({ ...ticket, imagenes });
+  } catch (err) {
+    console.error("[getTicketByFolio]", err.message);
+    res.status(500).json({ error: "Error al obtener ticket" });
+  }
+};
 
 export const getTicketById = async (req, res) => {
   try {
@@ -82,7 +52,6 @@ export const getTicketById = async (req, res) => {
     if (isNaN(id_ticket)) return res.status(400).json({ error: "ID inválido" });
     const ticket = await Ticket.getById(id_ticket);
     if (!ticket) return res.status(404).json({ error: "Ticket no encontrado" });
-    // Solo el dueño o un admin puede verlo
     const { id_rol, id_empleado } = req.usuario;
     if (id_rol !== 1 && ticket.id_empleado !== id_empleado)
       return res.status(403).json({ error: "Acceso no autorizado" });
@@ -125,10 +94,13 @@ export const crearTicket = async (req, res) => {
       } catch {}
     }
 
+    // Invalidar caché de métricas al crear ticket nuevo
+    cache.del("metricas:dashboard");
+
     const emp = await Empleado.getResumen(parseInt(id_empleado));
 
     res.status(201).json({ ok: true, ...ticket, imagenes: archivos.length });
-    // Notificar al propio usuario: confirmación de recibo
+
     try {
       getIO().to(`empleado_${parseInt(id_empleado)}`).emit("ticket:confirmado", {
         id_ticket:    ticket.id_ticket,
@@ -189,8 +161,11 @@ export const getTicketsByEmpleado = async (req, res) => {
     if (isNaN(idParam)) return res.status(400).json({ error: "ID inválido" });
     if (req.usuario.id_rol !== 1 && req.usuario.id_empleado !== idParam)
       return res.status(403).json({ error: "Acceso no autorizado" });
-    const tickets = await Ticket.getByEmpleado(idParam);
-    res.json(tickets);
+    const limit  = Math.min(parseInt(req.query.limit) || 50, 200);
+    const page   = Math.max(parseInt(req.query.page)  || 1, 1);
+    const offset = (page - 1) * limit;
+    const { rows, total } = await Ticket.getByEmpleado(idParam, { limit, offset });
+    res.json({ data: rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
     console.error("[getTicketsByEmpleado]", err.message);
     res.status(500).json({ error: "Error al obtener tickets" });
@@ -207,14 +182,24 @@ export const actualizarTicket = async (req, res) => {
       ? parseInt(req.body.id_resuelto_por)
       : null;
     if (!estatus) return res.status(400).json({ error: "El estatus es requerido" });
-    const updated = await Ticket.actualizar(id_ticket, { comentarios, estatus, id_resuelto_por });
+
+    let updated;
+    try {
+      updated = await Ticket.actualizar(id_ticket, { comentarios, estatus, id_resuelto_por }, req.usuario?.id_empleado ?? null);
+    } catch (err) {
+      if (err.status === 409) return res.status(409).json({ error: err.message });
+      throw err;
+    }
     if (!updated) return res.status(404).json({ error: "Ticket no encontrado" });
+
+    // Invalidar caché de métricas al cambiar estatus
+    cache.del("metricas:dashboard");
 
     const [rows] = await pool.query(
       `SELECT t.id_empleado, t.titulo, t.folio_ticket,
-              CONCAT(e.nombre,' ',e.ap_paterno) AS nombre_empleado,
+              TRIM(CONCAT(e.nombre,' ',e.ap_paterno,IF(e.ap_materno IS NOT NULL AND e.ap_materno != '',CONCAT(' ',e.ap_materno),''))) AS nombre_empleado,
               e.email AS email_empleado,
-              CONCAT(tec.nombre,' ',tec.ap_paterno) AS nombre_tecnico
+              TRIM(CONCAT(tec.nombre,' ',tec.ap_paterno,IF(tec.ap_materno IS NOT NULL AND tec.ap_materno != '',CONCAT(' ',tec.ap_materno),''))) AS nombre_tecnico
        FROM ticket t
        JOIN empleado e ON t.id_empleado = e.id_empleado
        LEFT JOIN empleado tec ON tec.id_empleado = t.id_tecnico
@@ -235,21 +220,9 @@ export const actualizarTicket = async (req, res) => {
           nombre_tecnico: t.nombre_tecnico        ?? null,
         };
         if (estatus === "Resuelto" || estatus === "No Resuelto") {
-          // Notificar al empleado dueño y a los admins
           io.to(`empleado_${t.id_empleado}`).emit("ticket:actualizado", payload);
           io.to("admins").emit("ticket:actualizado", payload);
-          // Enviar correo al empleado
-          if (t.email_empleado) {
-            enviarNotificacionTicket({
-              to:         t.email_empleado,
-              nombre:     t.nombre_empleado,
-              folio:      t.folio_ticket,
-              titulo:     t.titulo,
-              estatus,
-              comentario: comentarios ?? null,
-            }).catch(err => console.error("[mailer actualizarTicket]", err.message));
-          }
-        } else if (estatus === "En proceso" || comentarios) {
+        } else if (estatus === "En proceso") {
           const adminId     = id_resuelto_por || req.usuario?.id_empleado;
           const nombreAdmin = await Empleado.getNombre(adminId);
           const payloadAtencion = {
@@ -260,7 +233,6 @@ export const actualizarTicket = async (req, res) => {
             estatus,
           };
           io.to(`empleado_${t.id_empleado}`).emit("ticket:en_atencion", payloadAtencion);
-          // También notificar a admins para que recarguen su dashboard
           io.to("admins").emit("ticket:actualizado", { ...payload, nombre_tecnico: nombreAdmin });
         }
       } catch (emitErr) { console.error("[emit ticket:actualizado]", emitErr.message); }
@@ -279,22 +251,22 @@ export const calificarTicket = async (req, res) => {
     const calificacion = parseInt(req.body?.calificacion);
     if (isNaN(id_ticket) || isNaN(calificacion) || calificacion < 1 || calificacion > 5)
       return res.status(400).json({ error: "Datos inválidos" });
-    const ticketRow = await Ticket.getFolioById(id_ticket);
-    if (!ticketRow) return res.status(404).json({ error: "Ticket no encontrado" });
+
     const [ownerRows] = await pool.query(
-      "SELECT id_empleado FROM ticket WHERE id_ticket = ? LIMIT 1", [id_ticket]
+      "SELECT id_ticket, folio_ticket, id_empleado FROM ticket WHERE id_ticket = ? LIMIT 1", [id_ticket]
     );
-    if (!ownerRows[0] || ownerRows[0].id_empleado !== req.usuario.id_empleado)
+    if (!ownerRows[0]) return res.status(404).json({ error: "Ticket no encontrado" });
+    if (ownerRows[0].id_empleado !== req.usuario.id_empleado)
       return res.status(403).json({ error: "No puedes calificar el ticket de otro usuario" });
+
     const ok = await Ticket.guardarCalificacion(id_ticket, calificacion);
-    if (ok === null) return res.status(404).json({ error: "Ticket no encontrado" });
-    if (!ok) return res.status(404).json({ error: "Ticket no encontrado" });
+    if (ok === null || !ok) return res.status(404).json({ error: "Ticket no encontrado" });
 
     const emp = await Empleado.getResumen(ownerRows[0].id_empleado);
     try {
       getIO().to("admins").emit("ticket:calificado", {
         id_ticket,
-        folio_ticket:    ticketRow.folio_ticket,
+        folio_ticket:    ownerRows[0].folio_ticket,
         nombre_empleado: emp.nombre_empleado,
         calificacion,
       });
@@ -321,10 +293,12 @@ export const editarTicketUsuario = async (req, res) => {
     if (!ownerRows[0]) return res.status(404).json({ error: "Ticket no encontrado" });
     if (req.usuario.id_rol !== 1 && ownerRows[0].id_empleado !== req.usuario.id_empleado)
       return res.status(403).json({ error: "No puedes editar el ticket de otro usuario" });
+    const ESTATUS_EDITABLES_USUARIO = new Set(["En proceso"]);
+    const estatusFinal = estatus && ESTATUS_EDITABLES_USUARIO.has(estatus) ? estatus : undefined;
     const ok = await Ticket.editarPorUsuario(id_ticket, {
       titulo, descripcion, prioridad,
       id_categoria: parseInt(id_categoria),
-      estatus:      estatus || undefined,
+      estatus:      estatusFinal,
       comentarios:  comentarios !== undefined ? comentarios : undefined,
     });
     if (!ok) return res.status(404).json({ error: "Ticket no encontrado o ya está cerrado" });
@@ -351,7 +325,6 @@ export const agregarImagenesTicket = async (req, res) => {
     if (archivos.length === 0) return res.status(400).json({ error: "No se recibieron imágenes" });
     const destDir = safeResolvePath(EVIDENCIAS_BASE, ticket.folio_ticket);
     fs.mkdirSync(destDir, { recursive: true });
-    // Buscar último número existente
     const existentes = fs.existsSync(destDir)
       ? fs.readdirSync(destDir).filter(f => /\.(jpg|jpeg|png|gif|webp)$/i.test(f)).sort()
       : [];
@@ -393,6 +366,40 @@ export const eliminarImagenTicket = async (req, res) => {
   }
 };
 
+export const cancelarTicket = async (req, res) => {
+  try {
+    const id_ticket   = parseInt(req.params.id_ticket);
+    const id_empleado = req.usuario.id_empleado;
+    if (isNaN(id_ticket)) return res.status(400).json({ error: "ID inválido" });
+    const result = await Ticket.cancelar(id_ticket, id_empleado);
+    if (result.error === "not_found")   return res.status(404).json({ error: "Ticket no encontrado" });
+    if (result.error === "forbidden")   return res.status(403).json({ error: "No puedes cancelar el ticket de otro usuario" });
+    if (result.error === "not_allowed") return res.status(409).json({ error: "Solo se pueden cancelar tickets En proceso" });
+
+    cache.del("metricas:dashboard");
+
+    try {
+      const [rows] = await pool.query(
+        "SELECT folio_ticket, titulo, id_empleado FROM ticket WHERE id_ticket = ? LIMIT 1",
+        [id_ticket]
+      );
+      const t = rows[0];
+      if (t) {
+        getIO().to(`empleado_${t.id_empleado}`).emit("ticket:actualizado", {
+          id_ticket, folio_ticket: t.folio_ticket, titulo: t.titulo, estatus: "Cancelado",
+        });
+        getIO().to("admins").emit("ticket:actualizado", {
+          id_ticket, folio_ticket: t.folio_ticket, titulo: t.titulo, estatus: "Cancelado",
+        });
+      }
+    } catch {}
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[cancelarTicket]", err.message);
+    res.status(500).json({ error: "Error al cancelar el ticket" });
+  }
+};
+
 export const getAdmins = async (req, res) => {
   try {
     const rows = await Ticket.getAdmins();
@@ -429,12 +436,37 @@ export const getMetricas = async (req, res) => {
   }
 };
 
+export const getHistorialTicket = async (req, res) => {
+  try {
+    const id_ticket = parseInt(req.params.id_ticket);
+    if (isNaN(id_ticket)) return res.status(400).json({ error: "ID inválido" });
+    const rows = await Ticket.getHistorial(id_ticket);
+    res.json(rows);
+  } catch (err) {
+    console.error("[getHistorialTicket]", err.message);
+    res.status(500).json({ error: "Error al obtener historial" });
+  }
+};
+
+export const getRendimientoTecnicos = async (req, res) => {
+  try {
+    const { fecha_inicio, fecha_fin } = req.query;
+    const rows = await Ticket.getRendimientoTecnicos({ fecha_inicio, fecha_fin });
+    res.json(rows);
+  } catch (err) {
+    console.error("[getRendimientoTecnicos]", err.message);
+    res.status(500).json({ error: "Error al obtener rendimiento de técnicos" });
+  }
+};
+
 export const getAllTickets = async (req, res) => {
   try {
-    const limit  = Math.min(parseInt(req.query.limit)  || 100, 500);
-    const page   = Math.max(parseInt(req.query.page)   || 1,   1);
+    const q = req.queryValidado ?? req.query;
+    const limit  = Math.min(parseInt(q.limit)  || 100, 500);
+    const page   = Math.max(parseInt(q.page)   || 1,   1);
     const offset = (page - 1) * limit;
-    const { rows, total } = await Ticket.getAll({ limit, offset });
+    const { estatus, prioridad, q: busqueda, fecha_inicio, fecha_fin } = q;
+    const { rows, total } = await Ticket.getAll({ limit, offset, estatus, prioridad, q: busqueda, fecha_inicio, fecha_fin });
     res.json({ data: rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
     console.error("[getAllTickets]", err.message);

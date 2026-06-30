@@ -81,7 +81,7 @@ function guardarEstado(sets) {
 // ── Proxy que persiste automáticamente tras cada mutación ─────────
 // Devuelve un objeto donde cada Set tiene métodos add/delete/clear
 // que llaman a guardarEstado() después de la mutación.
-export function crearSetsPresistentes() {
+export function crearSetsPersistentes() {
   const sets = cargarEstado();
 
   const wrap = (key) => ({

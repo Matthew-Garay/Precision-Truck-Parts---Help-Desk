@@ -21,7 +21,7 @@
  */
 import { useState } from "react";
 import { X, Eye, Download, Tag, Calendar, HardDrive, FileText, AlignLeft } from "lucide-react";
-import { usePdfCover } from "./usePdfCover";
+import { usePdfCover } from "./hooks/usePdfCover";
 import { NEUTRAL, SLATE, SEMANTIC, RADIUS } from "../Config/DesignSystem";
 
 const ORANGE       = "#F47920";

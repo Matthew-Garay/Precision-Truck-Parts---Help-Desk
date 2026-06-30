@@ -38,65 +38,61 @@
  */
 import bcrypt   from "bcryptjs";
 import crypto   from "crypto";
+import fs       from "fs";
+import path     from "path";
+import { fileURLToPath } from "url";
 import Empleado from "../Models/Empleado.js";
-import pool     from "../Config/db.js";
 import { enviarCodigoRecuperacion } from "../Config/mailer.js";
 
-const TTL          = 10 * 60 * 1000; // ms
+const TTL          = 10 * 60 * 1000;
 const MAX_INTENTOS = 5;
 
-// Crea la tabla si no existe — se ejecuta una sola vez al cargar el módulo
-pool.query(`
-  CREATE TABLE IF NOT EXISTS reset_tokens (
-    email       VARCHAR(255) PRIMARY KEY,
-    codigo_hash VARCHAR(255) NOT NULL,
-    id_empleado INT          NOT NULL,
-    expira_en   BIGINT       NOT NULL,
-    intentos    TINYINT      NOT NULL DEFAULT 0,
-    verificado  TINYINT(1)   NOT NULL DEFAULT 0
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-`).catch(err => console.error("[resetController] No se pudo crear tabla reset_tokens:", err.message));
+// -- Persistencia de tokens en disco (sobrevive reinicios) -----
+const __dirname    = path.dirname(fileURLToPath(import.meta.url));
+const TOKENS_DIR  = path.join(__dirname, "../Workers");
+const TOKENS_FILE  = path.join(TOKENS_DIR, "reset_tokens.json");
+
+function cargarTokens() {
+  try {
+    const data = JSON.parse(fs.readFileSync(TOKENS_FILE, "utf8"));
+    const ahora = Date.now();
+    // Filtrar expirados al cargar
+    return new Map(
+      Object.entries(data).filter(([, v]) => v.expiraEn > ahora)
+    );
+  } catch { return new Map(); }
+}
+
+function guardarTokens(map) {
+  const tmp = TOKENS_FILE + ".tmp";
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(Object.fromEntries(map)), "utf8");
+    fs.renameSync(tmp, TOKENS_FILE);
+  } catch (err) {
+    console.error("[resetTokens] Error al guardar:", err.message);
+    try { fs.unlinkSync(tmp); } catch {}
+  }
+}
+
+const tokens = cargarTokens();
 
 // Limpia tokens expirados cada 30 minutos
-const ivLimpiar = setInterval(() =>
-  pool.query("DELETE FROM reset_tokens WHERE expira_en < ?", [Date.now()])
-    .catch(() => {}),
-  30 * 60 * 1000
-);
+const ivLimpiar = setInterval(() => {
+  const ahora = Date.now();
+  let changed = false;
+  for (const [email, entry] of tokens) {
+    if (ahora > entry.expiraEn) { tokens.delete(email); changed = true; }
+  }
+  if (changed) guardarTokens(tokens);
+}, 30 * 60 * 1000);
 if (ivLimpiar.unref) ivLimpiar.unref();
 
-const normalizeEmail = (e) => String(e).trim().toLowerCase();
-
-async function getToken(email) {
-  const [[row]] = await pool.query("SELECT * FROM reset_tokens WHERE email = ? LIMIT 1", [email]);
-  return row || null;
-}
-
-async function setToken(email, data) {
-  await pool.query(
-    `INSERT INTO reset_tokens (email, codigo_hash, id_empleado, expira_en, intentos, verificado)
-     VALUES (?, ?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE
-       codigo_hash = VALUES(codigo_hash),
-       id_empleado = VALUES(id_empleado),
-       expira_en   = VALUES(expira_en),
-       intentos    = VALUES(intentos),
-       verificado  = VALUES(verificado)`,
-    [email, data.codigoHash, data.id_empleado, data.expiraEn, data.intentos, data.verificado ? 1 : 0]
-  );
-}
-
-async function deleteToken(email) {
-  await pool.query("DELETE FROM reset_tokens WHERE email = ?", [email]);
-}
-
-async function incrementIntentos(email) {
-  await pool.query("UPDATE reset_tokens SET intentos = intentos + 1 WHERE email = ?", [email]);
-}
-
-async function marcarVerificado(email) {
-  await pool.query("UPDATE reset_tokens SET verificado = 1 WHERE email = ?", [email]);
-}
+const normalizeEmail    = (e)     => String(e).trim().toLowerCase();
+const getToken          = (email) => tokens.get(email) ?? null;
+const setToken          = (email, data) => { tokens.set(email, data); guardarTokens(tokens); };
+const deleteToken       = (email) => { tokens.delete(email); guardarTokens(tokens); };
+const incrementIntentos = (email) => { const e = tokens.get(email); if (e) { e.intentos++; guardarTokens(tokens); } };
+const marcarVerificado  = (email) => { const e = tokens.get(email); if (e) { e.verificado = true; guardarTokens(tokens); } };
 
 // -- POST /api/auth/recuperar ---------------------------------
 export const solicitarRecuperacion = async (req, res) => {
@@ -112,7 +108,7 @@ export const solicitarRecuperacion = async (req, res) => {
     const codigo     = String(crypto.randomInt(100000, 999999));
     const codigoHash = await bcrypt.hash(codigo, 10);
 
-    await setToken(email, {
+    setToken(email, {
       codigoHash,
       id_empleado: empleado.id_empleado,
       expiraEn:    Date.now() + TTL,
@@ -139,35 +135,35 @@ export const verificarCodigo = async (req, res) => {
     return res.status(400).json({ error: "Datos incompletos" });
 
   const email   = normalizeEmail(emailRaw);
-  const entrada = await getToken(email);
+  const entrada = getToken(email);
 
-  if (!entrada || Date.now() > entrada.expira_en) {
-    await deleteToken(email);
+  if (!entrada || Date.now() > entrada.expiraEn) {
+    deleteToken(email);
     return res.status(400).json({ error: "El código expiró. Solicita uno nuevo." });
   }
 
   if (entrada.intentos >= MAX_INTENTOS) {
-    await deleteToken(email);
+    deleteToken(email);
     return res.status(400).json({ error: "Demasiados intentos fallidos. Solicita un nuevo código." });
   }
 
-  const codigoValido = await bcrypt.compare(String(codigo).trim(), entrada.codigo_hash);
+  const codigoValido = await bcrypt.compare(String(codigo).trim(), entrada.codigoHash);
   if (!codigoValido) {
-    await incrementIntentos(email);
+    incrementIntentos(email);
     return res.status(400).json({ error: "Código incorrecto" });
   }
 
   try {
     const empleado = await Empleado.findById(entrada.id_empleado);
     if (!empleado || empleado.estatus?.toLowerCase() !== "activo") {
-      await deleteToken(email);
+      deleteToken(email);
       return res.status(403).json({ error: "Tu cuenta no está activa. Contacta al administrador." });
     }
   } catch {
     return res.status(500).json({ error: "Error al verificar la cuenta" });
   }
 
-  await marcarVerificado(email);
+  marcarVerificado(email);
   res.json({ ok: true });
 };
 
@@ -176,27 +172,35 @@ export const resetPassword = async (req, res) => {
   const { email: emailRaw, codigo, password_nueva } = req.body;
   if (!emailRaw || !codigo || !password_nueva)
     return res.status(400).json({ error: "Datos incompletos" });
+
+  // Misma política que el resto del sistema
   if (password_nueva.length < 8)
     return res.status(400).json({ error: "La contraseña debe tener al menos 8 caracteres" });
+  if (!/[A-Z]/.test(password_nueva))
+    return res.status(400).json({ error: "La contraseña debe contener al menos una mayúscula" });
+  if (!/[0-9]/.test(password_nueva))
+    return res.status(400).json({ error: "La contraseña debe contener al menos un número" });
+  if (!/[^A-Za-z0-9]/.test(password_nueva))
+    return res.status(400).json({ error: "La contraseña debe contener al menos un carácter especial" });
 
   const email   = normalizeEmail(emailRaw);
-  const entrada = await getToken(email);
+  const entrada = getToken(email);
 
-  if (!entrada || Date.now() > entrada.expira_en) {
-    await deleteToken(email);
+  if (!entrada || Date.now() > entrada.expiraEn) {
+    deleteToken(email);
     return res.status(400).json({ error: "El código expiró. Solicita uno nuevo." });
   }
 
   if (entrada.intentos >= MAX_INTENTOS) {
-    await deleteToken(email);
+    deleteToken(email);
     return res.status(400).json({ error: "Demasiados intentos fallidos. Solicita un nuevo código." });
   }
 
-  let codigoValido = entrada.verificado === 1;
+  let codigoValido = entrada.verificado === true;
   if (!codigoValido) {
-    codigoValido = await bcrypt.compare(String(codigo).trim(), entrada.codigo_hash);
+    codigoValido = await bcrypt.compare(String(codigo).trim(), entrada.codigoHash);
     if (!codigoValido) {
-      await incrementIntentos(email);
+      incrementIntentos(email);
       return res.status(400).json({ error: "Código incorrecto" });
     }
   }
@@ -204,13 +208,13 @@ export const resetPassword = async (req, res) => {
   try {
     const empleado = await Empleado.findById(entrada.id_empleado);
     if (!empleado || empleado.estatus?.toLowerCase() !== "activo") {
-      await deleteToken(email);
+      deleteToken(email);
       return res.status(403).json({ error: "Tu cuenta no está activa. Contacta al administrador." });
     }
 
     const hash = await bcrypt.hash(password_nueva, 12);
     await Empleado.updatePerfil(entrada.id_empleado, { password: hash });
-    await deleteToken(email);
+    deleteToken(email);
     res.json({ ok: true });
   } catch (err) {
     console.error("Error al restablecer contraseña:", err.message);

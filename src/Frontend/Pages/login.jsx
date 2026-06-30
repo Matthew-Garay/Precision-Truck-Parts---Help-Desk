@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { apiFetch } from "../Config/api.js";
 import { COLORS, RADIUS, BG_IMAGE, BG_OVERLAY, DIAGONAL, INPUT_FOCUS, INPUT_BLUR } from "../Config/DesignSystem";
 import { EyeIcon, EyeOffIcon } from "../Components/Icons";
@@ -142,7 +142,7 @@ function ModalRecuperar({ onCerrar }) {
               <div>
                 <label htmlFor="rec-email" className="block text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: COLORS.label }}>Correo electrónico</label>
                 <input id="rec-email" type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="usuario@empresa.com" style={inp} onFocus={INPUT_FOCUS} onBlur={INPUT_BLUR}
+                  placeholder="usuario@dominio.com" style={inp} onFocus={INPUT_FOCUS} onBlur={INPUT_BLUR}
                   aria-label="Correo electrónico para recuperación" />
               </div>
               {error && <p role="alert" className="text-[11px] font-semibold px-2 py-1.5 rounded-lg" style={{ background: "#fee2e2", color: "#dc2626" }}>{error}</p>}
@@ -223,97 +223,64 @@ function ModalRecuperar({ onCerrar }) {
   );
 }
 
-// ── Pantalla de entrada ───────────────────────────────────────
-const ESTADOS = [
-  "Validando credenciales...",
-  "Estableciendo conexión segura...",
-  "Cargando módulos...",
-  "Iniciando sesión...",
-];
-
+// ── Pantalla de entrada (post-login) ─────────────────────────
 function PantallaEntrada() {
-  const [estadoIdx, setEstadoIdx] = useState(0);
-  const [visible, setVisible]     = useState(true);
-  const timerRef = useRef(null);
-
-  useEffect(() => {
-    timerRef.current = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setEstadoIdx(i => (i + 1) % ESTADOS.length);
-        setVisible(true);
-      }, 300);
-    }, 1400);
-    return () => clearInterval(timerRef.current);
-  }, []);
-
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center"
-      style={{ background: "#0a0a0a", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+      style={{ background: "#0a0a0a", fontFamily: "'Inter','Segoe UI',sans-serif", zIndex: 9999 }}>
 
-      {/* Luz de fondo con blur */}
-      <div style={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        background: "radial-gradient(ellipse 55% 40% at 50% 50%, rgba(244,121,32,0.09) 0%, transparent 70%)",
-        backdropFilter: "blur(0px)",
-      }} />
+      <div className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(244,121,32,0.08) 0%, transparent 70%)" }} />
 
-      <div className="relative flex flex-col items-center" style={{ gap: "24px" }}>
-
-        {/* Logo con glow + entrada */}
-        <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{
-            position: "absolute", inset: "-20px", borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(244,121,32,0.16) 0%, transparent 70%)",
-            animation: "pulse-glow 2.4s ease-in-out infinite",
-          }} />
-          <img src="/assets/img/logo.png" alt="Precision Truck Parts"
+      <div className="relative flex flex-col items-center gap-5">
+        <div className="relative flex items-center justify-center">
+          <div className="absolute rounded-full"
             style={{
-              height: "88px", width: "auto", objectFit: "contain",
-              filter: "drop-shadow(0 0 16px rgba(244,121,32,0.40))",
-              animation: "logo-enter 0.5s ease-out forwards",
+              inset: "-18px",
+              background: "radial-gradient(circle, rgba(244,121,32,0.15) 0%, transparent 70%)",
+              animation: "pulse-glow 2s ease-in-out infinite",
+            }} />
+          <img src="/assets/img/logo.png" alt="Precision Truck Parts"
+            className="h-[90px] w-auto object-contain"
+            style={{ filter: "drop-shadow(0 0 18px rgba(244,121,32,0.40))", animation: "fade-in 0.5s ease-out forwards" }} />
+        </div>
+
+        <div className="text-center flex flex-col gap-1">
+          <p className="text-white text-lg font-black uppercase tracking-widest leading-none"
+            style={{ animation: "slide-up 0.5s 0.15s ease-out both" }}>
+            Precision Truck Parts
+          </p>
+          <p className="text-[11px] font-medium uppercase tracking-widest"
+            style={{ color: "rgba(255,255,255,0.35)", animation: "slide-up 0.5s 0.28s ease-out both" }}>
+            Bienvenido · Cargando sistema...
+          </p>
+        </div>
+
+        <div className="w-[180px] h-[3px] rounded-full overflow-hidden"
+          style={{ background: "rgba(255,255,255,0.08)", animation: "slide-up 0.5s 0.38s ease-out both" }}>
+          <div className="h-full rounded-full"
+            style={{
+              background: "linear-gradient(90deg, #F47920, #ffb347, #F47920)",
+              backgroundSize: "200% 100%",
+              animation: "progress 1.5s ease-in-out forwards, shimmer 1.5s 0.3s linear infinite",
             }} />
         </div>
 
-        {/* Título + subtítulo */}
-        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "8px" }}>
-          <p style={{
-            color: "#ffffff", fontSize: "17px", fontWeight: 900,
-            letterSpacing: "0.10em", textTransform: "uppercase", lineHeight: 1,
-            animation: "slide-up 0.5s 0.15s ease-out both",
-          }}>Precision Truck Parts</p>
-
-          {/* Estado dinámico con fade */}
-          <p style={{
-            color: "rgba(255,255,255,0.38)", fontSize: "10px", fontWeight: 500,
-            letterSpacing: "0.14em", textTransform: "uppercase",
-            animation: "slide-up 0.5s 0.28s ease-out both",
-            opacity: visible ? 1 : 0,
-            transition: "opacity 0.28s ease",
-          }}>{ESTADOS[estadoIdx]}</p>
-        </div>
-
-        {/* Barra de progreso líquida */}
-        <div style={{
-          width: "200px", height: "3px", borderRadius: "99px",
-          background: "rgba(255,255,255,0.07)", overflow: "hidden",
-          animation: "slide-up 0.5s 0.4s ease-out both",
-        }}>
-          <div style={{
-            height: "100%",
-            background: "linear-gradient(90deg, transparent 0%, #ea580c 30%, #f97316 50%, #ea580c 70%, transparent 100%)",
-            backgroundSize: "300% 100%",
-            animation: "liquid-wave 1.6s linear infinite",
-            width: "100%",
+        <div className="w-8 h-8 rounded-full border-[2.5px]"
+          style={{
+            borderColor: "rgba(244,121,32,0.2)",
+            borderTopColor: "#F47920",
+            animation: "spin 0.8s linear infinite, slide-up 0.5s 0.45s ease-out both",
           }} />
-        </div>
       </div>
 
       <style>{`
-        @keyframes logo-enter   { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes slide-up     { from{opacity:0;transform:translateY(8px)}  to{opacity:1;transform:translateY(0)} }
-        @keyframes pulse-glow   { 0%,100%{opacity:0.55;transform:scale(1)} 50%{opacity:1;transform:scale(1.10)} }
-        @keyframes liquid-wave  { 0%{background-position:200% 0} 100%{background-position:-100% 0} }
+        @keyframes spin        { to { transform: rotate(360deg); } }
+        @keyframes progress    { 0%{width:0%} 100%{width:100%} }
+        @keyframes shimmer     { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        @keyframes pulse-glow  { 0%,100%{opacity:0.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.12)} }
+        @keyframes fade-in     { from{opacity:0;transform:scale(0.92)} to{opacity:1;transform:scale(1)} }
+        @keyframes slide-up    { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
     </div>
   );
@@ -391,6 +358,7 @@ export default function Login({ onLogin }) {
       }
       setEntrando(true);
       setIntentos(0);
+      sessionStorage.setItem("_pw", password);
       if (navigator.vibrate) navigator.vibrate(50);
       setTimeout(() => { setEntrando(false); onLogin(data.usuario, data.id_acceso, data.token); }, 1500);
     } catch { setError("No se pudo conectar con el servidor"); triggerShake(); }
@@ -408,14 +376,18 @@ export default function Login({ onLogin }) {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         @media (max-height: 500px) and (orientation: landscape) {
-          .login-card-header { padding: 12px 24px !important; }
-          .login-card-body   { padding: 12px 24px 16px !important; }
-          .login-logo        { height: 28px !important; }
-          .login-title-gap   { margin-bottom: 8px !important; }
-          .login-form-gap    { gap: 8px !important; }
-          .login-input       { padding: 8px 10px 8px 34px !important; font-size: 13px !important; }
-          .login-btn         { padding: 9px 16px !important; font-size: 13px !important; }
+          .login-card-header { padding: 8px 16px !important; }
+          .login-card-body   { padding: 8px 16px 12px !important; }
+          .login-logo        { height: 22px !important; }
+          .login-title-gap   { margin-bottom: 6px !important; }
+          .login-form-gap    { gap: 6px !important; }
+          .login-input       { padding: 6px 8px 6px 28px !important; font-size: 12px !important; }
+          .login-btn         { padding: 7px 14px !important; font-size: 12px !important; }
           .login-forgot      { margin-top: 0 !important; }
+        }
+        @media (max-width: 400px) {
+          .login-card-header { padding: 10px 16px !important; }
+          .login-card-body   { padding: 16px !important; }
         }
         @keyframes fade-in-card  { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
         @keyframes shake-card    { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
@@ -440,7 +412,7 @@ export default function Login({ onLogin }) {
 
           <div className={`w-full relative ${shakeCard ? "login-card-shake" : "login-card-wrap"}`}
             style={{
-              maxWidth: "400px",
+              maxWidth: "360px",
               background: "#FFFFFF",
               borderRadius: "10px",
               boxShadow: "0 20px 60px rgba(0,0,0,0.50), 0 0 0 1px rgba(255,255,255,0.06)",
@@ -449,35 +421,35 @@ export default function Login({ onLogin }) {
             }}>
 
             {/* Cabecera institucional */}
-            <div className="login-card-header flex items-center gap-4"
+            <div className="login-card-header flex items-center gap-3"
               style={{
-                padding: "20px 28px",
+                padding: "14px 20px",
                 borderBottom: "1px solid #E2E8F0",
                 background: "#F8FAFC",
               }}>
               <img src="/assets/img/log.png" alt="Precision Truck Parts"
                 className="login-logo object-contain flex-shrink-0"
-                style={{ height: "clamp(40px, 8vw, 56px)", maxWidth: "160px" }} />
-              <div style={{ borderLeft: "1px solid #E2E8F0", paddingLeft: "16px" }}>
-                <p style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#475569", lineHeight: 1 }}>Sistema Interno</p>
-                <p style={{ fontSize: "10px", fontWeight: 400, color: "#94A3B8", marginTop: "3px", lineHeight: 1 }}>HelpDesk · Soporte Técnico</p>
+                style={{ height: "clamp(32px, 6vw, 44px)", maxWidth: "140px" }} />
+              <div style={{ borderLeft: "1px solid #E2E8F0", paddingLeft: "12px" }}>
+                <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#475569", lineHeight: 1 }}>Sistema Interno</p>
+                <p style={{ fontSize: "9px", fontWeight: 400, color: "#94A3B8", marginTop: "3px", lineHeight: 1 }}>HelpDesk · Soporte Técnico</p>
               </div>
             </div>
 
             {/* Cuerpo del formulario */}
-            <div className="login-card-body" style={{ padding: "28px 28px 24px" }}>
+            <div className="login-card-body" style={{ padding: "20px 20px 18px" }}>
 
               {/* Título */}
-              <div className="login-title-gap" style={{ marginBottom: "24px" }}>
-                <h1 style={{ color: "#0F172A", fontSize: "20px", fontWeight: 700, lineHeight: 1.2, letterSpacing: "-0.01em" }}>
+              <div className="login-title-gap" style={{ marginBottom: "16px" }}>
+                <h1 style={{ color: "#0F172A", fontSize: "17px", fontWeight: 700, lineHeight: 1.2, letterSpacing: "-0.01em" }}>
                   Iniciar sesión
                 </h1>
-                <p style={{ color: "#64748B", fontSize: "13px", marginTop: "4px", fontWeight: 400 }}>
+                <p style={{ color: "#64748B", fontSize: "12px", marginTop: "3px", fontWeight: 400 }}>
                   Ingresa tus credenciales corporativas
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="login-form-gap flex flex-col" style={{ gap: "18px" }}
+              <form onSubmit={handleSubmit} className="login-form-gap flex flex-col" style={{ gap: "14px" }}
                 aria-label="Formulario de inicio de sesión">
 
                 {/* Email */}
@@ -497,7 +469,7 @@ export default function Login({ onLogin }) {
                     <input
                       id="login-email"
                       type="email"
-                      placeholder="usuario@empresa.com"
+                      placeholder="usuario@dominio.com"
                       value={email}
                       onChange={(e) => { setEmail(e.target.value); setError(""); }}
                       onBlur={() => setEmailTouched(true)}
@@ -513,8 +485,8 @@ export default function Login({ onLogin }) {
                         border: `1px solid ${inputEmailBorder}`,
                         borderRadius: "4px",
                         color: "#0F172A",
-                        fontSize: "14px",
-                        padding: "10px 14px 10px 34px",
+                        fontSize: "13px",
+                        padding: "8px 12px 8px 30px",
                         transition: "border-color .2s",
                       }}
                     />
@@ -565,8 +537,8 @@ export default function Login({ onLogin }) {
                         border: "1px solid #CBD5E1",
                         borderRadius: "4px",
                         color: "#0F172A",
-                        fontSize: "14px",
-                        padding: "10px 40px 10px 34px",
+                        fontSize: "13px",
+                        padding: "8px 36px 8px 30px",
                       }}
                     />
                     <button
@@ -639,8 +611,8 @@ export default function Login({ onLogin }) {
                     background: canSubmit ? COLORS.orange : "#CBD5E1",
                     borderRadius: "4px",
                     boxShadow: canSubmit ? `0 2px 8px rgba(244,121,32,0.35)` : "none",
-                    fontSize: "14px",
-                    padding: "11px 16px",
+                    fontSize: "13px",
+                    padding: "9px 16px",
                     letterSpacing: "0.01em",
                     cursor: canSubmit ? "pointer" : "not-allowed",
                     opacity: canSubmit ? 1 : 0.60,
@@ -659,7 +631,7 @@ export default function Login({ onLogin }) {
               </form>
 
               {/* Divider + Footer */}
-              <div style={{ borderTop: "1px solid #E2E8F0", marginTop: "20px", paddingTop: "16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ borderTop: "1px solid #E2E8F0", marginTop: "14px", paddingTop: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <p className="select-none" style={{ color: "#94A3B8", fontSize: "10px", fontWeight: 400 }}>
                   © 2026 Precision Truck Parts
                 </p>

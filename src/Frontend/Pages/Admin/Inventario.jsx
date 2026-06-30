@@ -24,9 +24,9 @@ const ESTADO_META = {
 };
 
 const DISPONIBILIDAD_META = {
-  Disponible: { color: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" },
-  Préstamo:   { color: "#F97316", bg: "#fff7ed", border: "#fed7aa" },
-  "En uso":   { color: "#F97316", bg: "#fff7ed", border: "#fed7aa" },
+  Disponible:   { color: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" },
+  "Stock bajo": { color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
+  "Sin stock":  { color: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
 };
 
 const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo"];
@@ -154,7 +154,7 @@ function KpiCard({ label, value, sub, icon: Icon, color, highlight = false }) {
           <p style={{ margin: 0, fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>
             {label}
           </p>
-          <p style={{ margin: "4px 0 0", fontSize: "28px", fontWeight: 800, lineHeight: 1, color: highlight ? color : T.text }}>
+          <p style={{ margin: "4px 0 0", fontSize: "16px", fontWeight: 800, lineHeight: 1, color: highlight ? color : T.text }}>
             {value}
           </p>
           {sub && (
@@ -176,12 +176,12 @@ function KpiCard({ label, value, sub, icon: Icon, color, highlight = false }) {
 // ── Tabla de alta densidad ────────────────────────────────────────
 const COLS = ["Nombre del Insumo", "Categoría", "Estado", "Disponibilidad", "Stock", "Nivel de Stock", "Acciones"];
 
-function DataTable({ rows, onEdit, onDelete }) {
+function DataTable({ rows, onEdit, onDelete, onDetail }) {
   const [hoverRow, setHoverRow] = useState(null);
   const { T } = useTheme();
 
   const th = {
-    padding: "9px 14px", fontSize: "11px", fontWeight: 700,
+    padding: "7px 12px", fontSize: "10px", fontWeight: 700,
     textTransform: "uppercase", letterSpacing: "0.07em",
     color: T.textMuted, background: T.surfaceAlt,
     borderBottom: `2px solid ${T.border}`, textAlign: "left",
@@ -191,7 +191,7 @@ function DataTable({ rows, onEdit, onDelete }) {
 
   return (
     <div>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
         <thead>
           <tr>{COLS.map(c => <th key={c} style={th}>{c}</th>)}</tr>
         </thead>
@@ -199,7 +199,7 @@ function DataTable({ rows, onEdit, onDelete }) {
           {rows.map((row) => {
             const isHover = hoverRow === row.id_insumo;
             const td = {
-              padding: "10px 14px",
+              padding: "7px 12px",
               borderBottom: `1px solid ${T.border}`,
               background: isHover ? T.surfaceHover : T.surface,
               color: T.textMuted,
@@ -239,7 +239,7 @@ function DataTable({ rows, onEdit, onDelete }) {
                 {/* Disponibilidad */}
                 <td style={td}><BadgeDisponibilidad disponibilidad={row.disponibilidad} /></td>
                 {/* Stock numérico */}
-                <td style={{ ...td, textAlign: "center", fontFamily: "monospace", fontWeight: 700, fontSize: "14px", color: T.textMuted }}>
+                <td style={{ ...td, textAlign: "center", fontFamily: "monospace", fontWeight: 700, fontSize: "12px", color: T.textMuted }}>
                   {row.stock ?? 0}
                 </td>
                 {/* Barra de progreso */}
@@ -252,7 +252,7 @@ function DataTable({ rows, onEdit, onDelete }) {
                     <IconBtn onClick={() => onEdit(row)} title="Editar insumo" hoverColor={ORANGE.base} hoverBg={ORANGE.light}>
                       <Pencil size={13} />
                     </IconBtn>
-                    <IconBtn onClick={() => alert(`Detalles: ${row.nombre}\nMarca: ${row.marca || "—"}\nModelo: ${row.modelo || "—"}\nSerie: ${row.num_serie || "—"}\nStock: ${row.stock ?? 0}`)} title="Ver detalles" hoverColor="#2563eb" hoverBg="#eff6ff">
+                    <IconBtn onClick={() => onDetail(row)} title="Ver detalles" hoverColor="#2563eb" hoverBg="#eff6ff">
                       <Eye size={13} />
                     </IconBtn>
                     <IconBtn onClick={() => onDelete(row)} title="Eliminar insumo" hoverColor="#dc2626" hoverBg="#fef2f2">
@@ -270,6 +270,9 @@ function DataTable({ rows, onEdit, onDelete }) {
 }
 
 // ── Página principal ──────────────────────────────────────────────
+// Nota: este componente usa useTheme() internamente para obtener el tema.
+// La prop T que pasa el Dashboard es ignorada intencionalmente ya que el
+// hook garantiza que siempre tenga el valor más actualizado del contexto.
 export default function Inventario() {
   const [insumos,    setInsumos]    = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -310,7 +313,7 @@ export default function Inventario() {
 
   useEffect(() => {
     cargarInventario(true);
-    apiFetch("/api/categorias").then(r => r.json()).then(d => setCategorias(Array.isArray(d) ? d : [])).catch(() => {});
+    apiFetch("/api/categorias?tipo=insumo").then(r => r.json()).then(d => setCategorias(Array.isArray(d) ? d : [])).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -356,7 +359,7 @@ export default function Inventario() {
   const estadoMalo     = insumos.filter(i => i.estado === "Malo").length;
   const estadoRegular  = insumos.filter(i => i.estado === "Regular").length;
   const categoriasCnt  = new Set(insumos.map(i => i.id_categoria).filter(Boolean)).size;
-  const activosEnUso   = insumos.filter(i => i.disponibilidad === "Préstamo" || i.disponibilidad === "En uso").length;
+  const activosEnUso   = insumos.filter(i => i.disponibilidad === "Stock bajo" || i.disponibilidad === "Sin stock").length;
   const stockBajo      = insumos.filter(i => (i.stock ?? 0) > 0 && (i.stock ?? 0) <= 3).length;
   const sinStock       = insumos.filter(i => (i.stock ?? 0) === 0).length;
 
@@ -369,10 +372,10 @@ export default function Inventario() {
         {/* ── Page Header ───────────────────────────────────────── */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: "20px", fontWeight: 800, color: T.text, letterSpacing: "-0.02em" }}>
+            <h1 style={{ margin: 0, fontSize: "13px", fontWeight: 800, color: T.text, letterSpacing: "-0.02em" }}>
               Inventario de Insumos
             </h1>
-            <p style={{ margin: "2px 0 0", fontSize: "12px", color: T.textFaint }}>
+            <p style={{ margin: "2px 0 0", fontSize: "11px", color: T.textFaint }}>
               Gestión y control de piezas en almacén
             </p>
           </div>
@@ -392,7 +395,7 @@ export default function Inventario() {
                 display: "inline-flex", alignItems: "center", gap: "6px",
                 padding: "8px 14px", borderRadius: "6px", border: "none",
                 background: TEAL.base, color: "#fff",
-                fontSize: "13px", fontWeight: 600, cursor: "pointer",
+                fontSize: "11px", fontWeight: 600, cursor: "pointer",
                 transition: "opacity 0.15s",
               }}
               onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
@@ -411,7 +414,7 @@ export default function Inventario() {
             icon={Package}       color={TEAL.base}
           />
           <KpiCard
-            label="Activos en Uso"   value={activosEnUso}
+            label="Con Stock Bajo / Agotados" value={activosEnUso}
             sub={insumos.length > 0 ? `${Math.round((activosEnUso / insumos.length) * 100)}% del catálogo` : "Sin datos"}
             icon={Users}         color={ORANGE.base}  highlight
           />
@@ -446,7 +449,7 @@ export default function Inventario() {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <Layers size={14} style={{ color: TEAL.base }} />
-              <span style={{ fontSize: "13px", fontWeight: 700, color: T.text }}>Catálogo de Insumos</span>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: T.text }}>Catálogo de Insumos</span>
               <span style={{
                 fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "99px",
                 background: T.isDark ? "rgba(13,148,136,0.18)" : "#f0fdfa",
@@ -481,12 +484,14 @@ export default function Inventario() {
                 <div style={{ width: "52px", height: "52px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
                   <Inbox size={24} style={{ color: T.textFaint }} />
                 </div>
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: T.textMuted }}>
+                <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: T.textMuted }}>
                   {hayFiltros ? "Sin resultados — ajusta los filtros" : "No hay insumos registrados"}
                 </p>
               </div>
             ) : (
-              <DataTable rows={filtrados} onEdit={setModal} onDelete={setConfirmDel} />
+              <DataTable rows={filtrados} onEdit={setModal} onDelete={setConfirmDel} onDetail={(row) => {
+            toast.info(`${row.nombre} · ${row.marca || "—"} ${row.modelo || "—"} · Serie: ${row.num_serie || "—"} · Stock: ${row.stock ?? 0}`);
+          }} />
             )}
           </div>
         </div>

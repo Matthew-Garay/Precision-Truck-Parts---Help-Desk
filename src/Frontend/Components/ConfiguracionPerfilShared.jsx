@@ -40,9 +40,14 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
   const [apPaterno,  setApPaterno]  = useState(usuario.ap_paterno || "");
   const [apMaterno,  setApMaterno]  = useState(usuario.ap_materno || "");
   const [email,      setEmail]      = useState(usuario.email      || "");
-  const [passActual, setPassActual] = useState(() => sessionStorage.getItem("pwd_actual") || "");
+  const [passActual, setPassActual] = useState("");
   const [passNueva,  setPassNueva]  = useState("");
   const [passConf,   setPassConf]   = useState("");
+
+  useEffect(() => {
+    const pw = sessionStorage.getItem("_pw");
+    if (pw) setPassActual(pw);
+  }, []);
 
   const fotoUrl = f => f ? `/storage/${f}` : null;
   const [foto,         setFoto]         = useState(fotoUrl(usuario.foto));
@@ -55,12 +60,18 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
   const [anioFiltro, setAnioFiltro] = useState("Todos");
   const [msg,        setMsg]        = useState(null);
   const [loading,    setLoading]    = useState(false);
+  const [modalReporte, setModalReporte] = useState(false);
+  const [rptDesde,     setRptDesde]     = useState("");
+  const [rptHasta,     setRptHasta]     = useState("");
+
+  const [emailEditado, setEmailEditado] = useState(false);
 
   useEffect(() => {
-    setNombre(usuario.nombre     || "");
+    setNombre(usuario.nombre       || "");
     setApPaterno(usuario.ap_paterno || "");
     setApMaterno(usuario.ap_materno || "");
-    setEmail(usuario.email      || "");
+    setEmail(usuario.email         || "");
+    setEmailEditado(false);
   }, [usuario.id_empleado]);
 
   const esAdmin = rol === "Administrador";
@@ -107,12 +118,12 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
         .then(emp => {
           if (!emp?.id_empleado) return;
           setPerfil(prev => {
-            const next = { ...prev, num_empleado: emp.num_empleado, nombre: emp.nombre, ap_paterno: emp.ap_paterno, ap_materno: emp.ap_materno || "", email: emp.email, departamento: emp.nombre_departamento };
+            const next = { ...prev, num_empleado: emp.num_empleado, nombre: emp.nombre, ap_paterno: emp.ap_paterno, ap_materno: emp.ap_materno || "", email: emp.email, departamento: emp.nombre_departamento, nombre_sucursal: emp.nombre_sucursal || null };
             if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
-            setNombre(emp.nombre || "");
+            setNombre(emp.nombre       || "");
             setApPaterno(emp.ap_paterno || "");
             setApMaterno(emp.ap_materno || "");
-            setEmail(emp.email || "");
+            if (!emailEditado) setEmail(emp.email || "");
             return next;
           });
         }).catch(() => {});
@@ -134,9 +145,10 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
       const data = await res.json();
       if (!res.ok) { setMsg({ tipo: "err", texto: data.error || "Error al guardar" }); return; }
       setMsg({ tipo: "ok", texto: "Datos actualizados correctamente" });
+      setEmailEditado(false);
       if (passNueva) {
-        sessionStorage.setItem("pwd_actual", passNueva);
-        setPassActual(passNueva);
+        sessionStorage.removeItem("_pw");
+        setPassActual("");
       }
       setPassNueva(""); setPassConf("");
       setTimeout(() => setMsg(null), 4000);
@@ -186,15 +198,15 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-black text-base leading-tight truncate" style={{ color: T.text }}>{nombreCompleto || "-"}</p>
-              <p className="text-xs mt-0.5 truncate" style={{ color: T.textMuted }}>{usuario.email || "-"}</p>
-              <p className="text-[11px] mt-0.5 truncate" style={{ color: T.textFaint }}>{usuario.departamento || "-"}</p>
+              <p className="font-black text-base leading-tight" style={{ color: T.text }}>{nombreCompleto || "-"}</p>
+              <p className="text-xs mt-0.5" style={{ color: T.textMuted }}>{perfil.email || usuario.email || "-"}</p>
+              <p className="text-[11px] mt-0.5" style={{ color: T.textFaint }}>{perfil.departamento || usuario.departamento || "-"}</p>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-0" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` }}>
-            {[{ label: "Número", val: perfil.num_empleado || "-" }, { label: "Departamento", val: perfil.departamento || "-" }, { label: "Rol", val: rol }]
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` }}>
+            {[{ label: "Número", val: perfil.num_empleado || "-" }, { label: "Departamento", val: perfil.departamento || "-" }, { label: "Sucursal", val: perfil.nombre_sucursal || "-" }, { label: "Rol", val: rol }]
               .map(({ label, val }, i) => (
-                <div key={label} className="px-4 py-3" style={{ borderRight: i < 2 ? `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` : "none" }}>
+                <div key={label} className="px-4 py-3" style={{ borderRight: i < 3 ? `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` : "none" }}>
                   <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: T.textFaint }}>{label}</p>
                   <p className="text-[12px] font-bold truncate mt-0.5" style={{ color: T.text }}>{val}</p>
                 </div>
@@ -221,7 +233,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             </div>
             <div className="flex flex-col gap-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Correo Electrónico</span>
-              <input style={inp} type="email" value={email} onChange={e => setEmail(e.target.value)}
+              <input style={inp} type="email" value={email} onChange={e => { setEmail(e.target.value); setEmailEditado(true); }}
                 onFocus={e => e.target.style.borderColor = T.orange} onBlur={e => e.target.style.borderColor = T.border} />
             </div>
           </div>
@@ -237,10 +249,10 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             <div className="flex flex-col gap-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Contraseña Actual</span>
               <input
-                style={{ ...inp, opacity: 0.55, cursor: "not-allowed", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}
+                style={{ ...inp, cursor: "not-allowed", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt, WebkitTextFillColor: T.text, opacity: 1 }}
                 type="text" value={passActual}
-                placeholder="Inicia sesión de nuevo para ver"
-                disabled readOnly />
+                disabled
+                readOnly />
             </div>
             {[
               { label: "Nueva Contraseña",           k: "nueva", val: passNueva, set: setPassNueva },
@@ -310,12 +322,12 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
                   )}
                 </>
               )}
-              <button onClick={() => generarPDFAccesos({ accesos: esAdmin ? accesosFiltrados : accesos, usuario, mesFiltro: esAdmin ? mesFiltro : undefined, anioFiltro: esAdmin ? anioFiltro : undefined })}
+              <button onClick={() => setModalReporte(true)}
                 disabled={(esAdmin ? accesosFiltrados : accesos).length === 0}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ background: "linear-gradient(135deg,#dc2626,#b91c1c)", color: "#fff", boxShadow: "0 2px 8px rgba(220,38,38,0.3)" }}>
+                style={{ background: `linear-gradient(135deg,${T.orange},#d97400)`, color: "#fff", boxShadow: "0 2px 8px rgba(244,121,32,0.3)" }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/></svg>
-                Exportar PDF
+                Generar Reporte
               </button>
             </div>
           </div>
@@ -351,7 +363,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
                   <tr><td colSpan={4} className="px-5 py-6 text-center text-xs" style={{ color: T.textFaint }}>
                     {accesos.length === 0 ? "Sin registros" : "Sin resultados para el filtro seleccionado"}
                   </td></tr>
-                ) : accesosFiltrados.map((a, i) => {
+                ) : accesosFiltrados.slice(0, 10).map((a, i) => {
                   const entrada = a.fecha_entrada ? new Date(a.fecha_entrada) : null;
                   const salida  = a.fecha_salida  ? new Date(a.fecha_salida)  : null;
                   const durMin  = entrada && salida ? Math.round((salida - entrada) / 60000) : null;
@@ -370,12 +382,69 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
                 })}
               </tbody>
             </table>
+            {accesosFiltrados.length > 10 && (
+              <p className="text-center text-[10px] py-2.5 font-semibold" style={{ color: T.textFaint, borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : T.border}` }}>
+                Mostrando los últimos 10 de {accesosFiltrados.length} registros — exporta el PDF para ver el historial completo.
+              </p>
+            )}
           </div>
         </div>
 
         <div className="pb-2" />
       </div>
     </div>
+
+    {modalReporte && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center"
+        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+        onClick={e => { if (e.target === e.currentTarget) setModalReporte(false); }}>
+        <div className="rounded-2xl overflow-hidden w-full"
+          style={{ maxWidth: "340px", background: isDark ? "#141720" : "#fff", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : T.border}`, boxShadow: "0 24px 60px rgba(0,0,0,0.4)" }}>
+          <div className="px-5 py-4 flex items-center justify-between"
+            style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`, background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}>
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-4 rounded-full" style={{ background: T.orange }} />
+              <p className="text-xs font-black uppercase tracking-widest" style={{ color: T.text }}>Generar Reporte</p>
+            </div>
+            <button onClick={() => setModalReporte(false)}
+              className="w-6 h-6 rounded-lg flex items-center justify-center"
+              style={{ background: isDark ? "rgba(255,255,255,0.07)" : T.surfaceAlt, color: T.textMuted }}>
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            </button>
+          </div>
+          <div className="px-5 py-5 flex flex-col gap-4">
+            <p className="text-[11px]" style={{ color: T.textMuted }}>Selecciona el rango de fechas. Si no seleccionas ninguna se incluyen todos los registros.</p>
+            {[
+              { label: "Desde", val: rptDesde, set: setRptDesde },
+              { label: "Hasta", val: rptHasta, set: setRptHasta },
+            ].map(({ label, val, set }) => (
+              <div key={label} className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</span>
+                <input type="date" value={val} onChange={e => set(e.target.value)}
+                  style={{ ...inp, colorScheme: isDark ? "dark" : "light" }}
+                  onFocus={e => e.target.style.borderColor = T.orange}
+                  onBlur={e => e.target.style.borderColor = T.border} />
+              </div>
+            ))}
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => { setModalReporte(false); setRptDesde(""); setRptHasta(""); }}
+                className="flex-1 py-2 rounded-xl text-xs font-bold"
+                style={{ background: isDark ? "rgba(255,255,255,0.07)" : T.surfaceAlt, color: T.textMuted }}>
+                Cancelar
+              </button>
+              <button onClick={() => {
+                  generarPDFAccesos({ accesos: esAdmin ? accesosFiltrados : accesos, usuario, fechaInicio: rptDesde || undefined, fechaFin: rptHasta || undefined });
+                  setModalReporte(false); setRptDesde(""); setRptHasta("");
+                }}
+                className="flex-1 py-2 rounded-xl text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95"
+                style={{ background: `linear-gradient(135deg,${T.orange},#d97400)`, boxShadow: "0 2px 10px rgba(244,121,32,0.35)" }}>
+                Generar PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
 
     {cropSrc && (
       <ModalRecorte src={cropSrc} isDark={isDark} T={T}
