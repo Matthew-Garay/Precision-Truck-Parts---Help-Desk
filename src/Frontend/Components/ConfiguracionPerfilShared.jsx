@@ -203,10 +203,10 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
               <p className="text-[11px] mt-0.5" style={{ color: T.textFaint }}>{perfil.departamento || usuario.departamento || "-"}</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` }}>
-            {[{ label: "Número", val: perfil.num_empleado || "-" }, { label: "Departamento", val: perfil.departamento || "-" }, { label: "Sucursal", val: perfil.nombre_sucursal || "-" }, { label: "Rol", val: rol }]
+          <div className="grid grid-cols-3 gap-0" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` }}>
+            {[{ label: "Número", val: perfil.num_empleado || "-" }, { label: "Departamento", val: perfil.departamento || "-" }, { label: "Sucursal", val: perfil.nombre_sucursal || "-" }]
               .map(({ label, val }, i) => (
-                <div key={label} className="px-4 py-3" style={{ borderRight: i < 3 ? `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` : "none" }}>
+                <div key={label} className="px-4 py-3" style={{ borderRight: i < 2 ? `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` : "none" }}>
                   <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: T.textFaint }}>{label}</p>
                   <p className="text-[12px] font-bold truncate mt-0.5" style={{ color: T.text }}>{val}</p>
                 </div>

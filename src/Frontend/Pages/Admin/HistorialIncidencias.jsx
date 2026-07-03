@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Star, Inbox, FileDown } from "lucide-react";
 import ModalReporte from "../../Components/ModalReporte";
 import { apiFetch } from "../../Config/api";
+import { abrirReporteLista } from "../PrintReportePage";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
 import { useCardStyles } from "../../Components/Card";
@@ -113,8 +114,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
 
   const generarReporte = async (params) => {
     const { fecha_inicio, fecha_fin, id_tecnico } = params;
-    if (!fecha_inicio || !fecha_fin) return;
-    if (fecha_inicio > fecha_fin) return;
+    if (!fecha_inicio || !fecha_fin || fecha_inicio > fecha_fin) return;
     setGenerando(true);
     let datos = [];
     try {
@@ -125,234 +125,12 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
     } catch { datos = []; }
     setGenerando(false);
     setModalReporte(false);
-    const ahora    = new Date().toLocaleDateString("es-MX", { day:"2-digit", month:"long", year:"numeric" });
-    const fmtDate  = d => new Date(d + "T00:00:00").toLocaleDateString("es-MX", { day:"2-digit", month:"long", year:"numeric" });
-    const periodo  = `${fmtDate(fecha_inicio)} – ${fmtDate(fecha_fin)}`;
-    // tecnicoLabel disponible para uso futuro en el reporte
-    // const tecnicoLabel = paramReporte.id_tecnico === "todos" ? "Todos los técnicos" : (admins.find(a => String(a.id_empleado) === String(paramReporte.id_tecnico))?.nombre_completo || "-");
-    const resueltos2 = datos.filter(t => t.estatus === "Resuelto").length;
-    const activos2   = datos.filter(t => t.estatus === "En proceso").length;
-    const noRes2     = datos.filter(t => t.estatus === "No Resuelto").length;
-    const califs2    = datos.filter(t => t.calificacion > 0);
-    const prom       = califs2.length > 0 ? (califs2.reduce((a,t) => a + t.calificacion, 0) / califs2.length).toFixed(1) : "-";
-
-    const PCOLOR_MAP = { Urgente:"#dc2626", Alta:"#ea580c", Media:"#ca8a04", Baja:"#16a34a" };
-    const ESTATUS_COLOR = { "Resuelto":"#16a34a", "En proceso":"#ea580c", "No Resuelto":"#dc2626" };
-    const ESTATUS_BG    = { "Resuelto":"#dcfce7", "En proceso":"#ffedd5", "No Resuelto":"#fee2e2" };
-
-    const filas = datos.map((t, i) => `
-      <tr style="background:${i%2===0?"#ffffff":"#f9fafb"}">
-        <td style="padding:7px 10px;font-family:monospace;font-weight:700;color:#F47920;font-size:11px;border-bottom:1px solid #e5e7eb">${t.folio_ticket}</td>
-        <td style="padding:7px 10px;font-size:11px;border-bottom:1px solid #e5e7eb;max-width:200px">
-          <div style="font-weight:600;color:#1D1D1B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.titulo}</div>
-          <div style="font-size:10px;color:${PCOLOR_MAP[t.prioridad]||"#94a3b8"};font-weight:700;margin-top:2px">● ${t.prioridad}</div>
-        </td>
-        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb">
-          <span style="background:${ESTATUS_BG[t.estatus]||"#f3f4f6"};color:${ESTATUS_COLOR[t.estatus]||"#374151"};padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap">${t.estatus}</span>
-        </td>
-        <td style="padding:7px 10px;font-size:11px;border-bottom:1px solid #e5e7eb">
-          <div style="font-weight:600;color:#1D1D1B">${t.nombre_empleado||"-"}</div>
-          <div style="font-size:10px;color:#6b7280">${t.nombre_departamento||"-"}</div>
-        </td>
-        <td style="padding:7px 10px;font-size:11px;color:#374151;border-bottom:1px solid #e5e7eb">${t.resuelto_por ? t.resuelto_por.split(" ").slice(0,2).join(" ") : "-"}</td>
-        <td style="padding:7px 10px;font-size:11px;color:#6b7280;white-space:nowrap;border-bottom:1px solid #e5e7eb">${fmt(t.fecha_subido)}</td>
-        <td style="padding:7px 10px;font-size:11px;color:${t.fecha_resuelto?"#16a34a":"#9ca3af"};white-space:nowrap;border-bottom:1px solid #e5e7eb">${fmt(t.fecha_resuelto)}</td>
-        <td style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:1px solid #e5e7eb">${t.calificacion > 0 ? "★".repeat(t.calificacion) + "☆".repeat(5 - t.calificacion) : "-"}</td>
-      </tr>
-    `).join("");
-
-    const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <title>Reporte de Incidencias - Precision Truck Parts</title>
-  <style>
-    @page { size: A4 landscape; margin: 18mm 15mm; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #1D1D1B; }
-
-    /* -- PORTADA / ENCABEZADO -- */
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border: 2px solid #F47920;
-      border-radius: 10px;
-      padding: 14px 20px;
-      margin-bottom: 14px;
-      background: #fff;
-    }
-    .header-left { display: flex; align-items: center; gap: 16px; }
-    .header-logo { height: 52px; object-fit: contain; }
-    .header-divider { width: 2px; height: 48px; background: linear-gradient(180deg,#F47920,#ffb347); border-radius: 2px; }
-    .header-title { font-size: 18px; font-weight: 900; color: #1D1D1B; letter-spacing: -0.02em; }
-    .header-sub   { font-size: 10px; color: #6b7280; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.1em; }
-    .header-right { text-align: right; }
-    .header-date  { font-size: 11px; color: #6b7280; }
-    .header-badge {
-      display: inline-block; margin-top: 4px;
-      background: linear-gradient(135deg,#F47920,#d97400);
-      color: #fff; font-size: 10px; font-weight: 700;
-      padding: 3px 10px; border-radius: 20px;
-    }
-
-    /* -- KPIs -- */
-    .kpis { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; margin-bottom: 14px; }
-    .kpi {
-      border: 1.5px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 10px 14px;
-      background: #fff;
-    }
-    .kpi-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-bottom: 4px; }
-    .kpi-val   { font-size: 22px; font-weight: 900; line-height: 1; }
-    .kpi-sub   { font-size: 9px; color: #9ca3af; margin-top: 3px; }
-    .kpi-bar   { height: 3px; border-radius: 2px; margin-top: 6px; background: #f3f4f6; overflow: hidden; }
-    .kpi-bar-fill { height: 100%; border-radius: 2px; }
-
-    /* -- TABLA -- */
-    .section-title {
-      font-size: 10px; font-weight: 900; text-transform: uppercase;
-      letter-spacing: 0.12em; color: #6b7280;
-      display: flex; align-items: center; gap: 8px;
-      margin-bottom: 8px;
-    }
-    .section-title::before {
-      content: ''; display: inline-block;
-      width: 3px; height: 14px; border-radius: 2px;
-      background: #F47920;
-    }
-    .table-wrap {
-      border: 1.5px solid #e5e7eb;
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    table { width: 100%; border-collapse: collapse; }
-    thead tr { background: #f9fafb; }
-    th {
-      padding: 8px 10px;
-      text-align: left;
-      font-size: 9px;
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #9ca3af;
-      border-bottom: 2px solid #e5e7eb;
-      white-space: nowrap;
-    }
-    td { vertical-align: middle; }
-
-    /* -- PIE -- */
-    .footer {
-      margin-top: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-top: 1.5px solid #e5e7eb;
-      padding-top: 10px;
-    }
-    .footer-left  { font-size: 9px; color: #9ca3af; }
-    .footer-right { font-size: 9px; color: #9ca3af; text-align: right; }
-    .footer-brand { font-weight: 900; color: #F47920; }
-
-    @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-  </style>
-</head>
-<body>
-
-  <!-- ENCABEZADO -->
-  <div class="header">
-    <div class="header-left">
-      <img src="/assets/img/logo negro.png" class="header-logo" alt="PTP" />
-      <div class="header-divider"></div>
-      <div>
-        <div class="header-title">Reporte de Incidencias</div>
-        <div class="header-sub">Precision Truck Parts · HelpDesk</div>
-      </div>
-    </div>
-    <div class="header-right">
-      <div class="header-date">Generado el ${ahora}</div>
-      <div class="header-date" style="margin-top:4px;font-weight:700;color:#F47920">${periodo}</div>
-      <span class="header-badge">${datos.length} registro${datos.length !== 1 ? "s" : ""}</span>
-    </div>
-  </div>
-
-  <!-- KPIs -->
-  <div class="kpis">
-    <div class="kpi">
-      <div class="kpi-label">Total del período</div>
-      <div class="kpi-val" style="color:#F47920">${datos.length}</div>
-      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:100%;background:#F47920"></div></div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Resueltos</div>
-      <div class="kpi-val" style="color:#16a34a">${resueltos2}</div>
-      <div class="kpi-sub">${datos.length > 0 ? Math.round(resueltos2/datos.length*100) : 0}% del total</div>
-      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${datos.length > 0 ? Math.round(resueltos2/datos.length*100) : 0}%;background:#16a34a"></div></div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">En Proceso</div>
-      <div class="kpi-val" style="color:#ea580c">${activos2}</div>
-      <div class="kpi-sub">${datos.length > 0 ? Math.round(activos2/datos.length*100) : 0}% del total</div>
-      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${datos.length > 0 ? Math.round(activos2/datos.length*100) : 0}%;background:#ea580c"></div></div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Sin Resolver</div>
-      <div class="kpi-val" style="color:#dc2626">${noRes2}</div>
-      <div class="kpi-sub">${datos.length > 0 ? Math.round(noRes2/datos.length*100) : 0}% del total</div>
-      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${datos.length > 0 ? Math.round(noRes2/datos.length*100) : 0}%;background:#dc2626"></div></div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Satisfacción prom.</div>
-      <div class="kpi-val" style="color:#f59e0b">${prom}</div>
-      <div class="kpi-sub">${califs2.length} calificaciones</div>
-      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${prom !== "-" ? Math.round((parseFloat(prom)/5)*100) : 0}%;background:#f59e0b"></div></div>
-    </div>
-  </div>
-
-  <!-- TABLA -->
-  <div class="section-title">Detalle de Incidencias</div>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Folio</th>
-          <th>Título / Prioridad</th>
-          <th>Estatus</th>
-          <th>Usuario / Área</th>
-          <th>Técnico</th>
-          <th>Inicio</th>
-          <th>Cierre</th>
-          <th style="text-align:center">Satisf.</th>
-        </tr>
-      </thead>
-      <tbody>${filas}</tbody>
-    </table>
-  </div>
-
-  <!-- PIE -->
-  <div class="footer">
-    <div class="footer-left"><span class="footer-brand">Precision Truck Parts</span> · Sistema HelpDesk</div>
-    <div class="footer-right">Documento generado automáticamente · ${ahora}</div>
-  </div>
-
-</body>
-</html>`;
-
-    const win = window.open("", "_blank", "width=1200,height=800");
-    if (!win) {
-      const aviso = document.createElement("div");
-      aviso.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#1D1D1B;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;border-left:4px solid #F47920;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
-      aviso.textContent = "El navegador bloqueó la ventana emergente. Permite las ventanas emergentes para este sitio e intenta de nuevo.";
-      document.body.appendChild(aviso);
-      setTimeout(() => aviso.remove(), 5000);
-      return;
-    }
-    win.document.write(html);
-    win.document.close();
-    win.onload = () => { win.focus(); win.print(); };
+    const fmtDate = d => new Date(d + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+    abrirReporteLista({
+      tipo: "incidencias",
+      periodo: `${fmtDate(fecha_inicio)} – ${fmtDate(fecha_fin)}`,
+      datos,
+    });
   };
 
   const { card, hdr } = useCardStyles(T);

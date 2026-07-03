@@ -36,7 +36,7 @@ export const getTicketByFolio = async (req, res) => {
 
     const dir = safeResolvePath(EVIDENCIAS_BASE, folio);
     const imagenes = fs.existsSync(dir)
-      ? fs.readdirSync(dir).filter(f => /\.(jpg|jpeg|png|gif|webp)$/i.test(f)).sort()
+      ? fs.readdirSync(dir).filter(f => /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|avi)$/i.test(f)).sort()
       : [];
 
     res.json({ ...ticket, imagenes });
@@ -146,7 +146,7 @@ export const getImagenesTicket = async (req, res) => {
     const dir = safeResolvePath(EVIDENCIAS_BASE, ticket.folio_ticket);
     if (!fs.existsSync(dir)) return res.json([]);
     const archivos = fs.readdirSync(dir)
-      .filter(f => /\.(jpg|jpeg|png|gif|webp)$/i.test(f))
+      .filter(f => /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|avi)$/i.test(f))
       .sort();
     res.json(archivos);
   } catch (err) {
@@ -233,7 +233,8 @@ export const actualizarTicket = async (req, res) => {
             estatus,
           };
           io.to(`empleado_${t.id_empleado}`).emit("ticket:en_atencion", payloadAtencion);
-          io.to("admins").emit("ticket:actualizado", { ...payload, nombre_tecnico: nombreAdmin });
+          // También notificar a admins con el mismo evento para actualizar la vista en tiempo real
+          io.to("admins").emit("ticket:en_atencion", payloadAtencion);
         }
       } catch (emitErr) { console.error("[emit ticket:actualizado]", emitErr.message); }
     }
@@ -326,7 +327,7 @@ export const agregarImagenesTicket = async (req, res) => {
     const destDir = safeResolvePath(EVIDENCIAS_BASE, ticket.folio_ticket);
     fs.mkdirSync(destDir, { recursive: true });
     const existentes = fs.existsSync(destDir)
-      ? fs.readdirSync(destDir).filter(f => /\.(jpg|jpeg|png|gif|webp)$/i.test(f)).sort()
+      ? fs.readdirSync(destDir).filter(f => /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|avi)$/i.test(f)).sort()
       : [];
     let contador = existentes.length;
     archivos.forEach(file => {

@@ -8,8 +8,9 @@ import { apiFetch }      from "../../Config/api";
 import FiltrosToolbar    from "../../Components/FiltrosToolbar";
 import { useToast }      from "../../Components/Feedback";
 import ModalInsumo       from "../../Components/Inventario/ModalInsumo";
-import ModalEliminar     from "../../Components/Inventario/ModalEliminar";
-import { useTheme }      from "../../Config/ThemeContext";
+import ModalEliminar        from "../../Components/Inventario/ModalEliminar";
+import ModalDetalleInsumo   from "../../Components/Inventario/ModalDetalleInsumo";
+import { useTheme }      from "../../Config/themeContext.js";
 
 // ── Paleta ────────────────────────────────────────────────────────
 const TEAL    = { base: "#0d9488", light: "#f0fdfa", border: "#99f6e4", muted: "rgba(13,148,136,0.12)" };
@@ -282,6 +283,7 @@ export default function Inventario() {
   const [filtros,    setFiltros]    = useState({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos" });
   const [modal,      setModal]      = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
+  const [detalle,    setDetalle]    = useState(null);
   const prevRef = useRef(null);
   const toast   = useToast();
 
@@ -489,9 +491,7 @@ export default function Inventario() {
                 </p>
               </div>
             ) : (
-              <DataTable rows={filtrados} onEdit={setModal} onDelete={setConfirmDel} onDetail={(row) => {
-            toast.info(`${row.nombre} · ${row.marca || "—"} ${row.modelo || "—"} · Serie: ${row.num_serie || "—"} · Stock: ${row.stock ?? 0}`);
-          }} />
+              <DataTable rows={filtrados} onEdit={setModal} onDelete={setConfirmDel} onDetail={setDetalle} />
             )}
           </div>
         </div>
@@ -499,6 +499,9 @@ export default function Inventario() {
 
       <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
 
+      {detalle && (
+        <ModalDetalleInsumo insumo={detalle} onClose={() => setDetalle(null)} T={T} />
+      )}
       {modal !== null && (
         <ModalInsumo insumo={modal} categorias={categorias}
           onClose={() => setModal(null)} onSave={handleSave} T={T} />

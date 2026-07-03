@@ -4,6 +4,7 @@ import { apiFetch } from "../../Config/api";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
 import { useCardStyles } from "../../Components/Card";
 import StockBar from "../../Components/StockBar";
+import { useTheme } from "../../Config/themeContext.js";
 
 const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo"];
 const ESTADO_META = {
@@ -28,7 +29,9 @@ function BadgeEstado({ estado }) {
   );
 }
 
-function ToggleView({ view, onChange, T, isDark }) {
+function ToggleView({ view, onChange }) {
+  const { T } = useTheme();
+  const isDark = T.isDark;
   const btn = (v, Icon, title) => {
     const active = view === v;
     return (
@@ -56,7 +59,9 @@ function ToggleView({ view, onChange, T, isDark }) {
 }
 
 // ── Tarjeta ────────────────────────────────────────────────────
-function TarjetaInsumo({ i, T, isDark }) {
+function TarjetaInsumo({ i }) {
+  const { T } = useTheme();
+  const isDark = T.isDark;
   const [hover, setHover] = useState(false);
   const estadoMeta = ESTADO_META[i.estado] || { color: "#94a3b8" };
 
@@ -141,7 +146,9 @@ function TarjetaInsumo({ i, T, isDark }) {
 }
 
 // ── Tabla ──────────────────────────────────────────────────────
-function TablaInsumos({ filtrados, T, isDark }) {
+function TablaInsumos({ filtrados }) {
+  const { T } = useTheme();
+  const isDark = T.isDark;
   const [hoverRow, setHoverRow] = useState(null);
 
   const thStyle = {
@@ -349,7 +356,7 @@ export default function VistaInsumos({ T }) {
                   style={{ background: T.bg, color: T.textMuted, border: `1px solid ${T.border}` }}>
                   {filtrados.length} resultado{filtrados.length !== 1 ? "s" : ""}
                 </span>
-                <ToggleView view={viewMode} onChange={setViewMode} T={T} isDark={isDark} />
+                <ToggleView view={viewMode} onChange={setViewMode} />
               </div>
             </div>
 
@@ -374,12 +381,12 @@ export default function VistaInsumos({ T }) {
               ) : viewMode === "cards" ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                   {filtrados.map(i => (
-                    <TarjetaInsumo key={i.id_insumo} i={i} T={T} isDark={isDark} />
+                    <TarjetaInsumo key={i.id_insumo} i={i} />
                   ))}
                 </div>
               ) : (
                 <div style={{ overflowX: "auto" }}>
-                  <TablaInsumos filtrados={filtrados} T={T} isDark={isDark} />
+                  <TablaInsumos filtrados={filtrados} />
                 </div>
               )}
             </div>

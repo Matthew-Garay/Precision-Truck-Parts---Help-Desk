@@ -37,8 +37,9 @@ import {
   getInsumos, getInventario, getInsumosStockBajo, crearSolicitud, getSolicitudesByEmpleado,
   getSolicitudById, getSolicitudByFolio, getAllSolicitudes, getSolicitudesPendientes,
   actualizarEstatusSolicitud, aprobarItemsSolicitud, crearInsumo, actualizarInsumo,
-  eliminarInsumo, getReporteSolicitudes
+  eliminarInsumo, getReporteSolicitudes, subirFotoInsumo
 } from "../Controllers/solicitudesController.js";
+import { uploadInsumo } from "../Middlewares/uploadInsumos.js";
 
 const router = Router();
 router.use(csrfProtection);
@@ -66,9 +67,10 @@ function requireOwnerOrAdmin(req, res, next) {
 // para evitar que Express intercepte "/reporte" o "/" como si fueran un id.
 router.get("/reporte",        requireAdmin, getReporteSolicitudes);
 router.get("/",               requireAdmin, getAllSolicitudes);
-router.post("/insumos",       requireAdmin, validate(schemaInsumo), crearInsumo);
-router.put("/insumos/:id",    requireAdmin, validate(schemaInsumo), actualizarInsumo);
-router.delete("/insumos/:id", requireAdmin, eliminarInsumo);
+router.post("/insumos",           requireAdmin, validate(schemaInsumo), crearInsumo);
+router.put("/insumos/:id",        requireAdmin, validate(schemaInsumo), actualizarInsumo);
+router.post("/insumos/:id/foto",  requireAdmin, ...uploadInsumo.single("foto"), subirFotoInsumo);
+router.delete("/insumos/:id",     requireAdmin, eliminarInsumo);
 router.patch("/:id/estatus",  requireAdmin, validate(schemaActualizarEstatusSolicitud), actualizarEstatusSolicitud);
 router.patch("/:id/items",    requireAdmin, aprobarItemsSolicitud);
 

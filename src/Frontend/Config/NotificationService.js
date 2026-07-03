@@ -217,7 +217,7 @@ export const NOTIFICATION_DISPLAY = {
   },
   "ticket:en_atencion": {
     toastTipo: "info",
-    titulo: () => "Tu ticket esta siendo atendido",
+    titulo: (d) => d._esAdmin ? "Ticket tomado por técnico" : "Tu ticket esta siendo atendido",
     mensaje: (d) =>
       `#${d.folio_ticket} — Técnico: ${d.nombre_tecnico || "Soporte técnico"}`,
   },

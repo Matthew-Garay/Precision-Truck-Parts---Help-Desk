@@ -30,8 +30,9 @@
  */
 import { Router }      from "express";
 import rateLimit       from "express-rate-limit";
-import { csrfProtection } from "../Middlewares/security.js";
+import pool              from "../Config/db.js";
 import { requireAuth, requireAdmin } from "../Middlewares/authMiddleware.js";
+import { csrfProtection } from "../Middlewares/security.js";
 import { validate, schemaCrearTicket, schemaActualizarTicket, schemaCalificarTicket, schemaEditarTicket, schemaFiltrosTickets } from "../Middlewares/validate.js";
 import { crearTicket, getTicketsByEmpleado, getImagenesTicket, agregarImagenesTicket, eliminarImagenTicket, getAllTickets, actualizarTicket, calificarTicket, editarTicketUsuario, getMetricas, getAdmins, getReporte, getTicketById, getTicketByFolio, cancelarTicket, getRendimientoTecnicos, getHistorialTicket } from "../Controllers/ticketsController.js";
 import { uploadEvidencias } from "../Middlewares/uploadEvidencias.js";
@@ -50,7 +51,7 @@ async function requireTicketOwnerOrAdmin(req, res, next) {
   const idTicket = parseInt(req.params.id_ticket, 10);
   if (isNaN(idTicket)) return res.status(400).json({ error: "ID inválido" });
   try {
-    const [rows] = await (await import("../Config/db.js")).default.query(
+    const [rows] = await pool.query(
       "SELECT id_empleado FROM ticket WHERE id_ticket = ? LIMIT 1", [idTicket]
     );
     if (!rows[0] || rows[0].id_empleado !== req.usuario.id_empleado)

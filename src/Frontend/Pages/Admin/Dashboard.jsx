@@ -15,6 +15,7 @@ import HistorialInsumos from "./HistorialInsumos";
 import RendimientoTecnicos from "./RendimientoTecnicos";
 import { apiFetch, API_ROUTES } from "../../Config/api";
 import { useTheme } from "../../Config/themeContext.js";
+import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import { SeccionEstadisticas, SeccionMetricas, KanbanBoard, PanelDerecho } from "../../Components/DashboardShared.jsx";
 import CampanaNotificaciones from "../../Components/CampanaNotificaciones.jsx";
 import { useTicketNotification } from "../../Config/useTicketNotification.js";
@@ -218,6 +219,12 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
     cargarSolicitudes();
   }, [cargarTickets, cargarMetricas, cargarSolicitudes]);
 
+  useAutoRefresh(() => {
+    cargarTicketsRef.current?.();
+    cargarMetricasRef.current?.();
+    cargarSolicitudesRef.current?.();
+  }, 30000, []);
+
   const tituloHeader = ticketVer
     ? ticketVer.folio_ticket
     : solicitudVer
@@ -226,11 +233,11 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
 
   return (
     <div
-      className="flex h-screen w-full overflow-hidden"
+      className="flex h-[100dvh] w-full overflow-hidden"
       style={{ fontFamily: "var(--font-sans, 'Inter','Segoe UI',sans-serif)", background: T.bg }}
     >
       {/* Sidebar desktop — visible en lg+ */}
-      <aside className="hidden lg:flex flex-shrink-0 flex-col sticky top-0 h-screen overflow-hidden"
+      <aside className="hidden lg:flex flex-shrink-0 flex-col sticky top-0 h-[100dvh] overflow-hidden"
         style={{ width: "var(--sidebar-w)", minWidth: 0, background: "#000000", boxShadow: "2px 0 12px rgba(0,0,0,0.15)" }}>
         <SidebarContent T={T} activo={activo} onNavigate={onNavigate} onLogout={onLogout} />
       </aside>
@@ -239,7 +246,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
       {sidebarOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />
-          <aside className="fixed top-0 left-0 z-50 flex flex-col h-screen lg:hidden"
+          <aside className="fixed top-0 left-0 z-50 flex flex-col h-[100dvh] overflow-y-auto lg:hidden"
             style={{ width: "min(260px, 80vw)", background: "#000000" }}>
             <SidebarContent T={T} activo={activo} onNavigate={onNavigate} onClose={() => setSidebarOpen(false)} onLogout={onLogout} />
           </aside>
@@ -250,7 +257,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
       <div className="flex flex-col flex-1 min-w-0">
 
         <header
-          className="sticky top-0 z-30 flex items-center justify-between px-3 md:px-5"
+          className="flex-shrink-0 z-30 flex items-center justify-between px-3 md:px-5"
           style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, height: "var(--header-h)", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}
         >
           {errorRed && (
@@ -320,7 +327,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           ) : activo === 1 ? (
             <HistorialIncidencias T={T} usuario={usuario} onVerTicket={setTicketVer} onRecargarRef={recargarHistorialRef} />
           ) : activo === 2 ? (
-            <HistorialInsumos T={T} onVerSolicitud={setSolicitudVer} />
+            <HistorialInsumos T={T} />
           ) : activo === 3 ? (
             <Inventario T={T} />
           ) : activo === 4 ? (

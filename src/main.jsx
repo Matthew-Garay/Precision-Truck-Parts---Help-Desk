@@ -46,10 +46,12 @@ import ErrorBoundary   from './Frontend/Components/ErrorBoundary'
 import PantallaSalida  from './Frontend/Components/PantallaSalida'
 import PrintTicketPage    from './Frontend/Pages/PrintTicketPage'
 import PrintSolicitudPage from './Frontend/Pages/PrintSolicitudPage'
+import PrintReportePage   from './Frontend/Pages/PrintReportePage'
 import { ToastProvider } from './Frontend/Components/Feedback.jsx'
 import { ThemeProvider } from './Frontend/Config/ThemeContext.jsx'
 import { useTheme } from './Frontend/Config/themeContext.js'
 import { getUsuario, setUsuario, setIdAcceso } from './Frontend/Config/session.js'
+
 
 const useThemeCtx = useTheme
 
@@ -68,7 +70,7 @@ function RutaUsuario({ onLogout, onUsuarioActualizado, usuarioActual }) {
 
 // -- App raíz --------------------------------------------------
 function App() {
-  const navigate = useNavigate()
+  const navigate   = useNavigate()
   const [saliendo, setSaliendo] = useState(false)
   const [usuarioActual, setUsuarioActual] = useState(getUsuario)
 
@@ -110,7 +112,7 @@ function App() {
 
   const handleLogout = () => {
     setSaliendo(true)
-    const idAcceso = sessionStorage.getItem('id_acceso')
+    const idAcceso = localStorage.getItem('id_acceso')
     if (idAcceso) {
       apiFetch('/api/auth/logout', {
         method: 'POST',
@@ -124,14 +126,13 @@ function App() {
     }, 1200)
   }
 
-  // -- Cierre de sesión al cerrar pestaña/navegador ---------------------
-  // Usamos pagehide en lugar de beforeunload para no cerrar sesión en F5/recarga.
-  // event.persisted=true significa que la página va a bfcache (navegar atrás),
-  // en ese caso tampoco cerramos sesión.
+  // Con persistencia en localStorage el cierre de pestaña NO termina la sesión.
+  // El logout solo ocurre de forma explícita (handleLogout) o por JWT expirado (401).
+  // El worker de sesiones huérfanas en el backend cierra historial_acceso ≥ 12h sin salida.
   useEffect(() => {
     const cerrarAlSalir = (e) => {
       if (e.persisted) return  // bfcache — no es cierre real
-      const idAcceso = sessionStorage.getItem('id_acceso')
+      const idAcceso = localStorage.getItem('id_acceso')
       if (!idAcceso) return
       navigator.sendBeacon(
         `${API_BASE}/api/auth/logout`,
@@ -167,6 +168,7 @@ function App() {
       {/* Rutas standalone para impresión — sin guards de sesión */}
       <Route path="/print/ticket/:folio"    element={<PrintTicketPage />} />
       <Route path="/print/solicitud/:folio" element={<PrintSolicitudPage />} />
+      <Route path="/print/reporte"           element={<PrintReportePage />} />
 
       {/* Raíz → redirige según sesión */}
       <Route path="/" element={<Navigate to={(() => {

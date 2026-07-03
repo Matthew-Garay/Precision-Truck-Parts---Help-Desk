@@ -303,14 +303,14 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
   };
 
   const agregarNuevas = files => {
-    const MIME_OK = new Set(["image/jpeg","image/png","image/gif","image/webp"]);
+    const MIME_OK = new Set(["image/jpeg","image/png","image/gif","image/webp","video/mp4","video/webm","video/quicktime","video/x-msvideo"]);
     const libres = 8 - imgs.length - nuevasEv.length + eliminarEv.length;
     Array.from(files)
       .filter(f => MIME_OK.has(f.type))
       .slice(0, libres)
       .forEach(file => {
         const src = URL.createObjectURL(file);
-        setNuevasEv(p => [...p, { src, name:file.name, file }]);
+        setNuevasEv(p => [...p, { src, name:file.name, file, isVideo: file.type.startsWith("video/") }]);
       });
   };
 
@@ -551,8 +551,16 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
                 <div className="flex flex-wrap gap-2">
                   {nuevasEv.map((ev,i)=>(
                     <div key={i} className="relative" style={{width:72,height:72}}>
-                      <img src={ev.src} alt={ev.name} className="w-full h-full object-cover rounded-xl"
-                        style={{border:`2px solid ${T.orange}`}}/>
+                      {ev.isVideo ? (
+                        <div className="w-full h-full rounded-xl flex items-center justify-center relative overflow-hidden"
+                          style={{border:`2px solid ${T.orange}`,background:"#1e293b"}}>
+                          <video src={ev.src} className="w-full h-full object-cover absolute inset-0" muted preload="metadata"/>
+                          <svg className="relative z-10" width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><polygon points="5,3 19,12 5,21"/></svg>
+                        </div>
+                      ) : (
+                        <img src={ev.src} alt={ev.name} className="w-full h-full object-cover rounded-xl"
+                          style={{border:`2px solid ${T.orange}`}}/>
+                      )}
                       <button type="button" onClick={()=>borrarNueva(i)}
                         className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
                         style={{background:"#dc2626",color:"#fff",boxShadow:"0 2px 6px rgba(220,38,38,0.5)",zIndex:10}}>
@@ -568,9 +576,9 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
             {totalFotos < 8 && (
               <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer text-xs font-semibold transition-all"
                 style={{background:isDark?"rgba(255,255,255,0.04)":T.surfaceAlt,border:`1.5px dashed ${isDark?"rgba(255,255,255,0.15)":T.border}`,color:T.orange}}>
-                <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+                <input ref={fileRef} type="file" accept="image/*,video/mp4,video/webm,video/quicktime,video/x-msvideo" multiple className="hidden"
                   onChange={e=>{agregarNuevas(e.target.files);e.target.value="";}}/>
-                + Agregar fotos
+                + Agregar archivos
               </label>
             )}
           </div>
@@ -754,11 +762,11 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
       return `
         <div style="display:flex;gap:8px;align-items:flex-start">
           <div style="display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0">
-            <div style="width:20px;height:20px;border-radius:50%;background:${done?'#0C1A2E':'#F8FAFC'};border:1.5px solid ${done?'#0C1A2E':'#E2E8F0'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:${done?'#fff':'#94A3B8'};-webkit-print-color-adjust:exact;print-color-adjust:exact">${i<step?'✓':i+1}</div>
+            <div style="width:20px;height:20px;border-radius:50%;background:${done?'#0C1A2E':'#F8FAFC'};border:1.5px solid ${done?'#0C1A2E':'#E2E8F0'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:${done?'#fff':'#94A3B8'};-webkit-print-color-adjust:exact;print-color-adjust:exact">${i<step?'✓':i+1}</div>
             ${i<2?`<div style="width:1.5px;flex:1;min-height:12px;background:${i<step?'#0C1A2E':'#E2E8F0'};margin:2px 0"></div>`:''}
           </div>
           <div style="flex:1;padding:1px 0 10px">
-            <div style="font-size:8pt;font-weight:${done?700:500};color:${done?'#0f172a':'#94A3B8'}">${s.label}</div>
+            <div style="font-size:8pt;font-weight:${done?600:400};color:${done?'#0f172a':'#94A3B8'}">${s.label}</div>
             <div style="font-size:6pt;color:#475569;margin-top:1px">${s.sub}</div>
           </div>
         </div>`;
@@ -778,45 +786,44 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
 
     // Fila de datos (grid 4 col, half=span2)
     const datoCelda = (label, value, half=false) =>
-      `<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-top:2px solid #0C1A2E;border-radius:0 0 3px 3px;padding:5px 8px;display:flex;flex-direction:column;gap:2px;${half?'grid-column:span 2':''}"><div style="font-size:5pt;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:#94A3B8">${label}</div><div style="font-size:8pt;font-weight:700;color:#0f172a">${value||'—'}</div></div>`;
+      `<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-top:2px solid #0C1A2E;border-radius:0 0 3px 3px;padding:5px 8px;display:flex;flex-direction:column;gap:2px;${half?'grid-column:span 2':''}"><div style="font-size:5pt;font-weight:500;text-transform:uppercase;letter-spacing:.15em;color:#94A3B8">${label}</div><div style="font-size:8pt;font-weight:500;color:#0f172a">${value||'—'}</div></div>`;
 
     const html = `<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8"/>
 <title>Reporte ${t.folio_ticket}</title>
 <style>
-  @page{size:letter portrait;margin:10mm 12mm 10mm 12mm}
+  @page{size:letter portrait;margin:10mm 12mm 18mm 12mm}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   html,body{width:100%;height:100%;background:#fff;font-family:'Segoe UI',Arial,sans-serif;font-size:7.5pt;color:#0f172a}
-  .wrap{width:100%;min-height:calc(100vh - 20mm);padding:0;display:flex;flex-direction:column}
-  .content{flex:1}
+  .wrap{width:100%;padding:0}
   .sec-hdr{display:flex;align-items:center;gap:8px;padding:4px 10px;background:#0C1A2E}
-  .sec-title{font-size:5.5pt;font-weight:900;text-transform:uppercase;letter-spacing:.2em;color:rgba(255,255,255,.85)}
+  .sec-title{font-size:5.5pt;font-weight:500;text-transform:uppercase;letter-spacing:.2em;color:rgba(255,255,255,.85)}
   .sec-rule{flex:1;height:1px;background:rgba(255,255,255,.12)}
   .sec{margin-bottom:7px;border:1px solid #E2E8F0;border-radius:4px;overflow:hidden}
   .sec-body{padding:7px 10px;background:#fff}
   .two-col{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px}
-  .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:6.5pt;font-weight:800;letter-spacing:.03em}
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:6.5pt;font-weight:500;letter-spacing:.03em}
   .rt{font-size:7.5pt;line-height:1.6;padding:6px 10px;background:#F8FAFC;border-radius:3px;min-height:22px}
-  .lbl{font-size:5pt;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:#94A3B8}
+  .lbl{font-size:5pt;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:#94A3B8}
+  .footer{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 12px;border-top:2px solid #0C1A2E;background:#fff}
 </style></head><body>
 <div class="wrap">
-<div class="content">
 
 <!-- HEADER -->
 <div style="display:flex;align-items:stretch;border-bottom:2.5px solid #0C1A2E;margin-bottom:10px">
   <div style="display:flex;align-items:center;padding:8px 14px 8px 0;border-right:1px solid #E2E8F0;flex-shrink:0">
-    <img src="${origin}/assets/img/logo negro.png" style="height:70px;width:auto;object-fit:contain;display:block" alt="PTP" />
+    <img src="${origin}/assets/img/log.png" style="height:70px;width:auto;object-fit:contain;display:block" alt="PTP" />
   </div>
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:8px 14px;gap:2px">
-    <div style="font-size:9pt;font-weight:900;letter-spacing:.09em;color:#0C1A2E">PRECISION TRUCK PARTS &amp; ACCESSORIES</div>
-    <div style="font-size:8pt;font-weight:600;color:#475569;text-align:center">Reporte de Incidencia Técnica</div>
-    <div style="font-size:5.5pt;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:#94A3B8;text-align:center">Departamento de Soporte Técnico</div>
+    <div style="font-size:9pt;font-weight:500;letter-spacing:.09em;color:#0C1A2E">PRECISION TRUCK PARTS AND ACCESSORIES</div>
+    <div style="font-size:8pt;font-weight:400;color:#475569;text-align:center">Reporte de Incidencia Técnica</div>
+    <div style="font-size:5.5pt;font-weight:400;text-transform:uppercase;letter-spacing:.12em;color:#94A3B8;text-align:center">Departamento de Soporte Técnico</div>
   </div>
   <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-end;padding:8px 0 8px 14px;border-left:1px solid #E2E8F0;gap:3px;flex-shrink:0">
     <div class="lbl">Folio</div>
-    <div style="font-family:monospace;font-size:10pt;font-weight:900;color:#0C1A2E;letter-spacing:.06em">${t.folio_ticket}</div>
+    <div style="font-family:monospace;font-size:10pt;font-weight:500;color:#0C1A2E;letter-spacing:.06em">${t.folio_ticket}</div>
     <div class="lbl" style="margin-top:2px">Generado</div>
-    <div style="font-size:6.5pt;font-weight:600;color:#475569">${fechaGen}</div>
+    <div style="font-size:6.5pt;font-weight:400;color:#475569">${fechaGen}</div>
   </div>
 </div>
 <div style="height:2px;background:#E8621A;margin-top:-6px;margin-bottom:8px"></div>
@@ -824,8 +831,8 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
 <!-- BANDA ESTADO -->
 <div style="display:flex;align-items:stretch;border:1px solid #E2E8F0;border-radius:5px;overflow:hidden;margin-bottom:9px;background:#F8FAFC">
   <div style="flex:1;display:flex;flex-direction:column;gap:3px;padding:8px 12px;border-right:1px solid #E2E8F0;background:#fff">
-    <div style="font-size:5pt;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:#94A3B8">Título del Incidente</div>
-    <div style="font-size:9.5pt;font-weight:800;color:#0f172a;line-height:1.25">${t.titulo||'—'}</div>
+    <div style="font-size:5pt;font-weight:500;text-transform:uppercase;letter-spacing:.15em;color:#94A3B8">Título del Incidente</div>
+    <div style="font-size:9.5pt;font-weight:500;color:#0f172a;line-height:1.25">${t.titulo||'—'}</div>
   </div>
   <div style="display:flex;flex-direction:column;gap:3px;padding:8px 12px;border-right:1px solid #E2E8F0;flex-shrink:0">
     <div style="font-size:5pt;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:#94A3B8">Estatus</div>
@@ -835,7 +842,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
     <div style="font-size:5pt;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:#94A3B8">Prioridad</div>
     <span class="badge" style="${prioStyle}">${t.prioridad}</span>
   </div>
-  ${tiempoRes?`<div style="display:flex;flex-direction:column;gap:3px;padding:8px 12px;border-left:1px solid #E2E8F0;flex-shrink:0"><div style="font-size:5pt;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:#94A3B8">Tiempo resolución</div><div style="font-size:8pt;font-weight:800;color:#0f172a;font-family:monospace">${tiempoRes}</div></div>`:''}
+  ${tiempoRes?`<div style="display:flex;flex-direction:column;gap:3px;padding:8px 12px;border-left:1px solid #E2E8F0;flex-shrink:0"><div style="font-size:5pt;font-weight:500;text-transform:uppercase;letter-spacing:.15em;color:#94A3B8">Tiempo resolución</div><div style="font-size:8pt;font-weight:500;color:#0f172a;font-family:monospace">${tiempoRes}</div></div>`:''}
 </div>
 
 <!-- DATOS -->
@@ -860,8 +867,8 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
 <div class="sec-body">
   <div style="border:1px solid #E2E8F0;border-radius:4px;overflow:hidden">
     <div style="display:flex;align-items:baseline;gap:8px;padding:5px 10px;background:#F8FAFC;border-bottom:1px solid #E2E8F0">
-      <span style="font-size:8.5pt;font-weight:800;color:#0f172a">${tecnico}</span>
-      <span style="font-size:5.5pt;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#475569">Técnico de Soporte · Precision Truck Parts &amp; Accessories</span>
+      <span style="font-size:8.5pt;font-weight:500;color:#0f172a">${tecnico}</span>
+      <span style="font-size:5.5pt;font-weight:400;text-transform:uppercase;letter-spacing:.1em;color:#475569">Técnico de Soporte</span>
     </div>
     <div class="rt" style="background:#fff">${t.comentarios||'<em style="color:#94A3B8">Sin comentarios registrados.</em>'}</div>
   </div>
@@ -877,17 +884,17 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
     ${calNum > 0
       ? `<div style="display:flex;flex-direction:column;gap:3px;padding:7px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-top:2px solid #D97706;border-radius:0 0 3px 3px;margin-bottom:10px">
            <div style="display:flex;gap:2px">${stars(calNum)}</div>
-           <div style="font-size:13pt;font-weight:900;color:#B45309;line-height:1">${calNum} / 5</div>
-           <div style="font-size:7pt;font-weight:700;color:#92400E">${CAL_LABELS[calNum]}</div>
+           <div style="font-size:13pt;font-weight:500;color:#B45309;line-height:1">${calNum} / 5</div>
+           <div style="font-size:7pt;font-weight:400;color:#92400E">${CAL_LABELS[calNum]}</div>
            <div style="font-size:6pt;color:#94A3B8">Evaluado por: ${t.nombre_empleado}</div>
          </div>`
       : `<p style="font-size:7.5pt;color:#94A3B8;font-style:italic;margin:4px 2px 10px">Valoración pendiente.</p>`
     }
     <div style="margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:3px">
       <div style="width:100%;height:48px;border-bottom:1px solid #0f172a;margin-bottom:6px"></div>
-      <div style="font-size:8.5pt;font-weight:800;color:#0f172a">${tecnico}</div>
+      <div style="font-size:8.5pt;font-weight:500;color:#0f172a">${tecnico}</div>
       <div style="font-size:6.5pt;color:#475569">Técnico de Soporte</div>
-      <div style="font-size:6.5pt;color:#475569">Precision Truck Parts &amp; Accessories</div>
+      <div style="font-size:6.5pt;color:#475569">Precision Truck Parts and Accessories</div>
     </div>
   </div></div>
 </div>
@@ -896,16 +903,14 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
 <div class="sec"><div class="sec-hdr"><span class="sec-title">Evidencias Fotográficas${imgs.length>0?' — '+imgs.length+' archivo'+(imgs.length!==1?'s':''):''}</span><div class="sec-rule"></div></div>
 <div class="sec-body">${galeria}</div></div>
 
-</div><!-- /content -->
+</div><!-- /wrap -->
 
-<!-- FOOTER -->
-<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0 6px;border-top:2px solid #0C1A2E;margin-top:auto">
-  <img src="${origin}/assets/img/logo negro.png" style="height:22px;width:auto;object-fit:contain;display:block;opacity:.4" alt="" />
-  <span style="flex:1;text-align:center;font-size:6pt;color:#94A3B8">Precision Truck Parts &amp; Accessories — Sistema de Soporte Técnico HelpDesk</span>
+<!-- FOOTER fijo al fondo de cada página -->
+<div class="footer">
+  <img src="${origin}/assets/img/log.png" style="height:20px;width:auto;object-fit:contain;display:block;opacity:.35" alt="" />
+  <span style="flex:1;text-align:center;font-size:6pt;color:#94A3B8">Precision Truck Parts and Accessories — Sistema de Soporte Técnico HelpDesk</span>
   <span style="font-size:6pt;color:#94A3B8;font-family:monospace;white-space:nowrap">${t.folio_ticket} · ${fechaGen}</span>
 </div>
-
-</div><!-- /wrap -->
 </body></html>`;
 
     _imprimirEnIframe(html);
@@ -927,10 +932,11 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
   const cerrado = estatus === "Resuelto" || estatus === "No Resuelto" || estatus === "Cancelado";
 
   // 0=Recibido | 1=Técnico asignado | 2=En proceso | 3=Resuelto
+  // Un técnico está asignado si resueltoporState tiene valor O si el ticket tiene id_tecnico/nombre_tecnico
+  const tieneTecnico = !!(resueltoporState || ticketLocal.nombre_tecnico || ticketLocal.id_tecnico);
   const pasoActual = estatus === "Resuelto" || estatus === "No Resuelto" ? 3
-    : resueltoporState && estatus === "En proceso" ? 2
+    : estatus === "En proceso" && tieneTecnico ? 2
     : estatus === "En proceso" ? 1
-    : resueltoporState ? 1
     : 0;
 
   // Estado previo para detectar cuando el técnico cierra el ticket
@@ -977,6 +983,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
       if (data.fecha_resuelto) setFechaResueltoState(data.fecha_resuelto);
       if (data.resuelto_por)   setResueltoporState(data.resuelto_por);
       else if (estatusFinal === "Resuelto") setResueltoporState(adminNombre || data.resuelto_por || "Administrador");
+      else if (estatusFinal === "En proceso" && !resueltoporState) setResueltoporState(adminNombre || "Soporte técnico");
       setGuardado(true);
       setTimeout(() => setGuardado(false), 2500);
     } catch (err) {
@@ -1109,9 +1116,9 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
         minHeight: 0,
         overflowY: "auto",
         overflowX: "hidden",
-        padding: "20px 16px",
+        padding: "12px 10px",
       }}>
-      <div className="max-w-5xl mx-auto pb-10 space-y-4 sm:space-y-5">
+      <div className="max-w-5xl mx-auto pb-10 space-y-3 sm:space-y-5">
 
         {/* ══ HEADER CARD ══ */}
         <div
@@ -1119,17 +1126,17 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
           onMouseEnter={e => Object.assign(e.currentTarget.style, cardHover)}
           onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
           <div className="h-0.5" style={{ background: `linear-gradient(90deg,${prio.color}cc,${prio.color}22)` }} />
-          <div className="p-4 sm:p-5">
+          <div className="p-3 sm:p-5">
             {/* nav + logo corporativo + folio — fila única compacta */}
-            <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center justify-between gap-2 mb-3">
               {/* Izquierda: acciones */}
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button onClick={onVolver}
                   className="flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-full transition-all hover:brightness-95 active:scale-95"
                   style={{ fontSize:12, background: isDark?"rgba(255,255,255,0.06)":"#f1f5f9", color:T.textMuted, border:`1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)"}` }}>
                   <ArrowLeft size={11}/> Volver
                 </button>
-                {(esAdmin || estatus === "En proceso") && estatus !== "Cancelado" && (
+                {estatus === "En proceso" && (
                   <button onClick={() => setModalEditar(true)}
                     className="flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-full transition-all active:scale-95"
                     style={{ fontSize:12, background: isDark?"rgba(244,121,32,0.1)":"rgba(244,121,32,0.08)", color:T.orange, border:`1px solid rgba(244,121,32,0.25)` }}>
@@ -1165,7 +1172,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
             </div>
 
             {/* pills */}
-            <div className="flex flex-wrap gap-2 pt-3" style={{ borderTop:`1px solid ${isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.05)"}` }}>
+            <div className="flex flex-wrap gap-1.5 pt-3" style={{ borderTop:`1px solid ${isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.05)"}` }}>
               {/* Prioridad */}
               <span className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold"
                 style={{
@@ -1207,7 +1214,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
         </div>
 
         {/* -- CUERPO -- */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-5">
 
           {/* -- COLUMNA IZQUIERDA -- */}
           <div className="lg:col-span-3 space-y-4 sm:space-y-5">
@@ -1283,7 +1290,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: T.orange }} />
                 <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: isDark?"rgba(255,255,255,0.38)":"#94a3b8" }}>Información del reporte</p>
               </div>
-              <div className="px-6 sm:px-8 py-5 grid grid-cols-2 gap-x-8 gap-y-4">
+              <div className="px-4 sm:px-8 py-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-x-8 sm:gap-y-4">
                 {[
                   { icon: User,         label: "Solicitante",       val: ticket.nombre_empleado     || "-" },
                   { icon: Tag,          label: "Departamento",       val: ticket.nombre_departamento || "-" },
@@ -1310,36 +1317,48 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               <div className="px-6 py-4 flex items-center justify-between" style={hdr}>
                 <div className="flex items-center gap-2.5">
                   <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: T.orange }} />
-                  <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: isDark?"rgba(255,255,255,0.38)":"#94a3b8" }}>Evidencias fotográficas</p>
+                  <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: isDark?"rgba(255,255,255,0.38)":"#94a3b8" }}>Evidencias adjuntas</p>
                 </div>
                 <span className="font-semibold px-3 py-1 rounded-full flex-shrink-0"
                   style={{ fontSize:11, background: isDark?"rgba(255,255,255,0.06)":"#f1f5f9", color: T.textMuted, border:`1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)"}` }}>
-                  {imgs.length} foto{imgs.length !== 1 ? "s" : ""}
+                  {imgs.length} archivo{imgs.length !== 1 ? "s" : ""}
                 </span>
               </div>
               <div className="p-5 sm:p-6">
                 {imgs.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <ImageOff size={22} style={{ color: T.textFaint }} />
-                    <p className="text-xs" style={{ color: T.textFaint }}>No se adjuntaron imágenes</p>
+                    <p className="text-xs" style={{ color: T.textFaint }}>No se adjuntaron archivos</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-                    {imgs.map((img, i) => (
-                      <button key={i} onClick={() => setVisor(i)}
-                        className="aspect-square rounded-lg overflow-hidden relative group"
-                        style={{ boxShadow: "none" }}>
-                        <img
-                          src={`${API}/storage/Evidencias_Tickets/${ticket.folio_ticket}/${img}`}
-                          alt={`Evidencia ${i + 1}`}
-                          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
-                          style={{ background: "rgba(0,0,0,0.45)" }}>
-                          <ZoomIn size={18} color="#fff" />
-                        </div>
-                      </button>
-                    ))}
+                    {imgs.map((img, i) => {
+                      const isVideo = /\.(mp4|webm|mov|avi)$/i.test(img);
+                      return (
+                        <button key={i} onClick={() => setVisor(i)}
+                          className="aspect-square rounded-lg overflow-hidden relative group"
+                          style={{ boxShadow: "none" }}>
+                          {isVideo ? (
+                            <div className="w-full h-full flex items-center justify-center"
+                              style={{ background: isDark ? "rgba(0,0,0,0.7)" : "#1e293b" }}>
+                              <video src={`${API}/storage/Evidencias_Tickets/${ticket.folio_ticket}/${img}`}
+                                className="w-full h-full object-cover absolute inset-0" muted preload="metadata"/>
+                              <svg className="relative z-10" width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><polygon points="5,3 19,12 5,21"/></svg>
+                            </div>
+                          ) : (
+                            <img
+                              src={`${API}/storage/Evidencias_Tickets/${ticket.folio_ticket}/${img}`}
+                              alt={`Evidencia ${i + 1}`}
+                              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                            />
+                          )}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
+                            style={{ background: "rgba(0,0,0,0.45)" }}>
+                            <ZoomIn size={18} color="#fff" />
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1502,7 +1521,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                     horaResuelto,
                     nombreEmpleado: ticket.nombre_empleado,
                     resuelto_por:   resueltoporState,
-                    nombreTecnico:  ticket.nombre_tecnico || resueltoporState,
+                    nombreTecnico:  resueltoporState || ticket.nombre_tecnico || ticketLocal.nombre_tecnico,
                     tiempoResolucion,
                   }}
                 />
@@ -1567,11 +1586,6 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                 </button>
               </div>
             </div>
-            )}
-
-            {/* -- HISTORIAL DE CAMBIOS (solo admin) -- */}
-            {esAdmin && (
-              <HistorialCambios T={T} id_ticket={ticket.id_ticket} />
             )}
 
             {/* -- EXPORTAR PDF (admin) -- */}
@@ -1719,11 +1733,20 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
           onClick={() => setVisor(null)}>
           <div className="relative w-full max-w-3xl flex flex-col items-center gap-4"
             onClick={e => e.stopPropagation()}>
-            <img
-              src={`${API}/storage/Evidencias_Tickets/${ticket.folio_ticket}/${imgs[visor]}`}
-              alt="" className="rounded-2xl object-contain w-full"
-              style={{ maxHeight: "70vh", boxShadow: "0 20px 60px rgba(0,0,0,0.8)" }}
-            />
+            {/\.(mp4|webm|mov|avi)$/i.test(imgs[visor]) ? (
+              <video
+                src={`${API}/storage/Evidencias_Tickets/${ticket.folio_ticket}/${imgs[visor]}`}
+                controls autoPlay
+                className="rounded-2xl w-full"
+                style={{ maxHeight: "70vh", boxShadow: "0 20px 60px rgba(0,0,0,0.8)" }}
+              />
+            ) : (
+              <img
+                src={`${API}/storage/Evidencias_Tickets/${ticket.folio_ticket}/${imgs[visor]}`}
+                alt="" className="rounded-2xl object-contain w-full"
+                style={{ maxHeight: "70vh", boxShadow: "0 20px 60px rgba(0,0,0,0.8)" }}
+              />
+            )}
             <p className="text-xs text-center px-4" style={{ color: "rgba(255,255,255,0.4)" }}>
               {imgs[visor]} · {visor + 1} de {imgs.length}
             </p>
