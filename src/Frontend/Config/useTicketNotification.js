@@ -60,6 +60,7 @@ const EVENTOS_ADMIN = new Set([
   "ticket:sla_warning",
   "insumo:stock_critico",
   "ticket:sin_atender",
+  "ticket:en_atencion",  // admin también recibe para actualizar vista en tiempo real
 ]);
 
 // Eventos exclusivos de usuario (id_rol !== 1)
@@ -134,9 +135,11 @@ export function useTicketNotification({ usuario, onNavegar }) {
   // procesarEvento es estable (sin dependencias que cambien) gracias a los refs
   const procesarEvento = useCallback(async ({ tipo, data }) => {
     const esAdmin = esAdminRef.current;
-    // Filtrar eventos por rol: admin no recibe eventos de usuario y viceversa
-    if (esAdmin  && EVENTOS_USUARIO.has(tipo)) return;
-    if (!esAdmin && EVENTOS_ADMIN.has(tipo))   return;
+    // Filtrar eventos por rol:
+    // - Admin no recibe eventos exclusivos de usuario (excepto ticket:en_atencion que es compartido)
+    // - Usuario no recibe eventos exclusivos de admin
+    if (esAdmin  && EVENTOS_USUARIO.has(tipo) && !EVENTOS_ADMIN.has(tipo)) return;
+    if (!esAdmin && EVENTOS_ADMIN.has(tipo)   && !EVENTOS_USUARIO.has(tipo)) return;
 
     const entityId =
       data?.id_ticket ?? data?.id_solicitud ??
@@ -154,7 +157,10 @@ export function useTicketNotification({ usuario, onNavegar }) {
       if (!existe) return;
     }
 
-    const notif = buildNotification(tipo, data);
+    // Marcar el dato con _esAdmin para que CampanaNotificaciones y buildNotification ajusten el título
+    const dataConRol = esAdmin ? { ...data, _esAdmin: true } : data;
+
+    const notif = buildNotification(tipo, dataConRol);
     if (!notif) return;
 
     playNotificationSound(tipo);
@@ -167,9 +173,8 @@ export function useTicketNotification({ usuario, onNavegar }) {
     });
 
     setNotificaciones((prev) => {
-      const nueva = { id: `${dedupeKey}_${Date.now()}`, tipo, data, ts: Date.now() };
+      const nueva = { id: `${dedupeKey}_${Date.now()}`, tipo, data: dataConRol, ts: Date.now() };
       const actualizado = [nueva, ...prev].slice(0, MAX_NOTIFICACIONES);
-      // Guardar con el idEmpleado actual (leído via closure seguro)
       guardarEnStorage(idEmpleado, actualizado);
       return actualizado;
     });

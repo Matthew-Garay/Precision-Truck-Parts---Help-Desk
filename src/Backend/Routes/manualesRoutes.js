@@ -12,10 +12,9 @@
 import { Router } from "express";
 import path       from "path";
 import fs         from "fs";
-import { requireAuth } from "../Middlewares/authMiddleware.js";
-import { csrfProtection } from "../Middlewares/security.js";
+import { requireAuth, requireAdmin } from "../Middlewares/authMiddleware.js";
+import { csrfProtection, safeResolvePath } from "../Middlewares/security.js";
 import { uploadManual, MANUALES_DIR, nombreManual } from "../Middlewares/uploadManuales.js";
-import { safeResolvePath } from "../Middlewares/security.js";
 import Manual from "../Models/Manual.js";
 
 const router = Router();
@@ -34,8 +33,7 @@ router.get("/", async (_req, res) => {
 });
 
 // POST — subir PDF + metadatos (solo admin)
-router.post("/", (req, res) => {
-  if (req.usuario?.id_rol !== 1) return res.status(403).json({ error: "Solo administradores" });
+router.post("/", requireAdmin, (req, res) => {
   uploadManual.single("archivo")(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message || "Error al subir archivo" });
     if (!req.file) return res.status(400).json({ error: "No se recibió ningún archivo" });
@@ -74,8 +72,7 @@ router.post("/", (req, res) => {
 });
 
 // PUT — editar metadatos (solo admin)
-router.put("/:id", async (req, res) => {
-  if (req.usuario?.id_rol !== 1) return res.status(403).json({ error: "Solo administradores" });
+router.put("/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
   const { nombre, descripcion, id_categoria } = req.body;
@@ -90,8 +87,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // DELETE — eliminar PDF + registro BD (solo admin)
-router.delete("/:id", async (req, res) => {
-  if (req.usuario?.id_rol !== 1) return res.status(403).json({ error: "Solo administradores" });
+router.delete("/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
   try {

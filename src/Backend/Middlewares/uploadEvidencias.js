@@ -36,23 +36,34 @@ import crypto             from "crypto";
 import { fileURLToPath }  from "url";
 import { fileTypeFromFile } from "file-type";
 import { safeResolvePath }  from "./security.js";
+import sharp               from "sharp";
 
 // Fix #16: usar import.meta.url en lugar de path.resolve relativo al CWD
 const __dirname       = path.dirname(fileURLToPath(import.meta.url));
 const EVIDENCIAS_BASE = path.resolve(__dirname, "../../../storage/Evidencias_Tickets");
 const EVIDENCIAS_TMP  = path.resolve(EVIDENCIAS_BASE, "_tmp_upload");
 
-const MIMETYPES_PERMITIDOS = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const MIMETYPES_IMAGEN  = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const MIMETYPES_VIDEO   = new Set(["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"]);
+const MIMETYPES_PERMITIDOS = new Set([...MIMETYPES_IMAGEN, ...MIMETYPES_VIDEO]);
 
 fs.mkdirSync(EVIDENCIAS_TMP, { recursive: true });
+
+const EXT_MAP = {
+  "image/jpeg":     ".jpg",
+  "image/png":      ".png",
+  "image/webp":     ".webp",
+  "image/gif":      ".gif",
+  "video/mp4":      ".mp4",
+  "video/webm":     ".webm",
+  "video/quicktime":".mov",
+  "video/x-msvideo":".avi",
+};
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, EVIDENCIAS_TMP),
   filename: (_req, file, cb) => {
-    const ext = file.mimetype === "image/png"  ? ".png"
-              : file.mimetype === "image/webp" ? ".webp"
-              : file.mimetype === "image/gif"  ? ".gif"
-              : ".jpg";
+    const ext  = EXT_MAP[file.mimetype] || path.extname(file.originalname) || ".bin";
     const rand = crypto.randomBytes(6).toString("hex");
     cb(null, `ev_${Date.now()}_${rand}${ext}`);
   },
@@ -63,20 +74,18 @@ const uploadEvidenciasRaw = multer({
   storage,
   fileFilter: (_req, file, cb) => {
     if (MIMETYPES_PERMITIDOS.has(file.mimetype)) cb(null, true);
-    else cb(new Error("Solo se permiten imágenes JPEG, PNG, WebP o GIF"));
+    else cb(new Error("Solo se permiten imágenes (JPEG/PNG/WebP/GIF) o videos (MP4/WebM/MOV/AVI)"));
   },
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB para videos
 });
 
 // Fix #11: cleanup robusto — elimina TODOS los archivos del request sin importar
 // si ya fueron renombrados/movidos, usando las rutas originales capturadas antes del loop.
-async function validarMagicBytes(req, res, next) {
+async function validarYComprimirArchivos(req, res, next) {
   const archivos = req.files || [];
   if (archivos.length === 0) return next();
 
-  // Capturar rutas antes de cualquier modificación
   const rutas = archivos.map(f => f.path);
-
   const limpiar = () => {
     for (const ruta of rutas) {
       try { if (fs.existsSync(ruta)) fs.unlinkSync(ruta); } catch {}
@@ -93,17 +102,37 @@ async function validarMagicBytes(req, res, next) {
     }
     if (!tipo || !MIMETYPES_PERMITIDOS.has(tipo.mime)) {
       limpiar();
-      return res.status(400).json({ error: "Archivo rechazado: el contenido no corresponde a una imagen válida" });
+      return res.status(400).json({ error: "Archivo rechazado: el contenido no es una imagen o video válido" });
+    }
+
+    // Comprimir imágenes (no videos)
+    if (MIMETYPES_IMAGEN.has(tipo.mime) && tipo.mime !== "image/gif") {
+      try {
+        const tmpComprimido = file.path + "_c";
+        await sharp(file.path)
+          .resize({ width: 1920, height: 1920, fit: "inside", withoutEnlargement: true })
+          .jpeg({ quality: 75, mozjpeg: true })
+          .toFile(tmpComprimido);
+        fs.renameSync(tmpComprimido, file.path);
+        // Actualizar extensión a .jpg tras convertir
+        const nuevoPath = file.path.replace(/\.[^.]+$/, ".jpg");
+        if (nuevoPath !== file.path) {
+          fs.renameSync(file.path, nuevoPath);
+          file.path     = nuevoPath;
+          file.filename = path.basename(nuevoPath);
+          file.mimetype = "image/jpeg";
+        }
+      } catch { /* si falla la compresión, se usa el original */ }
     }
   }
   next();
 }
 
-// Middleware compuesto: multer + magic bytes
+// Middleware compuesto: multer + validación + compresión
 const uploadEvidencias = {
   array: (campo, maxCount) => [
     uploadEvidenciasRaw.array(campo, maxCount),
-    validarMagicBytes,
+    validarYComprimirArchivos,
   ],
 };
 

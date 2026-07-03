@@ -16,8 +16,8 @@
  *   T          — tokens del tema activo
  */
 import { useState, useEffect, useRef } from "react";
-import { Package, Pencil } from "lucide-react";
-import { apiFetch } from "../../Config/api";
+import { Package, Pencil, ImagePlus, X as XIcon } from "lucide-react";
+import { apiFetch, API_ROUTES } from "../../Config/api";
 import { useToast } from "../Feedback";
 import Modal from "../Modal";
 import { RADIUS, SLATE, NEUTRAL } from "../../Config/DesignSystem";
@@ -45,9 +45,12 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
   const toast    = useToast();
   const firstRef = useRef(null);
 
-  const [form,   setForm]   = useState({ ...INSUMO_VACIO, ...insumo });
-  const [saving, setSaving] = useState(false);
-  const [error,  setError]  = useState("");
+  const [form,      setForm]      = useState({ ...INSUMO_VACIO, ...insumo });
+  const [saving,    setSaving]    = useState(false);
+  const [error,     setError]     = useState("");
+  const [fotoFile,  setFotoFile]  = useState(null);
+  const [fotoPreview, setFotoPreview] = useState(insumo?.imagen_url || null);
+  const fotoRef = useRef(null);
 
   useEffect(() => { firstRef.current?.focus(); }, []);
 
@@ -113,7 +116,6 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
         ? `/api/solicitudes/insumos/${insumo.id_insumo}`
         : `/api/solicitudes/insumos`;
 
-      // Solo enviamos los campos que existen en la BD
       const payload = {
         num_serie:    form.num_serie   || "",
         nombre:       form.nombre.trim(),
@@ -130,8 +132,24 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
       const r    = await apiFetch(url, { method, body: payload });
       const data = await r.json();
       if (!r.ok) return setError(data.error || "Error al guardar.");
+
+      // Subir foto si se seleccionó una
+      let imagenFinal = data.imagen_url || null;
+      if (fotoFile && data.id_insumo) {
+        const fd = new FormData();
+        fd.append("foto", fotoFile);
+        const rf = await apiFetch(API_ROUTES.INSUMO_FOTO(data.id_insumo), {
+          method: "POST",
+          body: fd,
+        });
+        if (rf.ok) {
+          const df = await rf.json();
+          imagenFinal = df.imagen_url;
+        }
+      }
+
       toast.success(isEdit ? "Insumo actualizado" : "Insumo creado");
-      onSave(data, isEdit);
+      onSave({ ...data, imagen_url: imagenFinal }, isEdit);
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
     } finally {
@@ -159,6 +177,72 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
         aria-label={isEdit ? "Formulario editar insumo" : "Formulario nuevo insumo"}
         style={{ display: "flex", flexDirection: "column", gap: "10px" }}
       >
+        {/* Foto del insumo */}
+        <Field htmlFor="fi-foto" label="Foto del insumo">
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {fotoPreview ? (
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <img
+                  src={fotoPreview.startsWith("blob:") ? fotoPreview : fotoPreview}
+                  alt="preview"
+                  style={{ width: "52px", height: "52px", objectFit: "cover", borderRadius: "6px",
+                    border: `1px solid ${borderColor}` }}
+                />
+                <button
+                  type="button"
+                  onClick={() => { setFotoFile(null); setFotoPreview(null); }}
+                  style={{
+                    position: "absolute", top: "-6px", right: "-6px",
+                    width: "16px", height: "16px", borderRadius: "50%",
+                    background: "#dc2626", border: "none", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  <XIcon size={9} color="#fff" />
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                width: "52px", height: "52px", borderRadius: "6px", flexShrink: 0,
+                border: `1px dashed ${borderColor}`, display: "flex",
+                alignItems: "center", justifyContent: "center",
+                background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc",
+              }}>
+                <ImagePlus size={18} style={{ color: labelColor }} />
+              </div>
+            )}
+            <div style={{ flex: 1 }}>
+              <input
+                id="fi-foto"
+                ref={fotoRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                style={{ display: "none" }}
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setFotoFile(file);
+                  setFotoPreview(URL.createObjectURL(file));
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fotoRef.current?.click()}
+                style={{
+                  ...inp, height: "32px", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  gap: "6px", fontSize: "12px", fontWeight: 500,
+                }}
+              >
+                <ImagePlus size={13} /> {fotoPreview ? "Cambiar foto" : "Seleccionar foto"}
+              </button>
+              <p style={{ margin: "3px 0 0", fontSize: "10px", color: labelColor }}>
+                JPEG, PNG o WebP · máx 5 MB
+              </p>
+            </div>
+          </div>
+        </Field>
+
         {/* Nombre */}
         <Field htmlFor="fi-nombre" label="Nombre del insumo *">
           <input

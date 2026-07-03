@@ -155,11 +155,25 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
   const generarReportePrintView = () => {
     const token = getToken?.() || sessionStorage.getItem("token") || "";
     const url = `/print/solicitud/${solicitud.folio_solicitud}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
-    const win = window.open(url, "_blank", "width=1000,height=800");
-    if (!win) {
-      // Fallback: generar HTML inline
-      generarReporte();
-    }
+
+    const existing = document.getElementById("__print_sol_iframe__");
+    if (existing) existing.remove();
+
+    const iframe = document.createElement("iframe");
+    iframe.id = "__print_sol_iframe__";
+    iframe.src = url;
+    iframe.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;";
+    document.body.appendChild(iframe);
+
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        console.warn("[print solicitud]", e);
+      }
+      setTimeout(() => iframe.remove(), 1200);
+    };
   };
 
   const generarReporte = () => {
@@ -281,7 +295,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
 <div class="hdr">
   <img src="${origin}/assets/img/logo negro.png" class="hdr-logo" alt="PTP"/>
   <div class="hdr-center">
-    <div class="hdr-center-title">Precision Truck Parts &amp; Accessories</div>
+    <div class="hdr-center-title">Precision Truck Parts and Accessories</div>
     <div class="hdr-center-name">Reporte de Solicitud de Insumos</div>
   </div>
   <div class="hdr-right">
@@ -332,7 +346,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
 
 <div class="ftr">
   <div class="ftr-left">
-    <span class="ftr-brand">Precision Truck Parts &amp; Accessories</span>
+    <span class="ftr-brand">Precision Truck Parts and Accessories</span>
     <span class="ftr-sub">Sistema HelpDesk &bull; Documento de uso interno</span>
   </div>
   <div class="ftr-divider"></div>

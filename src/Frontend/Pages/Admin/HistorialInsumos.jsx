@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { Inbox, FileDown, X } from "lucide-react";
 import { apiFetch } from "../../Config/api";
+import { abrirReporteLista } from "../PrintReportePage";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
 import { useCardStyles } from "../../Components/Card";
+import VistaSolicitud from "../Usuario/VistaSolicitud";
 
 const PRIORIDAD_COLOR = { Urgente: "#dc2626", Alta: "#ea580c", Media: "#ca8a04", Baja: "#16a34a" };
 const ESTATUS_COLOR   = { Resuelto: "#16a34a", "En proceso": "#ea580c", "No Resuelto": "#dc2626", Pendiente: "#3b82f6" };
@@ -13,7 +15,7 @@ const fmt = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", m
 
 const LIMIT = 50;
 
-export default function HistorialInsumos({ T, onVerSolicitud }) {
+export default function HistorialInsumos({ T }) {
   const isDark = T.isDark;
   const { card, hdr } = useCardStyles(T);
 
@@ -22,6 +24,7 @@ export default function HistorialInsumos({ T, onVerSolicitud }) {
   const [pagina,      setPagina]      = useState(1);
   const [cargando,    setCargando]    = useState(false);
   const [filtros,     setFiltros]     = useState({ busqueda: "", estatus: "Todos", prioridad: "Todos", usuario: "Todos", area: "Todos" });
+  const [solicitudVer,  setSolicitudVer]  = useState(null);
   const [modalReporte, setModalReporte] = useState(false);
   const [paramReporte, setParamReporte] = useState({ fecha_inicio: "", fecha_fin: "" });
   const [generando,    setGenerando]    = useState(false);
@@ -87,154 +90,12 @@ export default function HistorialInsumos({ T, onVerSolicitud }) {
     } catch { datos = []; }
     setGenerando(false);
     setModalReporte(false);
-
-    const ahora   = new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
     const fmtDate = d => new Date(d + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
-    const periodo = `${fmtDate(paramReporte.fecha_inicio)} – ${fmtDate(paramReporte.fecha_fin)}`;
-
-    const resueltos2  = datos.filter(s => s.estatus === "Resuelto").length;
-    const enProceso2  = datos.filter(s => s.estatus === "En proceso").length;
-    const pendientes2 = datos.filter(s => s.estatus === "Pendiente").length;
-    const totalPiezas = datos.reduce((a, s) => a + (parseInt(s.total_piezas) || 0), 0);
-
-    const ESTATUS_COLOR = { Resuelto: "#16a34a", "En proceso": "#ea580c", "No Resuelto": "#dc2626", Pendiente: "#3b82f6" };
-    const ESTATUS_BG    = { Resuelto: "#dcfce7", "En proceso": "#ffedd5", "No Resuelto": "#fee2e2", Pendiente: "#dbeafe" };
-    const PCOLOR_MAP    = { Urgente: "#dc2626", Alta: "#ea580c", Media: "#ca8a04", Baja: "#16a34a" };
-
-    const filas = datos.map((s, i) => `
-      <tr style="background:${i % 2 === 0 ? "#ffffff" : "#f9fafb"}">
-        <td style="padding:7px 10px;font-family:monospace;font-weight:700;color:#F47920;font-size:11px;border-bottom:1px solid #e5e7eb">${s.folio_solicitud}</td>
-        <td style="padding:7px 10px;font-size:11px;border-bottom:1px solid #e5e7eb">
-          <div style="font-weight:600;color:#1D1D1B">${s.nombre_empleado || "-"}</div>
-          <div style="font-size:10px;color:#6b7280">${s.nombre_departamento || "-"}</div>
-        </td>
-        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb">
-          <span style="color:${PCOLOR_MAP[s.prioridad] || "#94a3b8"};font-weight:700;font-size:11px">● ${s.prioridad}</span>
-        </td>
-        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb">
-          <span style="background:${ESTATUS_BG[s.estatus] || "#f3f4f6"};color:${ESTATUS_COLOR[s.estatus] || "#374151"};padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">${s.estatus}</span>
-        </td>
-        <td style="padding:7px 10px;font-size:11px;color:#374151;border-bottom:1px solid #e5e7eb;text-align:center">${s.total_insumos ?? "-"}</td>
-        <td style="padding:7px 10px;font-size:11px;color:#374151;border-bottom:1px solid #e5e7eb;text-align:center">${s.total_piezas ?? "-"}</td>
-        <td style="padding:7px 10px;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb;max-width:220px">
-          <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.detalle_insumos || "-"}</div>
-        </td>
-        <td style="padding:7px 10px;font-size:11px;color:#6b7280;white-space:nowrap;border-bottom:1px solid #e5e7eb">${fmt(s.fecha)}</td>
-      </tr>
-    `).join("");
-
-    const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8"/>
-  <title>Reporte de Insumos - Precision Truck Parts</title>
-  <style>
-    @page { size: A4 landscape; margin: 18mm 15mm; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #1D1D1B; }
-    .header { display:flex; align-items:center; justify-content:space-between; border:2px solid #F47920; border-radius:10px; padding:14px 20px; margin-bottom:14px; }
-    .header-left { display:flex; align-items:center; gap:16px; }
-    .header-logo { height:52px; object-fit:contain; }
-    .header-divider { width:2px; height:48px; background:linear-gradient(180deg,#F47920,#ffb347); border-radius:2px; }
-    .header-title { font-size:18px; font-weight:900; color:#1D1D1B; }
-    .header-sub   { font-size:10px; color:#6b7280; margin-top:2px; text-transform:uppercase; letter-spacing:0.1em; }
-    .header-date  { font-size:11px; color:#6b7280; }
-    .header-badge { display:inline-block; margin-top:4px; background:linear-gradient(135deg,#F47920,#d97400); color:#fff; font-size:10px; font-weight:700; padding:3px 10px; border-radius:20px; }
-    .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
-    .kpi { border:1.5px solid #e5e7eb; border-radius:8px; padding:10px 14px; }
-    .kpi-label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#9ca3af; margin-bottom:4px; }
-    .kpi-val   { font-size:22px; font-weight:900; line-height:1; }
-    .kpi-sub   { font-size:9px; color:#9ca3af; margin-top:3px; }
-    .kpi-bar   { height:3px; border-radius:2px; margin-top:6px; background:#f3f4f6; overflow:hidden; }
-    .kpi-bar-fill { height:100%; border-radius:2px; }
-    .section-title { font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:0.12em; color:#6b7280; display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-    .section-title::before { content:''; display:inline-block; width:3px; height:14px; border-radius:2px; background:#F47920; }
-    .table-wrap { border:1.5px solid #e5e7eb; border-radius:10px; overflow:hidden; }
-    table { width:100%; border-collapse:collapse; }
-    thead tr { background:#f9fafb; }
-    th { padding:8px 10px; text-align:left; font-size:9px; font-weight:900; text-transform:uppercase; letter-spacing:0.1em; color:#9ca3af; border-bottom:2px solid #e5e7eb; white-space:nowrap; }
-    td { vertical-align:middle; }
-    .footer { margin-top:14px; display:flex; align-items:center; justify-content:space-between; border-top:1.5px solid #e5e7eb; padding-top:10px; }
-    .footer-left  { font-size:9px; color:#9ca3af; }
-    .footer-right { font-size:9px; color:#9ca3af; text-align:right; }
-    .footer-brand { font-weight:900; color:#F47920; }
-    @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="header-left">
-      <img src="/assets/img/logo negro.png" class="header-logo" alt="PTP"/>
-      <div class="header-divider"></div>
-      <div>
-        <div class="header-title">Reporte de Solicitudes de Insumos</div>
-        <div class="header-sub">Precision Truck Parts · HelpDesk</div>
-      </div>
-    </div>
-    <div style="text-align:right">
-      <div class="header-date">Generado el ${ahora}</div>
-      <div class="header-date" style="margin-top:4px;font-weight:700;color:#F47920">${periodo}</div>
-      <span class="header-badge">${datos.length} registro${datos.length !== 1 ? "s" : ""}</span>
-    </div>
-  </div>
-  <div class="kpis">
-    <div class="kpi">
-      <div class="kpi-label">Total del período</div>
-      <div class="kpi-val" style="color:#F47920">${datos.length}</div>
-      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:100%;background:#F47920"></div></div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Resueltos</div>
-      <div class="kpi-val" style="color:#16a34a">${resueltos2}</div>
-      <div class="kpi-sub">${datos.length > 0 ? Math.round(resueltos2 / datos.length * 100) : 0}% del total</div>
-      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${datos.length > 0 ? Math.round(resueltos2 / datos.length * 100) : 0}%;background:#16a34a"></div></div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">En Proceso</div>
-      <div class="kpi-val" style="color:#ea580c">${enProceso2}</div>
-      <div class="kpi-sub">${datos.length > 0 ? Math.round(enProceso2 / datos.length * 100) : 0}% del total</div>
-      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${datos.length > 0 ? Math.round(enProceso2 / datos.length * 100) : 0}%;background:#ea580c"></div></div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Total piezas</div>
-      <div class="kpi-val" style="color:#3b82f6">${totalPiezas}</div>
-      <div class="kpi-sub">${pendientes2} solicitudes pendientes</div>
-      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:100%;background:#3b82f6"></div></div>
-    </div>
-  </div>
-  <div class="section-title">Detalle de Solicitudes</div>
-  <div class="table-wrap">
-    <table>
-      <thead><tr>
-        <th>Folio</th><th>Empleado / Área</th><th>Prioridad</th><th>Estatus</th>
-        <th style="text-align:center">Insumos</th><th style="text-align:center">Piezas</th>
-        <th>Detalle</th><th>Fecha</th>
-      </tr></thead>
-      <tbody>${filas}</tbody>
-    </table>
-  </div>
-  <div class="footer">
-    <div class="footer-left"><span class="footer-brand">Precision Truck Parts</span> · Sistema HelpDesk</div>
-    <div class="footer-right">Documento generado automáticamente · ${ahora}</div>
-  </div>
-</body>
-</html>`;
-
-    const win = window.open("", "_blank", "width=1200,height=800");
-    if (!win) {
-      setModalReporte(false);
-      setGenerando(false);
-      // Mostrar aviso en UI en lugar de alert()
-      const aviso = document.createElement("div");
-      aviso.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#1D1D1B;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;border-left:4px solid #F47920;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
-      aviso.textContent = "El navegador bloqueó la ventana emergente. Permite las ventanas emergentes para este sitio e intenta de nuevo.";
-      document.body.appendChild(aviso);
-      setTimeout(() => aviso.remove(), 5000);
-      return;
-    }
-    win.document.write(html);
-    win.document.close();
-    win.onload = () => { win.focus(); win.print(); };
+    abrirReporteLista({
+      tipo: "insumos",
+      periodo: `${fmtDate(paramReporte.fecha_inicio)} – ${fmtDate(paramReporte.fecha_fin)}`,
+      datos,
+    });
   };
 
   const filtrados = solicitudes.filter(s => {
@@ -266,6 +127,15 @@ export default function HistorialInsumos({ T, onVerSolicitud }) {
     { label: "En proceso",  val: enProceso,  color: "#ea580c" },
     { label: "Resueltos",   val: resueltos,  color: "#16a34a" },
   ];
+
+  if (solicitudVer) return (
+    <VistaSolicitud
+      T={T}
+      id_solicitud={solicitudVer.id_solicitud}
+      esAdmin
+      onBack={() => setSolicitudVer(null)}
+    />
+  );
 
   return (
     <>
@@ -336,7 +206,7 @@ export default function HistorialInsumos({ T, onVerSolicitud }) {
                   <div key={s.id_solicitud}
                     className="rounded-xl p-3 flex flex-col gap-2 cursor-pointer active:scale-[0.98] transition-all"
                     style={{ background: isDark ? "rgba(255,255,255,0.04)" : T.surfaceAlt, border: `1px solid ${T.border}` }}
-                    onClick={() => onVerSolicitud?.(s)}>
+                    onClick={() => setSolicitudVer(s)}>
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-[11px] font-black" style={{ color: T.orange }}>{s.folio_solicitud}</span>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
@@ -408,7 +278,7 @@ export default function HistorialInsumos({ T, onVerSolicitud }) {
                         <td className="px-3 py-2 text-[10px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmt(s.fecha)}</td>
                         <td className="px-3 py-2">
                           <button
-                            onClick={() => onVerSolicitud?.(s)}
+                            onClick={() => setSolicitudVer(s)}
                             className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all hover:brightness-110 active:scale-95"
                             style={{ background: "rgba(244,121,32,0.08)", color: T.orange, border: "1px solid rgba(244,121,32,0.2)" }}>
                             Ver

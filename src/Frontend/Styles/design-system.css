@@ -704,8 +704,8 @@ body {
 
 /* ── Variables de layout fluido ─────────────────────────────── */
 :root {
-  --sidebar-w:      220px;
-  --panel-r-w:      220px;
+  --sidebar-w:      250px;
+  --panel-r-w:      250px;
   --header-h:       clamp(56px, 6.5vh, 72px);
   --sidebar-logo-h: clamp(48px, 5vw, 72px);
   --fs-nav:         clamp(11px, 0.75vw, 12.5px);
@@ -764,7 +764,73 @@ body, button, input, select, textarea, h1, h2, h3, h4, h5, h6 {
   --ptp-faint:        #484F58;
   --ptp-border:       rgba(255,255,255,0.08);
   --ptp-border-active:rgba(255,255,255,0.14);
+  color-scheme: dark;
 }
+
+/* Tipografía — títulos hardcodeados en navy */
+[data-theme="dark"] .ptp-h1,
+[data-theme="dark"] .ptp-h2 { color: #E6EDF3; }
+[data-theme="dark"] .ptp-h3 { color: #C9D1D9; }
+
+/* Botones */
+[data-theme="dark"] .btn-ghost {
+  color:        #C9D1D9;
+  background:   transparent;
+  border-color: rgba(255,255,255,0.12);
+}
+[data-theme="dark"] .btn-ghost:hover { background: rgba(255,255,255,0.06); }
+
+/* Inputs */
+[data-theme="dark"] .input-base {
+  background:   rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.12);
+  color:        #E6EDF3;
+}
+[data-theme="dark"] .input-base:focus {
+  background:   rgba(255,255,255,0.07);
+  border-color: #F47920;
+}
+
+/* Badges — fondos claros hardcodeados */
+[data-theme="dark"] .badge-primary    { background: rgba(37,99,235,0.18);  color: #93C5FD; border-color: rgba(37,99,235,0.35); }
+[data-theme="dark"] .badge-success    { background: rgba(22,163,74,0.18);  color: #86EFAC; border-color: rgba(22,163,74,0.35); }
+[data-theme="dark"] .badge-danger     { background: rgba(220,38,38,0.18);  color: #FCA5A5; border-color: rgba(220,38,38,0.35); }
+[data-theme="dark"] .badge-warning    { background: rgba(217,119,6,0.18);  color: #FCD34D; border-color: rgba(217,119,6,0.35); }
+[data-theme="dark"] .badge-neutral    { background: rgba(255,255,255,0.07); color: #8B949E; border-color: rgba(255,255,255,0.12); }
+[data-theme="dark"] .badge-info       { background: rgba(37,99,235,0.18);  color: #93C5FD; border-color: rgba(37,99,235,0.35); }
+[data-theme="dark"] .badge-navy       { background: rgba(255,255,255,0.06); color: #C9D1D9; border-color: rgba(255,255,255,0.12); }
+[data-theme="dark"] .badge-ticket-pendiente  { background: rgba(217,119,6,0.18);  color: #FCD34D; border-color: rgba(217,119,6,0.35); }
+[data-theme="dark"] .badge-ticket-en-proceso { background: rgba(37,99,235,0.18);  color: #93C5FD; border-color: rgba(37,99,235,0.35); }
+[data-theme="dark"] .badge-ticket-resuelto   { background: rgba(22,163,74,0.18);  color: #86EFAC; border-color: rgba(22,163,74,0.35); }
+[data-theme="dark"] .badge-ticket-no-resuelto{ background: rgba(220,38,38,0.18);  color: #FCA5A5; border-color: rgba(220,38,38,0.35); }
+
+/* Cards */
+[data-theme="dark"] .card,
+[data-theme="dark"] .card-elevated,
+[data-theme="dark"] .card-flat {
+  background:   #161B22;
+  border-color: rgba(255,255,255,0.08);
+}
+[data-theme="dark"] .card-header,
+[data-theme="dark"] .card-footer {
+  background:   #1C2230;
+  border-color: rgba(255,255,255,0.08);
+}
+[data-theme="dark"] .card-body { background: #161B22; }
+
+/* Modal (clases .modal-*) */
+[data-theme="dark"] .modal-container {
+  background:   #161B22;
+  border-color: rgba(255,255,255,0.08);
+}
+[data-theme="dark"] .modal-body   { background: #161B22; color: #E6EDF3; }
+[data-theme="dark"] .modal-footer { background: #1C2230; border-color: rgba(255,255,255,0.08); }
+
+/* Tabla filas semánticas */
+[data-theme="dark"] .ptp-table tbody tr.row-danger  td { background: rgba(220,38,38,0.12); }
+[data-theme="dark"] .ptp-table tbody tr.row-warning td { background: rgba(217,119,6,0.12); }
+
+/* Tabla */
 [data-theme="dark"] .ptp-table thead th {
   background:   #1C2230;
   border-color: rgba(255,255,255,0.08);
@@ -778,6 +844,24 @@ body, button, input, select, textarea, h1, h2, h3, h4, h5, h6 {
     border-color: rgba(255,255,255,0.08);
   }
 }
+
+/* Legacy table helpers */
+[data-theme="dark"] .table-header-cell { background: #1C2230; border-color: rgba(255,255,255,0.08); color: #8B949E; }
+[data-theme="dark"] .table-row         { border-color: rgba(255,255,255,0.06); }
+[data-theme="dark"] .table-cell        { color: #E6EDF3; }
+[data-theme="dark"] .table-row:hover   { background: rgba(255,255,255,0.03); }
+
+/* Skeleton */
+[data-theme="dark"] .skeleton { background: #1C2230; }
+
+/* Solicitud panel */
+[data-theme="dark"] .solicitud-panel         { background: #161B22; border-color: rgba(255,255,255,0.08); }
+[data-theme="dark"] .solicitud-panel-header  { background: #1C2230; border-color: rgba(255,255,255,0.08); color: #E6EDF3; }
+[data-theme="dark"] .solicitud-panel-footer  { background: #161B22; border-color: rgba(255,255,255,0.08); }
+
+/* Scrollbar en dark */
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); }
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
 
 /* ================================================================
    SUBIR MANUAL — Vista de administración
@@ -1104,17 +1188,23 @@ body, button, input, select, textarea, h1, h2, h3, h4, h5, h6 {
 .ptp-modal-container {
   position:       relative;
   width:          100%;
-  background:     #1a1a1a;
-  border:         1px solid rgba(255, 255, 255, 0.08);
+  background:     var(--ptp-surface, #ffffff);
+  border:         1px solid var(--ptp-border, #E2E8F0);
   border-radius:  12px;
-  box-shadow:     0 10px 25px rgba(0, 0, 0, 0.50),
-                  0 0 0 1px rgba(255, 255, 255, 0.04);
+  box-shadow:     0 10px 25px rgba(0, 0, 0, 0.20),
+                  0 0 0 1px rgba(0, 0, 0, 0.04);
   overflow:       hidden;
   display:        flex;
   flex-direction: column;
   max-height:     90vh;
   /* Animación de entrada */
   animation:      ptp-modal-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+[data-theme="dark"] .ptp-modal-container {
+  background:  #161B22;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow:  0 10px 25px rgba(0, 0, 0, 0.50),
+               0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 /* ── Animaciones ────────────────────────────────────────────── */

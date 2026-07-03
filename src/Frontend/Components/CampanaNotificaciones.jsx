@@ -85,7 +85,7 @@ const TIPO_CONFIG = {
     icon:   Wrench,
     color:  () => "#8b5cf6",
     bg:     () => "rgba(139,92,246,0.12)",
-    titulo: () => "Tu ticket esta siendo atendido",
+    titulo: (d) => d._esAdmin ? "Ticket tomado por técnico" : "Tu ticket esta siendo atendido",
     sub:    (d) => `#${d.folio_ticket} — ${d.titulo}\nTécnico asignado: ${d.nombre_tecnico || "Soporte técnico"}`,
     accion: "Ver ticket",
   },

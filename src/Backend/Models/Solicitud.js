@@ -119,10 +119,10 @@ const Solicitud = {
     const [[solicitud]] = await pool.query(
       `SELECT s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
               s.id_empleado,
-              CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
+              IFNULL(CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')),'[Empleado eliminado]') AS nombre_empleado,
               d.nombre_departamento
        FROM solicitud s
-       JOIN empleado e    ON s.id_empleado    = e.id_empleado
+       LEFT JOIN empleado e    ON s.id_empleado    = e.id_empleado
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
        WHERE s.id_solicitud = ?`,
       [id_solicitud]
@@ -130,9 +130,10 @@ const Solicitud = {
     if (!solicitud) return null;
     const [detalle] = await pool.query(
       `SELECT si.id_solicitud_insumo, si.cantidad, si.aprobado,
-              i.id_insumo, i.nombre, i.marca, i.modelo, i.num_serie, i.stock, i.estado
+              i.id_insumo, IFNULL(i.nombre,'[Insumo eliminado]') AS nombre,
+              i.marca, i.modelo, i.num_serie, IFNULL(i.stock,0) AS stock, i.estado
        FROM solicitud_insumo si
-       JOIN insumo i ON si.id_insumo = i.id_insumo
+       LEFT JOIN insumo i ON si.id_insumo = i.id_insumo
        WHERE si.id_solicitud = ?`,
       [id_solicitud]
     );

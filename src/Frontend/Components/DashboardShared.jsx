@@ -531,6 +531,7 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
     .forEach(t => { if (grupos[t.prioridad]) grupos[t.prioridad].push({ ...t, _tipo: 'ticket' }); });
 
   solicitudes
+    .filter(s => s.estatus !== 'Resuelto' && s.estatus !== 'No Resuelto' && s.estatus !== 'Rechazado')
     .forEach(s => { if (grupos[s.prioridad]) grupos[s.prioridad].push({ ...s, _tipo: 'insumo' }); });
 
   const columnas = PRIORIDADES.map(prioridad => {
@@ -728,11 +729,11 @@ export function PanelDerecho({ T, nombre, departamento, foto, tickets = [], tota
           <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>Mis estadísticas</p>
           <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
             {stats.map((s, i) => (
-              <div key={i} className="flex flex-col items-center justify-center py-5 rounded-lg gap-1.5"
+              <div key={i} className="flex flex-col items-center justify-center py-3 rounded-lg gap-1.5"
                 style={{ background: isDark ? s.bgD : s.bgL, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`, minWidth: 0 }}>
                 <s.icon size={14} style={{ color: s.color, flexShrink: 0 }} />
-                <span className="font-black leading-none" style={{ color: s.color, fontSize: "clamp(16px, 1.3vw, 22px)" }}>{s.valor}</span>
-                <span className="font-semibold text-center leading-tight" style={{ color: T.textFaint, fontSize: "clamp(8px, 0.6vw, 10px)" }}>{s.label}</span>
+                <span className="font-black leading-none" style={{ color: s.color, fontSize: "clamp(18px, 1.4vw, 24px)" }}>{s.valor}</span>
+                <span className="font-semibold text-center leading-tight" style={{ color: T.textFaint, fontSize: "clamp(9px, 0.65vw, 11px)" }}>{s.label}</span>
               </div>
             ))}
           </div>
