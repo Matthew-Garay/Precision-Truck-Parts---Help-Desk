@@ -240,7 +240,11 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
     }
   };
 
-  const MIME_PERMITIDOS = new Set(["image/jpeg","image/png","image/gif","image/webp"]);
+  const MIME_PERMITIDOS = new Set([
+    "image/jpeg","image/png","image/gif","image/webp",
+    "video/mp4","video/webm","video/quicktime","video/x-msvideo",
+  ]);
+  const esVideo = (tipo) => tipo?.startsWith("video/");
 
   const agregarImgs = files => {
     const libres = MAX_IMGS - form.evidencias.length;
@@ -249,13 +253,13 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
       .slice(0, libres)
       .forEach(file => {
         const src = URL.createObjectURL(file);
-        setForm(f => ({ ...f, evidencias: [...f.evidencias, { src, name: file.name, file }] }));
+        setForm(f => ({ ...f, evidencias: [...f.evidencias, { src, name: file.name, file, isVideo: esVideo(file.type) }] }));
       });
   };
 
   const handleDrop = e => {
     e.preventDefault(); setDragging(false);
-    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("image/"));
+    const files = Array.from(e.dataTransfer.files).filter(f => MIME_PERMITIDOS.has(f.type));
     if (files.length) agregarImgs(files);
   };
 
@@ -649,13 +653,13 @@ const card = {
                     }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor="#F47920"; e.currentTarget.style.background="rgba(244,121,32,0.05)"; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor= isDark ? "rgba(255,255,255,0.15)" : "#d1d5db"; e.currentTarget.style.background= isDark ? "rgba(255,255,255,0.02)" : "rgba(244,121,32,0.02)"; }}>
-                    <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+                    <input ref={fileRef} type="file" accept="image/*,video/mp4,video/webm,video/quicktime,video/x-msvideo" multiple className="hidden"
                       onChange={e => { agregarImgs(e.target.files); e.target.value=""; }}/>
                     <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background:"rgba(244,121,32,0.1)" }}>
                       <Camera size={22} style={{ color:"#F47920" }}/>
                     </div>
-                    <p className="text-xs font-semibold" style={{ color:"#F47920" }}>Haz clic o arrastra imágenes aquí</p>
-                    <p className="text-[11px]" style={{ color:iconColor }}>PNG, JPG · Máx. {MAX_IMGS} fotos</p>
+                    <p className="text-xs font-semibold" style={{ color:"#F47920" }}>Haz clic o arrastra archivos aquí</p>
+                    <p className="text-[11px]" style={{ color:iconColor }}>PNG, JPG, MP4, WebM · Máx. {MAX_IMGS} archivos</p>
                   </label>
                 )}
 
@@ -667,7 +671,15 @@ const card = {
                         <div className="aspect-square rounded-xl overflow-hidden cursor-pointer"
                           style={{ border:`1.5px solid ${isDark ? "rgba(255,255,255,0.12)" : T.border}`, boxShadow: isDark ? "0 4px 16px rgba(0,0,0,0.5)" : "0 2px 8px rgba(0,0,0,0.08)" }}
                           onClick={() => setVisor(i)}>
-                          <img src={img.src} alt={img.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"/>
+                          {img.isVideo ? (
+                            <div className="w-full h-full flex items-center justify-center relative"
+                              style={{ background: isDark ? "rgba(0,0,0,0.6)" : "#1e293b" }}>
+                              <video src={img.src} className="w-full h-full object-cover absolute inset-0" muted preload="metadata"/>
+                              <svg className="relative z-10" width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><polygon points="5,3 19,12 5,21"/></svg>
+                            </div>
+                          ) : (
+                            <img src={img.src} alt={img.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"/>
+                          )}
                         </div>
                         <button type="button"
                           onClick={e => { e.stopPropagation(); borrarImg(i); }}
@@ -833,9 +845,15 @@ const card = {
           onClick={() => setVisor(null)}>
           <div className="relative w-full max-w-4xl mx-4 sm:mx-10 flex flex-col items-center gap-4"
             onClick={e => e.stopPropagation()}>
-            <img src={form.evidencias[visor].src} alt=""
-              className="rounded-2xl object-contain w-full"
-              style={{ maxHeight:"74vh", boxShadow:"0 12px 48px rgba(0,0,0,0.7)" }}/>
+            {form.evidencias[visor].isVideo ? (
+              <video src={form.evidencias[visor].src} controls autoPlay
+                className="rounded-2xl w-full"
+                style={{ maxHeight:"74vh", boxShadow:"0 12px 48px rgba(0,0,0,0.7)" }}/>
+            ) : (
+              <img src={form.evidencias[visor].src} alt=""
+                className="rounded-2xl object-contain w-full"
+                style={{ maxHeight:"74vh", boxShadow:"0 12px 48px rgba(0,0,0,0.7)" }}/>
+            )}
             <p className="text-xs truncate max-w-xs" style={{ color:"rgba(255,255,255,0.45)" }}>
               {form.evidencias[visor].name}
             </p>

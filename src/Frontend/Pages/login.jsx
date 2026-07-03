@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useLayoutEffect } from "react";
 import { apiFetch } from "../Config/api.js";
 import { COLORS, RADIUS, BG_IMAGE, BG_OVERLAY, DIAGONAL, INPUT_FOCUS, INPUT_BLUR } from "../Config/DesignSystem";
 import { EyeIcon, EyeOffIcon } from "../Components/Icons";
@@ -291,6 +291,10 @@ const MAX_INTENTOS = 3;
 const BLOQUEO_SEG  = 30;
 
 export default function Login({ onLogin }) {
+  // Forzar tema claro mientras el login está montado
+  useLayoutEffect(() => {
+    document.documentElement.setAttribute("data-theme", "light");
+  }, []);
   const [email, setEmail]           = useState("");
   const [password, setPassword]     = useState("");
   const [showPwd, setShowPwd]       = useState(false);
@@ -385,9 +389,12 @@ export default function Login({ onLogin }) {
           .login-btn         { padding: 7px 14px !important; font-size: 12px !important; }
           .login-forgot      { margin-top: 0 !important; }
         }
-        @media (max-width: 400px) {
-          .login-card-header { padding: 10px 16px !important; }
-          .login-card-body   { padding: 16px !important; }
+        @media (max-width: 480px) {
+          .login-card-header { padding: 8px 14px !important; }
+          .login-card-body   { padding: 12px 14px 14px !important; }
+          .login-title-gap   { margin-bottom: 10px !important; }
+          .login-form-gap    { gap: 10px !important; }
+          .login-logo        { height: 26px !important; }
         }
         @keyframes fade-in-card  { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
         @keyframes shake-card    { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
@@ -412,7 +419,7 @@ export default function Login({ onLogin }) {
 
           <div className={`w-full relative ${shakeCard ? "login-card-shake" : "login-card-wrap"}`}
             style={{
-              maxWidth: "360px",
+              maxWidth: "min(360px, 92vw)",
               background: "#FFFFFF",
               borderRadius: "10px",
               boxShadow: "0 20px 60px rgba(0,0,0,0.50), 0 0 0 1px rgba(255,255,255,0.06)",

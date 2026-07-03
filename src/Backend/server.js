@@ -60,7 +60,6 @@ import { Server }        from "socket.io";
 import cors              from "cors";
 import compression       from "compression";
 import helmet            from "helmet";
-import dotenv            from "dotenv";
 import jwt               from "jsonwebtoken";
 import path              from "path";
 import { fileURLToPath } from "url";
@@ -73,8 +72,6 @@ import authRoutes        from "./Routes/authRoutes.js";
 import ticketsRoutes     from "./Routes/ticketsRoutes.js";
 import solicitudesRoutes from "./Routes/solicitudesRoutes.js";
 import manualesRoutes    from "./Routes/manualesRoutes.js";
-
-dotenv.config();
 
 const REQUIRED_ENV = ["JWT_SECRET", "DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"];
 const missing = REQUIRED_ENV.filter(k => !process.env[k]);
@@ -129,32 +126,6 @@ const shutdown = (signal) => {
   });
   setTimeout(() => { console.error("[Shutdown] Timeout forzado."); process.exit(1); }, 10_000).unref();
 };
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGINT",  () => shutdown("SIGINT"));
-
-// -- Graceful shutdown: cierra el servidor y el pool MySQL ----
-// Se llama al recibir SIGTERM (Docker/PM2) o SIGINT (Ctrl+C).
-// Da 10 segundos a las peticiones activas para terminar antes
-// de forzar la salida.
-const shutdown = (signal) => {
-  console.log(`\n[Shutdown] Señal ${signal} recibida. Cerrando servidor...`);
-  httpServer.close(async () => {
-    console.log("[Shutdown] Servidor HTTP cerrado.");
-    try {
-      await pool.end();
-      console.log("[Shutdown] Pool MySQL cerrado.");
-    } catch (err) {
-      console.error("[Shutdown] Error cerrando pool MySQL:", err.message);
-    }
-    process.exit(0);
-  });
-  // Forzar salida si tarda más de 10 segundos
-  setTimeout(() => {
-    console.error("[Shutdown] Timeout forzado. Saliendo.");
-    process.exit(1);
-  }, 10_000).unref();
-};
-
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT",  () => shutdown("SIGINT"));
 

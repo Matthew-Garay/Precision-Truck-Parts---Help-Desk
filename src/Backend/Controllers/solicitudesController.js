@@ -66,6 +66,9 @@ import Insumo    from "../Models/Insumo.js";
 import Empleado  from "../Models/Empleado.js";
 import { getIO } from "../Config/socketInstance.js";
 import pool      from "../Config/db.js";
+import path      from "path";
+import fs        from "fs";
+import { INSUMOS_DIR } from "../Middlewares/uploadInsumos.js";
 
 const isProd = () => process.env.NODE_ENV === "production";
 const errDetalle = (err) => isProd() ? {} : { detalle: err.message };
@@ -390,6 +393,29 @@ export const getReporteSolicitudes = async (req, res) => {
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: "Error al generar reporte", ...errDetalle(err) });
+  }
+};
+
+export const subirFotoInsumo = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!req.file) return res.status(400).json({ error: "No se recibió ninguna imagen" });
+  try {
+    const [[insumo]] = await pool.query("SELECT imagen_url FROM insumo WHERE id_insumo = ? LIMIT 1", [id]);
+    if (!insumo) {
+      await fs.promises.unlink(req.file.path).catch(() => {});
+      return res.status(404).json({ error: "Insumo no encontrado" });
+    }
+    // Eliminar foto anterior si existe
+    if (insumo.imagen_url) {
+      const anterior = path.join(INSUMOS_DIR, path.basename(insumo.imagen_url));
+      await fs.promises.unlink(anterior).catch(() => {});
+    }
+    const imagen_url = `/storage/Insumos/${req.file.filename}`;
+    await pool.query("UPDATE insumo SET imagen_url = ? WHERE id_insumo = ?", [imagen_url, id]);
+    res.json({ ok: true, imagen_url });
+  } catch (err) {
+    await fs.promises.unlink(req.file.path).catch(() => {});
+    res.status(500).json({ error: "Error al guardar la imagen", ...errDetalle(err) });
   }
 };
 

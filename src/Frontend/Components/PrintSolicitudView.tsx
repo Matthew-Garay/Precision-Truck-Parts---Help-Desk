@@ -36,159 +36,87 @@ const fmt = {
     new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }),
 };
 
-const PRIO_META: Record<string, { cls: string; dot: string }> = {
-  Urgente: { cls: "badge-urgente", dot: "#991B1B" },
-  Alta:    { cls: "badge-alta",    dot: "#9A3412" },
-  Media:   { cls: "badge-media",   dot: "#92400E" },
-  Baja:    { cls: "badge-baja",    dot: "#15803D" },
+const PRIO_META: Record<string, { label: string; bg: string; color: string; border: string }> = {
+  Urgente: { label: "URGENTE", bg: "#FEF2F2", color: "#B91C1C", border: "#FCA5A5" },
+  Alta:    { label: "ALTA",    bg: "#FFF7ED", color: "#C2410C", border: "#FDBA74" },
+  Media:   { label: "MEDIA",   bg: "#FEFCE8", color: "#A16207", border: "#FDE047" },
+  Baja:    { label: "BAJA",    bg: "#F0FDF4", color: "#15803D", border: "#86EFAC" },
 };
 
-const ESTATUS_META: Record<string, { cls: string; icon: string }> = {
-  "Resuelto":    { cls: "badge-resuelto",   icon: "✓" },
-  "En proceso":  { cls: "badge-proceso",    icon: "◷" },
-  "Pendiente":   { cls: "badge-proceso",    icon: "◷" },
-  "No Resuelto": { cls: "badge-noresuelto", icon: "✕" },
-  "Rechazado":   { cls: "badge-noresuelto", icon: "✕" },
+const ESTATUS_META: Record<string, { icon: string; bg: string; color: string; border: string }> = {
+  "Resuelto":    { icon: "✓", bg: "#F0FDF4", color: "#15803D", border: "#86EFAC" },
+  "En proceso":  { icon: "◷", bg: "#FFF7ED", color: "#C2410C", border: "#FDBA74" },
+  "Pendiente":   { icon: "◷", bg: "#FFF7ED", color: "#C2410C", border: "#FDBA74" },
+  "No Resuelto": { icon: "✕", bg: "#FEF2F2", color: "#B91C1C", border: "#FCA5A5" },
+  "Rechazado":   { icon: "✕", bg: "#F1F5F9", color: "#475569", border: "#CBD5E1" },
 };
 
-function LogoPTP({ size = 48 }: { size?: number }) {
+function Badge({ label, bg, color, border, icon }: {
+  label: string; bg: string; color: string; border: string; icon?: string;
+}) {
   return (
-    <svg height={size} viewBox="0 0 220 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="220" height="60" rx="4" fill="#0C1A2E" />
-      <text x="14" y="40" fontFamily="Inter,Arial,sans-serif" fontSize="22" fontWeight="900" fill="#E8621A" letterSpacing="-1">PTP</text>
-      <line x1="62" y1="10" x2="62" y2="50" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-      <text x="72" y="27" fontFamily="Inter,Arial,sans-serif" fontSize="8" fontWeight="700" fill="rgba(255,255,255,0.7)" letterSpacing="2.5">PRECISION TRUCK PARTS</text>
-      <text x="72" y="42" fontFamily="Inter,Arial,sans-serif" fontSize="7" fontWeight="400" fill="rgba(255,255,255,0.35)" letterSpacing="1">&amp; ACCESSORIES</text>
-    </svg>
+    <span className="pr-badge" style={{ background: bg, color, border: `1px solid ${border}` }}>
+      {icon && <span>{icon}</span>}
+      {label}
+    </span>
   );
 }
 
-function PageHeader({ folio }: { folio: string }) {
+function PageHeader({ folio, fechaGen }: { folio: string; fechaGen: string }) {
   return (
     <header className="pr-page-header">
-      <LogoPTP size={34} />
-      <div className="pr-page-header-center">
-        <span className="pr-page-header-label">Precision Truck Parts &amp; Accessories</span>
-        <span className="pr-page-header-title">Solicitud de Insumos</span>
+      <div className="pr-header-logo">
+        <img src="/assets/img/logo negro.png" alt="Precision Truck Parts" className="pr-logo-img" />
       </div>
-      <div className="pr-page-header-right">
-        <span className="pr-folio-chip">{folio}</span>
+      <div className="pr-header-center">
+        <span className="pr-header-company">PRECISION TRUCK PARTS &amp; ACCESSORIES</span>
+        <span className="pr-header-doc">Solicitud de Insumos</span>
+        <span className="pr-header-dept">Departamento de Almacén e Inventario</span>
+      </div>
+      <div className="pr-header-meta">
+        <div className="pr-header-meta-row">
+          <span className="pr-micro-label">Folio</span>
+          <span className="pr-folio">{folio}</span>
+        </div>
+        <div className="pr-header-meta-row">
+          <span className="pr-micro-label">Generado</span>
+          <span className="pr-header-fecha">{fechaGen}</span>
+        </div>
       </div>
     </header>
   );
 }
 
-function PageFooter({ folio, fecha }: { folio: string; fecha: string }) {
+function PageFooter({ folio, fechaGen }: { folio: string; fechaGen: string }) {
   return (
     <footer className="pr-page-footer">
-      <span className="pr-footer-brand">Precision Truck Parts &amp; Accessories · HelpDesk</span>
-      <span className="pr-footer-folio">{folio}</span>
-      <span className="pr-footer-date">Generado: {fecha} · CONFIDENCIAL</span>
+      <div className="pr-footer-logo-wrap">
+        <img src="/assets/img/log.png" alt="" className="pr-footer-logo" />
+      </div>
+      <span className="pr-footer-center-text">
+        Precision Truck Parts &amp; Accessories — Sistema de Soporte Técnico HelpDesk
+      </span>
+      <span className="pr-footer-right-text">{folio} · {fechaGen}</span>
     </footer>
   );
 }
 
-function CoverPage({ solicitud, fechaGen }: { solicitud: Solicitud; fechaGen: string }) {
-  const prio    = PRIO_META[solicitud.prioridad]  ?? PRIO_META.Baja;
-  const estatus = ESTATUS_META[solicitud.estatus] ?? ESTATUS_META["Pendiente"];
-  const total   = solicitud.detalle.reduce((s, d) => s + d.cantidad, 0);
-
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="pr-cover">
-      <div className="pr-cover-hero">
-        <LogoPTP size={46} />
-        <div style={{ marginTop: 36 }}>
-          <span className="pr-cover-hero-accent">Documento Oficial de Solicitud</span>
-          <h1 className="pr-cover-hero-title">Solicitud de<br />Insumos</h1>
-          <div className="pr-cover-hero-rule" />
-        </div>
-        <div style={{ marginTop: 24, display: "flex", gap: 8, flexWrap: "wrap" as const }}>
-          <span className={`pr-badge ${prio.cls}`}>
-            <span className="pr-badge-dot" style={{ background: prio.dot }} />
-            Prioridad {solicitud.prioridad}
-          </span>
-          <span className={`pr-badge ${estatus.cls}`}>
-            {estatus.icon} {solicitud.estatus}
-          </span>
-        </div>
-      </div>
-
-      <div className="pr-cover-body">
-        <div className="pr-cover-folio-block">
-          <div>
-            <span className="pr-micro-label">Folio del documento</span>
-            <div className="pr-cover-folio">{solicitud.folio_solicitud}</div>
-          </div>
-        </div>
-
-        <div className="pr-cover-card">
-          <div className="pr-cover-card-header">
-            <span className="pr-cover-card-label">Datos de la solicitud</span>
-          </div>
-          <div className="pr-cover-card-body">
-            <div className="pr-cover-card-cell">
-              <span className="pr-micro-label">Solicitante</span>
-              <span className="pr-cover-card-val">{solicitud.nombre_empleado}</span>
-            </div>
-            <div className="pr-cover-card-cell">
-              <span className="pr-micro-label">Departamento</span>
-              <span className="pr-cover-card-val">{solicitud.nombre_departamento}</span>
-            </div>
-            <div className="pr-cover-card-cell">
-              <span className="pr-micro-label">Fecha de solicitud</span>
-              <span className="pr-cover-card-val">{fmt.fecha(solicitud.fecha)}</span>
-            </div>
-            <div className="pr-cover-card-cell">
-              <span className="pr-micro-label">Total de piezas</span>
-              <span className="pr-cover-card-val">{total} unidades · {solicitud.detalle.length} tipo{solicitud.detalle.length !== 1 ? "s" : ""}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="pr-cover-meta-strip">
-          <div className="pr-cover-meta-item">
-            <span className="pr-micro-label">Generado el</span>
-            <span className="pr-cover-meta-val">{fechaGen}</span>
-          </div>
-          <div className="pr-cover-meta-item">
-            <span className="pr-micro-label">Sistema</span>
-            <span className="pr-cover-meta-val">PTP HelpDesk v1.0</span>
-          </div>
-          <div className="pr-cover-meta-item">
-            <span className="pr-micro-label">Clasificación</span>
-            <span className="pr-cover-meta-val">Uso interno · Confidencial</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="pr-cover-bottombar">
-        <span className="pr-cover-bottombar-text">Precision Truck Parts &amp; Accessories — Sistema de Soporte Técnico</span>
-        <span className="pr-cover-bottombar-folio">{solicitud.folio_solicitud}</span>
-      </div>
-    </div>
-  );
-}
-
-function Section({
-  title, icon, accent = false, children,
-}: { title: string; icon: string; accent?: boolean; children: React.ReactNode }) {
-  return (
-    <section className={`pr-section${accent ? " pr-section--accent" : ""}`}>
+    <section className="pr-section">
       <div className="pr-section-hdr">
-        <span className="pr-section-icon">{icon}</span>
         <span className="pr-section-title">{title}</span>
-        <div className="pr-section-rule" />
       </div>
       <div className="pr-section-body">{children}</div>
     </section>
   );
 }
 
-function DataRow({ items }: { items: { label: string; value: string; wide?: boolean }[] }) {
+function DataGrid({ items }: { items: { label: string; value: React.ReactNode; wide?: boolean; half?: boolean }[] }) {
   return (
-    <div className="pr-data-row">
-      {items.map(({ label, value, wide }) => (
-        <div key={label} className={`pr-data-cell${wide ? " pr-data-cell--wide" : ""}`}>
+    <div className="pr-data-grid">
+      {items.map(({ label, value, wide, half }, i) => (
+        <div key={i} className={`pr-data-cell${wide ? " wide" : ""}${half ? " half" : ""}`}>
           <span className="pr-micro-label">{label}</span>
           <span className="pr-data-val">{value || "—"}</span>
         </div>
@@ -214,17 +142,13 @@ function SolicitudStepper({ estatus, fechaSolicitud }: { estatus: string; fechaS
         return (
           <div key={s} className="pr-step">
             <div className="pr-step-track">
-              <div className={`pr-step-node${done ? " pr-step-node--done" : ""}${active ? " pr-step-node--active" : ""}`}>
-                <span className="pr-step-check">{i < step ? "✓" : i + 1}</span>
+              <div className={`pr-step-node${done ? " done" : ""}${active ? " active" : ""}`}>
+                {i < step ? "✓" : i + 1}
               </div>
-              {!last && <div className={`pr-step-line${i < step ? " pr-step-line--done" : ""}`} />}
+              {!last && <div className={`pr-step-line${i < step ? " done" : ""}`} />}
             </div>
             <div className="pr-step-content">
-              <span className={`pr-step-label${active ? " pr-step-label--active" : ""}${!done ? " pr-step-label--pending" : ""}`}>
-                {s}
-                {active && step < 2 && <span className="pr-step-current-badge">Actual</span>}
-                {active && step === 2 && <span className="pr-step-done-badge">✓ Completado</span>}
-              </span>
+              <span className={`pr-step-label${!done ? " pending" : ""}`}>{s}</span>
               {i === 0 && <span className="pr-step-sub">{fechaSolicitud}</span>}
             </div>
           </div>
@@ -233,8 +157,8 @@ function SolicitudStepper({ estatus, fechaSolicitud }: { estatus: string; fechaS
       {cerrado && (
         <div className="pr-step">
           <div className="pr-step-track">
-            <div className="pr-step-node" style={{ background: "#B91C1C", borderColor: "#B91C1C" }}>
-              <span className="pr-step-check">✕</span>
+            <div className="pr-step-node done" style={{ background: "#B91C1C", borderColor: "#B91C1C" }}>
+              ✕
             </div>
           </div>
           <div className="pr-step-content">
@@ -250,7 +174,10 @@ function InsumosTable({ items }: { items: DetalleItem[] }) {
   if (!items.length) {
     return (
       <div className="pr-no-evidence">
-        <span className="pr-no-evidence-icon">□</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M3 9h18M9 21V9"/>
+        </svg>
         <span>No hay insumos registrados en esta solicitud.</span>
       </div>
     );
@@ -260,14 +187,11 @@ function InsumosTable({ items }: { items: DetalleItem[] }) {
 
   return (
     <div style={{ width: "100%", borderRadius: 5, overflow: "hidden", border: "1px solid var(--pr-border)" }}>
-      {/* Cabecera */}
       <div style={{ display: "grid", gridTemplateColumns: cols, background: "var(--pr-navy)", padding: "8px 12px", gap: 8 }}>
         {["Insumo", "Especificaciones", "Stock", "Cant.", "Estado"].map(h => (
           <span key={h} style={{ fontSize: "6pt", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(255,255,255,0.5)" }}>{h}</span>
         ))}
       </div>
-
-      {/* Filas */}
       {items.map((d, i) => {
         const aprobado = d.aprobado == null ? true : Boolean(d.aprobado);
         return (
@@ -287,7 +211,7 @@ function InsumosTable({ items }: { items: DetalleItem[] }) {
               fontSize: "9pt", fontWeight: 700,
               color: d.stock > 5 ? "#15803D" : d.stock > 0 ? "#B45309" : "#B91C1C",
             }}>{d.stock} uds.</span>
-            <span style={{ fontSize: "12pt", fontWeight: 900, color: "var(--pr-orange)", letterSpacing: "-0.02em" }}>×{d.cantidad}</span>
+            <span style={{ fontSize: "12pt", fontWeight: 900, color: "var(--pr-accent)", letterSpacing: "-0.02em" }}>×{d.cantidad}</span>
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 3,
               fontSize: "7pt", fontWeight: 800,
@@ -299,8 +223,6 @@ function InsumosTable({ items }: { items: DetalleItem[] }) {
           </div>
         );
       })}
-
-      {/* Total */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "8px 12px", background: "var(--pr-navy)",
@@ -308,7 +230,7 @@ function InsumosTable({ items }: { items: DetalleItem[] }) {
         <span style={{ fontSize: "6.5pt", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(255,255,255,0.45)" }}>
           Total de piezas solicitadas
         </span>
-        <span style={{ fontSize: "13pt", fontWeight: 900, color: "var(--pr-orange2, #F47920)", letterSpacing: "-0.02em" }}>
+        <span style={{ fontSize: "13pt", fontWeight: 900, color: "#F47920", letterSpacing: "-0.02em" }}>
           {items.reduce((s, d) => s + d.cantidad, 0)} pzas.
         </span>
       </div>
@@ -318,70 +240,78 @@ function InsumosTable({ items }: { items: DetalleItem[] }) {
 
 export default function PrintSolicitudView({ solicitud }: PrintSolicitudViewProps) {
   const now      = new Date();
-  const fechaGen = `${fmt.fecha(now.toISOString())} · ${fmt.hora(now.toISOString())}`;
+  const fechaGen = `${fmt.fechaCorta(now.toISOString())} · ${fmt.hora(now.toISOString())}`;
   const fechaSol = `${fmt.fechaCorta(solicitud.fecha)} · ${fmt.hora(solicitud.fecha)}`;
+  const total    = solicitud.detalle.reduce((s, d) => s + d.cantidad, 0);
 
   const prio    = PRIO_META[solicitud.prioridad]  ?? PRIO_META.Baja;
   const estatus = ESTATUS_META[solicitud.estatus] ?? ESTATUS_META["Pendiente"];
-  const total   = solicitud.detalle.reduce((s, d) => s + d.cantidad, 0);
 
   return (
     <div className="pr-root" data-ready="true">
-
-      <CoverPage solicitud={solicitud} fechaGen={fechaGen} />
-
       <div className="pr-content">
-        <PageHeader folio={solicitud.folio_solicitud} />
 
-        <Section title="Resumen de la Solicitud" icon="▪">
-          <div className="pr-summary-banner">
-            <div className="pr-summary-left">
-              <span className="pr-micro-label">Folio</span>
-              <span className="pr-summary-folio">{solicitud.folio_solicitud}</span>
-            </div>
-            <div className="pr-summary-divider" />
-            <div className="pr-summary-badges">
-              <span className={`pr-badge pr-badge--lg ${prio.cls}`}>
-                <span className="pr-badge-dot" style={{ background: prio.dot }} />
-                Prioridad {solicitud.prioridad}
-              </span>
-              <span className={`pr-badge pr-badge--lg ${estatus.cls}`}>
-                {estatus.icon} {solicitud.estatus}
-              </span>
-              <span className="pr-badge pr-badge--lg badge-proceso">
-                {solicitud.detalle.length} tipo{solicitud.detalle.length !== 1 ? "s" : ""} · {total} pzas.
-              </span>
-            </div>
+        <PageHeader folio={solicitud.folio_solicitud} fechaGen={fechaGen} />
+
+        {/* ── Banda de estado ── */}
+        <div className="pr-status-bar">
+          <div className="pr-status-cell pr-status-cell--title">
+            <span className="pr-micro-label">Solicitante</span>
+            <span className="pr-status-title">{solicitud.nombre_empleado}</span>
           </div>
-          <DataRow items={[
-            { label: "Solicitante",        value: solicitud.nombre_empleado },
-            { label: "Departamento",       value: solicitud.nombre_departamento },
-            { label: "Fecha de solicitud", value: fechaSol },
-            { label: "Estado",             value: solicitud.estatus },
+          <div className="pr-status-cell">
+            <span className="pr-micro-label">Estatus</span>
+            <Badge
+              label={solicitud.estatus}
+              icon={estatus.icon}
+              bg={estatus.bg}
+              color={estatus.color}
+              border={estatus.border}
+            />
+          </div>
+          <div className="pr-status-cell">
+            <span className="pr-micro-label">Prioridad</span>
+            <Badge
+              label={prio.label}
+              bg={prio.bg}
+              color={prio.color}
+              border={prio.border}
+            />
+          </div>
+          <div className="pr-status-cell">
+            <span className="pr-micro-label">Total piezas</span>
+            <span className="pr-status-time">{total} pzas.</span>
+          </div>
+        </div>
+
+        {/* ── Datos de la solicitud ── */}
+        <Section title="Datos de la Solicitud">
+          <DataGrid items={[
+            { label: "Folio",              value: solicitud.folio_solicitud, half: true },
+            { label: "Solicitante",        value: solicitud.nombre_empleado, half: true },
+            { label: "Departamento",       value: solicitud.nombre_departamento, half: true },
+            { label: "Fecha de solicitud", value: fechaSol, half: true },
+            { label: "Estatus",            value: solicitud.estatus, half: true },
+            { label: "Prioridad",          value: solicitud.prioridad, half: true },
+            { label: "Tipos de insumo",    value: String(solicitud.detalle.length), half: true },
+            { label: "Total de piezas",    value: `${total} unidades`, half: true },
           ]} />
         </Section>
 
-        <Section title={`Insumos Solicitados (${solicitud.detalle.length} ítems)`} icon="▪" accent>
+        {/* ── Insumos solicitados ── */}
+        <Section title={`Insumos Solicitados — ${solicitud.detalle.length} ítem${solicitud.detalle.length !== 1 ? "s" : ""}`}>
           <InsumosTable items={solicitud.detalle} />
         </Section>
 
+        {/* ── Progreso + Firma ── */}
         <div className="pr-two-col">
-          <Section title="Estado de la Solicitud" icon="▪">
+          <Section title="Estado de la Solicitud">
             <SolicitudStepper estatus={solicitud.estatus} fechaSolicitud={fechaSol} />
           </Section>
 
-          <Section title="Información Adicional" icon="▪">
-            <DataRow items={[
-              { label: "Solicitante",            value: solicitud.nombre_empleado, wide: true },
-            ]} />
-            <DataRow items={[
-              { label: "Departamento / Área",    value: solicitud.nombre_departamento, wide: true },
-            ]} />
-            <DataRow items={[
-              { label: "Tipos de insumo",        value: String(solicitud.detalle.length) },
-              { label: "Total de piezas",        value: `${total} unidades` },
-            ]} />
-            <div className="pr-signature" style={{ marginTop: 12 }}>
+          <Section title="Firma del Solicitante">
+            <div className="pr-signature">
+              <div className="pr-signature-area" />
               <div className="pr-signature-line" />
               <span className="pr-signature-name">{solicitud.nombre_empleado}</span>
               <span className="pr-signature-role">Solicitante</span>
@@ -390,7 +320,7 @@ export default function PrintSolicitudView({ solicitud }: PrintSolicitudViewProp
           </Section>
         </div>
 
-        <PageFooter folio={solicitud.folio_solicitud} fecha={fechaGen} />
+        <PageFooter folio={solicitud.folio_solicitud} fechaGen={fechaGen} />
       </div>
     </div>
   );

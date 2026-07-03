@@ -23,7 +23,7 @@ const PASOS = [
     label: "Técnico asignado",
     desc:  "Se asignó un técnico a la incidencia",
     getMeta: ({ resuelto_por, nombreTecnico }, pasoActual) => {
-      const nombre = resuelto_por || nombreTecnico || null;
+      const nombre = nombreTecnico || resuelto_por || null;
       return {
         timestamp: null,
         extra:     nombre && pasoActual >= 1 ? `Técnico: ${nombre}` : null,
@@ -33,11 +33,18 @@ const PASOS = [
   {
     id:    "en_proceso",
     label: "En proceso",
-    desc:  "Incidencia siendo atendida",
-    getMeta: (_, pasoActual) => ({
-      timestamp: null,
-      extra:     pasoActual >= 2 ? "Trabajando en la solución" : null,
-    }),
+    desc:  "El técnico está trabajando activamente en la solución",
+    getMeta: ({ resuelto_por, nombreTecnico, nombreEmpleado }, pasoActual) => {
+      const tecnico = nombreTecnico || resuelto_por || null;
+      return {
+        timestamp: null,
+        extra: pasoActual >= 2
+          ? tecnico
+            ? `${tecnico} está atendiendo la incidencia de ${nombreEmpleado || 'el solicitante'}`
+            : "Diagnóstico y resolución en progreso"
+          : null,
+      };
+    },
   },
   {
     id:    "resuelto",

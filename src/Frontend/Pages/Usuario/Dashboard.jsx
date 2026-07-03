@@ -10,6 +10,7 @@ import NuevoReporte from "./NuevoReporte";
 import HistorialIncidencias from "./HistorialIncidencias";
 import ManualesIncidencias from "./ManualesIncidencias";
 import SolicitudInsumo from "./SolicitudInsumo";
+import VistaInsumos from "./VistaInsumos";
 import VistaTicket from "./VistaTicket";
 import VistaSolicitud from "./VistaSolicitud";
 import ConfiguracionPerfil from "./ConfiguracionPerfil";
@@ -23,7 +24,7 @@ const NAV = [
   { icon: LayoutDashboard, label: "Dashboard",               path: "/usuario/dashboard"        },
   { icon: FilePlus,        label: "Nuevo Reporte",            path: "/usuario/nuevo"            },
   { icon: ClipboardList,   label: "Historial de Incidencias", path: "/usuario/historial"        },
-  { icon: Package,         label: "Gestión de Insumos",       path: "/usuario/insumos"          },
+  { icon: Package,         label: "Gestión de Insumos",        path: "/usuario/solicitar"        },
   { icon: BookOpen,        label: "Manuales de Incidencias",  path: "/usuario/manuales"         },
   { icon: Settings,        label: "Configuración",            path: "/usuario/configuracion"    },
 ];
@@ -104,7 +105,7 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
 
 function Sidebar({ T, activo, onNavigate, onLogout }) {
   return (
-    <aside className="hidden lg:flex flex-shrink-0 flex-col sticky top-0 h-screen overflow-hidden"
+    <aside className="hidden lg:flex flex-shrink-0 flex-col sticky top-0 h-[100dvh] overflow-hidden"
       style={{ width: "var(--sidebar-w)", minWidth: 0, background: T.sidebar, boxShadow: "2px 0 12px rgba(0,0,0,0.15)" }}>
       <SidebarContent T={T} activo={activo} onNavigate={onNavigate} onLogout={onLogout} />
     </aside>
@@ -116,7 +117,7 @@ function SidebarMobile({ T, activo, onNavigate, open, onClose, onLogout }) {
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={onClose} />
-      <aside className="fixed top-0 left-0 z-50 flex flex-col h-screen lg:hidden"
+      <aside className="fixed top-0 left-0 z-50 flex flex-col h-[100dvh] overflow-y-auto lg:hidden"
         style={{ width: "min(260px, 80vw)", background: T.sidebar }}>
         <SidebarContent T={T} activo={activo} onNavigate={onNavigate} onClose={onClose} onLogout={onLogout} />
       </aside>
@@ -176,7 +177,6 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
   const activo    = NAV.findIndex(n => location.pathname.startsWith(n.path));
   const activoIdx = activo === -1 ? 0 : activo;
   const onNavigate = (path) => {
-    // Solo limpiar ticket/solicitud si navegamos a una sección diferente
     if (path !== location.pathname) {
       setTicketVer(null);
       setSolicitudVer(null);
@@ -231,7 +231,10 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
     if (!usuario?.id_empleado) return;
     apiFetch(API_ROUTES.SOLICITUDES_EMP(usuario.id_empleado))
       .then(r => r.json())
-      .then(data => setSolicitudes(Array.isArray(data) ? data : []))
+      .then(res => {
+        const data = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
+        setSolicitudes(data);
+      })
       .catch(err => console.error("[Usuario] Error cargando solicitudes:", err.message));
   }, [usuario?.id_empleado]);
 
@@ -275,7 +278,7 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
       : NAV[activoIdx]?.label || 'Dashboard';
 
   return (
-    <div className="flex h-screen w-full overflow-hidden"
+    <div className="flex h-[100dvh] w-full overflow-hidden"
       style={{ fontFamily: "var(--font-sans, 'Inter','Segoe UI',sans-serif)", background: T.bg }}>
 
       <Sidebar T={T} activo={activoIdx} onNavigate={onNavigate} onLogout={onLogout} />
@@ -284,7 +287,7 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
 
       <div className="flex flex-col flex-1 min-w-0">
 
-        <header className="sticky top-0 z-30 flex items-center justify-between px-3 md:px-5"
+        <header className="flex-shrink-0 z-30 flex items-center justify-between px-3 md:px-5"
           style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, height: "var(--header-h)", boxShadow: `0 1px 4px rgba(0,0,0,0.05)` }}>
           {errorRed && (
             <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 py-1.5 text-xs font-bold"

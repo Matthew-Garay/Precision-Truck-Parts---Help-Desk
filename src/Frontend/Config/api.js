@@ -1,40 +1,14 @@
 /**
- * api.js
+ * api.js — Módulo central de comunicación HTTP.
  *
- * Modulo central de comunicacion HTTP con el servidor backend.
- * Centraliza en un solo lugar la URL base, todas las rutas de la API,
- * el manejo del token JWT y la funcion de fetch con autenticacion.
+ * Persistencia de sesión:
+ *   El token JWT se guarda en localStorage ("_tk") para sobrevivir recargas
+ *   y navegación entre módulos. Se mantiene también en _token (memoria) para
+ *   acceso síncrono. Al montar la app, main.jsx renueva el token vía
+ *   POST /api/auth/refresh-token para detectar expiración.
  *
- * API_BASE
- *   URL base del servidor tomada de la variable de entorno VITE_API_URL.
- *   Si esta vacia (modo desarrollo con proxy de Vite) se usa string vacio
- *   para que las peticiones vayan al mismo origen.
- *
- * API_ROUTES
- *   Lista blanca de todas las rutas permitidas de la API. Las rutas que
- *   dependen de un id reciben una funcion que acepta el id y retorna el
- *   string con Number(id) aplicado para evitar inyeccion de segmentos.
- *
- * Manejo del token JWT:
- *   El token se guarda en sessionStorage bajo la clave "_tk" para que
- *   sobreviva recargas de pagina (F5) pero se elimine al cerrar la pestana.
- *   Se mantiene ademas en la variable _token en memoria para acceso sincrono.
- *   getToken()   - retorna el token actual o null
- *   setToken(t)  - guarda el token en memoria y sessionStorage
- *   clearToken() - elimina el token de ambos lugares
- *
- * clearSession()
- *   Elimina todos los datos de sesion (token, usuario, id_acceso) y redirige
- *   al login. Se llama automaticamente cuando el servidor retorna 401.
- *
- * apiFetch(endpoint, options)
- *   Wrapper sobre fetch() que:
- *     1. Valida que el endpoint sea un string que empiece con /api/
- *     2. Agrega el encabezado x-requested-with en peticiones de mutacion
- *        (POST, PUT, PATCH, DELETE) para la proteccion CSRF del servidor
- *     3. Serializa automaticamente el body a JSON si es un objeto plano
- *     4. Adjunta el token JWT en el encabezado Authorization si existe
- *     5. Si el servidor responde 401 llama a clearSession() y redirige al login
+ * clearSession() — elimina token + usuario + id_acceso y redirige a /login.
+ * apiFetch()     — adjunta JWT, CSRF header y serializa body automáticamente.
  */
 // Base URL fija desde variable de entorno — nunca proviene de input del usuario
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
@@ -75,6 +49,7 @@ const API_ROUTES = {
   SOLICITUDES_EMP:    (id) => `/api/solicitudes/empleado/${Number(id)}`,
   SOLICITUDES_PEND:   "/api/solicitudes/pendientes",
   INSUMOS:            "/api/solicitudes/insumos",
+  INSUMO_FOTO:        (id) => `/api/solicitudes/insumos/${Number(id)}/foto`,
   INVENTARIO:         "/api/solicitudes/inventario",
   // Categorias / Manuales
   CATEGORIAS:         "/api/categorias",
@@ -94,15 +69,16 @@ export { API_ROUTES };
 // la única mitigación real es usar httpOnly cookies gestionadas por el servidor.
 let _token = null;
 
-export const getToken   = () => _token ?? sessionStorage.getItem("_tk") ?? null;
-export const setToken   = (t) => { _token = t; if (t) sessionStorage.setItem("_tk", t); else sessionStorage.removeItem("_tk"); };
-export const clearToken = () => { _token = null; sessionStorage.removeItem("_tk"); };
+export const getToken   = () => _token ?? localStorage.getItem("_tk") ?? null;
+export const setToken   = (t) => { _token = t; if (t) localStorage.setItem("_tk", t); else localStorage.removeItem("_tk"); };
+export const clearToken = () => { _token = null; localStorage.removeItem("_tk"); };
 
 // Limpia toda la sesión y redirige al login
 export function clearSession() {
   _token = null;
-  sessionStorage.removeItem("usuario");
-  sessionStorage.removeItem("id_acceso");
+  localStorage.removeItem("_tk");
+  localStorage.removeItem("usuario");
+  localStorage.removeItem("id_acceso");
   sessionStorage.removeItem("pwd_actual");
   window.location.replace("/login");
 }
@@ -123,7 +99,7 @@ export async function apiFetch(endpoint, options = {}) {
 
   if (_token) headers["Authorization"] = `Bearer ${_token}`;
   else {
-    const stored = sessionStorage.getItem("_tk");
+    const stored = localStorage.getItem("_tk");
     if (stored) { _token = stored; headers["Authorization"] = `Bearer ${stored}`; }
   }
 

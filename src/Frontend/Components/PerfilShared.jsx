@@ -295,7 +295,7 @@ export function generarPDFAccesos({ accesos, usuario, fechaInicio, fechaFin }) {
 <div class="hdr">
   <img src="${origin}/assets/img/logo negro.png" class="hdr-logo" alt="PTP"/>
   <div class="hdr-center">
-    <div class="hdr-sub">Precision Truck Parts &amp; Accessories</div>
+    <div class="hdr-sub">Precision Truck Parts and Accessories</div>
     <div class="hdr-title">Historial de Accesos al Sistema</div>
   </div>
   <div style="text-align:right">
@@ -320,7 +320,7 @@ export function generarPDFAccesos({ accesos, usuario, fechaInicio, fechaFin }) {
   <tbody>${filas || "<tr><td colspan='4' style='padding:20px;text-align:center;color:#9ca3af;font-size:11px'>Sin registros</td></tr>"}</tbody>
 </table>
 <div class="ftr">
-  <div><div class="ftr-brand">Precision Truck Parts &amp; Accessories</div><div class="ftr-sub">Sistema HelpDesk · Documento de uso interno</div></div>
+  <div><div class="ftr-brand">Precision Truck Parts and Accessories</div><div class="ftr-sub">Sistema HelpDesk · Documento de uso interno</div></div>
   <img src="${origin}/assets/img/logo blanco.png" class="ftr-logo" alt="PTP"/>
   <div class="ftr-date">${new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}<br/>${new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}</div>
 </div>
