@@ -35,9 +35,11 @@ export const getTicketByFolio = async (req, res) => {
       return res.status(403).json({ error: "Acceso no autorizado" });
 
     const dir = safeResolvePath(EVIDENCIAS_BASE, folio);
-    const imagenes = fs.existsSync(dir)
-      ? fs.readdirSync(dir).filter(f => /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|avi)$/i.test(f)).sort()
-      : [];
+    let imagenes = [];
+    try {
+      const archivos = await fs.promises.readdir(dir);
+      imagenes = archivos.filter(f => /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|avi)$/i.test(f)).sort();
+    } catch { /* directorio no existe aún */ }
 
     res.json({ ...ticket, imagenes });
   } catch (err) {
@@ -144,10 +146,12 @@ export const getImagenesTicket = async (req, res) => {
     }
 
     const dir = safeResolvePath(EVIDENCIAS_BASE, ticket.folio_ticket);
-    if (!fs.existsSync(dir)) return res.json([]);
-    const archivos = fs.readdirSync(dir)
-      .filter(f => /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|avi)$/i.test(f))
-      .sort();
+    let archivos = [];
+    try {
+      archivos = (await fs.promises.readdir(dir))
+        .filter(f => /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|avi)$/i.test(f))
+        .sort();
+    } catch { /* directorio no existe aún */ }
     res.json(archivos);
   } catch (err) {
     console.error("[getImagenesTicket]", err.message);
@@ -192,8 +196,9 @@ export const actualizarTicket = async (req, res) => {
     }
     if (!updated) return res.status(404).json({ error: "Ticket no encontrado" });
 
-    // Invalidar caché de métricas al cambiar estatus
+    // Invalidar caché de métricas y rendimiento al cambiar estatus
     cache.del("metricas:dashboard");
+    cache.delByPrefix("rendimiento:");
 
     const [rows] = await pool.query(
       `SELECT t.id_empleado, t.titulo, t.folio_ticket,

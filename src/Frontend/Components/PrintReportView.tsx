@@ -1,4 +1,7 @@
-import "./print-report.css";
+import {
+  Badge, Stars, PageHeader, PageFooter, Section, DataGrid, Firma,
+  PRIO_META, ESTATUS_META, fmt, nowFechaGen,
+} from "./PrintShared";
 
 interface Ticket {
   folio_ticket: string;
@@ -17,34 +20,6 @@ interface Ticket {
   imagenes: string[];
 }
 
-interface PrintReportViewProps {
-  ticket: Ticket;
-  generadoPor?: string;
-}
-
-const fmt = {
-  fecha: (d: string) =>
-    new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" }),
-  fechaCorta: (d: string) =>
-    new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }),
-  hora: (d: string) =>
-    new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }),
-};
-
-const PRIO_META: Record<string, { label: string; bg: string; color: string; border: string }> = {
-  Urgente: { label: "URGENTE", bg: "#FEF2F2", color: "#B91C1C", border: "#FCA5A5" },
-  Alta:    { label: "ALTA",    bg: "#FFF7ED", color: "#C2410C", border: "#FDBA74" },
-  Media:   { label: "MEDIA",   bg: "#FEFCE8", color: "#A16207", border: "#FDE047" },
-  Baja:    { label: "BAJA",    bg: "#F0FDF4", color: "#15803D", border: "#86EFAC" },
-};
-
-const ESTATUS_META: Record<string, { icon: string; bg: string; color: string; border: string }> = {
-  "Resuelto":    { icon: "✓", bg: "#F0FDF4", color: "#15803D", border: "#86EFAC" },
-  "En proceso":  { icon: "◷", bg: "#FFF7ED", color: "#C2410C", border: "#FDBA74" },
-  "No Resuelto": { icon: "✕", bg: "#FEF2F2", color: "#B91C1C", border: "#FCA5A5" },
-  "Cancelado":   { icon: "✕", bg: "#F1F5F9", color: "#475569", border: "#CBD5E1" },
-};
-
 const CAL_LABEL = ["", "Muy malo", "Malo", "Regular", "Bueno", "Excelente"];
 
 function calcTiempo(inicio: string, fin: string): string {
@@ -53,103 +28,6 @@ function calcTiempo(inicio: string, fin: string): string {
   const h = Math.floor((mins % 1440) / 60);
   const m = mins % 60;
   return [d > 0 ? `${d}d` : "", h > 0 ? `${h}h` : "", `${m}m`].filter(Boolean).join(" ");
-}
-
-function Badge({ label, bg, color, border, icon }: {
-  label: string; bg: string; color: string; border: string; icon?: string;
-}) {
-  return (
-    <span className="pr-badge" style={{ background: bg, color, border: `1px solid ${border}` }}>
-      {icon && <span>{icon}</span>}
-      {label}
-    </span>
-  );
-}
-
-function Stars({ n }: { n: number }) {
-  return (
-    <span className="pr-stars">
-      {[1,2,3,4,5].map(i => (
-        <svg key={i} width="13" height="13" viewBox="0 0 24 24"
-          fill={i <= n ? "#F59E0B" : "none"}
-          stroke={i <= n ? "#D97706" : "#CBD5E1"}
-          strokeWidth="1.5">
-          <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
-        </svg>
-      ))}
-    </span>
-  );
-}
-
-function PageHeader({ folio, fechaGen }: { folio: string; fechaGen: string }) {
-  return (
-    <header className="pr-page-header">
-      {/* Logo izquierda */}
-      <div className="pr-header-logo">
-        <img src="/assets/img/logo negro.png" alt="Precision Truck Parts" className="pr-logo-img" />
-      </div>
-
-      {/* Centro: nombre empresa + tipo documento */}
-      <div className="pr-header-center">
-        <span className="pr-header-company">PRECISION TRUCK PARTS &amp; ACCESSORIES</span>
-        <span className="pr-header-doc">Reporte de Incidencia Técnica</span>
-        <span className="pr-header-dept">Departamento de Soporte Técnico</span>
-      </div>
-
-      {/* Derecha: folio + fecha */}
-      <div className="pr-header-meta">
-        <div className="pr-header-meta-row">
-          <span className="pr-micro-label">Folio</span>
-          <span className="pr-folio">{folio}</span>
-        </div>
-        <div className="pr-header-meta-row">
-          <span className="pr-micro-label">Generado</span>
-          <span className="pr-header-fecha">{fechaGen}</span>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function PageFooter({ folio, fechaGen }: { folio: string; fechaGen: string }) {
-  return (
-    <footer className="pr-page-footer">
-      <div className="pr-footer-logo-wrap">
-        <img src="/assets/img/log.png" alt="" className="pr-footer-logo" />
-      </div>
-      <span className="pr-footer-center-text">
-        Precision Truck Parts &amp; Accessories — Sistema de Soporte Técnico HelpDesk
-      </span>
-      <span className="pr-footer-right-text">{folio} · {fechaGen}</span>
-    </footer>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="pr-section">
-      <div className="pr-section-hdr">
-        <span className="pr-section-title">{title}</span>
-      </div>
-      <div className="pr-section-body">{children}</div>
-    </section>
-  );
-}
-
-function DataGrid({ items }: { items: { label: string; value: React.ReactNode; wide?: boolean; half?: boolean }[] }) {
-  return (
-    <div className="pr-data-grid">
-      {items.map(({ label, value, wide, half }, i) => (
-        <div
-          key={i}
-          className={`pr-data-cell${wide ? " wide" : ""}${half ? " half" : ""}`}
-        >
-          <span className="pr-micro-label">{label}</span>
-          <span className="pr-data-val">{value || "—"}</span>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 function ProgressStepper({ estatus, fechaAlta, horaAlta, fechaRes, horaRes, tecnico }: {
@@ -220,9 +98,8 @@ function EvidenceGallery({ folio, imagenes }: { folio: string; imagenes: string[
   );
 }
 
-export default function PrintReportView({ ticket }: PrintReportViewProps) {
-  const now       = new Date();
-  const fechaGen  = `${fmt.fechaCorta(now.toISOString())} · ${fmt.hora(now.toISOString())}`;
+export default function PrintReportView({ ticket }: { ticket: Ticket }) {
+  const fechaGen  = nowFechaGen();
   const calNum    = ticket.calificacion ? Math.min(5, Math.max(1, ticket.calificacion)) : 0;
   const fechaAlta = fmt.fechaCorta(ticket.fecha_subido);
   const horaAlta  = fmt.hora(ticket.fecha_subido);
@@ -238,7 +115,14 @@ export default function PrintReportView({ ticket }: PrintReportViewProps) {
     <div className="pr-root" data-ready="true">
       <div className="pr-content">
 
-        <PageHeader folio={ticket.folio_ticket} fechaGen={fechaGen} />
+        <PageHeader
+          titulo="Reporte de Incidencia Técnica"
+          subtitulo="Departamento de Soporte Técnico"
+          metaRows={[
+            { label: "Folio",    value: ticket.folio_ticket, mono: true },
+            { label: "Generado", value: fechaGen },
+          ]}
+        />
 
         {/* ── Banda de estado ── */}
         <div className="pr-status-bar">
@@ -248,22 +132,11 @@ export default function PrintReportView({ ticket }: PrintReportViewProps) {
           </div>
           <div className="pr-status-cell">
             <span className="pr-micro-label">Estatus</span>
-            <Badge
-              label={ticket.estatus}
-              icon={estatus.icon}
-              bg={estatus.bg}
-              color={estatus.color}
-              border={estatus.border}
-            />
+            <Badge label={ticket.estatus} icon={estatus.icon} bg={estatus.bg} color={estatus.color} border={estatus.border} />
           </div>
           <div className="pr-status-cell">
             <span className="pr-micro-label">Prioridad</span>
-            <Badge
-              label={prio.label}
-              bg={prio.bg}
-              color={prio.color}
-              border={prio.border}
-            />
+            <Badge label={prio.label} bg={prio.bg} color={prio.color} border={prio.border} />
           </div>
           {tiempoRes && (
             <div className="pr-status-cell">
@@ -273,7 +146,6 @@ export default function PrintReportView({ ticket }: PrintReportViewProps) {
           )}
         </div>
 
-        {/* ── Datos del reporte ── */}
         <Section title="Datos del Reporte">
           <DataGrid items={[
             { label: "Folio",          value: ticket.folio_ticket, half: true },
@@ -292,7 +164,6 @@ export default function PrintReportView({ ticket }: PrintReportViewProps) {
           ]} />
         </Section>
 
-        {/* ── Descripción ── */}
         <Section title="Descripción del Problema">
           <div
             className="pr-rich-text"
@@ -302,7 +173,6 @@ export default function PrintReportView({ ticket }: PrintReportViewProps) {
           />
         </Section>
 
-        {/* ── Resolución del técnico ── */}
         <Section title="Resolución y Comentarios del Técnico">
           <div className="pr-resolution-box">
             <div className="pr-resolution-header">
@@ -318,7 +188,6 @@ export default function PrintReportView({ ticket }: PrintReportViewProps) {
           </div>
         </Section>
 
-        {/* ── Progreso + Calificación ── */}
         <div className="pr-two-col">
           <Section title="Progreso del Ticket">
             <ProgressStepper
@@ -342,22 +211,18 @@ export default function PrintReportView({ ticket }: PrintReportViewProps) {
             ) : (
               <p className="pr-empty">Valoración pendiente.</p>
             )}
-            <div className="pr-signature">
-              <div className="pr-signature-area" />
-              <div className="pr-signature-line" />
-              <span className="pr-signature-name">{ticket.resuelto_por ?? "Pendiente"}</span>
-              <span className="pr-signature-role">Técnico de Soporte</span>
-              <span className="pr-signature-role">Precision Truck Parts &amp; Accessories</span>
-            </div>
+            <Firma nombre={ticket.resuelto_por ?? "Pendiente"} rol="Técnico de Soporte" />
           </Section>
         </div>
 
-        {/* ── Evidencias (siempre visible, estructurada aunque esté vacía) ── */}
-        <Section title={ticket.imagenes.length > 0 ? `Evidencias Fotográficas — ${ticket.imagenes.length} archivo${ticket.imagenes.length !== 1 ? "s" : ""}` : "Evidencias Fotográficas"}>
+        <Section title={ticket.imagenes.length > 0
+          ? `Evidencias Fotográficas — ${ticket.imagenes.length} archivo${ticket.imagenes.length !== 1 ? "s" : ""}`
+          : "Evidencias Fotográficas"
+        }>
           <EvidenceGallery folio={ticket.folio_ticket} imagenes={ticket.imagenes} />
         </Section>
 
-        <PageFooter folio={ticket.folio_ticket} fechaGen={fechaGen} />
+        <PageFooter right={`${ticket.folio_ticket} · ${fechaGen}`} />
       </div>
     </div>
   );

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import {
-  Package, TrendingDown, Users, BarChart3,
+  Package, TrendingDown, AlertTriangle, BarChart3,
   Inbox, Plus, Pencil, Trash2, RefreshCw, Layers, Eye,
+  CheckCircle2, XCircle, Activity,
 } from "lucide-react";
 import { apiFetch }      from "../../Config/api";
 import FiltrosToolbar    from "../../Components/FiltrosToolbar";
@@ -138,36 +139,41 @@ function IconBtn({ onClick, title, children, hoverColor = "#2563eb", hoverBg = "
   );
 }
 
-// ── KPI Card — Enterprise SaaS ────────────────────────────────────
-function KpiCard({ label, value, sub, icon: Icon, color, highlight = false }) {
+// ── KPI Card ─────────────────────────────────────────────────────
+function KpiCard({ label, value, sub, icon: Icon, color, highlight = false, pct }) {
   const { T } = useTheme();
   return (
     <div style={{
-      background: T.surface, borderRadius: "8px",
-      border: `1px solid ${highlight ? `${color}40` : T.border}`,
-      boxShadow: highlight ? `0 0 0 1px ${color}20, ${T.shadowSm}` : T.shadowSm,
+      background: T.surface, borderRadius: "10px",
+      border: `1px solid ${highlight ? `${color}50` : T.border}`,
+      boxShadow: highlight ? `0 0 0 1px ${color}18, ${T.shadowSm}` : T.shadowSm,
       overflow: "hidden", display: "flex", flexDirection: "column",
       transition: "box-shadow 0.2s",
     }}>
-      <div style={{ height: "3px", background: color, borderRadius: "8px 8px 0 0" }} />
+      <div style={{ height: "3px", background: `linear-gradient(90deg, ${color}, ${color}88)` }} />
       <div style={{ padding: "14px 16px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>
+          <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textFaint }}>
             {label}
           </p>
-          <p style={{ margin: "4px 0 0", fontSize: "16px", fontWeight: 800, lineHeight: 1, color: highlight ? color : T.text }}>
+          <p style={{ margin: "5px 0 0", fontSize: "22px", fontWeight: 900, lineHeight: 1, color: highlight ? color : T.text, fontVariantNumeric: "tabular-nums" }}>
             {value}
           </p>
           {sub && (
-            <p style={{ margin: "4px 0 0", fontSize: "11px", color: T.textFaint, fontWeight: 500 }}>{sub}</p>
+            <p style={{ margin: "5px 0 0", fontSize: "11px", color: T.textFaint, fontWeight: 500, lineHeight: 1.3 }}>{sub}</p>
+          )}
+          {pct !== undefined && (
+            <div style={{ marginTop: "8px", height: "3px", borderRadius: "99px", background: T.border, overflow: "hidden" }}>
+              <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: "99px", transition: "width 0.6s ease" }} />
+            </div>
           )}
         </div>
         <div style={{
-          width: "36px", height: "36px", borderRadius: "8px", flexShrink: 0,
+          width: "38px", height: "38px", borderRadius: "10px", flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
-          background: `${color}18`, border: `1px solid ${color}28`,
+          background: `${color}15`, border: `1px solid ${color}25`,
         }}>
-          <Icon size={16} style={{ color }} />
+          <Icon size={17} style={{ color }} />
         </div>
       </div>
     </div>
@@ -207,12 +213,6 @@ function DataTable({ rows, onEdit, onDelete, onDetail }) {
               transition: "background 0.1s",
               verticalAlign: "middle",
             };
-            const fecha = row.updated_at
-              ? new Date(row.updated_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
-              : row.created_at
-                ? new Date(row.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
-                : "—";
-
             return (
               <tr
                 key={row.id_insumo}
@@ -270,10 +270,9 @@ function DataTable({ rows, onEdit, onDelete, onDetail }) {
   );
 }
 
+const PAGE_SIZE = 15;
+
 // ── Página principal ──────────────────────────────────────────────
-// Nota: este componente usa useTheme() internamente para obtener el tema.
-// La prop T que pasa el Dashboard es ignorada intencionalmente ya que el
-// hook garantiza que siempre tenga el valor más actualizado del contexto.
 export default function Inventario() {
   const [insumos,    setInsumos]    = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -281,6 +280,7 @@ export default function Inventario() {
   const [syncing,    setSyncing]    = useState(false);
   const [ultimaSync, setUltimaSync] = useState(null);
   const [filtros,    setFiltros]    = useState({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos" });
+  const [pagina,     setPagina]     = useState(1);
   const [modal,      setModal]      = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
   const [detalle,    setDetalle]    = useState(null);
@@ -357,13 +357,18 @@ export default function Inventario() {
   });
 
   const hayFiltros    = filtros.busqueda || filtros.estado !== "Todos" || filtros.categoria !== "Todos" || filtros.stock !== "Todos";
+  const totalPaginas  = Math.max(1, Math.ceil(filtrados.length / PAGE_SIZE));
+  const paginaActual  = Math.min(pagina, totalPaginas);
+  const filasPagina   = filtrados.slice((paginaActual - 1) * PAGE_SIZE, paginaActual * PAGE_SIZE);
+  const irPagina      = p => { if (p >= 1 && p <= totalPaginas) setPagina(p); };
   const totalStock     = insumos.reduce((s, i) => s + (i.stock || 0), 0);
-  const estadoMalo     = insumos.filter(i => i.estado === "Malo").length;
-  const estadoRegular  = insumos.filter(i => i.estado === "Regular").length;
   const categoriasCnt  = new Set(insumos.map(i => i.id_categoria).filter(Boolean)).size;
-  const activosEnUso   = insumos.filter(i => i.disponibilidad === "Stock bajo" || i.disponibilidad === "Sin stock").length;
   const stockBajo      = insumos.filter(i => (i.stock ?? 0) > 0 && (i.stock ?? 0) <= 3).length;
   const sinStock       = insumos.filter(i => (i.stock ?? 0) === 0).length;
+  const criticos       = stockBajo + sinStock;
+  const estadoBueno    = insumos.filter(i => i.estado === "Excelente" || i.estado === "Bueno").length;
+  const estadoMalo     = insumos.filter(i => i.estado === "Malo" || i.estado === "Regular").length;
+  const tasaSalud      = insumos.length > 0 ? Math.round((estadoBueno / insumos.length) * 100) : 0;
 
   const { T } = useTheme();
 
@@ -373,13 +378,11 @@ export default function Inventario() {
 
         {/* ── Page Header ───────────────────────────────────────── */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: "13px", fontWeight: 800, color: T.text, letterSpacing: "-0.02em" }}>
-              Inventario de Insumos
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ width: "3px", height: "28px", borderRadius: "2px", background: `linear-gradient(180deg, ${TEAL.base}, #06b6d4)`, flexShrink: 0 }} />
+            <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 800, color: T.text, letterSpacing: "-0.02em" }}>
+              Inventario
             </h1>
-            <p style={{ margin: "2px 0 0", fontSize: "11px", color: T.textFaint }}>
-              Gestión y control de piezas en almacén
-            </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             {ultimaSync && (
@@ -409,26 +412,30 @@ export default function Inventario() {
         </div>
 
         {/* ── KPIs ──────────────────────────────────────────────── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(175px, 1fr))", gap: "12px" }}>
           <KpiCard
-            label="Total de Activos" value={insumos.length}
-            sub={`${categoriasCnt} categoría${categoriasCnt !== 1 ? "s" : ""}`}
-            icon={Package}       color={TEAL.base}
+            label="Total Registrados" value={insumos.length}
+            sub={`${categoriasCnt} categoría${categoriasCnt !== 1 ? "s" : ""} · ${insumos.filter(i => i.stock > 0).length} con existencia`}
+            icon={Package} color={TEAL.base}
+            pct={insumos.length > 0 ? Math.round((insumos.filter(i => i.stock > 0).length / insumos.length) * 100) : 0}
           />
           <KpiCard
-            label="Con Stock Bajo / Agotados" value={activosEnUso}
-            sub={insumos.length > 0 ? `${Math.round((activosEnUso / insumos.length) * 100)}% del catálogo` : "Sin datos"}
-            icon={Users}         color={ORANGE.base}  highlight
+            label="Piezas en Stock" value={totalStock}
+            sub={`Promedio ${insumos.length > 0 ? (totalStock / insumos.length).toFixed(1) : 0} uds. por insumo`}
+            icon={BarChart3} color="#2563eb"
           />
           <KpiCard
-            label="Stock Bajo"       value={stockBajo}
-            sub={sinStock > 0 ? `+${sinStock} sin existencia` : "Revisión recomendada"}
-            icon={TrendingDown}   color="#dc2626"      highlight={stockBajo > 0}
+            label="Críticos" value={criticos}
+            sub={`${stockBajo} stock bajo · ${sinStock} agotado${sinStock !== 1 ? "s" : ""}`}
+            icon={AlertTriangle} color={ORANGE.base} highlight={criticos > 0}
+            pct={insumos.length > 0 ? Math.round((criticos / insumos.length) * 100) : 0}
           />
           <KpiCard
-            label="Piezas en Stock"  value={totalStock}
-            sub={`${insumos.filter(i => i.stock > 0).length} con existencia`}
-            icon={BarChart3}     color="#16a34a"
+            label="Salud del Catálogo" value={`${tasaSalud}%`}
+            sub={estadoMalo > 0 ? `${estadoMalo} en estado deficiente` : "Todo en buen estado"}
+            icon={tasaSalud >= 70 ? CheckCircle2 : Activity}
+            color={tasaSalud >= 70 ? "#16a34a" : tasaSalud >= 40 ? "#d97706" : "#dc2626"}
+            highlight={tasaSalud < 70} pct={tasaSalud}
           />
         </div>
 
@@ -436,8 +443,8 @@ export default function Inventario() {
         <FiltrosToolbar
           campos={camposFiltro}
           valores={filtros}
-          onChange={(k, v) => setFiltros(p => ({ ...p, [k]: v }))}
-          onLimpiar={() => setFiltros({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos" })}
+          onChange={(k, v) => { setFiltros(p => ({ ...p, [k]: v })); setPagina(1); }}
+          onLimpiar={() => { setFiltros({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos" }); setPagina(1); }}
           T={T}
         />
 
@@ -458,12 +465,12 @@ export default function Inventario() {
                 color: "#0d9488",
                 border: T.isDark ? "1px solid rgba(13,148,136,0.35)" : "1px solid #99f6e4",
               }}>
-                {filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}
+                {filtrados.length} registro{filtrados.length !== 1 ? "s" : ""} · pág. {paginaActual}/{totalPaginas}
               </span>
             </div>
             {hayFiltros && (
               <button
-                onClick={() => setFiltros({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos" })}
+                onClick={() => { setFiltros({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos" }); setPagina(1); }}
                 style={{
                   fontSize: "11px", fontWeight: 600, color: T.textMuted, background: "transparent",
                   border: `1px solid ${T.border}`, borderRadius: "4px", padding: "3px 10px",
@@ -491,10 +498,35 @@ export default function Inventario() {
                 </p>
               </div>
             ) : (
-              <DataTable rows={filtrados} onEdit={setModal} onDelete={setConfirmDel} onDetail={setDetalle} />
+              <DataTable rows={filasPagina} onEdit={setModal} onDelete={setConfirmDel} onDetail={setDetalle} />
             )}
           </div>
         </div>
+        {/* Paginación */}
+        {totalPaginas > 1 && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", padding: "8px 0", flexShrink: 0 }}>
+            <button onClick={() => irPagina(1)} disabled={paginaActual === 1}
+              style={{ padding: "4px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: "pointer", border: `1px solid ${T.border}`, background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, opacity: paginaActual === 1 ? 0.3 : 1 }}>«</button>
+            <button onClick={() => irPagina(paginaActual - 1)} disabled={paginaActual === 1}
+              style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: "pointer", border: `1px solid ${T.border}`, background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, opacity: paginaActual === 1 ? 0.3 : 1 }}>‹ Anterior</button>
+            {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
+              const start = Math.max(1, Math.min(paginaActual - 2, totalPaginas - 4));
+              const p = start + i;
+              if (p > totalPaginas) return null;
+              return (
+                <button key={p} onClick={() => irPagina(p)}
+                  style={{ width: "30px", height: "30px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: "pointer", border: `1px solid ${p === paginaActual ? TEAL.base : T.border}`, background: p === paginaActual ? TEAL.base : (T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt), color: p === paginaActual ? "#fff" : T.textMuted }}>
+                  {p}
+                </button>
+              );
+            })}
+            <button onClick={() => irPagina(paginaActual + 1)} disabled={paginaActual === totalPaginas}
+              style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: "pointer", border: `1px solid ${T.border}`, background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, opacity: paginaActual === totalPaginas ? 0.3 : 1 }}>Siguiente ›</button>
+            <button onClick={() => irPagina(totalPaginas)} disabled={paginaActual === totalPaginas}
+              style={{ padding: "4px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: "pointer", border: `1px solid ${T.border}`, background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, opacity: paginaActual === totalPaginas ? 0.3 : 1 }}>»</button>
+          </div>
+        )}
+
       </div>
 
       <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>

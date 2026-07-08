@@ -1,39 +1,3 @@
-/**
- * Manual.js
- *
- * Modelo que encapsula todas las operaciones sobre la tabla `manual`.
- * Los manuales son documentos PDF que el administrador puede subir al
- * sistema para que los empleados los consulten como guias de incidencias.
- *
- * Metodos:
- *
- *   getAll()
- *     Retorna todos los manuales con nombre de categoria, ordenados del
- *     mas reciente al mas antiguo por fecha de subida.
- *     Incluye la ruta del archivo PDF en disco para que el servidor
- *     construya la URL publica de descarga.
- *
- *   crear(campos)
- *     Inserta un nuevo registro de manual con nombre, descripcion opcional,
- *     ruta del PDF en disco e id de categoria.
- *     Retorna el insertId del nuevo registro.
- *
- *   actualizar(id_manual, campos)
- *     Actualiza el nombre, descripcion y categoria de un manual.
- *     No actualiza la ruta del PDF (para reemplazar el archivo se
- *     debe eliminar y volver a subir).
- *     Retorna true si se afecto al menos un registro.
- *
- *   getRuta(id_manual)
- *     Retorna solo la ruta del archivo PDF almacenada en la base de datos.
- *     Se usa para obtener la ruta antes de eliminar el archivo del disco,
- *     sin necesidad de traer todos los campos del manual.
- *
- *   eliminar(id_manual)
- *     Elimina el registro del manual de la base de datos.
- *     Retorna true si fue eliminado. El servidor se encarga de eliminar
- *     tambien el archivo PDF del disco despues de llamar este metodo.
- */
 import pool from "../Config/db.js";
 
 const Manual = {
@@ -72,6 +36,13 @@ const Manual = {
       [id_manual]
     );
     return row?.ruta_pdf || null;
+  },
+
+  actualizarFechaCambio: async (id_manual) => {
+    await pool.query(
+      `UPDATE manual SET fecha_cambio = NOW() WHERE id_manual = ?`,
+      [id_manual]
+    );
   },
 
   eliminar: async (id_manual) => {

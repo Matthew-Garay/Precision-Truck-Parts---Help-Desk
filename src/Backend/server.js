@@ -85,10 +85,16 @@ const app        = express();
 const httpServer = createServer(app);
 const PORT       = process.env.PORT || 3001;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
+const CORS_ORIGINS = [...new Set([
+  CORS_ORIGIN,
+  process.env.APP_URL,
+  "http://localhost:5173",
+  "http://localhost:3001",
+].filter(Boolean))];
 
 // -- Socket.io ------------------------------------------------
 const io = new Server(httpServer, {
-  cors: { origin: CORS_ORIGIN, methods: ["GET", "POST"] },
+  cors: { origin: CORS_ORIGINS, methods: ["GET", "POST"] },
 });
 setIO(io);
 
@@ -148,10 +154,21 @@ app.use(helmet({
       styleSrc:    ["'self'", "'unsafe-inline'"],
       imgSrc:      ["'self'", "data:", "blob:"],
       fontSrc:     ["'self'", "data:"],
-      connectSrc:  ["'self'", CORS_ORIGIN,
-                    CORS_ORIGIN.replace(/^http/, "ws"),
-                    `ws://localhost:${PORT}`,
-                    `wss://localhost:${PORT}`],
+      connectSrc:  (() => {
+                    const origins = new Set(["'self'"]);
+                    const addOrigin = (url) => {
+                      if (!url) return;
+                      origins.add(url);
+                      origins.add(url.replace(/^https/, "wss").replace(/^http/, "ws"));
+                    };
+                    addOrigin(CORS_ORIGIN);
+                    addOrigin(process.env.APP_URL);
+                    // localhost siempre permitido para dev
+                    origins.add(`http://localhost:${PORT}`);
+                    origins.add(`ws://localhost:${PORT}`);
+                    origins.add(`wss://localhost:${PORT}`);
+                    return [...origins];
+                  })(),
       objectSrc:   ["'self'"],
       frameSrc:    ["'self'", "blob:"],
       frameAncestors: ["'self'", CORS_ORIGIN],
@@ -162,12 +179,17 @@ app.use(helmet({
   xContentTypeOptions: true,
   xFrameOptions: false,
 }));
-app.use(cors({ origin: CORS_ORIGIN }));
+app.use(cors({ origin: CORS_ORIGINS }));
 app.use(express.json({ limit: "2mb" }));
 // Excluir archivos sensibles del servidor estático
 app.use("/storage", (req, res, next) => {
   const blocked = /(\.json|\.env)$/i;
   if (blocked.test(req.path)) return res.status(403).json({ error: "Acceso no permitido" });
+  if (/\.pdf$/i.test(req.path)) {
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "inline");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+  }
   next();
 }, express.static(path.resolve(__dirname, "../../storage")));
 app.use("/fotos", requireAuth, express.static(path.resolve(__dirname, "../../storage/Fotos de Perfil")));
@@ -207,6 +229,13 @@ app.use("/api/manuales",    manualesRoutes);
 app.use("/api", (req, res) => {
   res.status(404).json({ error: `Ruta no encontrada: ${req.method} ${req.path}` });
 });
+
+// -- Servir frontend en producción ------------------------------------
+if (process.env.NODE_ENV === "production") {
+  const distPath = path.resolve(__dirname, "../../dist");
+  app.use(express.static(distPath));
+  app.get("*", (_req, res) => res.sendFile(path.join(distPath, "index.html")));
+}
 
 // -- Middleware global de errores -----------------------------
 // eslint-disable-next-line no-unused-vars

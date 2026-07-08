@@ -135,24 +135,22 @@ export function useTicketNotification({ usuario, onNavegar }) {
   // procesarEvento es estable (sin dependencias que cambien) gracias a los refs
   const procesarEvento = useCallback(async ({ tipo, data }) => {
     const esAdmin = esAdminRef.current;
-    // Filtrar eventos por rol:
-    // - Admin no recibe eventos exclusivos de usuario (excepto ticket:en_atencion que es compartido)
-    // - Usuario no recibe eventos exclusivos de admin
     if (esAdmin  && EVENTOS_USUARIO.has(tipo) && !EVENTOS_ADMIN.has(tipo)) return;
     if (!esAdmin && EVENTOS_ADMIN.has(tipo)   && !EVENTOS_USUARIO.has(tipo)) return;
 
+    // entityId solo se usa para deduplicación — no bloquea eventos sin id
     const entityId =
       data?.id_ticket ?? data?.id_solicitud ??
-      data?.folio_ticket ?? data?.folio_solicitud;
-    if (!entityId) return;
+      data?.folio_ticket ?? data?.folio_solicitud ??
+      tipo; // fallback: usar el tipo como clave para eventos sin entidad (tickets:vencidos, insumo:stock_critico)
 
     const dedupeKey = `${tipo}_${entityId}_${data?.estatus ?? ""}`;
     if (procesandoRef.current.has(dedupeKey)) return;
     procesandoRef.current.add(dedupeKey);
     setTimeout(() => procesandoRef.current.delete(dedupeKey), 3000);
 
-    // Verificar existencia del ticket
-    if (EVENTOS_CON_TICKET_ID.has(tipo) && data?.id_ticket) {
+    // Verificar existencia del ticket — excepto ticket:confirmado (recién creado, puede no estar aún)
+    if (EVENTOS_CON_TICKET_ID.has(tipo) && data?.id_ticket && tipo !== "ticket:confirmado") {
       const existe = await verifyTicketExists(data.id_ticket);
       if (!existe) return;
     }
@@ -165,8 +163,7 @@ export function useTicketNotification({ usuario, onNavegar }) {
 
     playNotificationSound(tipo);
 
-    const duracion =
-      tipo === "ticket:sla_warning" || tipo === "tickets:vencidos" ? 0 : 5000;
+    const duracion = 0;
     toastRef.current[notif.toastTipo](notif.mensaje, {
       title: notif.titulo,
       duration: duracion,

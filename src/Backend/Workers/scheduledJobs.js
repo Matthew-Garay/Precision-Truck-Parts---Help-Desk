@@ -51,12 +51,13 @@ export function iniciarWorkers(io) {
   // Sets persistentes en disco — sobreviven reinicios del servidor
   const { slaAlertados, sinAtenderAlertados, stockAlertados } = crearSetsPersistentes();
 
+  // Guard de solapamiento: evita que una ejecución lenta se superponga con la siguiente
+  let corriendo = { sla: false, vencidos: false, sesiones: false, stock: false, sinAtender: false };
+
   // -- Alertas SLA: tickets próximos a vencer (~46.5h) ------------
-  // DISEÑO INTENCIONAL: La alerta se emite a las 2790 min (~46.5h) para
-  // que el admin tenga al menos 1.5 horas de margen antes del cierre
-  // automático que ocurre a las 48h exactas (INTERVAL 2 DAY en BD).
-  // El orden de ejecución importa: SLA primero, vencidos después.
   const ivSLA = setInterval(async () => {
+    if (corriendo.sla) return;
+    corriendo.sla = true;
     try {
       const [proximos] = await pool.query(
         `SELECT t.id_ticket, t.folio_ticket, t.titulo, t.prioridad,
@@ -98,6 +99,8 @@ export function iniciarWorkers(io) {
       console.log(`Alertas SLA enviadas: ${nuevos.length} ticket(s)`);
     } catch (err) {
       console.error("Error verificando SLA:", err.message);
+    } finally {
+      corriendo.sla = false;
     }
   }, 30 * 60 * 1000);
   ivSLA.unref();
@@ -106,6 +109,8 @@ export function iniciarWorkers(io) {
   // Se ejecuta DESPUÉS del worker SLA para que la alerta siempre
   // se emita antes de que el ticket sea marcado como cerrado.
   const ivVencidos = setInterval(async () => {
+    if (corriendo.vencidos) return;
+    corriendo.vencidos = true;
     try {
       const vencidos = await Ticket.cerrarVencidos();
       if (vencidos.length === 0) return;
@@ -120,18 +125,21 @@ export function iniciarWorkers(io) {
           resuelto_por:   null,
         };
         io.to(`empleado_${t.id_empleado}`).emit("ticket:actualizado", payload);
-        // Notificar a admins para que recarguen Kanban/historial
         io.to("admins").emit("ticket:actualizado", payload);
       });
       io.to("admins").emit("tickets:vencidos", { total: vencidos.length });
     } catch (err) {
       console.error("Error cerrando tickets vencidos:", err.message);
+    } finally {
+      corriendo.vencidos = false;
     }
   }, 60 * 60 * 1000);
   ivVencidos.unref();
 
   // -- Limpieza periódica de sesiones huérfanas ----------------
   const ivSesiones = setInterval(async () => {
+    if (corriendo.sesiones) return;
+    corriendo.sesiones = true;
     try {
       const [result] = await pool.query(
         `UPDATE historial_acceso
@@ -144,20 +152,35 @@ export function iniciarWorkers(io) {
     } catch (err) {
       console.error("Error limpiando sesiones huérfanas:", err.message);
     }
+    // Purgar registros de historial_acceso con más de 90 días (evita crecimiento ilimitado)
+    try {
+      const [purga] = await pool.query(
+        `DELETE FROM historial_acceso
+         WHERE fecha_salida IS NOT NULL
+         AND fecha_entrada < DATE_SUB(NOW(), INTERVAL 90 DAY)`
+      );
+      if (purga.affectedRows > 0)
+        console.log(`Historial de accesos purgado: ${purga.affectedRows} registros eliminados`);
+    } catch (err) {
+      console.error("Error purgando historial de accesos:", err.message);
+    }
     // Limpiar tokens JWT revocados ya expirados
     try {
       await limpiarTokensRevocados();
     } catch (err) {
       console.error("Error limpiando tokens revocados:", err.message);
+    } finally {
+      corriendo.sesiones = false;
     }
   }, 60 * 60 * 1000);
   ivSesiones.unref();
 
   // -- Alerta de stock crítico (≤ 5 unidades) -----------------
   const ivStock = setInterval(async () => {
+    if (corriendo.stock) return;
+    corriendo.stock = true;
     try {
       const criticos = await Insumo.getStockBajo(5);
-      // Limpiar insumos que ya no son críticos
       const criticosIds = new Set(criticos.map(i => i.id_insumo));
       for (const id of stockAlertados) {
         if (!criticosIds.has(id)) stockAlertados.delete(id);
@@ -176,12 +199,16 @@ export function iniciarWorkers(io) {
       console.log(`Stock critico: ${nuevos.length} insumo(s)`);
     } catch (err) {
       console.error("Error verificando stock crítico:", err.message);
+    } finally {
+      corriendo.stock = false;
     }
   }, 60 * 60 * 1000);
   ivStock.unref();
 
   // -- Tickets sin atender en 24h: recordatorio al admin -------
   const ivSinAtender = setInterval(async () => {
+    if (corriendo.sinAtender) return;
+    corriendo.sinAtender = true;
     try {
       const [pendientes] = await pool.query(
         `SELECT id_ticket, folio_ticket, titulo, prioridad, fecha_subido
@@ -190,7 +217,6 @@ export function iniciarWorkers(io) {
          AND id_tecnico IS NULL
          AND TIMESTAMPDIFF(HOUR, fecha_subido, NOW()) >= 24`
       );
-      // Limpiar del Set tickets que ya fueron atendidos o cerrados
       const pendientesIds = new Set(pendientes.map(t => t.id_ticket));
       for (const id of sinAtenderAlertados) {
         if (!pendientesIds.has(id)) sinAtenderAlertados.delete(id);
@@ -210,6 +236,8 @@ export function iniciarWorkers(io) {
       console.log(`Tickets sin atender >24h: ${nuevos.length}`);
     } catch (err) {
       console.error("Error verificando tickets sin atender:", err.message);
+    } finally {
+      corriendo.sinAtender = false;
     }
   }, 60 * 60 * 1000);
   ivSinAtender.unref();

@@ -1,12 +1,16 @@
 import { useState, useRef } from "react";
+import PdfViewer from "../../Components/PdfViewer";
 import {
-  Search, Upload, BookOpen, X, Check, Loader2, FileText,
+  Upload, X, Check, FileText,
   Trash2, Pencil, Download, MoreVertical, Eye, Tag, Clock,
+  LayoutGrid, List, ChevronUp, ChevronDown,
 } from "lucide-react";
 import { apiFetch, API_ROUTES } from "../../Config/api";
 import API from "../../Config/api";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import { usePdfCover } from "../../Components/hooks/usePdfCover";
+import Modal from "../../Components/Modal";
+import FiltrosToolbar from "../../Components/FiltrosToolbar";
 import {
   FONT, RADIUS, NEUTRAL, SLATE, SEMANTIC,
   BTN_PRIMARY, BTN_GHOST, BTN_DANGER, MODAL,
@@ -58,8 +62,7 @@ function ModalForm({ T, categorias, manual, archivo, onClose, onGuardado }) {
     return e;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     const e2 = validar();
     if (Object.keys(e2).length) { setErrores(e2); return; }
     setLoading(true);
@@ -88,106 +91,105 @@ function ModalForm({ T, categorias, manual, archivo, onClose, onGuardado }) {
     }
   };
 
+  const previewBtn = !esEdicion && archivo ? (
+    <button
+      type="button"
+      onClick={() => setPreview(p => !p)}
+      style={{
+        background: preview ? "rgba(244,121,32,0.25)" : "rgba(255,255,255,0.10)",
+        border: "1px solid rgba(255,255,255,0.20)",
+        color: "#fff", cursor: "pointer", borderRadius: RADIUS.sm,
+        padding: "4px 10px", fontSize: "11px", fontWeight: 600,
+        display: "flex", alignItems: "center", gap: 4,
+      }}
+    >
+      {preview ? "Ocultar" : "Ver PDF"}
+    </button>
+  ) : null;
+
   return (
-    <div style={MODAL.overlay} onClick={onClose}>
-      <div
-        style={{ ...MODAL.container, maxWidth: preview ? "860px" : "480px", transition: "max-width 0.25s" }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div style={MODAL.header}>
-          <span>{esEdicion ? "Editar manual" : "Subir manual"}</span>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {!esEdicion && archivo && (
-              <button type="button" onClick={() => setPreview(p => !p)}
-                style={{ background: preview ? "rgba(244,121,32,0.25)" : "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.20)", color: "#fff", cursor: "pointer", borderRadius: RADIUS.sm, padding: "4px 10px", fontSize: "11px", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                {preview ? "Ocultar" : "Ver PDF"}
-              </button>
-            )}
-            <button onClick={onClose} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer" }}><X size={18} /></button>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", flex: preview ? "0 0 340px" : "1" }}>
-            <div style={{ ...MODAL.body, display: "flex", flexDirection: "column", gap: 16 }}>
-              {!esEdicion && (
-                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: RADIUS.sm, background: isDark ? "rgba(255,255,255,0.04)" : NEUTRAL.slate50, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : SLATE[200]}` }}>
-                  <div style={{ width: 36, height: 42, borderRadius: RADIUS.sm, flexShrink: 0, background: "rgba(220,38,38,0.08)", border: "1.5px solid rgba(220,38,38,0.18)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                    <FileText size={16} style={{ color: "#dc2626" }} />
-                    <span style={{ fontSize: "7px", fontWeight: 700, color: "#dc2626" }}>PDF</span>
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ ...FONT.body, color: T.text, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{archivo.name}</p>
-                    <p style={{ ...FONT.small, color: SLATE[400] }}>
-                      {archivo.size < 1024 * 1024 ? `${(archivo.size / 1024).toFixed(0)} KB` : `${(archivo.size / 1024 / 1024).toFixed(1)} MB`}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {field("Nombre *", (
-                <input style={inputSt(T, errores.nombre)} value={form.nombre} onChange={e => set("nombre", e.target.value)} onFocus={INPUT_FOCUS} onBlur={INPUT_BLUR} placeholder="Ej. Manual de procedimientos red" autoFocus />
-              ), errores.nombre)}
-              {field("Descripción", (
-                <textarea style={textareaSt(T)} value={form.descripcion} onChange={e => set("descripcion", e.target.value)} placeholder="Breve descripción del contenido..." rows={3} />
-              ))}
-              {field("Categoría *", (
-                <select style={{ ...inputSt(T, errores.id_categoria), cursor: "pointer" }} value={form.id_categoria} onChange={e => set("id_categoria", e.target.value)}>
-                  <option value="">Selecciona una categoría...</option>
-                  {categorias.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.nombre_categoria}</option>)}
-                </select>
-              ), errores.id_categoria)}
-              {errores.global && (
-                <div style={{ padding: "10px 14px", borderRadius: RADIUS.sm, background: SEMANTIC.dangerBg, border: `1px solid ${SEMANTIC.dangerBdr}`, color: SEMANTIC.danger, fontSize: 13, fontWeight: 500 }}>
-                  {errores.global}
-                </div>
-              )}
-            </div>
-            <div style={MODAL.footer}>
-              <button type="button" style={BTN_GHOST} onClick={onClose} disabled={loading}>Cancelar</button>
-              <button type="submit" style={{ ...BTN_PRIMARY, opacity: loading ? 0.7 : 1, cursor: loading ? "not-allowed" : "pointer" }} disabled={loading}>
-                {loading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                {loading ? (esEdicion ? "Guardando..." : "Subiendo...") : (esEdicion ? "Guardar cambios" : "Subir manual")}
-              </button>
-            </div>
-          </form>
-
-          {preview && previewUrl && (
-            <div style={{ flex: 1, borderLeft: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : SLATE[200]}`, display: "flex", flexDirection: "column" }}>
-              <div style={{ padding: "8px 14px", background: isDark ? "#0d1117" : NEUTRAL.slate50, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : SLATE[200]}`, fontSize: 11, fontWeight: 600, color: T.textMuted }}>
-                Vista previa
+    <Modal
+      T={T}
+      title={esEdicion ? "Editar manual" : "Subir manual"}
+      icon={<FileText size={13} style={{ color: "#fca5a5" }} />}
+      onClose={onClose}
+      onConfirm={handleSubmit}
+      confirmLabel={loading ? (esEdicion ? "Guardando..." : "Subiendo...") : (esEdicion ? "Guardar cambios" : "Subir manual")}
+      loading={loading}
+      maxWidth={preview ? "860px" : "480px"}
+      noBodyPadding
+    >
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        <div style={{ display: "flex", flexDirection: "column", flex: preview ? "0 0 340px" : "1", padding: "20px", gap: 16 }}>
+          {/* Botón Ver PDF dentro del body */}
+          {previewBtn && (
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>{previewBtn}</div>
+          )}
+          {!esEdicion && (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: RADIUS.sm, background: isDark ? "rgba(255,255,255,0.04)" : NEUTRAL.slate50, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : SLATE[200]}` }}>
+              <div style={{ width: 36, height: 42, borderRadius: RADIUS.sm, flexShrink: 0, background: "rgba(220,38,38,0.08)", border: "1.5px solid rgba(220,38,38,0.18)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <FileText size={16} style={{ color: "#dc2626" }} />
+                <span style={{ fontSize: "7px", fontWeight: 700, color: "#dc2626" }}>PDF</span>
               </div>
-              <iframe src={`${previewUrl}#toolbar=1&navpanes=0`} title="preview-pdf" style={{ flex: 1, border: "none", minHeight: 400, width: "100%", display: "block" }} />
+              <div style={{ minWidth: 0 }}>
+                <p style={{ ...FONT.body, color: T.text, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{archivo.name}</p>
+                <p style={{ ...FONT.small, color: SLATE[400] }}>
+                  {archivo.size < 1024 * 1024 ? `${(archivo.size / 1024).toFixed(0)} KB` : `${(archivo.size / 1024 / 1024).toFixed(1)} MB`}
+                </p>
+              </div>
+            </div>
+          )}
+          {field("Nombre *", (
+            <input style={inputSt(T, errores.nombre)} value={form.nombre} onChange={e => set("nombre", e.target.value)} onFocus={INPUT_FOCUS} onBlur={INPUT_BLUR} placeholder="Ej. Manual de procedimientos red" autoFocus />
+          ), errores.nombre)}
+          {field("Descripción", (
+            <textarea style={textareaSt(T)} value={form.descripcion} onChange={e => set("descripcion", e.target.value)} placeholder="Breve descripción del contenido..." rows={3} />
+          ))}
+          {field("Categoría *", (
+            <select style={{ ...inputSt(T, errores.id_categoria), cursor: "pointer" }} value={form.id_categoria} onChange={e => set("id_categoria", e.target.value)}>
+              <option value="">Selecciona una categoría...</option>
+              {categorias.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.nombre_categoria}</option>)}
+            </select>
+          ), errores.id_categoria)}
+          {errores.global && (
+            <div style={{ padding: "10px 14px", borderRadius: RADIUS.sm, background: SEMANTIC.dangerBg, border: `1px solid ${SEMANTIC.dangerBdr}`, color: SEMANTIC.danger, fontSize: 13, fontWeight: 500 }}>
+              {errores.global}
             </div>
           )}
         </div>
+
+        {preview && previewUrl && (
+          <div style={{ flex: 1, borderLeft: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : SLATE[200]}`, display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "8px 14px", background: isDark ? "#0d1117" : NEUTRAL.slate50, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : SLATE[200]}`, fontSize: 11, fontWeight: 600, color: T.textMuted }}>
+              Vista previa
+            </div>
+            <iframe src={`${previewUrl}#toolbar=1&navpanes=0`} title="preview-pdf" style={{ flex: 1, border: "none", minHeight: 400, width: "100%", display: "block" }} />
+          </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }
 
 // ── Modal eliminar ────────────────────────────────────────────────
 function ModalEliminar({ T, manual, onConfirm, onClose, loading }) {
   return (
-    <div style={MODAL.overlay} onClick={onClose}>
-      <div style={{ ...MODAL.container, maxWidth: 400 }} onClick={e => e.stopPropagation()}>
-        <div style={MODAL.header}>
-          <span>Eliminar manual</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer" }}><X size={18} /></button>
-        </div>
-        <div style={{ ...MODAL.body, display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ ...FONT.body, color: T.text }}>
-            ¿Eliminar <strong>{manual.nombre}</strong>? Esta acción no se puede deshacer.
-          </p>
-        </div>
-        <div style={MODAL.footer}>
-          <button style={BTN_GHOST} onClick={onClose} disabled={loading}>Cancelar</button>
-          <button style={{ ...BTN_DANGER, opacity: loading ? 0.7 : 1, cursor: loading ? "not-allowed" : "pointer" }} onClick={onConfirm} disabled={loading}>
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-            {loading ? "Eliminando..." : "Eliminar"}
-          </button>
-        </div>
-      </div>
-    </div>
+    <Modal
+      T={T}
+      title="Eliminar manual"
+      icon={<Trash2 size={13} style={{ color: "#fca5a5" }} />}
+      onClose={onClose}
+      onConfirm={onConfirm}
+      confirmLabel={loading ? "Eliminando..." : "Eliminar"}
+      cancelLabel="Cancelar"
+      loading={loading}
+      danger
+      maxWidth="400px"
+    >
+      <p style={{ ...FONT.body, color: T.text, margin: 0 }}>
+        ¿Eliminar <strong>{manual.nombre}</strong>? Esta acción no se puede deshacer.
+      </p>
+    </Modal>
   );
 }
 
@@ -209,58 +211,28 @@ function DrawerVisor({ url, nombre, T, onClose }) {
             <X size={14} />
           </button>
         </div>
-        <iframe src={`${url}#toolbar=1&navpanes=0`} title={nombre} style={{ flex: 1, width: "100%", border: "none", display: "block" }} />
+        <PdfViewer url={url} isDark={isDark} />
       </div>
     </>
   );
 }
 
-// ── Zona drag & drop (modal de subida) ───────────────────────────
-function ZonaSubida({ T, onFile }) {
-  const [drag, setDrag] = useState(false);
-  const inputRef = useRef();
-  const isDark = T.isDark;
-
+// ── Input oculto para subida directa ─────────────────────────────
+function InputSubida({ onFile, inputRef }) {
   const handle = (file) => {
     if (!file) return;
-    const aviso = (msg) => {
-      const el = document.createElement("div");
-      el.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;background:#1e293b;color:#fff;padding:12px 20px;border-radius:6px;font-size:13px;font-weight:600;border-left:3px solid #F47920;box-shadow:0 4px 20px rgba(0,0,0,0.3);";
-      el.textContent = msg;
-      document.body.appendChild(el);
-      setTimeout(() => el.remove(), 4000);
-    };
-    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) return aviso("Solo se permiten archivos PDF.");
-    if (file.size > 50 * 1024 * 1024) return aviso("El archivo supera el límite de 50 MB.");
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) return;
+    if (file.size > 50 * 1024 * 1024) return;
     onFile(file);
   };
-
   return (
-    <div
-      onClick={() => inputRef.current.click()}
-      onDragOver={e => { e.preventDefault(); setDrag(true); }}
-      onDragLeave={() => setDrag(false)}
-      onDrop={e => { e.preventDefault(); setDrag(false); handle(e.dataTransfer.files[0]); }}
-      style={{
-        border: `1.5px dashed ${drag ? ORANGE : isDark ? "rgba(255,255,255,0.15)" : SLATE[300]}`,
-        borderRadius: RADIUS.lg, padding: "28px 24px",
-        display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
-        cursor: "pointer", textAlign: "center",
-        background: drag ? "rgba(244,121,32,0.04)" : isDark ? "rgba(255,255,255,0.02)" : NEUTRAL.slate50,
-        transition: "all 0.18s",
-      }}
-    >
-      <div style={{ width: 40, height: 40, borderRadius: 8, background: drag ? OL : isDark ? "rgba(255,255,255,0.06)" : NEUTRAL.slate100, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${drag ? OB : isDark ? "rgba(255,255,255,0.10)" : SLATE[200]}`, transition: "all 0.18s" }}>
-        <Upload size={17} style={{ color: drag ? ORANGE : SLATE[400] }} />
-      </div>
-      <div>
-        <p style={{ fontSize: 13, fontWeight: 600, color: drag ? ORANGE : T.text, margin: 0 }}>
-          {drag ? "Suelta el PDF aquí" : "Arrastra un PDF o haz clic para seleccionar"}
-        </p>
-        <p style={{ fontSize: 11, color: T.textFaint ?? SLATE[400], margin: "4px 0 0" }}>Solo archivos PDF · Máximo 50 MB</p>
-      </div>
-      <input ref={inputRef} type="file" accept="application/pdf,.pdf" style={{ display: "none" }} onChange={e => handle(e.target.files[0])} />
-    </div>
+    <input
+      ref={inputRef}
+      type="file"
+      accept="application/pdf,.pdf"
+      style={{ display: "none" }}
+      onChange={e => { handle(e.target.files[0]); e.target.value = ""; }}
+    />
   );
 }
 
@@ -345,7 +317,7 @@ function KebabMenu({ T, pdfUrl, nombre, onEditar, onEliminar }) {
   );
 }
 
-// ── Tarjeta Enterprise flat ───────────────────────────────────────
+// ── Tarjeta fila (vista lista) ────────────────────────────────────
 function CardManual({ m, T, onVer, onEditar, onEliminar }) {
   const isDark = T.isDark;
   const pdfUrl = `${API}${m.url}`;
@@ -367,12 +339,9 @@ function CardManual({ m, T, onVer, onEditar, onEliminar }) {
         cursor: "default",
       }}
     >
-      {/* Miniatura */}
       <div onClick={() => onVer(pdfUrl, m.nombre)} style={{ cursor: "pointer", flexShrink: 0 }}>
         <PdfThumb url={pdfUrl} isDark={isDark} />
       </div>
-
-      {/* Metadatos */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <p
           onClick={() => onVer(pdfUrl, m.nombre)}
@@ -400,15 +369,9 @@ function CardManual({ m, T, onVer, onEditar, onEliminar }) {
           )}
         </div>
       </div>
-
-      {/* Kebab */}
       <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-        <KebabMenu
-          T={T}
-          pdfUrl={pdfUrl}
-          nombre={m.nombre}
-          onEditar={() => onEditar(m)}
-          onEliminar={() => onEliminar(m)}
+        <KebabMenu T={T} pdfUrl={pdfUrl} nombre={m.nombre}
+          onEditar={() => onEditar(m)} onEliminar={() => onEliminar(m)}
           onVer={() => onVer(pdfUrl, m.nombre)}
         />
       </div>
@@ -416,21 +379,135 @@ function CardManual({ m, T, onVer, onEditar, onEliminar }) {
   );
 }
 
-// ── Chip filtro ghost ─────────────────────────────────────────────
-function ChipFiltro({ label, count, active, onClick, isDark }) {
+// ── Tarjeta grid (vista cuadrícula) ──────────────────────────────
+function GridCard({ m, T, onVer, onEditar, onEliminar }) {
+  const isDark = T.isDark;
+  const pdfUrl = `${API}${m.url}`;
+  const { imgSrc, loading: coverLoading } = usePdfCover(pdfUrl);
+  const [hov, setHov] = useState(false);
+  const fecha = m.fecha_cambio
+    ? new Date(m.fecha_cambio).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
+    : null;
+
   return (
-    <button onClick={onClick} style={{
-      display: "inline-flex", alignItems: "center", gap: 5,
-      padding: "5px 12px", borderRadius: 99, cursor: "pointer",
-      border: `1px solid ${active ? OB : (isDark ? "rgba(255,255,255,0.10)" : SLATE[200])}`,
-      background: active ? OL : "transparent",
-      color: active ? ORANGE : (isDark ? "rgba(255,255,255,0.45)" : SLATE[500]),
-      fontSize: 12, fontWeight: active ? 700 : 500,
-      transition: "all 0.14s",
-    }}>
-      {label}
-      <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 99, background: active ? ORANGE : (isDark ? "rgba(255,255,255,0.08)" : NEUTRAL.slate100), color: active ? "#fff" : (isDark ? "rgba(255,255,255,0.35)" : SLATE[400]) }}>{count}</span>
-    </button>
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        borderRadius: RADIUS.lg,
+        border: `1px solid ${hov ? OB : (isDark ? "rgba(255,255,255,0.08)" : SLATE[200])}`,
+        background: isDark ? "#141720" : NEUTRAL.white,
+        overflow: "hidden",
+        display: "flex", flexDirection: "column",
+        transition: "box-shadow 0.18s, transform 0.18s, border-color 0.18s",
+        boxShadow: hov ? (isDark ? "0 8px 32px rgba(0,0,0,0.45)" : "0 8px 24px rgba(0,0,0,0.12)") : "none",
+        transform: hov ? "translateY(-3px)" : "translateY(0)",
+        cursor: "default",
+        position: "relative",
+      }}
+    >
+      {/* Portada */}
+      <div
+        onClick={() => onVer(pdfUrl, m.nombre)}
+        style={{
+          height: 160, position: "relative", overflow: "hidden", cursor: "pointer",
+          background: isDark ? "#0d1117" : "#f1f5f9",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        {imgSrc ? (
+          <>
+            <img src={imgSrc} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "blur(10px) brightness(0.55)", transform: "scale(1.1)" }} />
+            <img src={imgSrc} alt="portada" style={{ position: "relative", height: "136px", width: "auto", maxWidth: "80%", objectFit: "contain", borderRadius: 3, boxShadow: "0 6px 24px rgba(0,0,0,0.45)" }} />
+          </>
+        ) : coverLoading ? (
+          <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={SLATE[300]} strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+        ) : (
+          <FileText size={36} style={{ color: isDark ? "rgba(255,255,255,0.12)" : SLATE[300] }} />
+        )}
+        {/* Badge PDF */}
+        <span style={{ position: "absolute", top: 8, right: 8, fontSize: "7px", fontWeight: 800, letterSpacing: "0.05em", padding: "2px 6px", borderRadius: 3, background: "rgba(220,38,38,0.85)", color: "#fff" }}>PDF</span>
+
+        {/* Overlay de acciones en hover */}
+        {hov && (
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: "absolute", inset: 0,
+              background: "rgba(0,0,0,0.52)",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              animation: "fadeIn .15s ease",
+            }}
+          >
+            <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}}`}</style>
+            <button onClick={() => onVer(pdfUrl, m.nombre)}
+              style={{ height: 32, padding: "0 12px", borderRadius: RADIUS.sm, border: "none", background: ORANGE, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+              <Eye size={12} /> Ver
+            </button>
+            <button onClick={() => onEditar(m)}
+              style={{ height: 32, padding: "0 12px", borderRadius: RADIUS.sm, border: "1px solid rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.12)", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+              <Pencil size={12} /> Editar
+            </button>
+            <button onClick={() => onEliminar(m)}
+              style={{ height: 32, width: 32, borderRadius: RADIUS.sm, border: "1px solid rgba(255,255,255,0.20)", background: "rgba(220,38,38,0.70)", color: "#fff", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Trash2 size={12} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Info pie */}
+      <div style={{ padding: "10px 12px 12px", display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+        <p style={{
+          fontSize: 12, fontWeight: 700, margin: 0, lineHeight: 1.35,
+          color: isDark ? "#e2e8f0" : SLATE[900],
+          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+        }}>
+          {m.nombre.replace(/\.pdf$/i, "")}
+        </p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, marginTop: "auto" }}>
+          {m.nombre_categoria ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 99, background: OL, color: ORANGE, border: `1px solid ${OB}`, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "60%" }}>
+              <Tag size={7} /> {m.nombre_categoria}
+            </span>
+          ) : <span />}
+          {fecha && (
+            <span style={{ fontSize: 9, color: isDark ? "rgba(255,255,255,0.28)" : SLATE[400], whiteSpace: "nowrap" }}>
+              {fecha}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Estado vacío accionable ─────────────────────────────────────
+function EstadoVacio({ isDark, hayFiltro, onSubir }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "56px 20px", gap: 14 }}>
+      <div style={{ width: 56, height: 56, borderRadius: 12, background: isDark ? "rgba(255,255,255,0.04)" : NEUTRAL.slate100, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : SLATE[200]}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <FileText size={24} style={{ color: isDark ? "rgba(255,255,255,0.18)" : SLATE[300] }} />
+      </div>
+      <div style={{ textAlign: "center" }}>
+        <p style={{ fontSize: 14, fontWeight: 700, color: isDark ? "rgba(255,255,255,0.45)" : SLATE[600], margin: "0 0 4px" }}>
+          {hayFiltro ? "Sin resultados" : "No hay manuales aún"}
+        </p>
+        <p style={{ fontSize: 12, color: isDark ? "rgba(255,255,255,0.22)" : SLATE[400], margin: 0 }}>
+          {hayFiltro ? "Prueba con otros términos o limpia los filtros." : "Sube el primer manual para que el equipo pueda consultarlo."}
+        </p>
+      </div>
+      {!hayFiltro && (
+        <button
+          onClick={onSubir}
+          style={{ height: 34, padding: "0 16px", borderRadius: RADIUS.sm, display: "flex", alignItems: "center", gap: 6, background: ORANGE, border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "filter 0.15s" }}
+          onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.08)"}
+          onMouseLeave={e => e.currentTarget.style.filter = "brightness(1)"}
+        >
+          <Upload size={13} /> Subir primer manual
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -441,17 +518,18 @@ export default function ManualesAdmin({ T }) {
   const [manuales,    setManuales]    = useState([]);
   const [categorias,  setCategorias]  = useState([]);
   const [loading,     setLoading]     = useState(true);
-  const [busqueda,    setBusqueda]    = useState("");
-  const [catFiltro,   setCatFiltro]   = useState("");
+  const [filtros,     setFiltros]     = useState({ busqueda: "", categoria: "" });
   const [visor,       setVisor]       = useState(null);
   const [archivoSel,  setArchivoSel]  = useState(null);
   const [modalEditar, setModalEditar] = useState(null);
   const [modalElim,   setModalElim]   = useState(null);
   const [loadingElim, setLoadingElim] = useState(false);
   const [toast,       setToast]       = useState(null);
-  const [showUpload,  setShowUpload]  = useState(false);
   const [dragging,    setDragging]    = useState(false);
+  const [vistaGrid,   setVistaGrid]   = useState(false);
+  const [orden,        setOrden]        = useState({ col: "fecha", dir: "desc" });
 
+  const inputSubidaRef = useRef();
   const isDark = T.isDark;
   const surf   = isDark ? "#141720" : NEUTRAL.white;
   const border = isDark ? "rgba(255,255,255,0.07)" : SLATE[200];
@@ -469,14 +547,43 @@ export default function ManualesAdmin({ T }) {
 
   useAutoRefresh(cargar, 30000);
 
-  const filtrados = manuales.filter(m => {
-    const q = busqueda.toLowerCase();
-    return (!busqueda || m.nombre.toLowerCase().includes(q) || m.nombre_categoria?.toLowerCase().includes(q) || m.descripcion?.toLowerCase().includes(q))
-      && (!catFiltro || String(m.id_categoria) === catFiltro);
-  });
+  const parseTam = (t) => {
+    if (!t) return 0;
+    const n = parseFloat(t);
+    if (t.toLowerCase().includes("mb")) return n * 1024;
+    return n;
+  };
 
-  const conteosCat     = categorias.map(c => ({ ...c, count: manuales.filter(m => String(m.id_categoria) === String(c.id_categoria)).length }));
-  const catSeleccionada = categorias.find(c => String(c.id_categoria) === catFiltro);
+  const setFiltro = (key, val) => setFiltros(p => ({ ...p, [key]: val }));
+  const limpiarFiltros = () => setFiltros({ busqueda: "", categoria: "" });
+
+  const catOpts = [
+    { value: "", label: "Todas" },
+    ...categorias.map(c => ({ value: String(c.id_categoria), label: c.nombre_categoria })),
+  ];
+
+  const camposFiltro = [
+    { key: "busqueda",  label: "Búsqueda",  type: "search", placeholder: "Nombre, categoría...", debounce: 250 },
+    { key: "categoria", label: "Categoría", type: "select", opts: catOpts },
+  ];
+
+  const filtrados = manuales
+    .filter(m => {
+      const q = filtros.busqueda.toLowerCase();
+      return (!filtros.busqueda || m.nombre.toLowerCase().includes(q) || m.nombre_categoria?.toLowerCase().includes(q) || m.descripcion?.toLowerCase().includes(q))
+        && (!filtros.categoria || String(m.id_categoria) === filtros.categoria);
+    })
+    .sort((a, b) => {
+      const d = orden.dir === "asc" ? 1 : -1;
+      if (orden.col === "nombre") return d * a.nombre.localeCompare(b.nombre);
+      if (orden.col === "tamaño") return d * (parseTam(a.tamaño) - parseTam(b.tamaño));
+      // fecha (default)
+      return d * (new Date(a.fecha_cambio || 0) - new Date(b.fecha_cambio || 0));
+    });
+
+  const toggleOrden = (col) => setOrden(p => ({ col, dir: p.col === col && p.dir === "asc" ? "desc" : "asc" }));
+
+
 
   const handleEliminar = async () => {
     setLoadingElim(true);
@@ -491,12 +598,12 @@ export default function ManualesAdmin({ T }) {
   };
 
   const handleGuardado = async () => {
-    setArchivoSel(null); setModalEditar(null); setShowUpload(false);
+    setArchivoSel(null); setModalEditar(null); ;
     showToast("ok", modalEditar ? "Manual actualizado." : "Manual subido correctamente.");
     await cargar();
   };
 
-  const handleFile = (file) => { setShowUpload(false); setArchivoSel(file); };
+  const handleFile = (file) => { setArchivoSel(file); };
 
   return (
     <div
@@ -522,39 +629,24 @@ export default function ManualesAdmin({ T }) {
         </div>
       )}
 
-      {/* ── HEADER enterprise oscuro ─────────────────────────── */}
-      <div style={{ background: isDark ? "#0f1117" : "#1e293b", borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "0 28px" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <BookOpen size={18} color="rgba(255,255,255,0.55)" />
-            <div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: 0, letterSpacing: "-0.01em" }}>Gestión de Manuales</p>
-              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", margin: 0, fontWeight: 400 }}>
-                {manuales.length} documento{manuales.length !== 1 ? "s" : ""} · {categorias.length} categoría{categorias.length !== 1 ? "s" : ""}
-              </p>
-            </div>
-          </div>
-
-          {/* Botón flotante subir */}
-          <button
-            onClick={() => setShowUpload(p => !p)}
-            style={{ height: 36, padding: "0 16px", borderRadius: RADIUS.sm, display: "flex", alignItems: "center", gap: 6, background: ORANGE, border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "filter 0.15s", flexShrink: 0 }}
-            onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.08)"}
-            onMouseLeave={e => e.currentTarget.style.filter = "brightness(1)"}
-          >
-            <Upload size={13} /> Subir documento
-          </button>
+      {/* ── HEADER simple ────────────────────────────────────── */}
+      <div style={{ padding: "20px 28px 0", maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: T.text, margin: 0 }}>Manuales</h1>
+          <p style={{ fontSize: 12, color: isDark ? "rgba(255,255,255,0.35)" : SLATE[400], margin: "2px 0 0" }}>
+            {manuales.length} documento{manuales.length !== 1 ? "s" : ""}
+          </p>
         </div>
+        <button
+          onClick={() => inputSubidaRef.current.click()}
+          style={{ height: 36, padding: "0 16px", borderRadius: RADIUS.sm, display: "flex", alignItems: "center", gap: 6, background: ORANGE, border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+        >
+          <Upload size={14} /> Subir manual
+        </button>
+        <InputSubida onFile={handleFile} inputRef={inputSubidaRef} />
       </div>
 
-      {/* ── Panel drag & drop desplegable ────────────────────── */}
-      {showUpload && (
-        <div style={{ background: isDark ? "#141720" : NEUTRAL.white, borderBottom: `1px solid ${border}`, padding: "20px 28px" }}>
-          <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-            <ZonaSubida T={T} onFile={handleFile} />
-          </div>
-        </div>
-      )}
+
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 28px", display: "flex", flexDirection: "column", gap: 20 }}>
 
@@ -568,80 +660,103 @@ export default function ManualesAdmin({ T }) {
         )}
 
         {/* ── Barra de control ─────────────────────────────────── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          {/* Búsqueda borderless */}
-          <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
-            <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: SLATE[400], pointerEvents: "none" }} />
-            <input
-              style={{ width: "100%", background: isDark ? "rgba(255,255,255,0.04)" : NEUTRAL.slate50, border: `1px solid ${busqueda ? OB : (isDark ? "rgba(255,255,255,0.08)" : SLATE[200])}`, borderRadius: RADIUS.sm, color: T.text, fontSize: 13, padding: "0 12px 0 34px", height: 36, outline: "none", transition: "border-color 0.15s" }}
-              placeholder="Buscar por nombre, categoría..."
-              value={busqueda}
-              onChange={e => setBusqueda(e.target.value)}
-              onFocus={e => { e.target.style.borderColor = ORANGE; e.target.style.background = isDark ? "rgba(255,255,255,0.06)" : NEUTRAL.white; }}
-              onBlur={e => { e.target.style.borderColor = busqueda ? OB : (isDark ? "rgba(255,255,255,0.08)" : SLATE[200]); e.target.style.background = isDark ? "rgba(255,255,255,0.04)" : NEUTRAL.slate50; }}
-            />
-            {busqueda && <button onClick={() => setBusqueda("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: SLATE[400], display: "flex" }}><X size={12} /></button>}
-          </div>
-
-          {/* Chips ghost por categoría */}
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-            {catFiltro && (
-              <button onClick={() => setCatFiltro("")} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 99, fontSize: 11, fontWeight: 600, background: "transparent", border: "none", color: isDark ? "rgba(255,255,255,0.35)" : SLATE[400], cursor: "pointer" }}>
-                <X size={9} /> Limpiar
+        <FiltrosToolbar
+          campos={camposFiltro}
+          valores={filtros}
+          onChange={setFiltro}
+          onLimpiar={limpiarFiltros}
+          loading={loading}
+          T={T}
+        >
+          {/* Contador + toggle vista */}
+          <span style={{ fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.30)" : SLATE[400], whiteSpace: "nowrap" }}>
+            {filtrados.length}/{manuales.length}
+          </span>
+          <div style={{ display: "flex", borderRadius: RADIUS.sm, border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : SLATE[200]}`, overflow: "hidden", flexShrink: 0 }}>
+            {[{ icon: List, val: false }, { icon: LayoutGrid, val: true }].map(({ icon: Icon, val }) => (
+              <button key={String(val)} onClick={() => setVistaGrid(val)}
+                style={{
+                  width: 28, height: 28, border: "none", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: vistaGrid === val ? (isDark ? "rgba(244,121,32,0.18)" : OL) : "transparent",
+                  color: vistaGrid === val ? ORANGE : (isDark ? "rgba(255,255,255,0.35)" : SLATE[400]),
+                  transition: "all 0.14s",
+                }}
+              >
+                <Icon size={13} />
               </button>
-            )}
-            {conteosCat.filter(c => c.count > 0).map(c => (
-              <ChipFiltro
-                key={c.id_categoria}
-                label={c.nombre_categoria}
-                count={c.count}
-                active={String(catFiltro) === String(c.id_categoria)}
-                onClick={() => setCatFiltro(p => String(p) === String(c.id_categoria) ? "" : String(c.id_categoria))}
-                isDark={isDark}
-              />
             ))}
           </div>
+        </FiltrosToolbar>
 
-          {/* Contador */}
-          <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.30)" : SLATE[400], whiteSpace: "nowrap" }}>
-            {filtrados.length} / {manuales.length}
-          </span>
-        </div>
-
-        {/* ── Lista de manuales ─────────────────────────────────── */}
-        <div style={{ background: surf, border: `1px solid ${border}`, borderRadius: RADIUS.lg, overflow: "hidden" }}>
-
-          {/* Cabecera de columnas */}
-          <div style={{ display: "flex", alignItems: "center", padding: "10px 16px", borderBottom: `1px solid ${border}`, background: isDark ? "rgba(255,255,255,0.02)" : NEUTRAL.slate50 }}>
-            <div style={{ width: 52 + 14, flexShrink: 0 }} />
-            <span style={{ flex: 1, fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: isDark ? "rgba(255,255,255,0.30)" : SLATE[400] }}>Documento</span>
-            <span style={{ width: 28, flexShrink: 0 }} />
-          </div>
-
-          {loading ? (
+        {/* ── Lista / Grid de manuales ──────────────────────────── */}
+        {vistaGrid ? (
+          /* ── VISTA GRID ── */
+          loading ? (
             <div style={{ display: "flex", justifyContent: "center", padding: "56px 0" }}>
               <svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
             </div>
           ) : filtrados.length === 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "56px 20px", gap: 10 }}>
-              <FileText size={28} style={{ color: isDark ? "rgba(255,255,255,0.12)" : SLATE[200] }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.25)" : SLATE[400] }}>
-                {busqueda || catFiltro ? "Sin resultados" : "No hay manuales"}
-              </span>
-            </div>
+            <EstadoVacio isDark={isDark} hayFiltro={!!(filtros.busqueda || filtros.categoria)} onSubir={() => { limpiarFiltros(); inputSubidaRef.current?.click(); }} />
           ) : (
-            filtrados.map(m => (
-              <CardManual
-                key={m.id_manual}
-                m={m}
-                T={T}
-                onVer={(url, nombre) => setVisor({ url, nombre })}
-                onEditar={setModalEditar}
-                onEliminar={setModalElim}
-              />
-            ))
-          )}
-        </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 14 }}>
+              {filtrados.map(m => (
+                <GridCard
+                  key={m.id_manual} m={m} T={T}
+                  onVer={(url, nombre) => setVisor({ url, nombre })}
+                  onEditar={setModalEditar}
+                  onEliminar={setModalElim}
+                />
+              ))}
+            </div>
+          )
+        ) : (
+          /* ── VISTA LISTA ── */
+          <div style={{ background: surf, border: `1px solid ${border}`, borderRadius: RADIUS.lg, overflow: "hidden" }}>
+            {/* Cabecera con ordenamiento */}
+            <div style={{ display: "flex", alignItems: "center", padding: "0 16px", borderBottom: `1px solid ${border}`, background: isDark ? "rgba(255,255,255,0.02)" : NEUTRAL.slate50, height: 38 }}>
+              <div style={{ width: 52 + 14, flexShrink: 0 }} />
+              {[{ col: "nombre", label: "Nombre", flex: 1 }, { col: "fecha", label: "Fecha", w: 120 }, { col: "tamaño", label: "Tamaño", w: 88 }].map(({ col, label, flex, w }) => {
+                const activo = orden.col === col;
+                return (
+                  <button key={col} onClick={() => toggleOrden(col)}
+                    style={{
+                      flex, width: w, flexShrink: w ? 0 : undefined,
+                      display: "flex", alignItems: "center", gap: 4,
+                      background: "none", border: "none", cursor: "pointer", padding: 0,
+                      fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase",
+                      color: activo ? ORANGE : (isDark ? "rgba(255,255,255,0.30)" : SLATE[400]),
+                      transition: "color 0.14s",
+                    }}
+                  >
+                    {label}
+                    {activo
+                      ? (orden.dir === "asc" ? <ChevronUp size={11} style={{ color: ORANGE }} /> : <ChevronDown size={11} style={{ color: ORANGE }} />)
+                      : <ChevronDown size={11} style={{ opacity: 0.3 }} />
+                    }
+                  </button>
+                );
+              })}
+              <span style={{ width: 28, flexShrink: 0 }} />
+            </div>
+            {loading ? (
+              <div style={{ display: "flex", justifyContent: "center", padding: "56px 0" }}>
+                <svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+              </div>
+            ) : filtrados.length === 0 ? (
+              <EstadoVacio isDark={isDark} hayFiltro={!!(filtros.busqueda || filtros.categoria)} onSubir={() => { limpiarFiltros(); inputSubidaRef.current?.click(); }} />
+            ) : (
+              filtrados.map(m => (
+                <CardManual
+                  key={m.id_manual} m={m} T={T}
+                  onVer={(url, nombre) => setVisor({ url, nombre })}
+                  onEditar={setModalEditar}
+                  onEliminar={setModalElim}
+                />
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Visor PDF ────────────────────────────────────────────── */}

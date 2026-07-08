@@ -208,13 +208,30 @@ export const getSolicitudesPendientes = async (req, res) => {
 
 export const getAllSolicitudes = async (req, res) => {
   try {
-    const limit  = Math.min(parseInt(req.query.limit) || 100, 500);
+    const limit  = Math.min(parseInt(req.query.limit) || 50, 500);
     const page   = Math.max(parseInt(req.query.page)  || 1, 1);
     const offset = (page - 1) * limit;
-    const { rows, total } = await Solicitud.getAll({ limit, offset });
+    const { estatus, prioridad, busqueda, area, fecha_inicio, fecha_fin } = req.query;
+    const { rows, total } = await Solicitud.getAll({
+      limit, offset,
+      estatus:      estatus      || undefined,
+      prioridad:    prioridad    || undefined,
+      busqueda:     busqueda     || undefined,
+      area:         area         || undefined,
+      fecha_inicio: fecha_inicio || undefined,
+      fecha_fin:    fecha_fin    || undefined,
+    });
     res.json({ data: rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
     res.status(500).json({ error: "Error al obtener solicitudes", ...errDetalle(err) });
+  }
+};
+
+export const getMetricasSolicitudes = async (req, res) => {
+  try {
+    res.json(await Solicitud.getMetricas());
+  } catch (err) {
+    res.status(500).json({ error: "Error al obtener métricas", ...errDetalle(err) });
   }
 };
 
@@ -247,9 +264,14 @@ export const actualizarEstatusSolicitud = async (req, res) => {
       try {
         await conn.beginTransaction();
         const [[sol]] = await conn.query(
-          "SELECT id_solicitud FROM solicitud WHERE id_solicitud = ? FOR UPDATE", [id]
+          "SELECT id_solicitud, estatus FROM solicitud WHERE id_solicitud = ? FOR UPDATE", [id]
         );
         if (!sol) { await conn.rollback(); return res.status(404).json({ error: "Solicitud no encontrada" }); }
+        // Evitar doble descuento si ya está cerrada
+        if (sol.estatus === "Resuelto" || sol.estatus === "No Resuelto" || sol.estatus === "Rechazado") {
+          await conn.rollback();
+          return res.status(409).json({ error: "La solicitud ya está cerrada" });
+        }
         // Solo descontar los ítems aprobados (aprobado = 1, default NULL se trata como aprobado)
         const [detalle] = await conn.query(
           "SELECT id_insumo, cantidad FROM solicitud_insumo WHERE id_solicitud = ? AND (aprobado IS NULL OR aprobado = 1)", [id]
@@ -285,6 +307,13 @@ export const actualizarEstatusSolicitud = async (req, res) => {
         conn.release();
       }
     } else {
+      // Para estatus no-Resuelto verificar que no esté ya cerrada
+      const [[sol]] = await pool.query(
+        "SELECT estatus FROM solicitud WHERE id_solicitud = ? LIMIT 1", [id]
+      );
+      if (!sol) return res.status(404).json({ error: "Solicitud no encontrada" });
+      if (sol.estatus === "Resuelto" || sol.estatus === "No Resuelto" || sol.estatus === "Rechazado")
+        return res.status(409).json({ error: "La solicitud ya está cerrada" });
       const ok = await Solicitud.actualizarEstatus(id, estatus);
       if (!ok) return res.status(404).json({ error: "Solicitud no encontrada" });
     }

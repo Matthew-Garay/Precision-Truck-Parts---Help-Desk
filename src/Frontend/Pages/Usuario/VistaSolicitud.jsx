@@ -4,6 +4,7 @@ import {
   CheckCircle2, XCircle, Clock, Loader2, ChevronDown, Check, X as XIcon
 } from "lucide-react";
 import { apiFetch, API_ROUTES, getToken } from "../../Config/api";
+import Modal from "../../Components/Modal";
 
 const ESTATUS_META = {
   "Pendiente":   { color: "#d97706", bgL: "#fef3c7", bgD: "rgba(217,119,6,0.15)",  borderL: "#fde68a", borderD: "rgba(217,119,6,0.3)",   icon: Clock        },
@@ -37,6 +38,8 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
   const [aprobados,    setAprobados]    = useState({});
   const [guardandoItems, setGuardandoItems] = useState(false);
   const [itemsGuardados, setItemsGuardados] = useState(false);
+  const [errorAccion, setErrorAccion] = useState("");
+  const [confirmParcial, setConfirmParcial] = useState(null); // { nuevoEstatus, aprobadosCount, totalItems }
 
   const cargar = useCallback(() => {
     if (!id_solicitud) return;
@@ -59,10 +62,10 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  const cambiarEstatus = async (nuevoEstatus) => {
-    if (!solicitud) return;
+  const ejecutarCambioEstatus = async (nuevoEstatus) => {
     setUpdating(true);
     setDropdown(false);
+    setErrorAccion("");
     try {
       const r = await apiFetch(API_ROUTES.SOLICITUD_ESTATUS(solicitud.id_solicitud), {
         method: "PATCH",
@@ -72,10 +75,26 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
         setSolicitud(prev => ({ ...prev, estatus: nuevoEstatus }));
         setGuardado(true);
         setTimeout(() => setGuardado(false), 2500);
+      } else {
+        const data = await r.json().catch(() => ({}));
+        setErrorAccion(data.error || "Error al actualizar el estatus");
       }
     } finally {
       setUpdating(false);
     }
+  };
+
+  const cambiarEstatus = async (nuevoEstatus) => {
+    if (!solicitud) return;
+    if (nuevoEstatus === "Resuelto") {
+      const aprobadosCount = Object.values(aprobados).filter(Boolean).length;
+      const totalItems = solicitud.detalle?.length ?? 0;
+      if (aprobadosCount < totalItems) {
+        setConfirmParcial({ nuevoEstatus, aprobadosCount, totalItems });
+        return;
+      }
+    }
+    ejecutarCambioEstatus(nuevoEstatus);
   };
 
   const guardarAprobados = async () => {
@@ -377,6 +396,22 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
 
   return (
     <div className="overflow-y-auto" style={{ background: T?.bg ?? "#f8fafc" }}>
+      {confirmParcial && (
+        <Modal
+          T={T}
+          title="Aprobación parcial"
+          onClose={() => setConfirmParcial(null)}
+          onConfirm={() => { const e = confirmParcial; setConfirmParcial(null); ejecutarCambioEstatus(e.nuevoEstatus); }}
+          confirmLabel="Sí, continuar"
+          cancelLabel="Cancelar"
+          maxWidth="380px"
+        >
+          <p style={{ margin: 0, fontSize: "13px", lineHeight: "1.55", color: T?.text }}>
+            Solo <strong>{confirmParcial.aprobadosCount}</strong> de <strong>{confirmParcial.totalItems}</strong> insumos están aprobados.
+            Solo se descontará el stock de los aprobados.
+          </p>
+        </Modal>
+      )}
       <div className="max-w-5xl mx-auto p-3 sm:p-4 md:p-6 pb-6 space-y-3 sm:space-y-4">
 
         {/* ── HEADER CARD ── */}
@@ -724,11 +759,18 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                     );
                   })}
 
-                  {/* No Resuelto */}
-                  {solicitud.estatus === "No Resuelto" && (
+                  {/* No Resuelto / Rechazado */}
+                  {(solicitud.estatus === "No Resuelto" || solicitud.estatus === "Rechazado") && (
                     <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[11px] font-semibold -mt-2"
-                      style={{ background: isDark ? "rgba(220,38,38,0.1)" : "#fef2f2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.25)" }}>
-                      <XCircle size={13} /> Solicitud marcada como No Resuelta
+                      style={{
+                        background: isDark
+                          ? (solicitud.estatus === "Rechazado" ? "rgba(124,58,237,0.1)" : "rgba(220,38,38,0.1)")
+                          : (solicitud.estatus === "Rechazado" ? "#ede9fe" : "#fef2f2"),
+                        color: solicitud.estatus === "Rechazado" ? "#7c3aed" : "#dc2626",
+                        border: solicitud.estatus === "Rechazado" ? "1px solid rgba(124,58,237,0.25)" : "1px solid rgba(220,38,38,0.25)",
+                      }}>
+                      <XCircle size={13} />
+                      {solicitud.estatus === "Rechazado" ? "Solicitud rechazada" : "Solicitud marcada como No Resuelta"}
                     </div>
                   )}
                 </div>
@@ -786,8 +828,17 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                   </div>
                   {cerrado && (
                     <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                      style={{ background: isDark ? "rgba(22,163,74,0.15)" : "#dcfce7", color: "#16a34a", border: "1px solid rgba(22,163,74,0.3)" }}>
-                      <CheckCircle2 size={10} /> Cerrado
+                      style={{
+                        background: isDark
+                          ? (solicitud.estatus === "Rechazado" ? "rgba(124,58,237,0.15)" : solicitud.estatus === "No Resuelto" ? "rgba(220,38,38,0.15)" : "rgba(22,163,74,0.15)")
+                          : (solicitud.estatus === "Rechazado" ? "#ede9fe" : solicitud.estatus === "No Resuelto" ? "#fee2e2" : "#dcfce7"),
+                        color: solicitud.estatus === "Rechazado" ? "#7c3aed" : solicitud.estatus === "No Resuelto" ? "#dc2626" : "#16a34a",
+                        border: solicitud.estatus === "Rechazado" ? "1px solid rgba(124,58,237,0.3)" : solicitud.estatus === "No Resuelto" ? "1px solid rgba(220,38,38,0.3)" : "1px solid rgba(22,163,74,0.3)",
+                      }}>
+                      {solicitud.estatus === "Rechazado" || solicitud.estatus === "No Resuelto"
+                        ? <XCircle size={10} />
+                        : <CheckCircle2 size={10} />}
+                      {solicitud.estatus}
                     </span>
                   )}
                 </div>
@@ -796,6 +847,12 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                     <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold"
                       style={{ background: isDark ? "rgba(22,163,74,0.15)" : "#dcfce7", color: "#16a34a", border: isDark ? "1px solid rgba(22,163,74,0.3)" : "1px solid #86efac" }}>
                       <CheckCircle2 size={13} /> Estatus actualizado
+                    </div>
+                  )}
+                  {errorAccion && (
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold"
+                      style={{ background: isDark ? "rgba(220,38,38,0.12)" : "#fee2e2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.3)" }}>
+                      <XCircle size={13} /> {errorAccion}
                     </div>
                   )}
                   {!cerrado ? (
@@ -827,10 +884,26 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                   ) : (
                     <div className="flex flex-col items-center gap-2 py-3">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center"
-                        style={{ background: isDark ? "rgba(22,163,74,0.15)" : "#dcfce7", border: isDark ? "2px solid rgba(22,163,74,0.3)" : "2px solid #86efac" }}>
-                        <CheckCircle2 size={20} style={{ color: "#16a34a" }} />
+                        style={{
+                          background: isDark
+                            ? (solicitud.estatus === "Rechazado" ? "rgba(124,58,237,0.15)" : solicitud.estatus === "No Resuelto" ? "rgba(220,38,38,0.15)" : "rgba(22,163,74,0.15)")
+                            : (solicitud.estatus === "Rechazado" ? "#ede9fe" : solicitud.estatus === "No Resuelto" ? "#fee2e2" : "#dcfce7"),
+                          border: solicitud.estatus === "Rechazado"
+                            ? (isDark ? "2px solid rgba(124,58,237,0.3)" : "2px solid #c4b5fd")
+                            : solicitud.estatus === "No Resuelto"
+                            ? (isDark ? "2px solid rgba(220,38,38,0.3)" : "2px solid #fca5a5")
+                            : (isDark ? "2px solid rgba(22,163,74,0.3)" : "2px solid #86efac"),
+                        }}>
+                        {solicitud.estatus === "Rechazado"
+                          ? <XCircle size={20} style={{ color: "#7c3aed" }} />
+                          : solicitud.estatus === "No Resuelto"
+                          ? <XCircle size={20} style={{ color: "#dc2626" }} />
+                          : <CheckCircle2 size={20} style={{ color: "#16a34a" }} />}
                       </div>
-                      <p className="text-xs font-black" style={{ color: "#16a34a" }}>Solicitud cerrada</p>
+                      <p className="text-xs font-black"
+                        style={{ color: solicitud.estatus === "Rechazado" ? "#7c3aed" : solicitud.estatus === "No Resuelto" ? "#dc2626" : "#16a34a" }}>
+                        {solicitud.estatus}
+                      </p>
                       <p className="text-[11px] text-center" style={{ color: T?.textFaint }}>No se pueden realizar más acciones</p>
                     </div>
                   )}
