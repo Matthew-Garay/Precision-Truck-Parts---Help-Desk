@@ -38,33 +38,41 @@ export function useSocket(id_empleado, onEvento) {
   const cbRef     = useRef(onEvento);
   cbRef.current   = onEvento;
 
-  const tokenRef = useRef(getToken());
-
   useEffect(() => {
     if (!id_empleado) return;
 
     const token = getToken();
     if (!token) return;
-    tokenRef.current = token;
 
-    const SOCKET_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(":5173", ":3001");
+    // En dev con Vite (puerto 5173) el proxy reenvía /socket.io al backend.
+    // En producción el frontend y backend comparten origen, o VITE_API_URL apunta al backend.
+    const apiUrl = import.meta.env.VITE_API_URL;
+    // En dev con Vite el proxy reenvía /socket.io al backend (mismo origen).
+    // En producción: si VITE_API_URL apunta al backend úsalo, si no, mismo origen.
+    const SOCKET_URL = apiUrl && window.location.port === "5173"
+      ? apiUrl
+      : window.location.port === "5173"
+        ? window.location.origin.replace(":5173", ":3001")
+        : window.location.origin;
 
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
     }
 
+    console.log("[Socket] Conectando a:", SOCKET_URL, "| id_empleado:", id_empleado);
+
     const socket = io(SOCKET_URL, {
       auth: { token },
-      transports: ["websocket", "polling"],
+      transports: ["polling", "websocket"],
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,
     });
     socketRef.current = socket;
 
-    socket.on("connect_error", (err) => {
-      console.warn("[Socket] Error de conexion:", err.message);
-    });
+    socket.on("connect", () => console.log("[Socket] Conectado ✅"));
+    socket.on("connect_error", (err) => console.error("[Socket] ERROR:", err.message));
+    socket.on("disconnect", (reason) => console.warn("[Socket] Desconectado:", reason));
 
     // Eventos que escucha el usuario
     socket.on("ticket:actualizado",   d => cbRef.current?.({ tipo: "ticket:actualizado",   data: d }));
@@ -84,7 +92,7 @@ export function useSocket(id_empleado, onEvento) {
 
     return () => { socket.disconnect(); socketRef.current = null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id_empleado, tokenRef.current]);
+  }, [id_empleado]);
 
   return socketRef;
 }

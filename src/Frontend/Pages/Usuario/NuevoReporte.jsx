@@ -4,6 +4,7 @@ import { Camera, X, ChevronLeft, ChevronRight, Trash2,
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight, Minus, ArrowRight, ArrowLeft, Send } from "lucide-react";
 import { apiFetch } from "../../Config/api";
+import Modal from "../../Components/Modal";
 
 const PRIORIDADES = [
   { label:"Urgente", nivel:"Urgente", color:"#dc2626", bgL:"#fee2e2", bgD:"#2d0a0a" },
@@ -744,98 +745,53 @@ const card = {
 
       {/* Modal confirmación limpiar */}
       {modalLimpiar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{ background:"rgba(0,0,0,0.6)" }}
-          onClick={() => setModalLimpiar(false)}>
-          <div className="w-full max-w-xs rounded-2xl overflow-hidden"
-            style={{ background: isDark?"#141720":T.surface, border:`1px solid ${isDark?"rgba(255,255,255,0.1)":T.border}`, boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}
-            onClick={e => e.stopPropagation()}>
-            <div className="h-1.5" style={{ background:"#3b82f6" }}/>
-            <div className="p-6 flex flex-col items-center gap-4 text-center">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center"
-                style={{ background: isDark?"rgba(59,130,246,0.2)":"#eff6ff" }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-black" style={{ color:T.text }}>¿Limpiar formulario?</p>
-                <p className="text-xs mt-1" style={{ color:T.textMuted }}>Se borrarán todos los campos y las imágenes adjuntas.</p>
-              </div>
-              <div className="flex gap-2 w-full">
-                <button onClick={() => setModalLimpiar(false)}
-                  className="flex-1 py-2 rounded-xl text-sm font-bold transition-all hover:brightness-110"
-                  style={{ background: isDark?"rgba(255,255,255,0.06)":T.surfaceAlt, color:T.textMuted, border:`1px solid ${T.border}` }}>
-                  Cancelar
-                </button>
-                <button onClick={limpiar}
-                  className="flex-1 py-2 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95"
-                  style={{ background:"#3b82f6" }}>
-                  Sí, limpiar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Modal
+          T={T}
+          title="¿Limpiar formulario?"
+          onClose={() => setModalLimpiar(false)}
+          onConfirm={limpiar}
+          confirmLabel="Sí, limpiar"
+          maxWidth="340px"
+        >
+          <p className="text-xs" style={{ color: T.text }}>
+            Se borrarán todos los campos y las imágenes adjuntas.
+          </p>
+        </Modal>
       )}
 
-      {/* Modal confirmación */}
+      {/* Modal resultado envío */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{ background:"rgba(0,0,0,0.6)" }}
-          onClick={() => setModal(null)}>
-          <div className="w-full max-w-sm rounded-2xl overflow-hidden"
-            style={{ background: isDark?"#141720":T.surface, border:`1px solid ${isDark?"rgba(255,255,255,0.1)":T.border}`, boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}
-            onClick={e => e.stopPropagation()}>
-            <div className="h-1.5" style={{ background: modal.ok ? "#16a34a" : "#dc2626" }}/>
-            <div className="p-6 flex flex-col items-center gap-4 text-center">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center"
-                style={{ background: modal.ok ? (isDark?"rgba(22,163,74,0.2)":"#dcfce7") : (isDark?"rgba(220,38,38,0.2)":"#fee2e2") }}>
-                {modal.ok
-                  ? <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  : <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 8v4m0 4h.01" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round"/><circle cx="12" cy="12" r="9" stroke="#dc2626" strokeWidth="2"/></svg>
-                }
+        <Modal
+          T={T}
+          title={modal.titulo}
+          onClose={() => { setModal(null); if (!modal.ok) return; if (modal.id_ticket && onVerTicket) onVerTicket(modal.id_ticket); else onSuccess?.(); }}
+          onConfirm={() => { setModal(null); if (modal.ok && modal.id_ticket && onVerTicket) onVerTicket(modal.id_ticket); else onSuccess?.(); }}
+          confirmLabel={modal.ok ? (onVerTicket ? "Ver mi ticket" : "Aceptar") : "Cerrar"}
+          cancelLabel={null}
+          maxWidth="380px"
+          danger={!modal.ok}
+        >
+          {modal.ok ? (
+            <div className="flex flex-col gap-2.5">
+              <span className="text-sm font-mono font-bold" style={{ color:"#FF6600" }}>#{modal.folio}</span>
+              <div className="flex flex-col gap-1.5 text-xs pt-2" style={{ borderTop:`1px solid ${T.border}` }}>
+                {[
+                  ["Prioridad", modal.prioridad, PRIORIDADES.find(p => p.nivel === modal.prioridad)?.color],
+                  ["Estado",    "En Proceso",    "#ca8a04"],
+                  ["Categoría", modal.categoria, null],
+                  ["Fecha",     new Date().toLocaleDateString("es-MX"), null],
+                ].map(([lbl, val, color]) => (
+                  <div key={lbl} className="flex items-center justify-between">
+                    <span style={{ color: T.textMuted }}>{lbl}:</span>
+                    <span style={{ fontWeight:600, color: color || T.text }}>{val}</span>
+                  </div>
+                ))}
               </div>
-              <div className="w-full">
-                <p className="text-xs font-black" style={{ color:T.text }}>{modal.titulo}</p>
-                {modal.ok
-                  ? <div className="mt-3 flex flex-col gap-2.5 text-left">
-                      <div className="h-1 rounded-full" style={{ background:"linear-gradient(90deg,#3b82f6,#60a5fa)", boxShadow:"0 2px 8px rgba(59,130,246,0.3)" }}/>
-                      <span className="text-sm font-mono font-bold" style={{ color:T.orange }}>#{modal.folio}</span>
-                      <div className="flex flex-col gap-1.5 text-xs border-t" style={{ borderColor:T.border, paddingTop:"12px" }}>
-                        <div className="flex items-center justify-between">
-                          <span style={{ color:T.textMuted }}>Prioridad:</span>
-                          <span style={{ color: PRIORIDADES.find(p => p.nivel === modal.prioridad)?.color ?? T.text, fontWeight:600 }}>{modal.prioridad}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span style={{ color:T.textMuted }}>Estado:</span>
-                          <span style={{ color:"#ca8a04", fontWeight:600 }}>En Proceso</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span style={{ color:T.textMuted }}>Categoría:</span>
-                          <span style={{ color:T.text, fontWeight:600 }}>{modal.categoria}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span style={{ color:T.textMuted }}>Fecha:</span>
-                          <span style={{ color:T.text, fontWeight:600 }}>{new Date().toLocaleDateString("es-MX")}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span style={{ color:T.textMuted }}>Hora:</span>
-                          <span style={{ color:T.text, fontWeight:600 }}>{new Date().toLocaleTimeString("es-MX", { hour:"2-digit", minute:"2-digit" })}</span>
-                        </div>
-                      </div>
-                    </div>
-                  : <p className="text-sm mt-1" style={{ color:T.textMuted }}>{modal.msg}</p>
-                }
-              </div>
-              <button onClick={() => { setModal(null); if (modal.ok && modal.id_ticket && onVerTicket) { onVerTicket(modal.id_ticket); } else { onSuccess?.(); } }}
-                className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95"
-                style={{ background: modal.ok ? "#16a34a" : "#dc2626" }}>
-                {modal.ok ? (onVerTicket ? "Ver mi ticket" : "Aceptar") : "Cerrar"}
-              </button>
             </div>
-          </div>
-        </div>
+          ) : (
+            <p className="text-sm" style={{ color: T.text }}>{modal.msg}</p>
+          )}
+        </Modal>
       )}
 
       {/* Visor modal */}

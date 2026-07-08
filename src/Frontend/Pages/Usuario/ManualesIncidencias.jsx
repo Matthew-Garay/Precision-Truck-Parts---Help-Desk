@@ -1,13 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import PdfViewer from "../../Components/PdfViewer";
 import { useNavigate } from "react-router-dom";
 import {
-  Search, Download, Eye, X, Clock,
-  FileText, Inbox, Tag, HardDrive, Wifi, Monitor, Cpu, Settings,
+  Download, Eye, X, Clock,
+  FileText, Inbox, Tag, Search,
 } from "lucide-react";
 import API, { apiFetch } from "../../Config/api";
 import { RADIUS, SLATE } from "../../Config/DesignSystem";
 import { usePdfCover } from "../../Components/hooks/usePdfCover";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
+import FiltrosToolbar from "../../Components/FiltrosToolbar";
 
 const BRAND = "#F47920";
 
@@ -48,7 +50,7 @@ function DrawerVisor({ manual, T, onClose }) {
             <X size={14} />
           </button>
         </div>
-        <iframe src={`${pdfUrl}#toolbar=1&navpanes=0`} title={nombre} style={{ flex: 1, width: "100%", border: "none", display: "block" }} />
+        <PdfViewer url={pdfUrl} isDark={isDark} />
       </div>
     </>
   );
@@ -199,40 +201,13 @@ function CardManual({ m, T, onVer }) {
   );
 }
 
-// ── Chip de categoría ─────────────────────────────────────────────
-function ChipCategoria({ cat, count, active, onClick, isDark }) {
-  const ck  = getCatKey(cat.nombre);
-  const def = CAT_MAP[ck];
-  return (
-    <button onClick={onClick} style={{
-      display: "inline-flex", alignItems: "center", gap: 6,
-      padding: "6px 12px", borderRadius: 99, cursor: "pointer",
-      border: `1.5px solid ${active ? def.color : (isDark ? "rgba(255,255,255,0.10)" : SLATE[200])}`,
-      background: active ? def.bg : "transparent",
-      color: active ? def.color : (isDark ? "rgba(255,255,255,0.55)" : SLATE[500]),
-      fontSize: 11, fontWeight: 700, transition: "all 0.15s",
-    }}>
-      <def.Icon size={11} />
-      {cat.nombre}
-      <span style={{
-        fontSize: 9, fontWeight: 800, padding: "1px 5px", borderRadius: 99,
-        background: active ? `${def.color}20` : (isDark ? "rgba(255,255,255,0.07)" : SLATE[100]),
-        color: active ? def.color : (isDark ? "rgba(255,255,255,0.35)" : SLATE[400]),
-      }}>
-        {count}
-      </span>
-    </button>
-  );
-}
-
 // ── Componente principal ──────────────────────────────────────────
 export default function ManualesIncidencias({ T }) {
-  const [manuales,  setManuales]  = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [busqueda,  setBusqueda]  = useState("");
-  const [catFiltro, setCatFiltro] = useState("");
-  const [drawer,    setDrawer]    = useState(null);
-  const [dragging,  setDragging]  = useState(false);
+  const [manuales,   setManuales]   = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [filtros,    setFiltros]    = useState({ busqueda: "", categoria: "" });
+  const [drawer,     setDrawer]     = useState(null);
+  const [dragging,   setDragging]   = useState(false);
   const navigate = useNavigate();
   const isDark = T.isDark;
 
@@ -251,12 +226,25 @@ export default function ManualesIncidencias({ T }) {
       .map(m => [m.id_categoria, { id: m.id_categoria, nombre: m.nombre_categoria }])
   ).values()];
 
+  const catOpts = [
+    { value: "", label: "Todas" },
+    ...categorias.map(c => ({ value: String(c.id), label: c.nombre })),
+  ];
+
+  const camposFiltro = [
+    { key: "busqueda",  label: "Búsqueda",  type: "search", placeholder: "Nombre, categoría...", debounce: 200 },
+    { key: "categoria", label: "Categoría", type: "select", opts: catOpts },
+  ];
+
+  const setFiltro = (key, val) => setFiltros(p => ({ ...p, [key]: val }));
+  const limpiarFiltros = () => setFiltros({ busqueda: "", categoria: "" });
+
   const filtrados = manuales.filter(m => {
-    const q = busqueda.toLowerCase();
-    return (!busqueda || m.nombre.toLowerCase().includes(q) ||
+    const q = filtros.busqueda.toLowerCase();
+    return (!filtros.busqueda || m.nombre.toLowerCase().includes(q) ||
       m.nombre_categoria?.toLowerCase().includes(q) ||
       m.descripcion?.toLowerCase().includes(q))
-      && (!catFiltro || String(m.id_categoria) === catFiltro);
+      && (!filtros.categoria || String(m.id_categoria) === filtros.categoria);
   });
 
   const surf   = isDark ? "#141720" : "#fff";
@@ -267,11 +255,7 @@ export default function ManualesIncidencias({ T }) {
     setDragging(false);
     const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("image/"));
     if (!files.length) return;
-    const evidencias = files.slice(0, 8).map(file => ({
-      src: URL.createObjectURL(file),
-      name: file.name,
-      file,
-    }));
+    const evidencias = files.slice(0, 8).map(file => ({ src: URL.createObjectURL(file), name: file.name, file }));
     navigate("/usuario/nuevo", { state: { evidencias } });
   };
 
@@ -336,23 +320,24 @@ export default function ManualesIncidencias({ T }) {
             </p>
           </div>
 
-          {/* Buscador */}
+          {/* Buscador hero — alimenta el mismo estado que FiltrosToolbar */}
           <div style={{
             width: "100%", maxWidth: 520, position: "relative",
             background: isDark ? "rgba(255,255,255,0.06)" : "#fff",
-            border: `1.5px solid ${busqueda ? BRAND : border}`,
+            border: `1.5px solid ${filtros.busqueda ? BRAND : border}`,
             borderRadius: 10,
-            boxShadow: busqueda
+            boxShadow: filtros.busqueda
               ? `0 0 0 4px rgba(244,121,32,0.11), 0 4px 20px rgba(0,0,0,0.08)`
               : "0 4px 20px rgba(0,0,0,0.07)",
             transition: "all 0.2s",
           }}>
             <Search size={16} style={{
               position: "absolute", left: 15, top: "50%", transform: "translateY(-50%)",
-              color: busqueda ? BRAND : SLATE[400], pointerEvents: "none",
+              color: filtros.busqueda ? BRAND : SLATE[400], pointerEvents: "none",
             }} />
             <input
-              value={busqueda} onChange={e => setBusqueda(e.target.value)}
+              value={filtros.busqueda}
+              onChange={e => setFiltro("busqueda", e.target.value)}
               placeholder="Buscar manual..."
               style={{
                 width: "100%", background: "transparent", border: "none", outline: "none",
@@ -361,8 +346,8 @@ export default function ManualesIncidencias({ T }) {
                 fontFamily: "'Inter','Segoe UI',sans-serif",
               }}
             />
-            {busqueda && (
-              <button onClick={() => setBusqueda("")} style={{
+            {filtros.busqueda && (
+              <button onClick={() => setFiltro("busqueda", "")} style={{
                 position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
                 background: "none", border: "none", cursor: "pointer",
                 color: SLATE[400], display: "flex", padding: 2,
@@ -377,30 +362,16 @@ export default function ManualesIncidencias({ T }) {
       {/* ── CUERPO ───────────────────────────────────────────── */}
       <div style={{ maxWidth: 1000, margin: "0 auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20 }}>
 
-        {/* Chips de categoría */}
-        {!loading && categorias.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: isDark ? "rgba(255,255,255,0.28)" : SLATE[400], marginRight: 4 }}>
-              Filtrar:
-            </span>
-            {categorias.map(c => (
-              <ChipCategoria
-                key={c.id} cat={c} isDark={isDark}
-                count={manuales.filter(m => String(m.id_categoria) === String(c.id)).length}
-                active={catFiltro === String(c.id)}
-                onClick={() => setCatFiltro(p => p === String(c.id) ? "" : String(c.id))}
-              />
-            ))}
-            {catFiltro && (
-              <button onClick={() => setCatFiltro("")} style={{
-                fontSize: 11, fontWeight: 600, color: BRAND,
-                background: "none", border: "none", cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 4, marginLeft: 4,
-              }}>
-                <X size={10} /> Quitar filtro
-              </button>
-            )}
-          </div>
+        {/* FiltrosToolbar — reemplaza chips ad-hoc, sincronizado con hero search */}
+        {!loading && (
+          <FiltrosToolbar
+            campos={camposFiltro}
+            valores={filtros}
+            onChange={setFiltro}
+            onLimpiar={limpiarFiltros}
+            loading={loading}
+            T={T}
+          />
         )}
 
         {/* Encabezado resultados */}
@@ -408,7 +379,7 @@ export default function ManualesIncidencias({ T }) {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 3, height: 14, borderRadius: 99, background: `linear-gradient(180deg,${BRAND},#d97400)` }} />
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: isDark ? "rgba(255,255,255,0.42)" : SLATE[600] }}>
-              {busqueda || catFiltro ? "Resultados" : "Documentos disponibles"}
+              {filtros.busqueda || filtros.categoria ? "Resultados" : "Documentos disponibles"}
             </span>
             <span style={{
               fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 99,
@@ -418,8 +389,8 @@ export default function ManualesIncidencias({ T }) {
               {filtrados.length}
             </span>
           </div>
-          {(busqueda || catFiltro) && (
-            <button onClick={() => { setBusqueda(""); setCatFiltro(""); }} style={{
+          {(filtros.busqueda || filtros.categoria) && (
+            <button onClick={limpiarFiltros} style={{
               fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.35)" : SLATE[400],
               background: "none", border: "none", cursor: "pointer",
               display: "flex", alignItems: "center", gap: 4,
@@ -452,10 +423,10 @@ export default function ManualesIncidencias({ T }) {
               <Inbox size={24} style={{ color: isDark ? "rgba(255,255,255,0.18)" : SLATE[400] }} />
             </div>
             <p style={{ fontSize: 14, fontWeight: 700, color: isDark ? "rgba(255,255,255,0.42)" : SLATE[600], margin: 0 }}>
-              {busqueda || catFiltro ? "Sin resultados" : "No hay manuales disponibles"}
+              {filtros.busqueda || filtros.categoria ? "Sin resultados" : "No hay manuales disponibles"}
             </p>
             <p style={{ fontSize: 12, color: isDark ? "rgba(255,255,255,0.22)" : SLATE[400], textAlign: "center", margin: 0 }}>
-              {busqueda ? `No se encontraron coincidencias para "${busqueda}"` : "Pronto habrá contenido disponible aquí"}
+              {filtros.busqueda ? `No se encontraron coincidencias para "${filtros.busqueda}"` : "Pronto habrá contenido disponible aquí"}
             </p>
           </div>
         ) : (

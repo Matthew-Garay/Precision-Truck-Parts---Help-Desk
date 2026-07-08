@@ -1,82 +1,126 @@
-import { useState, useEffect, useCallback } from "react";
-import { Inbox, FileDown, X } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Inbox, FileDown } from "lucide-react";
 import { apiFetch } from "../../Config/api";
 import { abrirReporteLista } from "../PrintReportePage";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
 import { useCardStyles } from "../../Components/Card";
 import VistaSolicitud from "../Usuario/VistaSolicitud";
+import Modal from "../../Components/Modal";
 
 const PRIORIDAD_COLOR = { Urgente: "#dc2626", Alta: "#ea580c", Media: "#ca8a04", Baja: "#16a34a" };
-const ESTATUS_COLOR   = { Resuelto: "#16a34a", "En proceso": "#ea580c", "No Resuelto": "#dc2626", Pendiente: "#3b82f6" };
-const ESTATUS_BG      = { Resuelto: "rgba(22,163,74,0.13)", "En proceso": "rgba(234,88,12,0.13)", "No Resuelto": "rgba(220,38,38,0.13)", Pendiente: "rgba(59,130,246,0.13)" };
+const ESTATUS_COLOR   = { Resuelto: "#16a34a", "En proceso": "#ea580c", "No Resuelto": "#dc2626", Pendiente: "#3b82f6", Rechazado: "#6b7280" };
+const ESTATUS_BG      = { Resuelto: "rgba(22,163,74,0.13)", "En proceso": "rgba(234,88,12,0.13)", "No Resuelto": "rgba(220,38,38,0.13)", Pendiente: "rgba(59,130,246,0.13)", Rechazado: "rgba(107,114,128,0.13)" };
 
 const fmt = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
 
 const LIMIT = 50;
+const FILTROS_INIT = { busqueda: "", estatus: "Todos", prioridad: "Todos", area: "Todos", fecha_inicio: "", fecha_fin: "" };
 
 export default function HistorialInsumos({ T }) {
   const isDark = T.isDark;
   const { card, hdr } = useCardStyles(T);
 
-  const [solicitudes, setSolicitudes] = useState([]);
-  const [total,       setTotal]       = useState(0);
-  const [pagina,      setPagina]      = useState(1);
-  const [cargando,    setCargando]    = useState(false);
-  const [filtros,     setFiltros]     = useState({ busqueda: "", estatus: "Todos", prioridad: "Todos", usuario: "Todos", area: "Todos" });
+  const [solicitudes,   setSolicitudes]   = useState([]);
+  const [total,         setTotal]         = useState(0);
+  const [pagina,        setPagina]        = useState(1);
+  const [cargando,      setCargando]      = useState(false);
+  const [filtros,       setFiltros]       = useState(FILTROS_INIT);
+  const [areas,         setAreas]         = useState([]);
+  const [metricas,      setMetricas]      = useState({ total: 0, pendientes: 0, en_proceso: 0, resueltos: 0, no_resueltos: 0, rechazados: 0 });
   const [solicitudVer,  setSolicitudVer]  = useState(null);
-  const [modalReporte, setModalReporte] = useState(false);
-  const [paramReporte, setParamReporte] = useState({ fecha_inicio: "", fecha_fin: "" });
-  const [generando,    setGenerando]    = useState(false);
+  const [modalReporte,  setModalReporte]  = useState(false);
+  const [paramReporte,  setParamReporte]  = useState({ fecha_inicio: "", fecha_fin: "" });
+  const [generando,     setGenerando]     = useState(false);
 
-  const cargar = useCallback((pag = 1, traerTodos = false) => {
-    setCargando(true);
-    // Si hay búsqueda activa o se pide explícitamente, traer todos para filtrar localmente
-    const limit = traerTodos ? 500 : LIMIT;
-    const page  = traerTodos ? 1   : pag;
-    apiFetch(`/api/solicitudes?limit=${limit}&page=${page}`)
+  const debounceRef = useRef(null);
+
+  // Cargar áreas para el select (una sola vez)
+  useEffect(() => {
+    apiFetch("/api/solicitudes?limit=1&page=1")
+      .then(r => r.json())
+      .catch(() => null);
+    // Obtener áreas únicas desde el backend con un fetch amplio
+    apiFetch("/api/solicitudes?limit=500&page=1")
       .then(r => r.json())
       .then(d => {
-        const lista = Array.isArray(d?.data) ? d.data : (Array.isArray(d) ? d : []);
-        setSolicitudes(lista);
-        setTotal(d?.total ?? lista.length);
+        const lista = Array.isArray(d?.data) ? d.data : [];
+        const unicas = [...new Set(lista.map(s => s.nombre_departamento).filter(Boolean))];
+        setAreas(unicas);
+      })
+      .catch(() => {});
+  }, []);
+
+  const cargarMetricas = useCallback(() => {
+    apiFetch("/api/solicitudes/metricas")
+      .then(r => r.json())
+      .then(d => { if (d?.total !== undefined) setMetricas(d); })
+      .catch(() => {});
+  }, []);
+
+  const cargar = useCallback((pag = 1, filt = filtros) => {
+    setCargando(true);
+    const qs = new URLSearchParams({ limit: LIMIT, page: pag });
+    if (filt.estatus      && filt.estatus      !== "Todos") qs.set("estatus",      filt.estatus);
+    if (filt.prioridad    && filt.prioridad    !== "Todos") qs.set("prioridad",    filt.prioridad);
+    if (filt.area         && filt.area         !== "Todos") qs.set("area",         filt.area);
+    if (filt.busqueda)                                      qs.set("busqueda",     filt.busqueda);
+    if (filt.fecha_inicio)                                  qs.set("fecha_inicio", filt.fecha_inicio);
+    if (filt.fecha_fin)                                     qs.set("fecha_fin",    filt.fecha_fin);
+    apiFetch(`/api/solicitudes?${qs}`)
+      .then(r => r.json())
+      .then(d => {
+        setSolicitudes(Array.isArray(d?.data) ? d.data : []);
+        setTotal(d?.total ?? 0);
       })
       .catch(() => {})
       .finally(() => setCargando(false));
-  }, []);
+  }, [filtros]);
 
-  // Recargar con todos los registros cuando se activa búsqueda de texto
+  // Cuando cambian filtros distintos a búsqueda de texto → recarga inmediata en pág 1
   useEffect(() => {
-    if (filtros.busqueda) {
-      cargar(1, true);
-    } else {
-      cargar(pagina);
-    }
+    setPagina(1);
+    cargar(1, filtros);
+    cargarMetricas();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtros.estatus, filtros.prioridad, filtros.area, filtros.fecha_inicio, filtros.fecha_fin]);
+
+  // Búsqueda de texto con debounce 350ms
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setPagina(1);
+      cargar(1, filtros);
+    }, 350);
+    return () => clearTimeout(debounceRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtros.busqueda]);
 
+  // Cambio de página
   useEffect(() => {
-    if (!filtros.busqueda) cargar(pagina);
-  }, [pagina, cargar, filtros.busqueda]);
+    cargar(pagina, filtros);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagina]);
 
-  useAutoRefresh(() => cargar(pagina), 30000, [pagina]);
+  useAutoRefresh(() => { cargar(pagina, filtros); cargarMetricas(); }, 30000, [pagina]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / LIMIT));
   const irPagina = p => { if (p >= 1 && p <= totalPaginas) setPagina(p); };
 
-  const usuariosOpts = [{ value: "Todos", label: "Todos" }, ...Array.from(new Set(solicitudes.map(s => s.nombre_empleado).filter(Boolean))).map(v => ({ value: v, label: v }))];
-  const areasOpts    = [{ value: "Todos", label: "Todos" }, ...Array.from(new Set(solicitudes.map(s => s.nombre_departamento).filter(Boolean))).map(v => ({ value: v, label: v }))];
+  const setFiltro = (key, val) => setFiltros(prev => ({ ...prev, [key]: val }));
+  const limpiar   = () => setFiltros(FILTROS_INIT);
+  const hayFiltros = filtros.busqueda || filtros.estatus !== "Todos" || filtros.prioridad !== "Todos" || filtros.area !== "Todos" || filtros.fecha_inicio || filtros.fecha_fin;
+
+  const areasOpts = [{ value: "Todos", label: "Todos" }, ...areas.map(v => ({ value: v, label: v }))];
 
   const camposFiltro = [
-    { key: "busqueda",  label: "Búsqueda rápida", type: "search", placeholder: "Folio, insumo o empleado..." },
-    { key: "estatus",   label: "Estatus",          type: "select", opts: ["Todos", "Pendiente", "En proceso", "Resuelto", "No Resuelto"] },
-    { key: "prioridad", label: "Prioridad",         type: "select", opts: ["Todos", "Urgente", "Alta", "Media", "Baja"] },
-    { key: "usuario",   label: "Usuario",           type: "select", opts: usuariosOpts },
-    { key: "area",      label: "Área",              type: "select", opts: areasOpts },
+    { key: "busqueda",     label: "Búsqueda",   type: "search", placeholder: "Folio o empleado..." },
+    { key: "estatus",      label: "Estatus",     type: "select", opts: ["Todos", "Pendiente", "En proceso", "Resuelto", "No Resuelto", "Rechazado"] },
+    { key: "prioridad",    label: "Prioridad",   type: "select", opts: ["Todos", "Urgente", "Alta", "Media", "Baja"] },
+    { key: "area",         label: "Área",        type: "select", opts: areasOpts },
+    { key: "fecha_inicio", label: "Desde",       type: "date" },
+    { key: "fecha_fin",    label: "Hasta",       type: "date" },
   ];
-
-  const limpiar = () => setFiltros({ busqueda: "", estatus: "Todos", prioridad: "Todos", usuario: "Todos", area: "Todos" });
-  const hayFiltros = filtros.busqueda || filtros.estatus !== "Todos" || filtros.prioridad !== "Todos" || filtros.usuario !== "Todos" || filtros.area !== "Todos";
 
   const generarReporte = async () => {
     if (!paramReporte.fecha_inicio || !paramReporte.fecha_fin) return;
@@ -98,70 +142,201 @@ export default function HistorialInsumos({ T }) {
     });
   };
 
-  const filtrados = solicitudes.filter(s => {
-    if (filtros.busqueda) {
-      const q = filtros.busqueda.toLowerCase();
-      if (
-        !s.folio_solicitud?.toLowerCase().includes(q) &&
-        !s.insumos_nombres?.toLowerCase().includes(q) &&
-        !s.nombre_empleado?.toLowerCase().includes(q) &&
-        !s.nombre_departamento?.toLowerCase().includes(q)
-      ) return false;
-    }
-    if (filtros.estatus   !== "Todos" && s.estatus             !== filtros.estatus)   return false;
-    if (filtros.prioridad !== "Todos" && s.prioridad           !== filtros.prioridad) return false;
-    if (filtros.usuario   !== "Todos" && s.nombre_empleado     !== filtros.usuario)   return false;
-    if (filtros.area      !== "Todos" && s.nombre_departamento !== filtros.area)      return false;
-    return true;
-  });
-
-  // KPIs
-  const total_sol    = solicitudes.length;
-  const resueltos    = solicitudes.filter(s => s.estatus === "Resuelto").length;
-  const enProceso    = solicitudes.filter(s => s.estatus === "En proceso").length;
-  const pendientes   = solicitudes.filter(s => s.estatus === "Pendiente").length;
-
-  const kpis = [
-    { label: "Total",       val: total_sol, color: T.orange  },
-    { label: "Pendientes",  val: pendientes, color: "#3b82f6" },
-    { label: "En proceso",  val: enProceso,  color: "#ea580c" },
-    { label: "Resueltos",   val: resueltos,  color: "#16a34a" },
-  ];
+  const totalKpi = Number(metricas.total ?? 0);
 
   if (solicitudVer) return (
-    <VistaSolicitud
-      T={T}
-      id_solicitud={solicitudVer.id_solicitud}
-      esAdmin
-      onBack={() => setSolicitudVer(null)}
-    />
+    <VistaSolicitud T={T} id_solicitud={solicitudVer.id_solicitud} esAdmin onBack={() => setSolicitudVer(null)} />
   );
 
   return (
     <>
-    <div className="flex flex-col overflow-y-auto" style={{ background: T.bg }}>
-      <div className="w-full p-2 sm:p-3 flex flex-col gap-2 sm:gap-3">
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: T.bg }}>
+      <div className="w-full p-2 sm:p-3 flex flex-col gap-2 sm:gap-3 h-full overflow-hidden">
 
-        {/* KPIs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {kpis.map(({ label, val, color }) => (
-            <div key={label} className="rounded-xl p-3 flex flex-col gap-1 relative overflow-hidden" style={card}>
-              <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg,${color},${color}33)` }} />
-              <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</p>
-              <span className="text-2xl font-black leading-none" style={{ color }}>{val}</span>
-              <div className="h-1 rounded-full overflow-hidden" style={{ background: T.border }}>
-                <div className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${total_sol > 0 ? Math.round(val / total_sol * 100) : 0}%`, background: color }} />
+        {/* ── MÉTRICAS ── */}
+        <div className="grid grid-cols-12 gap-3">
+
+          {/* Distribución por estatus */}
+          <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden relative" style={card}>
+            <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+              style={{ background: `radial-gradient(circle at 80% 20%, ${T.orange}, transparent 60%)` }} />
+            <div className="h-0.5" style={{ background: `linear-gradient(90deg,${T.orange},${T.orange}33)` }} />
+            <div className="p-3 flex flex-col gap-2">
+              <div className="flex items-center gap-1.5">
+                <div className="w-1 h-3 rounded-full" style={{ background: T.orange }} />
+                <p className="text-xs font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Distribución</p>
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-3xl font-black leading-none" style={{ color: T.orange }}>{totalKpi}</span>
+                <span className="text-[11px] font-semibold mb-0.5" style={{ color: T.textMuted }}>solicitudes totales</span>
+              </div>
+              <div className="flex flex-col gap-1.5 pt-1">
+                {[
+                  { label: "Resueltos",    val: Number(metricas.resueltos    ?? 0), color: "#16a34a" },
+                  { label: "En proceso",   val: Number(metricas.en_proceso   ?? 0), color: "#ea580c" },
+                  { label: "Pendientes",   val: Number(metricas.pendientes   ?? 0), color: "#3b82f6" },
+                  { label: "No Resueltos", val: Number(metricas.no_resueltos ?? 0), color: "#dc2626" },
+                  { label: "Rechazados",   val: Number(metricas.rechazados   ?? 0), color: "#6b7280" },
+                ].map(({ label, val, color }) => {
+                  const pct = totalKpi > 0 ? Math.round(val / totalKpi * 100) : 0;
+                  return (
+                    <div key={label} className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                      <span className="text-[10px] font-semibold w-20 flex-shrink-0" style={{ color: T.text }}>{label}</span>
+                      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: T.border }}>
+                        <div className="h-full rounded-full transition-all duration-700"
+                          style={{ width: `${pct > 0 ? Math.max(pct, 4) : 0}%`, background: color }} />
+                      </div>
+                      <span className="text-[10px] font-black w-4 text-right flex-shrink-0" style={{ color }}>{val}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          ))}
+          </div>
+
+          {/* KPIs numéricos */}
+          <div className="col-span-12 sm:col-span-6 lg:col-span-3 grid grid-cols-2 gap-2">
+            {[
+              { label: "Total",        val: totalKpi,                                  color: T.orange,  sub: `${Number(metricas.pendientes ?? 0)} pendientes`,    subColor: "#3b82f6" },
+              { label: "Pendientes",   val: Number(metricas.pendientes  ?? 0),         color: "#3b82f6", sub: `${totalKpi > 0 ? Math.round(Number(metricas.pendientes ?? 0) / totalKpi * 100) : 0}% del total`, subColor: T.textFaint },
+              { label: "Resueltos",    val: Number(metricas.resueltos   ?? 0),         color: "#16a34a", sub: `${totalKpi > 0 ? Math.round(Number(metricas.resueltos ?? 0) / totalKpi * 100) : 0}% tasa`,      subColor: "#16a34a" },
+              { label: "Sin Resolver", val: Number(metricas.no_resueltos ?? 0),        color: "#dc2626", sub: `${totalKpi > 0 ? Math.round(Number(metricas.no_resueltos ?? 0) / totalKpi * 100) : 0}% del total`, subColor: "#dc2626" },
+            ].map(({ label, val, color, sub, subColor }) => (
+              <div key={label} className="rounded-xl p-2 flex flex-col gap-1 relative overflow-hidden" style={card}>
+                <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg,${color},${color}33)` }} />
+                <p className="text-[10px] font-black uppercase tracking-wider leading-tight" style={{ color: T.textMuted }}>{label}</p>
+                <span className="text-2xl font-black leading-none" style={{ color }}>{val}</span>
+                <div className="h-1 rounded-full overflow-hidden" style={{ background: T.border }}>
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${totalKpi > 0 ? Math.round(val / totalKpi * 100) : 0}%`, background: color, boxShadow: `0 0 4px ${color}44` }} />
+                </div>
+                <span className="text-[10px] font-semibold" style={{ color: subColor }}>{sub}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Tasa de resolución */}
+          <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden relative" style={card}>
+            <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+              style={{ background: `radial-gradient(circle at 20% 80%, #16a34a, transparent 60%)` }} />
+            <div className="h-0.5" style={{ background: "linear-gradient(90deg,#16a34a,#16a34a33)" }} />
+            <div className="p-3 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1 h-3 rounded-full" style={{ background: "#16a34a" }} />
+                  <p className="text-xs font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Resolución</p>
+                </div>
+                {(() => {
+                  const resueltos = Number(metricas.resueltos ?? 0);
+                  const cerrados  = resueltos + Number(metricas.no_resueltos ?? 0) + Number(metricas.rechazados ?? 0);
+                  const pct = cerrados > 0 ? Math.round(resueltos / cerrados * 100) : 0;
+                  const label = pct >= 75 ? "Excelente" : pct >= 50 ? "Regular" : "Bajo";
+                  const color = pct >= 75 ? "#16a34a" : pct >= 50 ? "#ca8a04" : "#dc2626";
+                  return (
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: `${color}15`, color, border: `1px solid ${color}30` }}>
+                      {label}
+                    </span>
+                  );
+                })()}
+              </div>
+              {(() => {
+                const resueltos   = Number(metricas.resueltos    ?? 0);
+                const noResueltos = Number(metricas.no_resueltos ?? 0);
+                const rechazados  = Number(metricas.rechazados   ?? 0);
+                const enProceso   = Number(metricas.en_proceso   ?? 0);
+                const cerrados    = resueltos + noResueltos + rechazados;
+                const pct         = cerrados > 0 ? Math.round(resueltos / cerrados * 100) : 0;
+                const color       = pct >= 75 ? "#16a34a" : pct >= 50 ? "#ca8a04" : "#dc2626";
+                return (
+                  <>
+                    <div className="flex items-end gap-1">
+                      <span className="text-3xl font-black leading-none" style={{ color }}>{pct}%</span>
+                      <span className="text-[11px] font-semibold mb-0.5" style={{ color: T.textMuted }}>tasa de éxito</span>
+                    </div>
+                    <div className="h-2 rounded-full overflow-hidden" style={{ background: T.border }}>
+                      <div className="h-full rounded-full transition-all duration-1000"
+                        style={{ width: `${pct}%`, background: `linear-gradient(90deg,${color},${color}88)`, boxShadow: `0 0 6px ${color}55` }} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                      <div className="rounded-lg p-1.5" style={{ background: isDark ? "rgba(234,88,12,0.1)" : "#fff7ed", border: "1px solid rgba(234,88,12,0.2)" }}>
+                        <p className="text-[9px] font-black uppercase" style={{ color: "#ea580c" }}>En proceso</p>
+                        <p className="text-base font-black" style={{ color: "#ea580c" }}>{enProceso}</p>
+                      </div>
+                      <div className="rounded-lg p-1.5" style={{ background: isDark ? "rgba(107,114,128,0.1)" : "#f9fafb", border: "1px solid rgba(107,114,128,0.2)" }}>
+                        <p className="text-[9px] font-black uppercase" style={{ color: "#6b7280" }}>Rechazados</p>
+                        <p className="text-base font-black" style={{ color: "#6b7280" }}>{rechazados}</p>
+                      </div>
+                    </div>
+                    <div className="pt-2" style={{ borderTop: `1px solid ${T.border}` }}>
+                      <p className="text-[10px]" style={{ color: T.textFaint }}>{resueltos} resueltas de {cerrados} cerradas · {noResueltos} sin resolver</p>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* Prioridad + Top Áreas */}
+          <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden flex flex-col" style={card}>
+            <div className="px-3 py-2 flex items-center gap-1.5" style={hdr}>
+              <div className="w-1 h-3 rounded-full" style={{ background: T.orange }} />
+              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Por Prioridad</p>
+            </div>
+            <div className="px-3 pt-2 pb-1 flex flex-col gap-1.5">
+              {[{ l: "Urgente", c: "#dc2626" }, { l: "Alta", c: "#ea580c" }, { l: "Media", c: "#ca8a04" }, { l: "Baja", c: "#16a34a" }].map(({ l, c }) => {
+                const n = solicitudes.filter(s => s.prioridad === l).length;
+                const pct = solicitudes.length > 0 ? Math.round(n / solicitudes.length * 100) : 0;
+                return (
+                  <div key={l} className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: c }} />
+                    <span className="text-[10px] font-semibold w-12 flex-shrink-0" style={{ color: T.text }}>{l}</span>
+                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.06)" : `${c}15` }}>
+                      <div className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${pct > 0 ? Math.max(pct, 4) : 0}%`, background: c }} />
+                    </div>
+                    <span className="text-[10px] font-black w-4 text-right flex-shrink-0" style={{ color: c }}>{n}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mx-3 my-1.5" style={{ height: "1px", background: T.border }} />
+            <div className="px-3 py-1 flex items-center gap-1.5">
+              <div className="w-1 h-3 rounded-full" style={{ background: T.orange }} />
+              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Top Áreas</p>
+            </div>
+            <div className="px-3 pb-2 flex flex-col gap-1.5">
+              {(() => {
+                const conteo = {};
+                solicitudes.forEach(s => { if (s.nombre_departamento) conteo[s.nombre_departamento] = (conteo[s.nombre_departamento] || 0) + 1; });
+                const top = Object.entries(conteo).sort((a, b) => b[1] - a[1]).slice(0, 3);
+                const maxN = top[0]?.[1] || 1;
+                const rankColors = [T.orange, "#3b82f6", "#8b5cf6"];
+                return top.length === 0
+                  ? <p className="text-[9px]" style={{ color: T.textFaint }}>Sin datos</p>
+                  : top.map(([area, n], idx) => (
+                    <div key={area} className="flex items-center gap-1.5">
+                      <span className="text-[9px] font-black w-3 flex-shrink-0 text-center" style={{ color: rankColors[idx] }}>#{idx + 1}</span>
+                      <span className="text-[10px] font-semibold flex-1 truncate" style={{ color: T.text }}>{area}</span>
+                      <div className="w-10 h-1.5 rounded-full overflow-hidden flex-shrink-0" style={{ background: T.border }}>
+                        <div className="h-full rounded-full transition-all duration-700"
+                          style={{ width: `${Math.round(n / maxN * 100)}%`, background: rankColors[idx] }} />
+                      </div>
+                      <span className="text-[10px] font-black w-4 text-right flex-shrink-0" style={{ color: rankColors[idx] }}>{n}</span>
+                    </div>
+                  ));
+              })()}
+            </div>
+          </div>
+
         </div>
 
         {/* Filtros */}
         <FiltrosToolbar
           campos={camposFiltro}
           valores={filtros}
-          onChange={(key, val) => setFiltros(prev => ({ ...prev, [key]: val }))}
+          onChange={setFiltro}
           onLimpiar={limpiar}
           T={T}
         >
@@ -176,7 +351,7 @@ export default function HistorialInsumos({ T }) {
         </FiltrosToolbar>
 
         {/* Tabla */}
-        <div className="rounded-xl overflow-hidden flex flex-col" style={{ ...card, minHeight: "300px" }}>
+        <div className="rounded-xl overflow-hidden flex flex-col flex-1 min-h-0" style={{ ...card }}>
           <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={hdr}>
             <div className="flex items-center gap-1.5">
               <div className="w-0.5 h-3.5 rounded-full" style={{ background: T.orange }} />
@@ -188,21 +363,20 @@ export default function HistorialInsumos({ T }) {
               )}
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
                 style={{ background: T.bg, color: T.textMuted, border: `1px solid ${T.border}` }}>
-                {filtrados.length} resultado{filtrados.length !== 1 ? "s" : ""}
-                {!filtros.busqueda && ` · pág. ${pagina}/${totalPaginas}`}
+                {total} resultado{total !== 1 ? "s" : ""} · pág. {pagina}/{totalPaginas}
               </span>
             </div>
           </div>
 
-          <div className="overflow-x-auto flex-1">
-            {/* Mobile: tarjetas */}
+          <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
+            {/* Mobile */}
             <div className="flex flex-col gap-2 p-3 sm:hidden">
-              {filtrados.length === 0
+              {solicitudes.length === 0
                 ? <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <Inbox size={20} style={{ color: T.textFaint }} />
                     <p className="text-xs font-bold" style={{ color: T.textMuted }}>{hayFiltros ? "Sin resultados" : "No hay solicitudes"}</p>
                   </div>
-                : filtrados.map(s => (
+                : solicitudes.map(s => (
                   <div key={s.id_solicitud}
                     className="rounded-xl p-3 flex flex-col gap-2 cursor-pointer active:scale-[0.98] transition-all"
                     style={{ background: isDark ? "rgba(255,255,255,0.04)" : T.surfaceAlt, border: `1px solid ${T.border}` }}
@@ -224,7 +398,7 @@ export default function HistorialInsumos({ T }) {
               }
             </div>
 
-            {/* Desktop: tabla */}
+            {/* Desktop */}
             <div className="hidden sm:block">
               <table className="w-full border-collapse" style={{ minWidth: "800px" }}>
                 <thead className="sticky top-0 z-10">
@@ -238,16 +412,16 @@ export default function HistorialInsumos({ T }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtrados.length === 0 ? (
+                  {solicitudes.length === 0 ? (
                     <tr><td colSpan={8}>
                       <div className="flex flex-col items-center justify-center py-12 gap-2">
                         <Inbox size={22} style={{ color: T.textFaint }} />
                         <p className="text-xs font-bold" style={{ color: T.textMuted }}>
-                          {hayFiltros ? "Sin resultados" : "No hay solicitudes registradas"}
+                          {hayFiltros ? "Sin resultados para los filtros aplicados" : "No hay solicitudes registradas"}
                         </p>
                       </div>
                     </td></tr>
-                  ) : filtrados.map((s, i) => {
+                  ) : solicitudes.map((s, i) => {
                     const bgRow = i % 2 === 0 ? (isDark ? "#141720" : T.surface) : (isDark ? "#1c2030" : T.surfaceAlt);
                     return (
                       <tr key={s.id_solicitud}
@@ -293,8 +467,8 @@ export default function HistorialInsumos({ T }) {
           </div>
         </div>
 
-        {/* Paginación — se oculta cuando hay búsqueda activa (filtrado local sobre todos los datos) */}
-        {totalPaginas > 1 && !filtros.busqueda && (
+        {/* Paginación */}
+        {totalPaginas > 1 && (
           <div className="flex items-center justify-center gap-2 py-2">
             <button onClick={() => irPagina(1)} disabled={pagina === 1}
               className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
@@ -327,48 +501,27 @@ export default function HistorialInsumos({ T }) {
     </div>
 
     {modalReporte && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        style={{ background: "rgba(0,0,0,0.55)" }}
-        onClick={() => setModalReporte(false)}>
-        <div className="rounded-2xl w-full max-w-sm flex flex-col gap-4 p-5"
-          style={{ background: isDark ? "#161B22" : "#fff", border: `1px solid ${T.border}`, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}
-          onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-1 h-4 rounded-full" style={{ background: T.orange }} />
-              <span className="text-sm font-black" style={{ color: T.text }}>Parámetros del Reporte</span>
-            </div>
-            <button onClick={() => setModalReporte(false)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>
-              <X size={13} />
-            </button>
-          </div>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Fecha inicio</label>
-              <input type="date" value={paramReporte.fecha_inicio}
-                onChange={e => setParamReporte(p => ({ ...p, fecha_inicio: e.target.value }))}
+      <Modal
+        T={T}
+        title="Parámetros del Reporte"
+        onClose={() => setModalReporte(false)}
+        onConfirm={generarReporte}
+        confirmLabel={generando ? "Generando..." : "Generar Reporte"}
+        loading={generando}
+        maxWidth="360px"
+      >
+        <div className="flex flex-col gap-3">
+          {[["fecha_inicio", "Fecha inicio"], ["fecha_fin", "Fecha fin"]].map(([key, label]) => (
+            <div key={key} className="flex flex-col gap-1">
+              <label className="text-[11px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</label>
+              <input type="date" value={paramReporte[key]}
+                onChange={e => setParamReporte(p => ({ ...p, [key]: e.target.value }))}
                 className="rounded-lg px-3 py-2 text-sm"
                 style={{ background: T.surfaceAlt, border: `1px solid ${T.border}`, color: T.text, outline: "none" }} />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Fecha fin</label>
-              <input type="date" value={paramReporte.fecha_fin}
-                onChange={e => setParamReporte(p => ({ ...p, fecha_fin: e.target.value }))}
-                className="rounded-lg px-3 py-2 text-sm"
-                style={{ background: T.surfaceAlt, border: `1px solid ${T.border}`, color: T.text, outline: "none" }} />
-            </div>
-          </div>
-          <button onClick={generarReporte} disabled={!paramReporte.fecha_inicio || !paramReporte.fecha_fin || generando}
-            className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
-            style={{ background: `linear-gradient(135deg,${T.orange},#d97400)`, color: "#fff" }}>
-            {generando
-              ? <><svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg> Generando...</>
-              : <><FileDown size={14} /> Generar Reporte</>}
-          </button>
+          ))}
         </div>
-      </div>
+      </Modal>
     )}
   </>
   );

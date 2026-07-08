@@ -532,7 +532,10 @@ export function ToastProvider({ children, T }) {
   const isDark = T?.isDark ?? false;
 
   const add = useCallback((type, message, opts = {}) => {
-    const id = `${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+    const uuid = typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+    const id = `${Date.now()}_${uuid}`;
     setToasts(p => [...p.slice(-7), { id, type, message, ...opts }]);
     return id;
   }, []);

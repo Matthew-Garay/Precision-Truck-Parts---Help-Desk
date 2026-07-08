@@ -139,7 +139,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
   return (
     <>
     <div className="flex flex-col h-full" style={{ background:T.bg, overflow:"hidden" }}>
-        <div className="w-full p-2 sm:p-3 flex flex-col gap-2 sm:gap-3 overflow-y-auto flex-1 min-h-0">
+        <div className="w-full p-2 sm:p-3 flex flex-col gap-2 sm:gap-3 flex-1 min-h-0" style={{ overflow:"hidden" }}>
 
         {/* -- ESTADÍSTICOS -- */}
         <div className="grid grid-cols-12 gap-3">
@@ -351,7 +351,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
         </FiltrosToolbar>
 
           {/* -- TABLA -- */}
-          <div className="rounded-xl overflow-hidden flex flex-col" style={{ ...card, flex:"1 1 0", minHeight:"300px" }}>
+          <div className="rounded-xl overflow-hidden flex flex-col" style={{ ...card, flex:"1 1 0", minHeight:0 }}>
           <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={hdr}>
             <div className="flex items-center gap-1.5">
               <div className="w-0.5 h-3.5 rounded-full" style={{ background:T.orange }} />
@@ -496,16 +496,6 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
         {/* -- PAGINACIÓN -- */}
         {totalPaginas > 1 && (
           <div className="flex items-center justify-center gap-2 py-2 flex-shrink-0">
-            <button onClick={() => irPagina(1)} disabled={pagina === 1}
-              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
-              style={{ background: isDark?"rgba(255,255,255,0.06)":T.surfaceAlt, color:T.textMuted, border:`1px solid ${T.border}` }}>
-              «
-            </button>
-            <button onClick={() => irPagina(pagina - 1)} disabled={pagina === 1}
-              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
-              style={{ background: isDark?"rgba(255,255,255,0.06)":T.surfaceAlt, color:T.textMuted, border:`1px solid ${T.border}` }}>
-              ‹ Anterior
-            </button>
             {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
               const start = Math.max(1, Math.min(pagina - 2, totalPaginas - 4));
               const p = start + i;
@@ -522,16 +512,6 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                 </button>
               );
             })}
-            <button onClick={() => irPagina(pagina + 1)} disabled={pagina === totalPaginas}
-              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
-              style={{ background: isDark?"rgba(255,255,255,0.06)":T.surfaceAlt, color:T.textMuted, border:`1px solid ${T.border}` }}>
-              Siguiente ›
-            </button>
-            <button onClick={() => irPagina(totalPaginas)} disabled={pagina === totalPaginas}
-              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
-              style={{ background: isDark?"rgba(255,255,255,0.06)":T.surfaceAlt, color:T.textMuted, border:`1px solid ${T.border}` }}>
-              »
-            </button>
           </div>
         )}
         </div>

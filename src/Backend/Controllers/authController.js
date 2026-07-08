@@ -60,6 +60,7 @@ import jwt      from "jsonwebtoken";
 import path     from "path";
 import fs       from "fs";
 import crypto   from "crypto";
+import pool     from "../Config/db.js";
 import { safeResolvePath } from "../Middlewares/security.js";
 import { uploadFoto, FOTOS_DIR, FOTOS_REL } from "../Middlewares/uploadFotos.js";
 import { revocarToken } from "../Middlewares/authMiddleware.js";
@@ -157,16 +158,28 @@ export const logout = async (req, res) => {
   const { id_acceso } = req.body;
   if (!id_acceso) return res.status(400).json({ error: "id_acceso requerido" });
   try {
-    await Empleado.registrarSalida(id_acceso);
-    // Revocar el JWT actual si viene en el header (previene reutilización)
+    // Verificar que el id_acceso pertenece al empleado que hace logout.
+    // Aunque la ruta es pública (por sendBeacon), validamos con el token
+    // si viene presente para evitar que alguien cierre sesiones ajenas.
     const header = req.headers["authorization"];
     if (header?.startsWith("Bearer ")) {
       try {
         const payload = jwt.decode(header.slice(7));
-        if (payload?.jti && payload?.exp)
-          await revocarToken(payload.jti, payload.id_empleado, payload.exp);
+        if (payload?.id_empleado) {
+          const [[acceso]] = await pool.query(
+            "SELECT id_empleado FROM historial_acceso WHERE id_acceso = ? LIMIT 1",
+            [id_acceso]
+          );
+          // Si el registro existe y no pertenece al empleado del token, rechazar
+          if (acceso && acceso.id_empleado !== payload.id_empleado)
+            return res.status(403).json({ error: "No autorizado" });
+          // Revocar el JWT
+          if (payload?.jti && payload?.exp)
+            await revocarToken(payload.jti, payload.id_empleado, payload.exp);
+        }
       } catch { /* ignorar errores de decode */ }
     }
+    await Empleado.registrarSalida(id_acceso);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Error del servidor", ...errDetalle(err) });
@@ -239,13 +252,12 @@ export const getRoles = async (req, res) => {
 export const updateEmpleadoAdmin = async (req, res) => {
   const idNum = parseInt(req.params.id, 10);
   if (isNaN(idNum) || idNum <= 0) return res.status(400).json({ error: "ID inválido" });
-  const { num_empleado, nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password_nueva } = req.body;
+  const { nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password_nueva } = req.body;
   try {
     const empleado = await Empleado.findById(idNum);
     if (!empleado) return res.status(404).json({ error: "Empleado no encontrado" });
     const passwordHash = (password_nueva && password_nueva.trim()) ? await bcrypt.hash(password_nueva.trim(), 12) : undefined;
     await Empleado.updateAdmin(idNum, {
-      num_empleado:    num_empleado    || undefined,
       nombre:          nombre          || undefined,
       ap_paterno:      ap_paterno      || undefined,
       ap_materno:      ap_materno      !== undefined ? ap_materno : undefined,

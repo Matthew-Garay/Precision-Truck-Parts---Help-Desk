@@ -1,11 +1,26 @@
 /**
  * api.js — Módulo central de comunicación HTTP.
  *
- * Persistencia de sesión:
- *   El token JWT se guarda en localStorage ("_tk") para sobrevivir recargas
- *   y navegación entre módulos. Se mantiene también en _token (memoria) para
- *   acceso síncrono. Al montar la app, main.jsx renueva el token vía
- *   POST /api/auth/refresh-token para detectar expiración.
+ * PERSISTENCIA DE SESIÓN:
+ *   El sistema implementa persistencia de sesión mediante localStorage,
+ *   eliminando la necesidad de re-autenticaciones al navegar entre módulos.
+ *
+ *   Mecanismo:
+ *     1. Al hacer login, el JWT se guarda en localStorage bajo la clave "_tk"
+ *        y en la variable de módulo _token para acceso síncrono en memoria.
+ *     2. Al recargar la página, _token se rehidrata desde localStorage
+ *        automáticamente en cada llamada a getToken().
+ *     3. main.jsx renueva el token contra el backend (refresh-token) al montar,
+ *        garantizando que la sesión siga vigente sin pedir credenciales.
+ *     4. Si el token expiró, el backend responde 401 y apiFetch() llama
+ *        clearSession() que limpia localStorage y redirige a /login.
+ *     5. Al cerrar la pestaña, sendBeacon envía el logout al backend para
+ *        registrar la salida en historial_acceso sin bloquear el cierre.
+ *
+ *   Datos persistidos en localStorage:
+ *     "_tk"       — JWT (12h vigencia, renovado automáticamente)
+ *     "usuario"   — datos públicos del empleado autenticado
+ *     "id_acceso" — id del registro de sesión activa
  *
  * clearSession() — elimina token + usuario + id_acceso y redirige a /login.
  * apiFetch()     — adjunta JWT, CSRF header y serializa body automáticamente.

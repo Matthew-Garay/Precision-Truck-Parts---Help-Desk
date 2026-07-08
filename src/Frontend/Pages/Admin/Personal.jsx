@@ -4,6 +4,7 @@ import { apiFetch } from "../../Config/api";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
 import { useCardStyles } from "../../Components/Card";
 import Modal from "../../Components/Modal";
+import { Clock } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
@@ -116,6 +117,9 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
       icon={iconEmpleado}
       accentColor={ORANGE}
       onClose={onCerrar}
+      onConfirm={guardar}
+      confirmLabel={loading ? "Guardando…" : modo === "crear" ? "Crear Empleado" : "Guardar Cambios"}
+      cancelLabel="Cancelar"
       loading={loading}
       maxWidth="448px"
       noBodyPadding
@@ -124,10 +128,7 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
 
           {/* N° Empleado */}
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <Lbl>N° Empleado</Lbl>
-              {modo === "editar" && <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9", color: T.textFaint, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}`, padding: "2px 6px", borderRadius: 4 }}>Solo lectura</span>}
-            </div>
+            <Lbl>N° Empleado</Lbl>
             <input
               style={{ ...inp, background: modo === "editar" ? (isDark ? "rgba(255,255,255,0.02)" : "#f1f5f9") : inp.background, color: modo === "editar" ? T.textFaint : T.text, cursor: modo === "editar" ? "default" : "text", borderStyle: modo === "editar" ? "dashed" : "solid" }}
               value={form.num_empleado}
@@ -258,20 +259,6 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
             </div>
           )}
         </div>
-
-        {/* Footer dentro del noBodyPadding wrapper */}
-        <div style={{ padding: "14px 24px", display: "flex", gap: 8, borderTop: "1px solid #e2e8f0", flexShrink: 0 }}>
-          <button onClick={onCerrar} style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "transparent", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "#cbd5e1"}`, cursor: "pointer" }}>
-            Cancelar
-          </button>
-          <button onClick={guardar} disabled={loading}
-            style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 13, fontWeight: 700, color: "#fff", background: ORANGE, border: "none", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            {loading
-              ? <><svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Guardando...</>
-              : modo === "crear" ? "Crear Empleado" : "Guardar Cambios"
-            }
-          </button>
-        </div>
     </Modal>
   );
 }
@@ -335,108 +322,88 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
   const inpDate = { background: isDark ? "rgba(255,255,255,0.05)" : "#f8fafc", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}`, color: T.text, borderRadius: "6px", padding: "6px 10px", fontSize: "12px", outline: "none", colorScheme: isDark ? "dark" : "light" };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      style={{ background: "rgba(0,0,0,0.55)" }} onClick={onCerrar}>
-      <div className="w-full max-w-xl overflow-hidden flex flex-col"
-        style={{ background: isDark ? "#141720" : "#ffffff", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}`, borderRadius: 12, boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.6)" : "0 20px 60px rgba(0,0,0,0.15)", maxHeight: "90vh" }}
-        onClick={e => e.stopPropagation()}>
-
-        {/* Header */}
-        <div style={{ background: isDark ? "#0f1117" : "#1e293b", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb"}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 4, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            </div>
-            <div>
-              <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: 0, letterSpacing: "-0.01em" }}>Historial de Accesos</p>
-              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.40)", margin: 0 }}>{nombre}</p>
-            </div>
-          </div>
-          <button onClick={onCerrar} style={{ width: 30, height: 30, borderRadius: 4, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.12s" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.14)"; e.currentTarget.style.color = "#fff"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "rgba(255,255,255,0.55)"; }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-
-        {/* Filtros */}
-        <div style={{ padding: "12px 20px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#e5e7eb"}`, background: isDark ? "rgba(255,255,255,0.015)" : "#fafbfc", display: "flex", flexDirection: "column", gap: 10, flexShrink: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>Período</span>
-            {[{ id:"todo", lbl:"Todo" }, { id:"hoy", lbl:"Hoy" }, { id:"semana", lbl:"Semana" }, { id:"mes", lbl:"Mes" }].map(a => {
-              const activo = a.id === "todo" ? (!desde && !hasta) : a.id === "hoy" ? (desde===isoHoy&&hasta===isoHoy) : a.id === "semana" ? (desde===isoLunes&&hasta===isoHoy) : (desde===isoMes&&hasta===isoHoy);
-              return (
-                <button key={a.id} onClick={() => aplicarAtajo(a.id)}
-                  style={{ padding: "3px 10px", borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: "pointer", background: activo ? "rgba(247,148,30,0.12)" : (isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"), color: activo ? "#F7941E" : T.textMuted, border: `1px solid ${activo ? "rgba(247,148,30,0.35)" : (isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0")}` }}>
-                  {a.lbl}
-                </button>
-              );
-            })}
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <input type="date" style={inpDate} value={desde} onChange={e => setDesde(e.target.value)} />
-              <span style={{ fontSize: 11, color: T.textFaint }}>–</span>
-              <input type="date" style={inpDate} value={hasta} onChange={e => setHasta(e.target.value)} />
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>Tipo</span>
-            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}` }}>
-              {[{ id:"todos", lbl:"Todos" }, { id:"activos", lbl:"Activos" }, { id:"cerrados", lbl:"Cerrados" }].map((t, i) => (
-                <button key={t.id} onClick={() => setTipoFiltro(t.id)}
-                  style={{ padding: "4px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: tipoFiltro === t.id ? "#F7941E" : (isDark ? "rgba(255,255,255,0.03)" : "#f8fafc"), color: tipoFiltro === t.id ? "#fff" : T.textMuted, border: "none", borderRight: i < 2 ? `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}` : "none" }}>
-                  {t.lbl}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Lista */}
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 20px", display: "flex", flexDirection: "column", gap: 6 }}>
-          {loading ? (
-            <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
-              <svg className="animate-spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F7941E" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            </div>
-          ) : filtrados.length === 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", gap: 8 }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={T.textFaint} strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <p style={{ fontSize: 13, fontWeight: 600, color: T.textMuted, margin: 0 }}>Sin registros</p>
-              <p style={{ fontSize: 11, color: T.textFaint, margin: 0 }}>Ajusta el rango o los filtros</p>
-            </div>
-          ) : filtrados.map((a, i) => {
-            const dur = duracion(a.fecha_entrada, a.fecha_salida);
+    <Modal
+      T={T}
+      title="Historial de Accesos"
+      subtitle={nombre}
+      icon={<Clock size={13} aria-hidden="true" style={{ color: "rgba(255,255,255,0.75)" }} />}
+      onClose={onCerrar}
+      maxWidth="580px"
+      noBodyPadding
+    >
+      {/* Filtros */}
+      <div style={{ padding: "12px 18px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}`, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>Período</span>
+          {[{ id:"todo", lbl:"Todo" }, { id:"hoy", lbl:"Hoy" }, { id:"semana", lbl:"Semana" }, { id:"mes", lbl:"Mes" }].map(a => {
+            const activo = a.id === "todo" ? (!desde && !hasta) : a.id === "hoy" ? (desde===isoHoy&&hasta===isoHoy) : a.id === "semana" ? (desde===isoLunes&&hasta===isoHoy) : (desde===isoMes&&hasta===isoHoy);
             return (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#e5e7eb"}` }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: a.fecha_salida ? "#94a3b8" : "#22c55e", boxShadow: a.fecha_salida ? "none" : "0 0 0 3px rgba(34,197,94,0.2)" }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{fmt(a.fecha_entrada)}</span>
-                    {!a.fecha_salida && <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", padding: "1px 6px", borderRadius: 9999, background: "rgba(34,197,94,0.1)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.2)" }}>En sesión</span>}
-                  </div>
-                  {a.fecha_salida && <p style={{ fontSize: 11, color: T.textFaint, margin: 0 }}>Salida: {fmt(a.fecha_salida)}</p>}
-                </div>
-                {dur && <span style={{ fontSize: 11, fontWeight: 600, flexShrink: 0, padding: "2px 8px", borderRadius: 5, background: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9", color: T.textMuted }}>{dur}</span>}
-              </div>
+              <button key={a.id} onClick={() => aplicarAtajo(a.id)}
+                style={{ padding: "3px 10px", borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: "pointer", background: activo ? "rgba(247,148,30,0.12)" : (isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"), color: activo ? "#F7941E" : T.textMuted, border: `1px solid ${activo ? "rgba(247,148,30,0.35)" : (isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0")}` }}>
+                {a.lbl}
+              </button>
             );
           })}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <input type="date" style={inpDate} value={desde} onChange={e => setDesde(e.target.value)} />
+            <span style={{ fontSize: 11, color: T.textFaint }}>–</span>
+            <input type="date" style={inpDate} value={hasta} onChange={e => setHasta(e.target.value)} />
+          </div>
         </div>
-
-        {/* Footer */}
-        <div style={{ padding: "12px 20px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#e5e7eb"}`, background: isDark ? "rgba(255,255,255,0.02)" : "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-          <span style={{ fontSize: 11, color: T.textFaint }}>{filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}</span>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={exportarCSV} disabled={filtrados.length === 0}
-              style={{ padding: "6px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, background: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}`, cursor: "pointer", opacity: filtrados.length === 0 ? 0.4 : 1 }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Exportar CSV
-            </button>
-            <button onClick={onCerrar} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}`, cursor: "pointer" }}>
-              Cerrar
-            </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>Tipo</span>
+          <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}` }}>
+            {[{ id:"todos", lbl:"Todos" }, { id:"activos", lbl:"Activos" }, { id:"cerrados", lbl:"Cerrados" }].map((t, i) => (
+              <button key={t.id} onClick={() => setTipoFiltro(t.id)}
+                style={{ padding: "4px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: tipoFiltro === t.id ? "#F7941E" : (isDark ? "rgba(255,255,255,0.03)" : "#f8fafc"), color: tipoFiltro === t.id ? "#fff" : T.textMuted, border: "none", borderRight: i < 2 ? `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}` : "none" }}>
+                {t.lbl}
+              </button>
+            ))}
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Lista */}
+      <div style={{ maxHeight: "340px", overflowY: "auto", padding: "12px 18px", display: "flex", flexDirection: "column", gap: 6 }}>
+        {loading ? (
+          <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
+            <svg className="animate-spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F7941E" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          </div>
+        ) : filtrados.length === 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", gap: 8 }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={T.textFaint} strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <p style={{ fontSize: 13, fontWeight: 600, color: T.textMuted, margin: 0 }}>Sin registros</p>
+            <p style={{ fontSize: 11, color: T.textFaint, margin: 0 }}>Ajusta el rango o los filtros</p>
+          </div>
+        ) : filtrados.map((a, i) => {
+          const dur = duracion(a.fecha_entrada, a.fecha_salida);
+          return (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#e5e7eb"}` }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: a.fecha_salida ? "#94a3b8" : "#22c55e", boxShadow: a.fecha_salida ? "none" : "0 0 0 3px rgba(34,197,94,0.2)" }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{fmt(a.fecha_entrada)}</span>
+                  {!a.fecha_salida && <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", padding: "1px 6px", borderRadius: 9999, background: "rgba(34,197,94,0.1)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.2)" }}>En sesión</span>}
+                </div>
+                {a.fecha_salida && <p style={{ fontSize: 11, color: T.textFaint, margin: 0 }}>Salida: {fmt(a.fecha_salida)}</p>}
+              </div>
+              {dur && <span style={{ fontSize: 11, fontWeight: 600, flexShrink: 0, padding: "2px 8px", borderRadius: 5, background: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9", color: T.textMuted }}>{dur}</span>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Footer de acciones */}
+      <div style={{ padding: "10px 18px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 11, color: T.textFaint }}>{filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}</span>
+        <button onClick={exportarCSV} disabled={filtrados.length === 0}
+          className="btn-ghost"
+          style={{ padding: "5px 12px", fontSize: 11, display: "flex", alignItems: "center", gap: 5, opacity: filtrados.length === 0 ? 0.4 : 1 }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar CSV
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -513,15 +480,28 @@ function SortIcon({ dir }) {
   );
 }
 
+// ── Lightbox Foto ─────────────────────────────────────────────────
+function LightboxFoto({ src, nombre, onCerrar }) {
+  return (
+    <div
+      onClick={onCerrar}
+      style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.82)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div onClick={e => e.stopPropagation()} style={{ position: "relative", maxWidth: 480, width: "100%" }}>
+        <img src={src} alt={nombre}
+          style={{ width: "100%", maxHeight: "80vh", objectFit: "contain", borderRadius: 12, boxShadow: "0 24px 80px rgba(0,0,0,0.7)" }} />
+        <button onClick={onCerrar}
+          style={{ position: "absolute", top: -14, right: -14, width: 32, height: 32, borderRadius: "50%", background: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        {nombre && <p style={{ textAlign: "center", marginTop: 10, fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>{nombre}</p>}
+      </div>
+    </div>
+  );
+}
+
 // ── Tabla de Empleados ────────────────────────────────────────────
-// Tailwind reference structure:
-//   <table class="w-full border-collapse">
-//     <thead class="bg-gray-50 border-b-2 border-gray-200">
-//       <th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500 cursor-pointer select-none">
-//     <tbody>
-//       <tr class="border-b border-gray-100 hover:bg-blue-50 transition-colors">
-//         <td class="px-4 py-2.5 text-sm text-gray-700">
 function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleEstatus }) {
+  const [lightbox, setLightbox] = useState(null);
   const [sort, setSort] = useState({ col: "nombre", dir: "asc" });
 
   const toggleSort = col => setSort(s => ({ col, dir: s.col === col && s.dir === "asc" ? "desc" : "asc" }));
@@ -591,6 +571,10 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
               const activo = emp.estatus === "Activo";
               const rowBg  = i % 2 === 0 ? (isDark ? "transparent" : "#ffffff") : (isDark ? "rgba(255,255,255,0.015)" : "#fafafa");
 
+              const fotoSrc = emp.foto
+                ? (emp.foto.startsWith("http") ? emp.foto : `${API_URL}${(emp.foto.startsWith("/storage/") ? emp.foto : `/storage/${emp.foto}`).split("/").map(encodeURIComponent).join("/")}`)
+                : null;
+
               return (
                 <tr key={emp.id_empleado}
                   style={{ background: rowBg, opacity: activo ? 1 : 0.55, transition: "background .12s" }}
@@ -600,8 +584,12 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
                   {/* Empleado */}
                   <td style={tdS}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <Avatar nombre={nombre} foto={emp.foto} size={30} isDark={isDark} />
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      <div
+                        onClick={fotoSrc ? () => setLightbox({ src: fotoSrc, nombre }) : undefined}
+                        style={{ cursor: fotoSrc ? "zoom-in" : "default", flexShrink: 0 }}>
+                        <Avatar nombre={nombre} foto={emp.foto} size={30} isDark={isDark} />
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, cursor: "default" }}>
                         {/* Dot indicator de estado */}
                         <span style={{
                           width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
@@ -666,6 +654,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
       <div style={{ padding: "8px 16px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}`, background: isDark ? "rgba(255,255,255,0.02)" : "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
         <span style={{ fontSize: 11, color: T.textFaint }}>{empleados.length} empleado{empleados.length !== 1 ? "s" : ""}</span>
       </div>
+      {lightbox && <LightboxFoto src={lightbox.src} nombre={lightbox.nombre} onCerrar={() => setLightbox(null)} />}
     </div>
   );
 }
@@ -745,8 +734,8 @@ export default function Personal({ T }) {
   const { card } = useCardStyles(T);
 
   return (
-    <div style={{ background: isDark ? T.bg : "#F9FAFB", minHeight: "100%", overflowY: "auto" }}>
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "16px 16px 24px" }}>
+    <div style={{ background: isDark ? T.bg : "#F9FAFB", height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div style={{ maxWidth: 1400, width: "100%", margin: "0 auto", padding: "16px 16px 0", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
 
         {/* KPI Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 14 }}
@@ -777,7 +766,7 @@ export default function Personal({ T }) {
         </FiltrosToolbar>
 
         {/* Contenido */}
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 10, flex: 1, minHeight: 0, overflowY: "auto", paddingBottom: 24 }}>
           {loading ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "80px 0" }}>
               <svg className="animate-spin" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F7941E" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>

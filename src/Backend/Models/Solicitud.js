@@ -140,8 +140,25 @@ const Solicitud = {
     return { ...solicitud, detalle };
   },
 
-  getAll: async ({ limit = 100, offset = 0 } = {}) => {
-    const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM solicitud`);
+  getAll: async ({ limit = 100, offset = 0, estatus, prioridad, empleado, busqueda, area, fecha_inicio, fecha_fin } = {}) => {
+    const where = [];
+    const params = [];
+    if (estatus)              { where.push("s.estatus = ?");                                                                                                params.push(estatus); }
+    if (prioridad)            { where.push("s.prioridad = ?");                                                                                              params.push(prioridad); }
+    if (empleado || busqueda) { where.push("(CONCAT(e.nombre,' ',e.ap_paterno) LIKE ? OR s.folio_solicitud LIKE ?)"); const q = `%${empleado || busqueda}%`; params.push(q, q); }
+    if (area)                 { where.push("d.nombre_departamento = ?");                                                                                    params.push(area); }
+    if (fecha_inicio) { where.push("DATE(s.fecha) >= ?");                               params.push(fecha_inicio); }
+    if (fecha_fin)    { where.push("DATE(s.fecha) <= ?");                               params.push(fecha_fin); }
+    const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+    const [[{ total }]] = await pool.query(
+      `SELECT COUNT(DISTINCT s.id_solicitud) AS total
+       FROM solicitud s
+       JOIN empleado e          ON s.id_empleado     = e.id_empleado
+       LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       ${whereSQL}`,
+      params
+    );
     const [rows] = await pool.query(
       `SELECT s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
               CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
@@ -154,12 +171,27 @@ const Solicitud = {
        LEFT JOIN departamento d ON e.id_departamento  = d.id_departamento
        JOIN solicitud_insumo si ON s.id_solicitud     = si.id_solicitud
        JOIN insumo i            ON si.id_insumo       = i.id_insumo
+       ${whereSQL}
        GROUP BY s.id_solicitud
        ORDER BY s.fecha DESC
        LIMIT ? OFFSET ?`,
-      [limit, offset]
+      [...params, limit, offset]
     );
     return { rows, total };
+  },
+
+  getMetricas: async () => {
+    const [[row]] = await pool.query(
+      `SELECT
+         COUNT(*) AS total,
+         SUM(estatus = 'Pendiente')    AS pendientes,
+         SUM(estatus = 'En proceso')   AS en_proceso,
+         SUM(estatus = 'Resuelto')     AS resueltos,
+         SUM(estatus = 'No Resuelto')  AS no_resueltos,
+         SUM(estatus = 'Rechazado')    AS rechazados
+       FROM solicitud`
+    );
+    return row;
   },
 
   actualizarEstatus: async (id_solicitud, estatus) => {

@@ -44,10 +44,6 @@ function Badge({ value, colorMap }) {
 
 export default function ModalDetalleInsumo({ insumo, onClose, T }) {
   if (!insumo) return null;
-  const fecha = (v) => v
-    ? new Date(v).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })
-    : null;
-
   return (
     <Modal
       T={T}
@@ -55,6 +51,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T }) {
       subtitle={insumo.nombre}
       icon={<Package size={13} style={{ color: "#5eead4" }} />}
       onClose={onClose}
+      cancelLabel="Cerrar"
       maxWidth="480px"
     >
       <div style={{ display: "flex", flexDirection: "column" }}>
@@ -74,23 +71,6 @@ export default function ModalDetalleInsumo({ insumo, onClose, T }) {
         {insumo.descripcion && (
           <Row label="Descripción" value={insumo.descripcion} T={T} />
         )}
-        <Row label="Creado"      value={fecha(insumo.created_at)} T={T} />
-        <Row label="Actualizado" value={fecha(insumo.updated_at)} T={T} />
-      </div>
-
-      <div style={{ paddingTop: "14px", display: "flex", justifyContent: "flex-end" }}>
-        <button
-          onClick={onClose}
-          style={{
-            padding: "8px 20px", borderRadius: "6px", border: `1px solid ${T.border}`,
-            background: T.surfaceAlt, color: T.textMuted,
-            fontSize: "13px", fontWeight: 500, cursor: "pointer",
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = T.surfaceHover}
-          onMouseLeave={e => e.currentTarget.style.background = T.surfaceAlt}
-        >
-          Cerrar
-        </button>
       </div>
     </Modal>
   );

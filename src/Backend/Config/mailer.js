@@ -173,7 +173,7 @@ export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
                   <div style="color:#9CA3AF;font-size:11px;margin-top:4px;letter-spacing:0.08em;text-transform:uppercase;">HelpDesk &middot; Precision Truck Parts</div>
                 </td>
                 <td style="padding:20px 24px;vertical-align:middle;text-align:right;width:160px;">
-                  <img alt="Precision Truck Parts" src="cid:logoptp" height="52"
+                  <img alt="Precision Truck Parts" src="data:image/png;base64,${logoB64}" height="52"
                     style="height:52px;width:auto;outline:none;border:none;text-decoration:none;vertical-align:middle;display:inline-block;max-width:100%;"/>
                 </td>
               </tr>
@@ -288,11 +288,6 @@ export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
     to,
     subject: "=?UTF-8?Q?C=C3=B3digo_de_recuperaci=C3=B3n_de_contrase=C3=B1a?=",
     html,
-    attachments: logoB64 ? [{
-      filename:    "logo.png",
-      content:     logoB64,
-      encoding:    "base64",
-      cid:         "logoptp",
-    }] : [],
+    attachments: [],
   });
 }

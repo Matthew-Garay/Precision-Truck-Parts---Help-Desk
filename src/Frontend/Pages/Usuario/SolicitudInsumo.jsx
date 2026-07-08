@@ -1,8 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2, Package, AlertCircle, CheckCircle2, X, Search, Tag, Ticket, ChevronDown, Clock, Loader2, XCircle, ArrowLeft, History } from "lucide-react";
+import { Plus, Minus, Trash2, Package, AlertCircle, CheckCircle2, Search, Tag, Ticket, ChevronDown, Clock, Loader2, XCircle, Eye, Inbox, History, LayoutGrid } from "lucide-react";
 import { apiFetch, API_ROUTES } from "../../Config/api";
 import StockBar from "../../Components/StockBar";
 import VistaSolicitud from "./VistaSolicitud";
+import VistaInsumos from "./VistaInsumos";
+import FiltrosToolbar from "../../Components/FiltrosToolbar";
+import { useCardStyles } from "../../Components/Card";
+import Modal from "../../Components/Modal";
 
 const PRIORITY_OPTIONS = [
   { value: "Urgente", label: "Urgente", color: "#dc2626", bg: "rgba(220,38,38,0.10)", border: "rgba(220,38,38,0.30)" },
@@ -23,11 +27,12 @@ function getStockStatus(stock) {
   return "Disponible";
 }
 
-function SupplyRow({ supply, isAdded, onAdd, animatingId, T }) {
+function SupplyRow({ supply, isAdded, onAdd, animatingId, T, cartQty }) {
   const status      = getStockStatus(supply.stock);
   const badge       = STATUS_BADGE[status];
   const isExhausted = supply.stock === 0;
   const isAnimating = animatingId === supply.id_insumo;
+  const atMax       = cartQty >= supply.stock;
 
   return (
     <tr style={{
@@ -85,10 +90,11 @@ function SupplyRow({ supply, isAdded, onAdd, animatingId, T }) {
             Agotado
           </button>
         ) : isAdded ? (
-          <button onClick={() => onAdd(supply.id_insumo)}
-            className="px-2.5 py-1 rounded text-[10px] font-bold transition-colors"
+          <button onClick={() => !atMax && onAdd(supply.id_insumo)}
+            disabled={atMax}
+            className="px-2.5 py-1 rounded text-[10px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ background: T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.3)" }}>
-            + Agregar otro
+            {atMax ? `Máx (${supply.stock})` : "+ Agregar otro"}
           </button>
         ) : (
           <button onClick={() => onAdd(supply.id_insumo)}
@@ -102,19 +108,34 @@ function SupplyRow({ supply, isAdded, onAdd, animatingId, T }) {
   );
 }
 
-function RequestItem({ supply, quantity, onRemove, T }) {
+function RequestItem({ supply, quantity, onRemove, onChangeQty, T }) {
   return (
-    <div className="flex items-center gap-2 py-2.5 px-3 last:border-0 animate-slide-in"
+    <div className="flex items-center gap-2 py-2 px-3 last:border-0 animate-slide-in"
       style={{ borderBottom: `1px solid ${T.border}` }}>
       <div className="w-7 h-7 rounded flex items-center justify-center flex-shrink-0"
         style={{ background: T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff", border: "1px solid rgba(59,130,246,0.2)" }}>
         <Package size={12} style={{ color: "#3b82f6" }} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[12px] font-semibold truncate leading-tight" style={{ color: T.text }}>{supply.nombre}</p>
-        <p className="text-[10px] font-mono" style={{ color: T.textFaint }}>
-          #{String(supply.id_insumo).padStart(4, "0")} · ×{quantity}
+        <p className="text-[11px] font-semibold truncate leading-tight" style={{ color: T.text }}>{supply.nombre}</p>
+        <p className="text-[9px] font-mono" style={{ color: T.textFaint }}>
+          #{String(supply.id_insumo).padStart(4, "0")} · stock: {supply.stock}
         </p>
+      </div>
+      {/* Controles de cantidad */}
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <button onClick={() => onChangeQty(supply.id_insumo, quantity - 1)}
+          className="w-5 h-5 rounded flex items-center justify-center transition-colors"
+          style={{ background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, border: `1px solid ${T.border}`, color: T.textMuted }}>
+          <Minus size={9} />
+        </button>
+        <span className="text-[11px] font-black w-5 text-center" style={{ color: T.text }}>{quantity}</span>
+        <button onClick={() => onChangeQty(supply.id_insumo, quantity + 1)}
+          disabled={quantity >= supply.stock}
+          className="w-5 h-5 rounded flex items-center justify-center transition-colors disabled:opacity-30"
+          style={{ background: T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff", border: "1px solid rgba(59,130,246,0.3)", color: "#3b82f6" }}>
+          <Plus size={9} />
+        </button>
       </div>
       <button onClick={() => onRemove(supply.id_insumo)}
         className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0 transition-colors"
@@ -158,9 +179,13 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   const [resultModal,     setResultModal]     = useState(null);
   const [animatingId,     setAnimatingId]     = useState(null);
   const [tab,             setTab]             = useState(initialTab || "nueva");
+  // eslint-disable-next-line no-unused-vars
   const [solicitudes,     setSolicitudes]     = useState([]);
   const [loadingSols,     setLoadingSols]     = useState(false);
   const [solicitudVer,    setSolicitudVer]    = useState(null);
+  const [filtrosSol,      setFiltrosSol]      = useState({ busqueda: "", estatus: "Todos", prioridad: "Todos" });
+  const [paginaSol,       setPaginaSol]       = useState(1);
+  const LIMIT_SOL = 50;
 
   useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
 
@@ -187,6 +212,26 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
 
   useEffect(() => { if (tab === "historial") cargarSolicitudes(); }, [tab, cargarSolicitudes]);
 
+  const camposFiltroSol = [
+    { key: "busqueda",  label: "Búsqueda Rápida", type: "search",  placeholder: "Folio..." },
+    { key: "estatus",   label: "Estatus",          type: "select",  opts: ["Todos", "Pendiente", "En proceso", "Resuelto", "No Resuelto", "Rechazado"] },
+    { key: "prioridad", label: "Prioridad",         type: "select",  opts: ["Todos", "Urgente", "Alta", "Media", "Baja"] },
+  ];
+  const limpiarFiltrosSol = () => { setFiltrosSol({ busqueda: "", estatus: "Todos", prioridad: "Todos" }); setPaginaSol(1); };
+  const hayFiltrosSol = filtrosSol.busqueda || filtrosSol.estatus !== "Todos" || filtrosSol.prioridad !== "Todos";
+  const handleFiltroSolChange = (k, v) => { setFiltrosSol(p => ({ ...p, [k]: v })); setPaginaSol(1); };
+
+  const filtradosSol = solicitudes.filter(s => {
+    if (filtrosSol.busqueda && !s.folio_solicitud?.toLowerCase().includes(filtrosSol.busqueda.toLowerCase())) return false;
+    if (filtrosSol.estatus   !== "Todos" && s.estatus   !== filtrosSol.estatus)   return false;
+    if (filtrosSol.prioridad !== "Todos" && s.prioridad !== filtrosSol.prioridad) return false;
+    return true;
+  });
+  const totalPaginasSol = Math.max(1, Math.ceil(filtradosSol.length / LIMIT_SOL));
+  const paginadosSol    = filtradosSol.slice((paginaSol - 1) * LIMIT_SOL, paginaSol * LIMIT_SOL);
+  const irPaginaSol     = p => { if (p >= 1 && p <= totalPaginasSol) setPaginaSol(p); };
+  const fmtSol          = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
+
   const categories = ["Todos", ...Array.from(new Set(
     supplies.map(s => s.nombre_categoria).filter(Boolean)
   ))];
@@ -199,14 +244,28 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   });
 
   const handleAddSupply = useCallback((supplyId) => {
+    const supply = supplies.find(s => s.id_insumo === supplyId);
+    if (!supply) return;
+    setRequestCart(prev => {
+      const current = prev[supplyId] || 0;
+      if (current >= supply.stock) return prev; // no exceder stock
+      return { ...prev, [supplyId]: current + 1 };
+    });
     setAnimatingId(supplyId);
     setTimeout(() => setAnimatingId(null), 400);
-    setRequestCart(prev => ({ ...prev, [supplyId]: (prev[supplyId] || 0) + 1 }));
-  }, []);
+  }, [supplies]);
 
   const handleRemoveSupply = useCallback((supplyId) => {
     setRequestCart(prev => { const u = { ...prev }; delete u[supplyId]; return u; });
   }, []);
+
+  const handleChangeQty = useCallback((supplyId, newQty) => {
+    if (newQty < 1) { handleRemoveSupply(supplyId); return; }
+    const supply = supplies.find(s => s.id_insumo === supplyId);
+    if (!supply) return;
+    const clamped = Math.min(newQty, supply.stock);
+    setRequestCart(prev => ({ ...prev, [supplyId]: clamped }));
+  }, [supplies, handleRemoveSupply]);
 
   const cartEntries = Object.entries(requestCart)
     .map(([id, qty]) => ({ supply: supplies.find(s => s.id_insumo === parseInt(id)), quantity: qty, id }))
@@ -247,6 +306,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   };
 
   const activePriority = PRIORITY_OPTIONS.find(p => p.value === priority);
+  const { card: cardSol, hdr: hdrSol } = useCardStyles(T);
 
   if (solicitudVer) return (
     <VistaSolicitud T={T} id_solicitud={solicitudVer.id_solicitud} onBack={() => setSolicitudVer(null)} />
@@ -260,8 +320,9 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
         <div className="flex gap-1 rounded-xl p-1 w-fit"
           style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
           {[
-            { id: "nueva",     label: "Nueva Solicitud", icon: Plus    },
-            { id: "historial", label: "Mis Solicitudes",  icon: History },
+            { id: "nueva",     label: "Nueva Solicitud",  icon: Plus        },
+            { id: "historial", label: "Mis Solicitudes",   icon: History     },
+            { id: "catalogo",  label: "Catálogo",          icon: LayoutGrid  },
           ].map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
@@ -281,53 +342,147 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
 
             {/* Historial */}
             {tab === "historial" && (
-              <div className="rounded-xl overflow-hidden"
-                style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-                <div className="px-4 py-3 flex items-center justify-between"
-                  style={{ background: T.isDark ? T.surfaceAlt : "#1e293b" }}>
-                  <span className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#fff" }}>Mis Solicitudes</span>
-                  <button onClick={cargarSolicitudes}
-                    className="text-[11px] transition-colors"
-                    style={{ color: T.isDark ? T.textMuted : "rgba(255,255,255,0.5)" }}
-                    onMouseEnter={e => e.currentTarget.style.color = "#fff"}
-                    onMouseLeave={e => e.currentTarget.style.color = T.isDark ? T.textMuted : "rgba(255,255,255,0.5)"}>
-                    ↻ Actualizar
-                  </button>
-                </div>
-                {loadingSols ? (
-                  <div className="flex justify-center items-center py-16">
-                    <svg className="animate-spin w-6 h-6" style={{ color: T.textFaint }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              <div className="flex flex-col gap-2">
+                <FiltrosToolbar campos={camposFiltroSol} valores={filtrosSol} onChange={handleFiltroSolChange} onLimpiar={limpiarFiltrosSol} T={T} />
+
+                <div className="rounded-xl overflow-hidden flex flex-col" style={{ ...cardSol, flex: "1 1 0", minHeight: "300px" }}>
+                  <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={hdrSol}>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-0.5 h-3.5 rounded-full" style={{ background: T.orange }} />
+                      <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Mis Solicitudes</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {loadingSols && (
+                        <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.orange} strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                      )}
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: T.bg, color: T.textMuted, border: `1px solid ${T.border}` }}>
+                        {filtradosSol.length} resultado{filtradosSol.length !== 1 ? "s" : ""}{totalPaginasSol > 1 ? ` · pág. ${paginaSol}/${totalPaginasSol}` : ""}
+                      </span>
+                    </div>
                   </div>
-                ) : solicitudes.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 gap-2" style={{ color: T.textFaint }}>
-                    <History size={28} />
-                    <span className="text-[13px] font-semibold">Sin solicitudes</span>
-                    <span className="text-[11px]">Aún no has realizado ninguna solicitud de insumo</span>
-                  </div>
-                ) : (
-                  <div>
-                    {solicitudes.map(sol => (
-                      <button key={sol.id_solicitud} onClick={() => setSolicitudVer(sol)}
-                        className="w-full flex items-center gap-4 px-4 py-3 transition-colors text-left"
-                        style={{ borderBottom: `1px solid ${T.border}` }}
-                        onMouseEnter={e => e.currentTarget.style.background = T.surfaceHover}
-                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[12px] font-bold font-mono" style={{ color: T.text }}>{sol.folio_solicitud}</span>
-                            <BadgeEstatus estatus={sol.estatus} />
-                          </div>
-                          <p className="text-[11px] mt-0.5" style={{ color: T.textFaint }}>
-                            {new Date(sol.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
-                            {sol.prioridad && ` · Prioridad: ${sol.prioridad}`}
-                          </p>
+
+                  {/* Móvil */}
+                  <div className="flex flex-col gap-2 p-3 sm:hidden" style={{ overflowY: "auto", flex: "1 1 0", minHeight: 0 }}>
+                    {paginadosSol.length === 0
+                      ? <div className="flex flex-col items-center justify-center py-8 gap-2">
+                          <Inbox size={20} style={{ color: T.textFaint }} />
+                          <p className="text-xs font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "Sin solicitudes"}</p>
                         </div>
-                        <ArrowLeft size={14} className="rotate-180 flex-shrink-0" style={{ color: T.textFaint }} />
-                      </button>
-                    ))}
+                      : paginadosSol.map(sol => {
+                          const m = ESTATUS_META[sol.estatus] || ESTATUS_META["Pendiente"];
+                          return (
+                            <div key={sol.id_solicitud}
+                              className="rounded-xl p-3 flex flex-col gap-2 active:scale-[0.98] transition-all cursor-pointer"
+                              style={{ background: T.isDark ? "rgba(255,255,255,0.04)" : T.surfaceAlt, border: `1px solid ${T.border}` }}
+                              onClick={() => setSolicitudVer(sol)}>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-mono text-[11px] font-black" style={{ color: T.orange }}>{sol.folio_solicitud}</span>
+                                <BadgeEstatus estatus={sol.estatus} />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-bold" style={{ color: ESTATUS_META[sol.prioridad]?.color || T.textMuted }}>{sol.prioridad || "—"}</span>
+                                <span className="text-[11px]" style={{ color: T.textFaint }}>{fmtSol(sol.fecha)}</span>
+                              </div>
+                            </div>
+                          );
+                        })
+                    }
+                  </div>
+
+                  {/* Desktop */}
+                  <div className="hidden sm:block" style={{ overflowX: "auto", overflowY: "auto", flex: "1 1 0", minHeight: 0 }}>
+                    <table className="w-full border-collapse" style={{ minWidth: "500px" }}>
+                      <thead className="sticky top-0 z-10">
+                        <tr style={{ background: T.isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}>
+                          {["Folio", "Prioridad", "Estatus", "Fecha", ""].map((col, i) => (
+                            <th key={i} className="text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest whitespace-nowrap"
+                              style={{ color: T.textMuted, borderBottom: `1px solid ${T.border}` }}>
+                              {col}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginadosSol.length === 0
+                          ? <tr><td colSpan={5}>
+                              <div className="flex flex-col items-center justify-center py-12 gap-2">
+                                <Inbox size={22} style={{ color: T.textFaint }} />
+                                <p className="text-xs font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "Sin solicitudes registradas"}</p>
+                              </div>
+                            </td></tr>
+                          : paginadosSol.map((sol, i) => {
+                              const bgRow = i % 2 === 0 ? (T.isDark ? "#141720" : T.surface) : (T.isDark ? "#1c2030" : T.surfaceAlt);
+                              const m = ESTATUS_META[sol.estatus] || ESTATUS_META["Pendiente"];
+                              const PCOLOR = { Urgente: "#dc2626", Alta: "#ea580c", Media: "#ca8a04", Baja: "#16a34a" };
+                              return (
+                                <tr key={sol.id_solicitud} className="cursor-pointer transition-colors"
+                                  style={{ background: bgRow, borderBottom: `1px solid ${T.border}` }}
+                                  onMouseEnter={e => e.currentTarget.style.background = T.isDark ? "rgba(244,121,32,0.05)" : "rgba(244,121,32,0.03)"}
+                                  onMouseLeave={e => e.currentTarget.style.background = bgRow}
+                                  onClick={() => setSolicitudVer(sol)}>
+                                  <td className="px-3 py-2 font-mono text-[10px] font-bold" style={{ color: T.orange }}>{sol.folio_solicitud}</td>
+                                  <td className="px-3 py-2">
+                                    <span className="flex items-center gap-1 text-[11px] font-bold">
+                                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: PCOLOR[sol.prioridad] || "#94a3b8" }} />
+                                      <span style={{ color: PCOLOR[sol.prioridad] || T.textMuted }}>{sol.prioridad || "—"}</span>
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <BadgeEstatus estatus={sol.estatus} />
+                                  </td>
+                                  <td className="px-3 py-2 text-[11px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmtSol(sol.fecha)}</td>
+                                  <td className="px-3 py-2">
+                                    <button onClick={e => { e.stopPropagation(); setSolicitudVer(sol); }}
+                                      className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-all hover:brightness-110 active:scale-95"
+                                      style={{ color: T.orange, background: "rgba(244,121,32,0.08)", border: "1px solid rgba(244,121,32,0.2)" }}>
+                                      <Eye size={10} /> Ver
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Paginación */}
+                {totalPaginasSol > 1 && (
+                  <div className="flex items-center justify-center gap-2 py-2">
+                    <button onClick={() => irPaginaSol(1)} disabled={paginaSol === 1}
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
+                      style={{ background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>«</button>
+                    <button onClick={() => irPaginaSol(paginaSol - 1)} disabled={paginaSol === 1}
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
+                      style={{ background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>‹ Anterior</button>
+                    {Array.from({ length: Math.min(5, totalPaginasSol) }, (_, i) => {
+                      const start = Math.max(1, Math.min(paginaSol - 2, totalPaginasSol - 4));
+                      const p = start + i;
+                      if (p > totalPaginasSol) return null;
+                      return (
+                        <button key={p} onClick={() => irPaginaSol(p)}
+                          className="w-8 h-8 rounded-lg text-[11px] font-bold transition-all hover:brightness-110"
+                          style={{ background: p === paginaSol ? T.orange : (T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt), color: p === paginaSol ? "#fff" : T.textMuted, border: `1px solid ${p === paginaSol ? T.orange : T.border}` }}>
+                          {p}
+                        </button>
+                      );
+                    })}
+                    <button onClick={() => irPaginaSol(paginaSol + 1)} disabled={paginaSol === totalPaginasSol}
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
+                      style={{ background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>Siguiente ›</button>
+                    <button onClick={() => irPaginaSol(totalPaginasSol)} disabled={paginaSol === totalPaginasSol}
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
+                      style={{ background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>»</button>
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Tab catálogo */}
+            {tab === "catalogo" && (
+              <VistaInsumos T={T} />
             )}
 
             {/* Tab nueva */}
@@ -407,6 +562,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                             isAdded={!!requestCart[supply.id_insumo]}
                             onAdd={handleAddSupply}
                             animatingId={animatingId}
+                            cartQty={requestCart[supply.id_insumo] || 0}
                             T={T}
                           />
                         ))
@@ -466,7 +622,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                   </div>
                 ) : (
                   cartEntries.map(({ supply, quantity, id }) => (
-                    <RequestItem key={id} supply={supply} quantity={quantity} onRemove={handleRemoveSupply} T={T} />
+                    <RequestItem key={id} supply={supply} quantity={quantity} onRemove={handleRemoveSupply} onChangeQty={handleChangeQty} T={T} />
                   ))
                 )}
               </div>
@@ -568,46 +724,25 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
 
       {/* Modal resultado */}
       {resultModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/50"
-          onClick={() => { if (resultModal.success && resultModal.id_solicitud) setSolicitudVer({ id_solicitud: resultModal.id_solicitud }); setResultModal(null); }}
+        <Modal
+          title={resultModal.success ? "Solicitud creada" : "Error al crear"}
+          T={T}
+          onClose={() => { if (resultModal.success && resultModal.id_solicitud) setSolicitudVer({ id_solicitud: resultModal.id_solicitud }); setResultModal(null); }}
+          onConfirm={() => { if (resultModal.success && resultModal.id_solicitud) setSolicitudVer({ id_solicitud: resultModal.id_solicitud }); setResultModal(null); }}
+          confirmLabel={resultModal.success ? "Ver solicitud" : "Cerrar"}
+          cancelLabel={null}
+          maxWidth="360px"
+          danger={!resultModal.success}
         >
-          <div
-            className="w-full max-w-sm rounded-xl overflow-hidden shadow-2xl"
-            style={{ background: T.surface, border: `1px solid ${T.border}` }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="h-1" style={{ background: resultModal.success ? "#16a34a" : "#dc2626" }} />
-            <div className="p-6 flex flex-col items-center gap-4 text-center">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center"
-                style={{ background: resultModal.success ? (T.isDark ? "rgba(22,163,74,0.15)" : "#f0fdf4") : (T.isDark ? "rgba(220,38,38,0.15)" : "#fef2f2") }}>
-                {resultModal.success
-                  ? <CheckCircle2 size={28} style={{ color: "#16a34a" }} />
-                  : <X size={28} style={{ color: "#dc2626" }} />
-                }
-              </div>
-              <div>
-                <p className="text-[15px] font-bold" style={{ color: T.text }}>
-                  {resultModal.success ? "Ticket creado exitosamente" : "Error al crear el ticket"}
-                </p>
-                {resultModal.success ? (
-                  <p className="text-[13px] font-mono font-bold mt-1" style={{ color: "#3b82f6" }}>
-                    #{resultModal.folio}
-                  </p>
-                ) : (
-                  <p className="text-[12px] mt-1" style={{ color: T.textMuted }}>{resultModal.message}</p>
-                )}
-              </div>
-              <button
-                onClick={() => { if (resultModal.success && resultModal.id_solicitud) setSolicitudVer({ id_solicitud: resultModal.id_solicitud }); setResultModal(null); }}
-                className="w-full h-10 rounded-lg text-[13px] font-bold text-white transition-all hover:brightness-110"
-                style={{ background: resultModal.success ? "#16a34a" : "#dc2626" }}
-              >
-                {resultModal.success ? "Ver solicitud" : "Cerrar"}
-              </button>
+          {resultModal.success ? (
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-mono font-bold" style={{ color: T.orange }}>#{resultModal.folio}</span>
+              <p className="text-xs" style={{ color: T.textMuted }}>Solicitud registrada correctamente. El equipo la atenderá a la brevedad.</p>
             </div>
-          </div>
-        </div>
+          ) : (
+            <p className="text-sm" style={{ color: T.text }}>{resultModal.message}</p>
+          )}
+        </Modal>
       )}
     </div>
   );

@@ -108,7 +108,7 @@ function ModalRecuperar({ onCerrar }) {
 
         {/* Pasos */}
         {!exito && (
-          <div className="flex items-center px-4 pt-3">
+          <div className="flex items-center justify-center px-4 pt-3">
             {[1,2,3].map((n) => (
               <div key={n} className="flex items-center flex-1">
                 <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black flex-shrink-0"
@@ -192,7 +192,7 @@ function ModalRecuperar({ onCerrar }) {
                       placeholder="Mínimo 8 caracteres" style={{ ...inp, paddingRight: "34px" }}
                       onFocus={INPUT_FOCUS} onBlur={INPUT_BLUR}
                       aria-describedby={id === "rec-p1" ? "fuerza-pass" : undefined} />
-                    <button type="button" tabIndex={-1} onClick={toggle}
+                    <button type="button" tabIndex={-1} onClick={e => { e.stopPropagation(); toggle(); }}
                       aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: COLORS.silver }}>
                       {show ? <EyeIcon /> : <EyeOffIcon />}
@@ -362,7 +362,6 @@ export default function Login({ onLogin }) {
       }
       setEntrando(true);
       setIntentos(0);
-      sessionStorage.setItem("_pw", password);
       if (navigator.vibrate) navigator.vibrate(50);
       setTimeout(() => { setEntrando(false); onLogin(data.usuario, data.id_acceso, data.token); }, 1500);
     } catch { setError("No se pudo conectar con el servidor"); triggerShake(); }
