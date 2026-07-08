@@ -93,7 +93,7 @@ function DashboardContent({ T, usuario, tickets = [], solicitudes = [], metricas
         <SeccionMetricas T={T} metricas={metricas} />
         <SeccionEstadisticas T={T} tickets={tickets} solicitudes={solicitudes} />
       </div>
-      <div className="flex-shrink-0" style={{ padding: "8px var(--content-px) 12px", minHeight: "340px" }}>
+      <div className="flex-shrink-0" style={{ padding: "8px var(--content-px) 16px" }}>
         <KanbanBoard T={T} tickets={tickets} solicitudes={solicitudes} onVerTicket={onVerTicket} onVerSolicitud={onVerSolicitud} inline />
       </div>
     </div>
@@ -301,11 +301,10 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
             )}
             <button
               onClick={() => toggleDark(!dark)}
-              className="flex items-center justify-center h-9 rounded-xl transition-all px-2 gap-1.5"
+              className="flex items-center justify-center w-9 h-9 rounded-xl transition-all"
               style={{ background: T.surfaceAlt, color: dark ? "#f59e0b" : T.textMuted, border: `1px solid ${T.border}` }}
             >
               {dark ? <Sun size={14} /> : <Moon size={14} />}
-              <span className="hidden md:inline text-[11px] font-semibold">{dark ? "Claro" : "Oscuro"}</span>
             </button>
             <CampanaNotificaciones
               T={T}
@@ -317,7 +316,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           </div>
         </header>
 
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto ptp-scroll-main">
           {ticketVer ? (
             <VistaTicket T={T} ticket={ticketVer} onVolver={() => { setTicketVer(null); cargarTickets(); }} esAdmin usuario={usuario} />
           ) : solicitudVer ? (

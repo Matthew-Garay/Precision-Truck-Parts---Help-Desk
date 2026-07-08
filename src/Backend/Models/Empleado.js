@@ -214,12 +214,12 @@ const Empleado = {
     return rows;
   },
 
-  updateAdmin: async (id, { num_empleado, nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password, foto }) => {
+  updateAdmin: async (id, { nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password, foto }) => {
     // SQL estático - sin construcción dinámica de nombres de columna
+    // num_empleado excluido intencionalmente: no se permite modificar
     await pool.query(
       `UPDATE empleado
-       SET num_empleado    = COALESCE(?, num_empleado),
-           nombre          = COALESCE(?, nombre),
+       SET nombre          = COALESCE(?, nombre),
            ap_paterno      = COALESCE(?, ap_paterno),
            ap_materno      = COALESCE(?, ap_materno),
            email           = COALESCE(?, email),
@@ -231,7 +231,6 @@ const Empleado = {
            foto            = COALESCE(?, foto)
        WHERE id_empleado = ?`,
       [
-        num_empleado    ?? null,
         nombre          ?? null,
         ap_paterno      ?? null,
         ap_materno      ?? null,

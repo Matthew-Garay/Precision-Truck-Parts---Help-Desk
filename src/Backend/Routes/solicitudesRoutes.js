@@ -37,7 +37,7 @@ import {
   getInsumos, getInventario, getInsumosStockBajo, crearSolicitud, getSolicitudesByEmpleado,
   getSolicitudById, getSolicitudByFolio, getAllSolicitudes, getSolicitudesPendientes,
   actualizarEstatusSolicitud, aprobarItemsSolicitud, crearInsumo, actualizarInsumo,
-  eliminarInsumo, getReporteSolicitudes, subirFotoInsumo
+  eliminarInsumo, getReporteSolicitudes, subirFotoInsumo, getMetricasSolicitudes
 } from "../Controllers/solicitudesController.js";
 import { uploadInsumo } from "../Middlewares/uploadInsumos.js";
 
@@ -65,6 +65,7 @@ function requireOwnerOrAdmin(req, res, next) {
 // ── Rutas exclusivas de admin ─────────────────────────────────
 // IMPORTANTE: registradas ANTES de las rutas dinámicas /:id
 // para evitar que Express intercepte "/reporte" o "/" como si fueran un id.
+router.get("/metricas",       requireAdmin, getMetricasSolicitudes);
 router.get("/reporte",        requireAdmin, getReporteSolicitudes);
 router.get("/",               requireAdmin, getAllSolicitudes);
 router.post("/insumos",           requireAdmin, validate(schemaInsumo), crearInsumo);

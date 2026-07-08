@@ -109,12 +109,17 @@ async function validarYComprimirArchivos(req, res, next) {
     if (MIMETYPES_IMAGEN.has(tipo.mime) && tipo.mime !== "image/gif") {
       try {
         const tmpComprimido = file.path + "_c";
-        await sharp(file.path)
-          .resize({ width: 1920, height: 1920, fit: "inside", withoutEnlargement: true })
-          .jpeg({ quality: 75, mozjpeg: true })
-          .toFile(tmpComprimido);
+        // Timeout de 30s para evitar que sharp se cuelgue con archivos corruptos
+        await Promise.race([
+          sharp(file.path)
+            .resize({ width: 1920, height: 1920, fit: "inside", withoutEnlargement: true })
+            .jpeg({ quality: 75, mozjpeg: true })
+            .toFile(tmpComprimido),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("sharp timeout")), 30_000)
+          ),
+        ]);
         fs.renameSync(tmpComprimido, file.path);
-        // Actualizar extensión a .jpg tras convertir
         const nuevoPath = file.path.replace(/\.[^.]+$/, ".jpg");
         if (nuevoPath !== file.path) {
           fs.renameSync(file.path, nuevoPath);
@@ -122,7 +127,7 @@ async function validarYComprimirArchivos(req, res, next) {
           file.filename = path.basename(nuevoPath);
           file.mimetype = "image/jpeg";
         }
-      } catch { /* si falla la compresión, se usa el original */ }
+      } catch { /* si falla la compresión o hay timeout, se usa el original */ }
     }
   }
   next();

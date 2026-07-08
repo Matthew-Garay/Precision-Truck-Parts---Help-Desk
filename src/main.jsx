@@ -165,10 +165,10 @@ function App() {
       {/* Usuario - un solo componente persistente para todas las sub-rutas */}
       <Route path="/usuario/*" element={<RutaUsuario onLogout={handleLogout} onUsuarioActualizado={handleUsuarioActualizado} usuarioActual={usuarioActual} />} />
 
-      {/* Rutas standalone para impresión — sin guards de sesión */}
-      <Route path="/print/ticket/:folio"    element={<PrintTicketPage />} />
-      <Route path="/print/solicitud/:folio" element={<PrintSolicitudPage />} />
-      <Route path="/print/reporte"           element={<PrintReportePage />} />
+      {/* Rutas standalone para impresión — requieren sesión activa */}
+      <Route path="/print/ticket/:folio"    element={getUsuario() ? <PrintTicketPage />    : <Navigate to="/login" replace />} />
+      <Route path="/print/solicitud/:folio" element={getUsuario() ? <PrintSolicitudPage /> : <Navigate to="/login" replace />} />
+      <Route path="/print/reporte"           element={getUsuario() ? <PrintReportePage />   : <Navigate to="/login" replace />} />
 
       {/* Raíz → redirige según sesión */}
       <Route path="/" element={<Navigate to={(() => {

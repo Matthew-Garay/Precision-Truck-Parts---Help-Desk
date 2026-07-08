@@ -1,4 +1,7 @@
-import "./print-report.css";
+import {
+  Badge, PageHeader, PageFooter, Section, DataGrid, Firma,
+  PRIO_META, ESTATUS_META, fmt, nowFechaGen,
+} from "./PrintShared";
 
 interface DetalleItem {
   id_solicitud_insumo: number;
@@ -21,108 +24,6 @@ interface Solicitud {
   nombre_empleado: string;
   nombre_departamento: string;
   detalle: DetalleItem[];
-}
-
-interface PrintSolicitudViewProps {
-  solicitud: Solicitud;
-}
-
-const fmt = {
-  fecha: (d: string) =>
-    new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" }),
-  fechaCorta: (d: string) =>
-    new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }),
-  hora: (d: string) =>
-    new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }),
-};
-
-const PRIO_META: Record<string, { label: string; bg: string; color: string; border: string }> = {
-  Urgente: { label: "URGENTE", bg: "#FEF2F2", color: "#B91C1C", border: "#FCA5A5" },
-  Alta:    { label: "ALTA",    bg: "#FFF7ED", color: "#C2410C", border: "#FDBA74" },
-  Media:   { label: "MEDIA",   bg: "#FEFCE8", color: "#A16207", border: "#FDE047" },
-  Baja:    { label: "BAJA",    bg: "#F0FDF4", color: "#15803D", border: "#86EFAC" },
-};
-
-const ESTATUS_META: Record<string, { icon: string; bg: string; color: string; border: string }> = {
-  "Resuelto":    { icon: "✓", bg: "#F0FDF4", color: "#15803D", border: "#86EFAC" },
-  "En proceso":  { icon: "◷", bg: "#FFF7ED", color: "#C2410C", border: "#FDBA74" },
-  "Pendiente":   { icon: "◷", bg: "#FFF7ED", color: "#C2410C", border: "#FDBA74" },
-  "No Resuelto": { icon: "✕", bg: "#FEF2F2", color: "#B91C1C", border: "#FCA5A5" },
-  "Rechazado":   { icon: "✕", bg: "#F1F5F9", color: "#475569", border: "#CBD5E1" },
-};
-
-function Badge({ label, bg, color, border, icon }: {
-  label: string; bg: string; color: string; border: string; icon?: string;
-}) {
-  return (
-    <span className="pr-badge" style={{ background: bg, color, border: `1px solid ${border}` }}>
-      {icon && <span>{icon}</span>}
-      {label}
-    </span>
-  );
-}
-
-function PageHeader({ folio, fechaGen }: { folio: string; fechaGen: string }) {
-  return (
-    <header className="pr-page-header">
-      <div className="pr-header-logo">
-        <img src="/assets/img/logo negro.png" alt="Precision Truck Parts" className="pr-logo-img" />
-      </div>
-      <div className="pr-header-center">
-        <span className="pr-header-company">PRECISION TRUCK PARTS &amp; ACCESSORIES</span>
-        <span className="pr-header-doc">Solicitud de Insumos</span>
-        <span className="pr-header-dept">Departamento de Almacén e Inventario</span>
-      </div>
-      <div className="pr-header-meta">
-        <div className="pr-header-meta-row">
-          <span className="pr-micro-label">Folio</span>
-          <span className="pr-folio">{folio}</span>
-        </div>
-        <div className="pr-header-meta-row">
-          <span className="pr-micro-label">Generado</span>
-          <span className="pr-header-fecha">{fechaGen}</span>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function PageFooter({ folio, fechaGen }: { folio: string; fechaGen: string }) {
-  return (
-    <footer className="pr-page-footer">
-      <div className="pr-footer-logo-wrap">
-        <img src="/assets/img/log.png" alt="" className="pr-footer-logo" />
-      </div>
-      <span className="pr-footer-center-text">
-        Precision Truck Parts &amp; Accessories — Sistema de Soporte Técnico HelpDesk
-      </span>
-      <span className="pr-footer-right-text">{folio} · {fechaGen}</span>
-    </footer>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="pr-section">
-      <div className="pr-section-hdr">
-        <span className="pr-section-title">{title}</span>
-      </div>
-      <div className="pr-section-body">{children}</div>
-    </section>
-  );
-}
-
-function DataGrid({ items }: { items: { label: string; value: React.ReactNode; wide?: boolean; half?: boolean }[] }) {
-  return (
-    <div className="pr-data-grid">
-      {items.map(({ label, value, wide, half }, i) => (
-        <div key={i} className={`pr-data-cell${wide ? " wide" : ""}${half ? " half" : ""}`}>
-          <span className="pr-micro-label">{label}</span>
-          <span className="pr-data-val">{value || "—"}</span>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 function SolicitudStepper({ estatus, fechaSolicitud }: { estatus: string; fechaSolicitud: string }) {
@@ -157,9 +58,7 @@ function SolicitudStepper({ estatus, fechaSolicitud }: { estatus: string; fechaS
       {cerrado && (
         <div className="pr-step">
           <div className="pr-step-track">
-            <div className="pr-step-node done" style={{ background: "#B91C1C", borderColor: "#B91C1C" }}>
-              ✕
-            </div>
+            <div className="pr-step-node done" style={{ background: "#B91C1C", borderColor: "#B91C1C" }}>✕</div>
           </div>
           <div className="pr-step-content">
             <span className="pr-step-label" style={{ color: "#B91C1C" }}>{estatus}</span>
@@ -238,10 +137,9 @@ function InsumosTable({ items }: { items: DetalleItem[] }) {
   );
 }
 
-export default function PrintSolicitudView({ solicitud }: PrintSolicitudViewProps) {
-  const now      = new Date();
-  const fechaGen = `${fmt.fechaCorta(now.toISOString())} · ${fmt.hora(now.toISOString())}`;
-  const fechaSol = `${fmt.fechaCorta(solicitud.fecha)} · ${fmt.hora(solicitud.fecha)}`;
+export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud }) {
+  const fechaGen = nowFechaGen();
+  const fechaSol = fmt.fechaHora(solicitud.fecha);
   const total    = solicitud.detalle.reduce((s, d) => s + d.cantidad, 0);
 
   const prio    = PRIO_META[solicitud.prioridad]  ?? PRIO_META.Baja;
@@ -251,7 +149,14 @@ export default function PrintSolicitudView({ solicitud }: PrintSolicitudViewProp
     <div className="pr-root" data-ready="true">
       <div className="pr-content">
 
-        <PageHeader folio={solicitud.folio_solicitud} fechaGen={fechaGen} />
+        <PageHeader
+          titulo="Solicitud de Insumos"
+          subtitulo="Departamento de Almacén e Inventario"
+          metaRows={[
+            { label: "Folio",    value: solicitud.folio_solicitud, mono: true },
+            { label: "Generado", value: fechaGen },
+          ]}
+        />
 
         {/* ── Banda de estado ── */}
         <div className="pr-status-bar">
@@ -261,22 +166,11 @@ export default function PrintSolicitudView({ solicitud }: PrintSolicitudViewProp
           </div>
           <div className="pr-status-cell">
             <span className="pr-micro-label">Estatus</span>
-            <Badge
-              label={solicitud.estatus}
-              icon={estatus.icon}
-              bg={estatus.bg}
-              color={estatus.color}
-              border={estatus.border}
-            />
+            <Badge label={solicitud.estatus} icon={estatus.icon} bg={estatus.bg} color={estatus.color} border={estatus.border} />
           </div>
           <div className="pr-status-cell">
             <span className="pr-micro-label">Prioridad</span>
-            <Badge
-              label={prio.label}
-              bg={prio.bg}
-              color={prio.color}
-              border={prio.border}
-            />
+            <Badge label={prio.label} bg={prio.bg} color={prio.color} border={prio.border} />
           </div>
           <div className="pr-status-cell">
             <span className="pr-micro-label">Total piezas</span>
@@ -284,7 +178,6 @@ export default function PrintSolicitudView({ solicitud }: PrintSolicitudViewProp
           </div>
         </div>
 
-        {/* ── Datos de la solicitud ── */}
         <Section title="Datos de la Solicitud">
           <DataGrid items={[
             { label: "Folio",              value: solicitud.folio_solicitud, half: true },
@@ -298,29 +191,20 @@ export default function PrintSolicitudView({ solicitud }: PrintSolicitudViewProp
           ]} />
         </Section>
 
-        {/* ── Insumos solicitados ── */}
         <Section title={`Insumos Solicitados — ${solicitud.detalle.length} ítem${solicitud.detalle.length !== 1 ? "s" : ""}`}>
           <InsumosTable items={solicitud.detalle} />
         </Section>
 
-        {/* ── Progreso + Firma ── */}
         <div className="pr-two-col">
           <Section title="Estado de la Solicitud">
             <SolicitudStepper estatus={solicitud.estatus} fechaSolicitud={fechaSol} />
           </Section>
-
           <Section title="Firma del Solicitante">
-            <div className="pr-signature">
-              <div className="pr-signature-area" />
-              <div className="pr-signature-line" />
-              <span className="pr-signature-name">{solicitud.nombre_empleado}</span>
-              <span className="pr-signature-role">Solicitante</span>
-              <span className="pr-signature-role">Precision Truck Parts &amp; Accessories</span>
-            </div>
+            <Firma nombre={solicitud.nombre_empleado} rol="Solicitante" />
           </Section>
         </div>
 
-        <PageFooter folio={solicitud.folio_solicitud} fechaGen={fechaGen} />
+        <PageFooter right={`${solicitud.folio_solicitud} · ${fechaGen}`} />
       </div>
     </div>
   );

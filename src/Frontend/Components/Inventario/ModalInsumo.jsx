@@ -167,6 +167,9 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
         : <Package size={13} aria-hidden="true" style={{ color: "#5eead4" }} />
       }
       onClose={onClose}
+      onConfirm={handleSubmit}
+      confirmLabel={saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear insumo"}
+      cancelLabel="Cancelar"
       loading={saving}
       maxWidth="520px"
     >
@@ -345,55 +348,6 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
             {error}
           </p>
         )}
-
-        {/* Footer */}
-        <div style={{ display: "flex", gap: "8px", paddingTop: "10px", borderTop: `1px solid ${divider}` }}>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cancelar y cerrar"
-            style={{
-              flex: 1, height: "36px", borderRadius: RADIUS.sm,
-              border: `1px solid ${divider}`, background: cancelBg,
-              color: T?.textMuted ?? SLATE[600], fontSize: "13px", fontWeight: 500,
-              cursor: "pointer", transition: "background 0.12s",
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = cancelHov; }}
-            onMouseLeave={e => { e.currentTarget.style.background = cancelBg; }}
-          >
-            Cancelar
-          </button>
-
-          <button
-            type="submit"
-            disabled={saving}
-            aria-busy={saving}
-            aria-label={saving ? "Guardando insumo" : (isEdit ? "Guardar cambios" : "Crear insumo")}
-            style={{
-              flex: 1, height: "36px", borderRadius: RADIUS.sm, border: "none",
-              background: ORANGE, color: "#fff", fontSize: "13px", fontWeight: 600,
-              cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-              transition: "opacity 0.15s, filter 0.15s",
-            }}
-            onMouseEnter={e => { if (!saving) e.currentTarget.style.filter = "brightness(0.9)"; }}
-            onMouseLeave={e => { e.currentTarget.style.filter = "none"; }}
-          >
-            {saving ? (
-              <>
-                <span
-                  aria-hidden="true"
-                  style={{
-                    width: "12px", height: "12px", flexShrink: 0,
-                    border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "#fff",
-                    borderRadius: "50%", animation: "spin 0.7s linear infinite",
-                  }}
-                />
-                Guardando…
-              </>
-            ) : isEdit ? "Guardar cambios" : "Crear insumo"}
-          </button>
-        </div>
       </form>
     </Modal>
   );

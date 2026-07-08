@@ -277,6 +277,7 @@ const Ticket = {
        WHERE id_ticket IN (?)`,
       [ids]
     );
+    cache.del("metricas:dashboard");
     return tickets;
   },
 
@@ -404,28 +405,43 @@ const Ticket = {
   getRendimientoTecnicos: async ({ fecha_inicio, fecha_fin } = {}) => {
     const reFecha = /^\d{4}-\d{2}-\d{2}$/;
     const params = [];
-    let where = `t.id_tecnico IS NOT NULL AND (t.estatus = 'Resuelto' OR t.estatus = 'No Resuelto')`;
-    if (fecha_inicio && fecha_fin && reFecha.test(fecha_inicio) && reFecha.test(fecha_fin)) {
-      where += ` AND DATE(t.fecha_subido) BETWEEN ? AND ?`;
+    const fechasValidas = fecha_inicio && fecha_fin && reFecha.test(fecha_inicio) && reFecha.test(fecha_fin);
+    if (fechasValidas) {
+      if (fecha_inicio > fecha_fin)
+        throw Object.assign(new Error("fecha_inicio no puede ser posterior a fecha_fin"), { status: 400 });
       params.push(fecha_inicio, fecha_fin);
     }
+
+    const cacheKey = `rendimiento:${fecha_inicio ?? ""}:${fecha_fin ?? ""}`;
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+
+    // Filtramos los tickets con la condición de fechas (si aplica)
+    const ticketFilter = fechasValidas
+      ? `AND DATE(t.fecha_subido) BETWEEN ? AND ?`
+      : ``;
+
     const [rows] = await pool.query(
       `SELECT
          tec.id_empleado AS id_tecnico,
          CONCAT(tec.nombre,' ',tec.ap_paterno,' ',IFNULL(tec.ap_materno,'')) AS nombre_tecnico,
-         COUNT(*) AS total_atendidos,
-         SUM(t.estatus = 'Resuelto') AS resueltos,
+         COUNT(t.id_ticket) AS total_atendidos,
+         COALESCE(SUM(t.estatus = 'Resuelto'), 0) AS resueltos,
          ROUND(AVG(CASE WHEN t.estatus='Resuelto' AND t.fecha_resuelto IS NOT NULL
            THEN TIMESTAMPDIFF(HOUR, t.fecha_subido, t.fecha_resuelto) END), 1) AS promedio_horas,
          ROUND(AVG(CASE WHEN t.calificacion > 0 THEN t.calificacion END), 2) AS calificacion_promedio,
          COUNT(CASE WHEN t.calificacion > 0 THEN 1 END) AS total_calificaciones
-       FROM ticket t
-       JOIN empleado tec ON t.id_tecnico = tec.id_empleado
-       WHERE ${where}
+       FROM empleado tec
+       LEFT JOIN ticket t
+         ON t.id_tecnico = tec.id_empleado
+         AND (t.estatus = 'Resuelto' OR t.estatus = 'No Resuelto')
+         ${ticketFilter}
+       WHERE tec.id_rol = 1 AND tec.estatus = 'Activo'
        GROUP BY tec.id_empleado
        ORDER BY resueltos DESC`,
       params
     );
+    cache.set(cacheKey, rows, 2 * 60 * 1000); // 2 minutos
     return rows;
   },
 

@@ -43,11 +43,9 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
   const [passActual, setPassActual] = useState("");
   const [passNueva,  setPassNueva]  = useState("");
   const [passConf,   setPassConf]   = useState("");
-
-  useEffect(() => {
-    const pw = sessionStorage.getItem("_pw");
-    if (pw) setPassActual(pw);
-  }, []);
+  const [showActual, setShowActual] = useState(false);
+  const [showNueva,  setShowNueva]  = useState(false);
+  const [showConf,   setShowConf]   = useState(false);
 
   const fotoUrl = f => f ? `/storage/${f}` : null;
   const [foto,         setFoto]         = useState(fotoUrl(usuario.foto));
@@ -147,7 +145,6 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
       setMsg({ tipo: "ok", texto: "Datos actualizados correctamente" });
       setEmailEditado(false);
       if (passNueva) {
-        sessionStorage.removeItem("_pw");
         setPassActual("");
       }
       setPassNueva(""); setPassConf("");
@@ -246,25 +243,21 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Cambiar Contraseña</p>
           </div>
           <div className="px-5 pt-4 pb-5 flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Contraseña Actual</span>
-              <input
-                style={{ ...inp, cursor: "not-allowed", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt, WebkitTextFillColor: T.text, opacity: 1 }}
-                type="text" value={passActual}
-                disabled
-                readOnly />
-            </div>
             {[
-              { label: "Nueva Contraseña",           k: "nueva", val: passNueva, set: setPassNueva },
-              { label: "Confirmar Nueva Contraseña", k: "conf",  val: passConf,  set: setPassConf  },
-            ].map(({ label, k, val, set }) => (
+              { label: "Contraseña Actual",           k: "actual", val: passActual, set: setPassActual, show: showActual, setShow: setShowActual },
+              { label: "Nueva Contraseña",            k: "nueva",  val: passNueva,  set: setPassNueva,  show: showNueva,  setShow: setShowNueva  },
+              { label: "Confirmar Nueva Contraseña",  k: "conf",   val: passConf,   set: setPassConf,   show: showConf,   setShow: setShowConf   },
+            ].map(({ label, k, val, set, show, setShow }) => (
               <div key={k} className="flex flex-col gap-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</span>
-                <input className="[&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
-                  style={inp} type="password" value={val} onChange={e => set(e.target.value)}
-                  autoComplete="new-password" placeholder="••••••••"
-                  onFocus={e => e.target.style.borderColor = T.orange}
-                  onBlur={e => e.target.style.borderColor = T.border} />
+                <div className="relative">
+                  <input className="[&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden"
+                    style={{ ...inp, paddingRight: "36px" }} type={show ? "text" : "password"} value={val} onChange={e => set(e.target.value)}
+                    autoComplete="new-password" placeholder="••••••••"
+                    onFocus={e => e.target.style.borderColor = T.orange}
+                    onBlur={e => e.target.style.borderColor = T.border} />
+                  <EyeBtn show={show} onToggle={() => setShow(s => !s)} textFaint={T.textFaint} />
+                </div>
               </div>
             ))}
 

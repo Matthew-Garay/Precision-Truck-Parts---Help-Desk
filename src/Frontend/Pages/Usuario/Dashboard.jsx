@@ -10,7 +10,6 @@ import NuevoReporte from "./NuevoReporte";
 import HistorialIncidencias from "./HistorialIncidencias";
 import ManualesIncidencias from "./ManualesIncidencias";
 import SolicitudInsumo from "./SolicitudInsumo";
-import VistaInsumos from "./VistaInsumos";
 import VistaTicket from "./VistaTicket";
 import VistaSolicitud from "./VistaSolicitud";
 import ConfiguracionPerfil from "./ConfiguracionPerfil";
@@ -154,19 +153,13 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
           if (tipo === "solicitud:actualizada") cargarSolicitudesRef.current?.();
         }
         if (["ticket:actualizado", "ticket:en_atencion", "ticket:confirmado"].includes(tipo) && data?.id_ticket) {
+          const abrir = (t) => { if (t?.id_ticket) { setTicketVer(t); navigate("/usuario/dashboard"); } };
           const enMemoria = ticketsRef.current.find(tk => tk.id_ticket === data.id_ticket);
-          if (enMemoria) {
-            setTicketVer(enMemoria);
-            navigate("/usuario/dashboard");
-          } else {
+          if (enMemoria) { abrir(enMemoria); }
+          else {
             apiFetch(API_ROUTES.TICKET(data.id_ticket))
               .then(r => r.ok ? r.json() : null)
-              .then(t => {
-                if (t?.id_ticket) {
-                  setTicketVer(t);
-                  navigate("/usuario/dashboard");
-                }
-              })
+              .then(abrir)
               .catch(() => {});
           }
         }
@@ -329,10 +322,9 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
               </span>
             )}
             <button onClick={() => toggleDark(!dark)}
-              className="flex items-center justify-center h-9 rounded-xl transition-all px-2 gap-1.5"
+              className="flex items-center justify-center w-9 h-9 rounded-xl transition-all"
               style={{ background: T.surfaceAlt, color: dark ? "#f59e0b" : T.textMuted, border: `1px solid ${T.border}` }}>
               {dark ? <Sun size={14} /> : <Moon size={14} />}
-              <span className="hidden md:inline text-[11px] font-semibold">{dark ? "Claro" : "Oscuro"}</span>
             </button>
             <CampanaNotificaciones
               T={T}
@@ -386,7 +378,7 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
                 <SeccionMetricasUsuario T={T} tickets={tickets} />
                 <SeccionEstadisticas T={T} tickets={tickets} solicitudes={solicitudes} />
               </div>
-              <div className="flex-shrink-0" style={{ padding: "8px var(--content-px) 12px", minHeight: "340px" }}>
+              <div className="flex-shrink-0" style={{ padding: "8px var(--content-px) 16px" }}>
                 <KanbanBoard T={T} tickets={tickets} solicitudes={solicitudes} onVerTicket={setTicketVer} onVerSolicitud={handleVerSolicitud} inline />
               </div>
             </div>

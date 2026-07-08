@@ -6,6 +6,7 @@ import {
   X, MessageSquare, ChevronLeft, ChevronRight, Star, Pencil
 } from "lucide-react";
 import ProgressTimeline from "../../Components/ProgressTimeline";
+import Modal from "../../Components/Modal";
 import API, { apiFetch, getToken } from "../../Config/api";
 import { useSocket } from "../../Config/useSocket";
 
@@ -332,20 +333,43 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
     if (!form.id_categoria)  return setError("Selecciona una categoría");
     setGuardando(true); setError("");
     try {
-      // 1. Editar datos del ticket
-      const res = await apiFetch(`/api/tickets/${ticket.id_ticket}/editar`, {
+      const esCierre = form.estatus === "Resuelto" || form.estatus === "No Resuelto";
+
+      // 1. Editar datos del ticket (título, descripción, prioridad, categoría)
+      const resEditar = await apiFetch(`/api/tickets/${ticket.id_ticket}/editar`, {
         method: "PUT",
         body: {
           titulo:       form.titulo.trim(),
           descripcion:  descripcionHtml,
           prioridad:    form.prioridad,
           id_categoria: parseInt(form.id_categoria),
-          estatus:      form.estatus,
-          comentarios:  form.comentarios || null,
+          estatus:      esCierre ? undefined : form.estatus,
+          comentarios:  esCierre ? undefined : (form.comentarios || null),
         },
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error||"Error al guardar"); return; }
+      const dataEditar = await resEditar.json();
+      if (!resEditar.ok) { setError(dataEditar.error||"Error al guardar"); return; }
+
+      // 2. Si es cierre, usar el endpoint correcto que guarda fecha_resuelto e id_tecnico
+      if (esCierre) {
+        let adminId = null;
+        try {
+          const s = JSON.parse(sessionStorage.getItem("usuario") || "{}");
+          adminId = s.id_empleado ? parseInt(s.id_empleado, 10) : null;
+        } catch {}
+        const resCierre = await apiFetch(`/api/tickets/${ticket.id_ticket}`, {
+          method: "PATCH",
+          body: {
+            comentarios:     form.comentarios || null,
+            estatus:         form.estatus,
+            id_resuelto_por: form.estatus === "Resuelto" ? adminId : null,
+          },
+        });
+        const dataCierre = await resCierre.json();
+        if (!resCierre.ok) { setError(dataCierre.error||"Error al cerrar ticket"); return; }
+      }
+
+      const data = dataEditar;
 
       // 2. Eliminar evidencias marcadas
       for (const nombre of eliminarEv) {
@@ -366,6 +390,7 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
         id_categoria:   parseInt(form.id_categoria),
         estatus:        form.estatus,
         comentarios:    form.comentarios || null,
+        ...(esCierre && { fecha_resuelto: new Date().toISOString() }),
       });
     } catch { setError("No se pudo conectar con el servidor"); }
     finally { setGuardando(false); }
@@ -385,31 +410,19 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
   const totalFotos = imgs.length - eliminarEv.length + nuevasEv.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      style={{background:"rgba(0,0,0,0.75)",backdropFilter:"blur(4px)"}}
-      onClick={e=>{if(e.target===e.currentTarget)onCerrar();}}>
-      <div className="w-full max-w-2xl rounded-2xl overflow-hidden"
-        style={{background:isDark?"#141720":T.surface,boxShadow:"0 32px 80px rgba(0,0,0,0.5)",borderTop:`3px solid ${T.orange}`,maxHeight:"92vh",display:"flex",flexDirection:"column"}}>
-
-        {/* Header sticky */}
-        <div className="px-5 py-3.5 flex items-center justify-between flex-shrink-0"
-          style={{borderBottom:`1px solid ${isDark?"rgba(255,255,255,0.07)":T.border}`,background:isDark?"#141720":T.surface}}>
-          <div className="flex items-center gap-2">
-            <span className="w-1 h-5 rounded-full" style={{background:T.orange}}/>
-            <p className="font-black text-sm" style={{color:T.text}}>Editar ticket</p>
-            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-lg"
-              style={{background:isDark?"rgba(255,255,255,0.06)":T.bg,color:T.orange,border:`1px solid ${isDark?"rgba(255,255,255,0.1)":T.border}`}}>
-              {ticket.folio_ticket}
-            </span>
-          </div>
-          <button onClick={onCerrar} className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{background:isDark?"rgba(255,255,255,0.06)":T.surfaceAlt,color:T.textMuted,border:`1px solid ${T.border}`}}>
-            <X size={13}/>
-          </button>
-        </div>
-
-        {/* Cuerpo scrollable */}
-        <form onSubmit={handleGuardar} className="flex flex-col gap-4 p-5 overflow-y-auto">
+    <Modal
+      T={T}
+      title="Editar ticket"
+      subtitle={ticket.folio_ticket}
+      onClose={onCerrar}
+      onConfirm={handleGuardar}
+      confirmLabel={guardando ? "Guardando…" : "Guardar cambios"}
+      cancelLabel="Cancelar"
+      loading={guardando}
+      maxWidth="672px"
+      noBodyPadding
+    >
+        <form onSubmit={handleGuardar} className="flex flex-col gap-4 p-5 overflow-y-auto" style={{maxHeight:"75vh"}}>
 
           {/* Título */}
           <div>
@@ -500,16 +513,6 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
             </div>
           </div>
 
-          {/* Comentarios del técnico */}
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{color:T.textMuted}}>Comentarios del técnico</label>
-            <textarea rows={3} value={form.comentarios}
-              onChange={e=>setForm(f=>({...f,comentarios:e.target.value}))}
-              placeholder="Notas o solución aplicada..."
-              style={{...inputStyle,resize:"vertical",lineHeight:"1.6"}}
-              onFocus={onFI} onBlur={onBI}/>
-          </div>
-
           {/* Evidencias */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -589,22 +592,8 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
               ⚠ {error}
             </p>
           )}
-
-          <div className="flex gap-2 pt-1 pb-1">
-            <button type="button" onClick={onCerrar}
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110"
-              style={{background:isDark?"rgba(255,255,255,0.06)":T.surfaceAlt,color:T.textMuted,border:`1px solid ${T.border}`}}>
-              Cancelar
-            </button>
-            <button type="submit" disabled={guardando}
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95 disabled:opacity-60"
-              style={{background:`linear-gradient(135deg,${T.orange},#d97400)`,boxShadow:"0 3px 12px rgba(244,121,32,0.3)"}}>
-              {guardando?"Guardando...":"Guardar cambios"}
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -1063,41 +1052,27 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
         .ticket-desc [style*="text-align: right"]  { text-align: right; }
       `}</style>
       {confirmCancel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{background:"rgba(0,0,0,0.75)",backdropFilter:"blur(4px)"}}>
-          <div className="w-full max-w-sm rounded-2xl overflow-hidden"
-            style={{background:isDark?"#141720":"#fff",boxShadow:"0 32px 80px rgba(0,0,0,0.5)",borderTop:"3px solid #dc2626"}}>
-            <div className="px-5 py-4" style={{borderBottom:`1px solid ${isDark?"rgba(255,255,255,0.07)":"#f1f5f9"}`}}>
-              <div className="flex items-center gap-2">
-                <span className="w-1 h-5 rounded-full" style={{background:"#dc2626"}}/>
-                <p className="font-black text-sm" style={{color:T.text}}>Cancelar este ticket?</p>
-              </div>
-            </div>
-            <div className="px-5 py-4 flex flex-col gap-4">
-              <p className="text-xs leading-relaxed" style={{color:T.textMuted}}>
-                Esta accion no se puede deshacer. El ticket quedara marcado como <strong>Cancelado</strong> y no podra editarse.
-              </p>
-              {errorCancel && (
-                <p className="text-xs font-semibold px-3 py-2 rounded-lg"
-                  style={{background:isDark?"rgba(220,38,38,0.15)":"#fee2e2",color:"#dc2626",border:"1px solid rgba(220,38,38,0.3)"}}>
-                  {errorCancel}
-                </p>
-              )}
-              <div className="flex gap-2">
-                <button onClick={() => { setConfirmCancel(false); setErrorCancel(""); }}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold"
-                  style={{background:isDark?"rgba(255,255,255,0.06)":"#f1f5f9",color:T.textMuted,border:`1px solid ${T.border}`}}>
-                  Volver
-                </button>
-                <button onClick={handleCancelar} disabled={cancelando}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-60"
-                  style={{background:"linear-gradient(135deg,#dc2626,#b91c1c)",boxShadow:"0 3px 12px rgba(220,38,38,0.3)"}}>
-                  {cancelando ? "Cancelando..." : "Si, cancelar"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Modal
+          T={T}
+          title="¿Cancelar este ticket?"
+          onClose={() => { setConfirmCancel(false); setErrorCancel(""); }}
+          onConfirm={handleCancelar}
+          confirmLabel={cancelando ? "Cancelando…" : "Sí, cancelar"}
+          cancelLabel="Volver"
+          loading={cancelando}
+          maxWidth="380px"
+          danger
+        >
+          <p className="text-xs leading-relaxed" style={{color: T.isDark ? "rgba(255,255,255,0.75)" : T.text}}>
+            Esta acción no se puede deshacer. El ticket quedará marcado como <strong style={{color: T.isDark ? "#fff" : T.text}}>Cancelado</strong> y no podrá editarse.
+          </p>
+          {errorCancel && (
+            <p className="text-xs font-semibold px-3 py-2 rounded-lg mt-3"
+              style={{background:"rgba(220,38,38,0.2)",color:"#fca5a5",border:"1px solid rgba(220,38,38,0.4)"}}>
+              {errorCancel}
+            </p>
+          )}
+        </Modal>
       )}
       {modalEditar && (
         <ModalEditarTicket
@@ -1681,29 +1656,20 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                           <CheckCircle2 size={14}/> Cerrar ticket
                         </button>
                       ) : (
-                        <div className="rounded-xl overflow-hidden"
-                          style={{ border: isDark ? "1.5px solid rgba(22,163,74,0.3)" : "1.5px solid #86efac", background: isDark ? "rgba(22,163,74,0.08)" : "#f0fdf4" }}>
-                          <div className="px-4 py-3 flex items-center gap-2"
-                            style={{ borderBottom: isDark ? "1px solid rgba(22,163,74,0.2)" : "1px solid #86efac", background: isDark ? "rgba(22,163,74,0.12)" : "#dcfce7" }}>
-                            <CheckCircle2 size={13} style={{ color: "#16a34a" }}/>
-                            <p className="text-xs font-black" style={{ color: "#16a34a" }}>¿Confirmar cierre?</p>
-                          </div>
-                          <p className="px-4 py-2 text-[11px]" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#64748b" }}>
-                            Marcará el ticket como <strong>Resuelto</strong> y guardará los comentarios.
+                        <Modal
+                          T={T}
+                          title="¿Confirmar cierre?"
+                          onClose={() => setConfirmCierre(false)}
+                          onConfirm={() => guardarCambios("Resuelto")}
+                          confirmLabel={guardando ? "Cerrando..." : "Sí, cerrar"}
+                          cancelLabel="Cancelar"
+                          loading={guardando}
+                          maxWidth="360px"
+                        >
+                          <p className="text-xs leading-relaxed" style={{ color: T.isDark ? "rgba(255,255,255,0.75)" : T.text }}>
+                            Marcará el ticket como <strong style={{ color: T.isDark ? "#fff" : T.text }}>Resuelto</strong> y guardará los comentarios.
                           </p>
-                          <div className="flex gap-2 px-4 pb-4">
-                            <button onClick={() => guardarCambios("Resuelto")} disabled={guardando}
-                              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
-                              style={{ background: "#16a34a", color: "#fff", boxShadow: "0 2px 8px rgba(22,163,74,0.3)" }}>
-                              <CheckCircle2 size={12}/> {guardando ? "Cerrando..." : "Sí, cerrar"}
-                            </button>
-                            <button onClick={() => setConfirmCierre(false)}
-                              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all hover:brightness-110 active:scale-95"
-                              style={{ background: isDark ? "rgba(255,255,255,0.08)" : T.surface, color: T.textMuted, border: `1px solid ${T.border}` }}>
-                              <X size={12}/> Cancelar
-                            </button>
-                          </div>
-                        </div>
+                        </Modal>
                       )}
                     </>
                   ) : (

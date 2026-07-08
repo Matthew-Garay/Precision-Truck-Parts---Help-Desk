@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "server": "node src/Backend/server.js",
+    "server": "node --env-file=.env --env-file=.env.production src/Backend/server.js",
     "dev:all": "concurrently -k -n FRONT,BACK -c cyan,yellow --timestamp --timefmt \"HH:mm:ss\" \"vite --logLevel warn\" \"node --env-file=.env src/Backend/server.js\"",
     "build": "vite build",
     "preview": "vite preview"

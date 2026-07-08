@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Eye, Inbox, FileDown, Star, X } from "lucide-react";
+import { Eye, Inbox, FileDown, Star } from "lucide-react";
 import { apiFetch } from "../../Config/api";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
 import { useCardStyles } from "../../Components/Card";
+import Modal from "../../Components/Modal";
 
 const PCOLOR = { Urgente:"#dc2626", Alta:"#ea580c", Media:"#ca8a04", Baja:"#16a34a" };
 
@@ -181,7 +182,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
   return (
     <>
     <div className="flex flex-col h-full" style={{ background:T.bg, overflow:"hidden" }}>
-      <div className="w-full p-2 sm:p-3 flex flex-col gap-2 sm:gap-3 overflow-y-auto flex-1 min-h-0">
+      <div className="w-full p-2 sm:p-3 flex flex-col gap-2 sm:gap-3 flex-1 min-h-0" style={{ overflow:"hidden" }}>
 
         {/* ── KPIs ── */}
         <div className="grid grid-cols-12 gap-3">
@@ -319,7 +320,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
         </FiltrosToolbar>
 
         {/* ── Tabla ── */}
-        <div className="rounded-xl overflow-hidden flex flex-col" style={{ ...card, flex:"1 1 0", minHeight:"300px" }}>
+        <div className="rounded-xl overflow-hidden flex flex-col" style={{ ...card, flex:"1 1 0", minHeight:0 }}>
           <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={hdr}>
             <div className="flex items-center gap-1.5">
               <div className="w-0.5 h-3.5 rounded-full" style={{ background:T.orange }}/>
@@ -337,7 +338,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           </div>
 
           {/* Móvil */}
-          <div className="flex flex-col gap-2 p-3 sm:hidden" style={{ overflowY:"auto", flex:"1 1 0", minHeight:0 }}>
+          <div className="flex flex-col gap-2 p-3 sm:hidden">
             {paginados.length === 0
               ? <div className="flex flex-col items-center justify-center py-8 gap-2">
                   <Inbox size={20} style={{ color:T.textFaint }}/>
@@ -371,7 +372,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           </div>
 
           {/* Desktop */}
-          <div className="hidden sm:block" style={{ overflowX:"auto", overflowY:"auto", flex:"1 1 0", minHeight:0 }}>
+          <div className="hidden sm:block" style={{ overflowX:"auto" }}>
             <table className="w-full border-collapse" style={{ minWidth:"760px" }}>
               <thead className="sticky top-0 z-10">
                 <tr style={{ background:isDark?"rgba(255,255,255,0.03)":T.surfaceAlt }}>
@@ -443,12 +444,6 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
         {/* ── Paginación ── */}
         {totalPaginas > 1 && (
           <div className="flex items-center justify-center gap-2 py-2">
-            <button onClick={() => irPagina(1)} disabled={pagina===1}
-              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
-              style={{ background:isDark?"rgba(255,255,255,0.06)":T.surfaceAlt, color:T.textMuted, border:`1px solid ${T.border}` }}>«</button>
-            <button onClick={() => irPagina(pagina-1)} disabled={pagina===1}
-              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
-              style={{ background:isDark?"rgba(255,255,255,0.06)":T.surfaceAlt, color:T.textMuted, border:`1px solid ${T.border}` }}>‹ Anterior</button>
             {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
               const start = Math.max(1, Math.min(pagina-2, totalPaginas-4));
               const p = start + i;
@@ -461,12 +456,6 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                 </button>
               );
             })}
-            <button onClick={() => irPagina(pagina+1)} disabled={pagina===totalPaginas}
-              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
-              style={{ background:isDark?"rgba(255,255,255,0.06)":T.surfaceAlt, color:T.textMuted, border:`1px solid ${T.border}` }}>Siguiente ›</button>
-            <button onClick={() => irPagina(totalPaginas)} disabled={pagina===totalPaginas}
-              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
-              style={{ background:isDark?"rgba(255,255,255,0.06)":T.surfaceAlt, color:T.textMuted, border:`1px solid ${T.border}` }}>»</button>
           </div>
         )}
 
@@ -475,61 +464,46 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
 
     {/* ── Modal Reporte ── */}
     {modalReporte && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        style={{ background:"rgba(0,0,0,0.55)" }}
-        onClick={() => setModalReporte(false)}>
-        <div className="rounded-2xl w-full max-w-sm flex flex-col gap-4 p-5"
-          style={{ background:isDark?"#161B22":"#fff", border:`1px solid ${T.border}`, boxShadow:"0 20px 60px rgba(0,0,0,0.4)" }}
-          onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-1 h-4 rounded-full" style={{ background:T.orange }}/>
-              <span className="text-sm font-black" style={{ color:T.text }}>Parámetros del Reporte</span>
-            </div>
-            <button onClick={() => setModalReporte(false)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background:T.surfaceAlt, color:T.textMuted, border:`1px solid ${T.border}` }}>
-              <X size={13}/>
-            </button>
-          </div>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-bold uppercase tracking-wider" style={{ color:T.textMuted }}>Período rápido</label>
-              <div className="grid grid-cols-4 gap-1">
-                {[["diario","Día"],["semanal","Semana"],["mensual","Mes"],["anual","Año"]].map(([val,lbl]) => (
-                  <button key={val}
-                    onClick={() => setParamReporte(p => ({ ...p, periodo:val, fecha_inicio:"", fecha_fin:"" }))}
-                    className="py-1.5 rounded-lg text-[11px] font-bold transition-all"
-                    style={{
-                      background: paramReporte.periodo===val && !paramReporte.fecha_inicio ? `${T.orange}20` : (isDark?"rgba(255,255,255,0.04)":T.surfaceAlt),
-                      border: `1.5px solid ${paramReporte.periodo===val && !paramReporte.fecha_inicio ? T.orange : (isDark?"rgba(255,255,255,0.1)":T.border)}`,
-                      color: paramReporte.periodo===val && !paramReporte.fecha_inicio ? T.orange : T.textMuted,
-                    }}>{lbl}</button>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-bold uppercase tracking-wider" style={{ color:T.textMuted }}>Fecha inicio (opcional)</label>
-              <input type="date" value={paramReporte.fecha_inicio}
-                onChange={e => setParamReporte(p => ({ ...p, fecha_inicio: e.target.value }))}
-                className="rounded-lg px-3 py-2 text-sm"
-                style={{ background:T.surfaceAlt, border:`1px solid ${T.border}`, color:T.text, outline:"none", colorScheme:isDark?"dark":"light" }}/>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-bold uppercase tracking-wider" style={{ color:T.textMuted }}>Fecha fin (opcional)</label>
-              <input type="date" value={paramReporte.fecha_fin}
-                onChange={e => setParamReporte(p => ({ ...p, fecha_fin: e.target.value }))}
-                className="rounded-lg px-3 py-2 text-sm"
-                style={{ background:T.surfaceAlt, border:`1px solid ${T.border}`, color:T.text, outline:"none", colorScheme:isDark?"dark":"light" }}/>
+      <Modal
+        T={T}
+        title="Parámetros del Reporte"
+        onClose={() => setModalReporte(false)}
+        onConfirm={generarReporte}
+        confirmLabel="Generar Reporte"
+        maxWidth="360px"
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wider" style={{ color:T.textMuted }}>Período rápido</label>
+            <div className="grid grid-cols-4 gap-1">
+              {[["diario","Día"],["semanal","Semana"],["mensual","Mes"],["anual","Año"]].map(([val,lbl]) => (
+                <button key={val}
+                  onClick={() => setParamReporte(p => ({ ...p, periodo:val, fecha_inicio:"", fecha_fin:"" }))}
+                  className="py-1.5 rounded-lg text-[11px] font-bold transition-all"
+                  style={{
+                    background: paramReporte.periodo===val && !paramReporte.fecha_inicio ? `${T.orange}20` : (isDark?"rgba(255,255,255,0.04)":T.surfaceAlt),
+                    border: `1.5px solid ${paramReporte.periodo===val && !paramReporte.fecha_inicio ? T.orange : (isDark?"rgba(255,255,255,0.1)":T.border)}`,
+                    color: paramReporte.periodo===val && !paramReporte.fecha_inicio ? T.orange : T.textMuted,
+                  }}>{lbl}</button>
+              ))}
             </div>
           </div>
-          <button onClick={generarReporte}
-            className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-95"
-            style={{ background:`linear-gradient(135deg,${T.orange},#d97400)`, color:"#fff" }}>
-            <FileDown size={14}/> Generar Reporte
-          </button>
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wider" style={{ color:T.textMuted }}>Fecha inicio (opcional)</label>
+            <input type="date" value={paramReporte.fecha_inicio}
+              onChange={e => setParamReporte(p => ({ ...p, fecha_inicio: e.target.value }))}
+              className="rounded-lg px-3 py-2 text-sm"
+              style={{ background:T.surfaceAlt, border:`1px solid ${T.border}`, color:T.text, outline:"none", colorScheme:isDark?"dark":"light" }}/>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wider" style={{ color:T.textMuted }}>Fecha fin (opcional)</label>
+            <input type="date" value={paramReporte.fecha_fin}
+              onChange={e => setParamReporte(p => ({ ...p, fecha_fin: e.target.value }))}
+              className="rounded-lg px-3 py-2 text-sm"
+              style={{ background:T.surfaceAlt, border:`1px solid ${T.border}`, color:T.text, outline:"none", colorScheme:isDark?"dark":"light" }}/>
+          </div>
         </div>
-      </div>
+      </Modal>
     )}
     </>
   );

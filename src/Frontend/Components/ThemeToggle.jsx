@@ -18,13 +18,19 @@
  */
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "../Config/ThemeContext";
+import { useToast } from "./hooks/useToast";
 
 export default function ThemeToggle() {
   const { dark, toggleDark, T } = useTheme();
+  const toast = useToast();
 
   return (
     <button
-      onClick={() => toggleDark(!dark)}
+      onClick={() => {
+        const next = !dark;
+        toggleDark(next);
+        toast.info(next ? "Tema oscuro activado" : "Tema claro activado");
+      }}
       aria-label={dark ? "Cambiar a modo claro" : "Cambiar a modo obscuro"}
       title={dark ? "Modo claro" : "Modo obscuro"}
       style={{
