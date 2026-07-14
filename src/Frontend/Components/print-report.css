@@ -17,31 +17,28 @@
 
 /* ── PRINT ──────────────────────────────────────────────────────── */
 @media print {
-  @page { size: letter portrait; margin: 8mm 10mm 8mm 10mm; }
+  @page { size: letter portrait; margin: 10mm 12mm; }
+  @page.landscape { size: letter landscape; margin: 8mm 10mm; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
-  html, body { width: 100% !important; background: #fff !important; margin: 0 !important; padding: 0 !important; height: 100% !important; }
-  body > *:not(.pr-root) { display: none !important; }
-  .pr-root {
+  html, body, body.print-preview {
+    width: 100% !important;
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+  }
+  .pr-toolbar { display: none !important; }
+  .pr-root, body.print-preview .pr-root {
     width: 100% !important;
     max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    min-height: 100vh !important;
+    background: #fff !important;
   }
-  .pr-content {
-    padding: 0 !important;
-    width: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    flex: 1 !important;
-  }
-  .pr-page-footer {
-    margin-top: auto !important;
-  }
+  .pr-root.pr-landscape { width: 100% !important; }
+  .pr-content { padding: 0 !important; width: 100% !important; }
   .pr-section, .pr-data-grid, .pr-stepper,
   .pr-resolution-box, .pr-signature, .pr-status-bar,
   .pr-two-col { break-inside: avoid; }
@@ -540,22 +537,71 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   PREVIEW EN PANTALLA
+   TOOLBAR DE ACCIONES (solo pantalla)
 ══════════════════════════════════════════════════════════════════ */
-body.print-preview {
-  background: #6B7FA3;
-  padding: 24px 16px;
-  min-height: 100vh;
+.pr-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: #1e293b;
+  border-bottom: 2px solid #E8621A;
+  gap: 12px;
 }
 
-body.print-preview .pr-root {
+.pr-toolbar-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.75);
+  letter-spacing: 0.04em;
+}
+
+.pr-btn {
+  padding: 7px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s;
+}
+.pr-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.pr-btn:not(:disabled):hover { opacity: 0.88; }
+
+.pr-btn--primary {
+  background: #E8621A;
+  color: #fff;
+}
+
+.pr-btn--outline {
+  background: transparent;
+  color: rgba(255,255,255,0.65);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+@media print {
+  .pr-toolbar { display: none !important; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PREVIEW EN PANTALLA — fondo blanco, sin padding extra
+══════════════════════════════════════════════════════════════════ */
+body, body.print-preview {
+  background: #f1f5f9;
+  margin: 0;
+  padding: 0;
+}
+
+body.print-preview .pr-root,
+.pr-root {
   max-width: 820px;
   width: 100%;
   margin: 0 auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.1);
-  border-radius: 2px;
-  overflow: hidden;
-  background: var(--pr-white);
+  background: #fff;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.10);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -569,4 +615,99 @@ body.print-preview .pr-root {
   .pr-rating-score { color: #0f172a !important; }
   .pr-rating-label { color: #475569 !important; }
   .pr-stars svg { fill: #0f172a !important; stroke: #0f172a !important; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   LANDSCAPE — Reporte de Insumos
+══════════════════════════════════════════════════════════════════ */
+.pr-root.pr-landscape {
+  max-width: 1060px;
+}
+
+@media print {
+  .pr-root.pr-landscape,
+  body.print-preview .pr-root.pr-landscape {
+    max-width: none !important;
+  }
+  /* Forzar landscape solo cuando el root tiene la clase */
+  .pr-root.pr-landscape ~ * { display: none; }
+}
+
+/* Tabla de insumos — fuente más pequeña para caber en landscape */
+.pr-insumos-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 6.5pt;
+}
+.pr-insumos-table thead tr {
+  background: var(--pr-navy);
+}
+.pr-insumos-table thead th {
+  padding: 4px 6px;
+  text-align: left;
+  font-size: 5pt;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.85);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--pr-border);
+}
+.pr-insumos-table tbody tr:nth-child(even) { background: var(--pr-surface); }
+.pr-insumos-table tbody tr:nth-child(odd)  { background: var(--pr-white); }
+.pr-insumos-table tbody td {
+  padding: 4px 6px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--pr-border);
+}
+
+/* Miniaturas de insumos */
+.pr-insumo-thumb {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--pr-border);
+  display: block;
+  flex-shrink: 0;
+}
+.pr-insumo-thumb-placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 3px;
+  border: 1px dashed var(--pr-border);
+  background: var(--pr-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Items detalle dentro de celda */
+.pr-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.pr-item-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pr-item-name {
+  font-size: 6.5pt;
+  font-weight: 600;
+  color: var(--pr-ink);
+}
+.pr-item-qty {
+  font-size: 6pt;
+  font-weight: 800;
+  color: var(--pr-accent);
+  white-space: nowrap;
+}
+.pr-item-aprobado {
+  font-size: 5.5pt;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 700;
 }

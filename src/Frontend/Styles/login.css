@@ -23,26 +23,27 @@ html, body, #root {
   transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 .login-input:hover:not(:focus) {
-  border-color: #F47920 !important;
+  border-color: #cbd5e1 !important;
   background: #fff !important;
 }
 .login-input:focus {
   border-color: #F47920 !important;
-  box-shadow: 0 0 0 3px rgba(244,121,32,0.12) !important;
+  box-shadow: 0 0 0 3px rgba(244,121,32,0.10) !important;
   background: #fff !important;
 }
 
 /* ── Botón principal ── */
 .login-btn {
-  border-radius: 4px !important;
-  transition: background 0.15s, box-shadow 0.15s, transform 0.1s !important;
+  border-radius: 6px !important;
+  transition: background 0.18s, box-shadow 0.18s, transform 0.1s !important;
 }
 .login-btn:not(:disabled):hover {
   background: #D4610A !important;
-  box-shadow: 0 4px 16px rgba(244,121,32,0.45) !important;
+  box-shadow: 0 6px 20px rgba(244,121,32,0.40) !important;
+  transform: translateY(-1px);
 }
 .login-btn:not(:disabled):active {
-  transform: scale(0.98);
+  transform: scale(0.98) translateY(0);
 }
 .login-btn:focus-visible {
   outline: 2px solid #F47920;

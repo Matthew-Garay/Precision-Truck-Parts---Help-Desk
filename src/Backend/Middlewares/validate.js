@@ -67,7 +67,7 @@ export function validate(schema) {
   return (req, res, next) => {
     const result = schema.safeParse(req.body ?? {});
     if (!result.success) {
-      const errores = (result.error?.errors ?? []).map(e => ({
+      const errores = (result.error?.issues ?? []).map(e => ({
         campo:   e.path.join("."),
         mensaje: e.message,
       }));
@@ -165,24 +165,29 @@ export const schemaCrearSolicitud = z.object({
   // id_empleado del body solo es referencial; el controller valida ownership contra el JWT
   id_empleado: z.number({ coerce: true }).int().positive(),
   insumos:     z.array(z.object({
-    id_insumo: z.number({ coerce: true }).int().positive(),
-    cantidad:  z.number({ coerce: true }).int().min(1, "La cantidad debe ser al menos 1"),
+    id_insumo:   z.number({ coerce: true }).int().positive(),
+    cantidad:    z.number({ coerce: true }).int().min(1, "La cantidad debe ser al menos 1"),
+    descripcion: z.string().trim().max(1000).optional().nullable().default(null),
   })).min(1, "Debe incluir al menos un insumo").max(50, "Máximo 50 insumos por solicitud"),
 });
 
 export const schemaActualizarEstatusSolicitud = z.object({
-  estatus: z.enum(["En proceso", "Resuelto", "No Resuelto", "Rechazado"]),
+  estatus: z.enum(["En proceso", "Aceptado", "Rechazado"]),
 });
 
 // Schema para filtros de búsqueda en tickets (#16)
 export const schemaFiltrosTickets = z.object({
   page:       z.number({ coerce: true }).int().positive().optional().default(1),
-  limit:      z.number({ coerce: true }).int().positive().max(500).optional().default(50),
+  limit:      z.number({ coerce: true }).int().positive().max(2000).optional().default(50),
   estatus:    z.enum(["En proceso", "Resuelto", "No Resuelto", "Cancelado"]).optional(),
   prioridad:  z.enum(["Urgente", "Alta", "Media", "Baja"]).optional(),
   q:          z.string().trim().max(200).optional(),
   fecha_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato YYYY-MM-DD").optional(),
   fecha_fin:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato YYYY-MM-DD").optional(),
+  tecnico:    z.string().trim().max(200).optional(),
+  usuario:    z.string().trim().max(200).optional(),
+  area:       z.string().trim().max(200).optional(),
+  sucursal:   z.string().trim().max(200).optional(),
 });
 
 export const schemaInsumo = z.object({

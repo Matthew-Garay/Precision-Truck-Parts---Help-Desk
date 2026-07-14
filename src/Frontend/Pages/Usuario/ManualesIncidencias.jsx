@@ -4,12 +4,12 @@ import { useNavigate } from "react-router-dom";
 import {
   Download, Eye, X, Clock,
   FileText, Inbox, Tag, Search,
+  HardDrive, Wifi, Monitor, Cpu, Settings,
 } from "lucide-react";
 import API, { apiFetch } from "../../Config/api";
 import { RADIUS, SLATE } from "../../Config/DesignSystem";
 import { usePdfCover } from "../../Components/hooks/usePdfCover";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
-import FiltrosToolbar from "../../Components/FiltrosToolbar";
 
 const BRAND = "#F47920";
 
@@ -205,7 +205,8 @@ function CardManual({ m, T, onVer }) {
 export default function ManualesIncidencias({ T }) {
   const [manuales,   setManuales]   = useState([]);
   const [loading,    setLoading]    = useState(true);
-  const [filtros,    setFiltros]    = useState({ busqueda: "", categoria: "" });
+  const [busqueda,   setBusqueda]   = useState("");
+  const [categoria,  setCategoria]  = useState("");
   const [drawer,     setDrawer]     = useState(null);
   const [dragging,   setDragging]   = useState(false);
   const navigate = useNavigate();
@@ -226,25 +227,14 @@ export default function ManualesIncidencias({ T }) {
       .map(m => [m.id_categoria, { id: m.id_categoria, nombre: m.nombre_categoria }])
   ).values()];
 
-  const catOpts = [
-    { value: "", label: "Todas" },
-    ...categorias.map(c => ({ value: String(c.id), label: c.nombre })),
-  ];
-
-  const camposFiltro = [
-    { key: "busqueda",  label: "Búsqueda",  type: "search", placeholder: "Nombre, categoría...", debounce: 200 },
-    { key: "categoria", label: "Categoría", type: "select", opts: catOpts },
-  ];
-
-  const setFiltro = (key, val) => setFiltros(p => ({ ...p, [key]: val }));
-  const limpiarFiltros = () => setFiltros({ busqueda: "", categoria: "" });
+  const limpiarFiltros = () => { setBusqueda(""); setCategoria(""); };
 
   const filtrados = manuales.filter(m => {
-    const q = filtros.busqueda.toLowerCase();
-    return (!filtros.busqueda || m.nombre.toLowerCase().includes(q) ||
+    const q = busqueda.toLowerCase();
+    return (!busqueda || m.nombre.toLowerCase().includes(q) ||
       m.nombre_categoria?.toLowerCase().includes(q) ||
       m.descripcion?.toLowerCase().includes(q))
-      && (!filtros.categoria || String(m.id_categoria) === filtros.categoria);
+      && (!categoria || String(m.id_categoria) === categoria);
   });
 
   const surf   = isDark ? "#141720" : "#fff";
@@ -320,24 +310,24 @@ export default function ManualesIncidencias({ T }) {
             </p>
           </div>
 
-          {/* Buscador hero — alimenta el mismo estado que FiltrosToolbar */}
+          {/* Buscador hero */}
           <div style={{
             width: "100%", maxWidth: 520, position: "relative",
             background: isDark ? "rgba(255,255,255,0.06)" : "#fff",
-            border: `1.5px solid ${filtros.busqueda ? BRAND : border}`,
+            border: `1.5px solid ${busqueda ? BRAND : border}`,
             borderRadius: 10,
-            boxShadow: filtros.busqueda
+            boxShadow: busqueda
               ? `0 0 0 4px rgba(244,121,32,0.11), 0 4px 20px rgba(0,0,0,0.08)`
               : "0 4px 20px rgba(0,0,0,0.07)",
             transition: "all 0.2s",
           }}>
             <Search size={16} style={{
               position: "absolute", left: 15, top: "50%", transform: "translateY(-50%)",
-              color: filtros.busqueda ? BRAND : SLATE[400], pointerEvents: "none",
+              color: busqueda ? BRAND : SLATE[400], pointerEvents: "none",
             }} />
             <input
-              value={filtros.busqueda}
-              onChange={e => setFiltro("busqueda", e.target.value)}
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
               placeholder="Buscar manual..."
               style={{
                 width: "100%", background: "transparent", border: "none", outline: "none",
@@ -346,8 +336,8 @@ export default function ManualesIncidencias({ T }) {
                 fontFamily: "'Inter','Segoe UI',sans-serif",
               }}
             />
-            {filtros.busqueda && (
-              <button onClick={() => setFiltro("busqueda", "")} style={{
+            {busqueda && (
+              <button onClick={() => setBusqueda("")} style={{
                 position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
                 background: "none", border: "none", cursor: "pointer",
                 color: SLATE[400], display: "flex", padding: 2,
@@ -356,30 +346,42 @@ export default function ManualesIncidencias({ T }) {
               </button>
             )}
           </div>
+
+          {/* Chips de categoría */}
+          {!loading && categorias.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
+              {[{ id: "", nombre: "Todas" }, ...categorias].map(c => {
+                const active = categoria === String(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setCategoria(active ? "" : String(c.id))}
+                    style={{
+                      padding: "5px 13px", borderRadius: 99, fontSize: 11, fontWeight: 700,
+                      cursor: "pointer", transition: "all 0.15s",
+                      background: active ? BRAND : (isDark ? "rgba(255,255,255,0.06)" : "#fff"),
+                      color: active ? "#fff" : (isDark ? "rgba(255,255,255,0.55)" : SLATE[500]),
+                      border: `1.5px solid ${active ? BRAND : (isDark ? "rgba(255,255,255,0.12)" : SLATE[200])}`,
+                    }}
+                  >
+                    {c.nombre}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
       {/* ── CUERPO ───────────────────────────────────────────── */}
       <div style={{ maxWidth: 1000, margin: "0 auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20 }}>
 
-        {/* FiltrosToolbar — reemplaza chips ad-hoc, sincronizado con hero search */}
-        {!loading && (
-          <FiltrosToolbar
-            campos={camposFiltro}
-            valores={filtros}
-            onChange={setFiltro}
-            onLimpiar={limpiarFiltros}
-            loading={loading}
-            T={T}
-          />
-        )}
-
         {/* Encabezado resultados */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 3, height: 14, borderRadius: 99, background: `linear-gradient(180deg,${BRAND},#d97400)` }} />
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: isDark ? "rgba(255,255,255,0.42)" : SLATE[600] }}>
-              {filtros.busqueda || filtros.categoria ? "Resultados" : "Documentos disponibles"}
+              {busqueda || categoria ? "Resultados" : "Documentos disponibles"}
             </span>
             <span style={{
               fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 99,
@@ -389,7 +391,7 @@ export default function ManualesIncidencias({ T }) {
               {filtrados.length}
             </span>
           </div>
-          {(filtros.busqueda || filtros.categoria) && (
+          {(busqueda || categoria) && (
             <button onClick={limpiarFiltros} style={{
               fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.35)" : SLATE[400],
               background: "none", border: "none", cursor: "pointer",
@@ -426,7 +428,7 @@ export default function ManualesIncidencias({ T }) {
               {filtros.busqueda || filtros.categoria ? "Sin resultados" : "No hay manuales disponibles"}
             </p>
             <p style={{ fontSize: 12, color: isDark ? "rgba(255,255,255,0.22)" : SLATE[400], textAlign: "center", margin: 0 }}>
-              {filtros.busqueda ? `No se encontraron coincidencias para "${filtros.busqueda}"` : "Pronto habrá contenido disponible aquí"}
+              {busqueda ? `No se encontraron coincidencias para "${busqueda}"` : "Pronto habrá contenido disponible aquí"}
             </p>
           </div>
         ) : (

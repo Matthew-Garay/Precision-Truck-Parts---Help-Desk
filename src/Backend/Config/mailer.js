@@ -1,293 +1,273 @@
-/**
- * mailer.js
- *
- * Configura el servicio de envio de correos electronicos mediante nodemailer
- * y expone la funcion para el envio del codigo de recuperacion de contrasena.
- *
- * Variables de entorno requeridas:
- *   SMTP_HOST - servidor SMTP (ej. smtp.gmail.com)
- *   SMTP_PORT - puerto SMTP (587 para TLS, 465 para SSL)
- *   SMTP_USER - usuario / direccion de autenticacion SMTP
- *   SMTP_PASS - contrasena o token de aplicacion SMTP
- *   SMTP_FROM - direccion remitente que aparecera en el correo
- *
- * Si SMTP_USER no esta configurado la funcion retorna sin enviar nada,
- * lo que permite ejecutar el sistema en desarrollo sin servidor de correo.
- *
- * Funciones exportadas:
- *   enviarCodigoRecuperacion - envia el codigo de 6 digitos para restablecer contrasena
- */
-import nodemailer from "nodemailer";
-import fs         from "fs";
-import path       from "path";
+import nodemailer        from "nodemailer";
+import fs                from "fs";
+import path              from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Logo embebido en base64 — se lee de forma lazy (primera llamada)
-let LOGO_B64 = null;
-async function getLogoB64() {
-  if (LOGO_B64 !== null) return LOGO_B64;
-  try {
-    const logoPath = path.resolve(__dirname, "../../../public/assets/img/log.png");
-    const buf = await fs.promises.readFile(logoPath);
-    LOGO_B64 = buf.toString("base64");
-  } catch (err) {
-    console.error("[mailer] No se pudo cargar el logo:", err.message);
-    LOGO_B64 = "";
+// ── Logo embebido ─────────────────────────────────────────────
+function cargarLogoBase64() {
+  const candidatos = [
+    path.resolve(__dirname, "../../../public/assets/img/log.png"),
+    path.resolve(__dirname, "../../../public/assets/img/logo.png"),
+    path.resolve(__dirname, "../../../public/assets/img/logo negro.png"),
+  ];
+  for (const ruta of candidatos) {
+    if (fs.existsSync(ruta)) {
+      const b64 = fs.readFileSync(ruta).toString("base64");
+      const ext  = path.extname(ruta).slice(1);
+      console.log(`[mailer] Logo OK: ${path.basename(ruta)} (${b64.length} chars)`);
+      return `data:image/${ext};base64,${b64}`;
+    }
   }
-  return LOGO_B64;
+  console.warn("[mailer] Logo no encontrado");
+  return null;
 }
 
-const escHtml = (str) => String(str ?? "")
-  .replace(/&/g, "&amp;")
-  .replace(/</g, "&lt;")
-  .replace(/>/g, "&gt;")
-  .replace(/"/g, "&quot;");
+const LOGO_B64 = cargarLogoBase64();
 
-// Hora local del servidor en zona Hermosillo (sin dependencia de API externa)
+// ── Helpers ───────────────────────────────────────────────────
+const esc = (s) =>
+  String(s ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
 function getAhoraHermosillo() {
-  const now  = new Date();
   const zona = new Intl.DateTimeFormat("es-MX", {
     timeZone: "America/Hermosillo",
     day: "2-digit", month: "long", year: "numeric",
     hour: "2-digit", minute: "2-digit", hour12: true,
-  }).formatToParts(now);
+  }).formatToParts(new Date());
   const p = Object.fromEntries(zona.map(({ type, value }) => [type, value]));
-  return `${p.day} de ${p.month} de ${p.year} a las ${p.hour}:${p.minute} ${p.dayPeriod.toLowerCase()}`;
+  return `${p.day} de ${p.month} de ${p.year} a las ${p.hour}:${p.minute} ${p.dayPeriod?.toLowerCase()}`;
 }
 
+// ── Transporter ───────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
   host:   process.env.SMTP_HOST,
   port:   parseInt(process.env.SMTP_PORT) || 587,
   secure: parseInt(process.env.SMTP_PORT) === 465,
-  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  auth:   { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
 });
 
 if (process.env.SMTP_USER) {
-  transporter.verify().then(() => {
-    console.log("✅ Conexión SMTP verificada correctamente");
-  }).catch(err => {
-    console.error("⚠️  SMTP no disponible:", err.message);
-  });
+  transporter.verify()
+    .then(() => console.log("✅ SMTP verificado"))
+    .catch(e  => console.error("⚠️  SMTP no disponible:", e.message));
 }
 
-// ── Plantilla base ────────────────────────────────────────────
-const wrap = (body, logoSrc) => `
-<!DOCTYPE html>
-<html lang="es">
+// ── Plantilla ─────────────────────────────────────────────────
+const emailTemplate = (body) => `<!DOCTYPE html>
+<html lang="es" xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <title>Precision Truck Parts - HelpDesk</title>
+  <style>
+    body,table,td,p,a,span,div { font-family:Arial,Helvetica,sans-serif !important; }
+    @media (prefers-color-scheme:dark){
+      .bg-outer  { background-color:#111111 !important; }
+      .bg-card   { background-color:#1C1C1C !important; border-color:#2A2A2A !important; }
+      .bg-hdr    { background-color:#0D0D0D !important; border-color:#F47920 !important; }
+      .bg-body   { background-color:#1C1C1C !important; }
+      .bg-footer { background-color:#141414 !important; border-color:#252525 !important; }
+      .t-main    { color:#EEEEEE !important; }
+      .t-sub     { color:#999999 !important; }
+      .t-footer  { color:#555555 !important; }
+      .t-footer-b{ color:#777777 !important; }
+      .bg-warn   { background-color:#1F1800 !important; border-color:#4A3000 !important; }
+      .t-warn    { color:#F5C842 !important; }
+      .t-warn-s  { color:#C49A20 !important; }
+      .bg-sec    { background-color:#1C1C1C !important; border-color:#2A2A2A !important; }
+      .t-sec     { color:#666666 !important; }
+      .t-sec-b   { color:#AAAAAA !important; }
+      .code-d    { background-color:#252525 !important; border-color:#383838 !important; color:#FFFFFF !important; }
+      .step-row  { border-color:#2A2A2A !important; }
+    }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:#F3F4F6;font-family:'Segoe UI',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F4F6;padding:32px 16px;">
-    <tr><td align="center">
-      <table width="520" cellpadding="0" cellspacing="0"
-        style="max-width:520px;width:100%;background:#ffffff;
-               border:1px solid #E5E7EB;
-               box-shadow:0 2px 10px rgba(0,0,0,0.07);">
+<body style="margin:0;padding:0;background:#E5E5E5;">
 
-        <tr><td style="height:5px;background:linear-gradient(90deg,#F47920,#CC5200);"></td></tr>
+<table class="bg-outer" role="presentation" width="100%" cellpadding="0" cellspacing="0"
+  style="background:#E5E5E5;padding:40px 16px;">
+  <tr><td align="center">
 
-        <tr>
-          <td style="background:#1D1D1B;padding:24px 32px;">
-            <table cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="padding-right:16px;border-right:2px solid rgba(244,121,32,0.5);vertical-align:middle;">
-                  ${logoSrc
-                    ? `<img src="${logoSrc}" alt="Precision Truck Parts" style="height:44px;width:auto;display:block;"/>`
-                    : `<span style="color:#F47920;font-size:16px;font-weight:900;">PTP</span>`
-                  }
-                </td>
-                <td style="padding-left:16px;vertical-align:middle;">
-                  <p style="color:#F47920;font-size:9px;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;margin:0 0 3px;">Precision Truck Parts</p>
-                  <p style="color:#ffffff;font-size:16px;font-weight:900;margin:0;">HelpDesk</p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
+    <table class="bg-card" role="presentation" width="600" cellpadding="0" cellspacing="0"
+      style="max-width:600px;width:100%;background:#FFFFFF;border:1px solid #CCCCCC;">
 
-        <tr><td style="padding:28px 32px;">${body}</td></tr>
+      <!-- Franja naranja top -->
+      <tr><td style="height:5px;background:#F47920;font-size:0;line-height:0;">&nbsp;</td></tr>
 
-        <tr>
-          <td style="background:#F9FAFB;border-top:1px solid #E5E7EB;padding:14px 32px;">
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td>
-                  <p style="color:#9CA3AF;font-size:10px;margin:0;">© 2026 <strong style="color:#F47920;">Precision Truck Parts and Accessories</strong></p>
-                  <p style="color:#D1D5DB;font-size:10px;margin:3px 0 0;">Este correo fue generado automáticamente, no responda a este mensaje.</p>
-                </td>
-                <td align="right">
-                  <p style="color:#D1D5DB;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin:0;">Sistema HelpDesk</p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
+      <!-- HEADER -->
+      <tr>
+        <td class="bg-hdr" style="background:#161616;padding:20px 36px;border-bottom:2px solid #F47920;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="vertical-align:middle;width:1%;white-space:nowrap;">
+                ${LOGO_B64
+                  ? `<img src="${LOGO_B64}" alt="Precision Truck Parts" width="110"
+                       style="display:block;border:0;height:auto;max-height:46px;"/>`
+                  : `<span style="color:#F47920;font-size:20px;font-weight:900;letter-spacing:0.04em;">PTP</span>`
+                }
+              </td>
+              <td style="vertical-align:middle;width:1px;padding:0 18px;">
+                <div style="width:1px;height:34px;background:#3A3A3A;"></div>
+              </td>
+              <td style="vertical-align:middle;">
+                <p style="margin:0;font-size:14px;font-weight:700;line-height:1;color:#FFFFFF;">
+                  <span style="color:#F47920;">Precision Truck Parts</span>&nbsp;<span style="color:#555555;">-</span>&nbsp;<span style="color:#FFFFFF;">HelpDesk</span>
+                </p>
+              </td>
+              <td align="right" style="vertical-align:middle;white-space:nowrap;padding-left:12px;">
+                <span style="display:inline-block;background:#F47920;color:#111111;
+                  font-size:8px;font-weight:900;letter-spacing:0.16em;text-transform:uppercase;
+                  padding:5px 12px;">RECUPERACI&Oacute;N DE CONTRASE&Ntilde;A</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
 
-        <tr><td style="height:4px;background:linear-gradient(90deg,#F47920,#CC5200);"></td></tr>
+      <!-- BODY -->
+      <tr>
+        <td class="bg-body" style="background:#FFFFFF;padding:36px;">
+          ${body}
+        </td>
+      </tr>
 
-      </table>
-    </td></tr>
-  </table>
+      <!-- FOOTER -->
+      <tr>
+        <td class="bg-footer" style="background:#F5F5F5;border-top:1px solid #E0E0E0;padding:18px 36px;">
+          <p class="t-footer-b" style="margin:0 0 5px 0;color:#222222;font-size:11px;font-weight:700;">
+            Precision Truck Parts and Accessories &mdash; HelpDesk &copy; 2026
+          </p>
+          <p class="t-footer" style="margin:0;color:#888888;font-size:10px;line-height:1.6;">
+            Este mensaje fue generado de forma autom&aacute;tica por el sistema HelpDesk.
+            Si no esperabas este correo, puedes ignorarlo con seguridad.
+            Por favor no respondas directamente a este mensaje.
+          </p>
+        </td>
+      </tr>
+
+      <!-- Franja naranja bottom -->
+      <tr><td style="height:4px;background:#F47920;font-size:0;line-height:0;">&nbsp;</td></tr>
+
+    </table>
+
+  </td></tr>
+</table>
+
 </body>
 </html>`;
 
-// ── Código de recuperación de contraseña ─────────────────────
+// ── Correo: código de recuperación ───────────────────────────
 export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
   if (!process.env.SMTP_USER) return;
 
-  const logoB64      = await getLogoB64();
-  const logoSrc      = logoB64 ? `data:image/png;base64,${logoB64}` : "";
-  const digitos      = String(codigo).split("");
-  const partes       = nombre.trim().split(/\s+/);
-  const primerNombre = escHtml(partes[0] ?? "");
-  const apellido     = escHtml(partes.length > 1 ? partes[partes.length > 2 ? partes.length - 2 : 1] : "");
-  const ahora        = getAhoraHermosillo();
+  const partes   = nombre.trim().split(/\s+/);
+  const nombre1  = esc(partes[0] ?? "");
+  const apellido = esc(partes.length > 1 ? partes[partes.length > 2 ? partes.length - 2 : 1] : "");
+  const digitos  = String(codigo).split("");
+  const ahora    = getAhoraHermosillo();
 
-  const html = `
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Recuperación de contraseña</title>
-</head>
-<body>
-  <div style="background-color:#FFFFFF;color:#03124A;font-family:Avenir,'Avenir Next LT Pro',Montserrat,Corbel,'URW Gothic',source-sans-pro,sans-serif;font-size:16px;font-weight:400;letter-spacing:0.15px;line-height:1.5;margin:0;padding:32px 0;min-height:100%;width:100%;">
+  const celda = (d) =>
+    `<td style="padding:0 5px;">
+      <div class="code-d" style="width:48px;height:60px;background:#F7F7F7;border:1px solid #DDDDDD;
+        border-bottom:3px solid #F47920;text-align:center;line-height:60px;
+        font-size:28px;font-weight:700;color:#111111;
+        font-family:'Courier New',Courier,monospace;">${d}</div>
+    </td>`;
 
-    <table align="center" width="100%" style="margin:0 auto;max-width:600px;background-color:#FFFFFF;" role="presentation" cellspacing="0" cellpadding="0" border="0">
-      <tbody>
-        <tr style="width:100%">
-          <td>
+  const body = `
+    <!-- Saludo -->
+    <h1 class="t-main" style="margin:0 0 10px 0;color:#111111;font-size:22px;font-weight:700;line-height:1.3;">
+      Hola, ${nombre1} ${apellido}
+    </h1>
 
-            <table width="100%" cellpadding="0" cellspacing="0" border="0"
-              style="border-bottom:3px solid #F97316;">
-              <tr>
-                <td style="padding:20px 24px;vertical-align:middle;">
-                  <div style="color:#262626;font-size:18px;font-weight:800;line-height:1.3;">
-                    Código de recuperación<br/>de contraseña
-                  </div>
-                  <div style="color:#9CA3AF;font-size:11px;margin-top:4px;letter-spacing:0.08em;text-transform:uppercase;">HelpDesk &middot; Precision Truck Parts</div>
-                </td>
-                <td style="padding:20px 24px;vertical-align:middle;text-align:right;width:160px;">
-                  <img alt="Precision Truck Parts" src="data:image/png;base64,${logoB64}" height="52"
-                    style="height:52px;width:auto;outline:none;border:none;text-decoration:none;vertical-align:middle;display:inline-block;max-width:100%;"/>
-                </td>
-              </tr>
-            </table>
+    <p class="t-sub" style="margin:0 0 28px 0;color:#555555;font-size:14px;font-weight:400;line-height:1.75;">
+      Recibimos una solicitud para restablecer la contrase&ntilde;a de tu cuenta en el sistema
+      HelpDesk de Precision Truck Parts.
+      Usa el c&oacute;digo de verificaci&oacute;n que aparece a continuaci&oacute;n para continuar.
+    </p>
 
-            <div style="font-size:15px;color:#4B5563;font-weight:normal;text-align:left;padding:12px 24px 20px 24px;line-height:1.6;">
-              Hola <strong style="color:#111827;">${primerNombre} ${apellido}</strong>, hemos recibido una petición para restablecer
-              la contraseña de tu cuenta. Usa el siguiente código para continuar.
-            </div>
+    <!-- Label código -->
+    <p class="t-sub" style="margin:0 0 14px 0;color:#888888;font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;">
+      C&oacute;digo de verificaci&oacute;n &mdash; 6 d&iacute;gitos
+    </p>
 
-            <div style="padding:0 24px 8px 24px;">
-              <div style="background-color:#111827;padding:20px 20px;border-left:4px solid #F97316;">
-                <table align="center" width="100%" cellpadding="0" border="0" style="table-layout:fixed;border-collapse:collapse;">
-                  <tbody style="width:100%">
-                    <tr style="width:100%">
-                      <td style="box-sizing:content-box;vertical-align:middle;padding-left:0;padding-right:14px;width:56px;">
-                        <div style="width:52px;height:52px;border-radius:52px;background-color:#F97316;text-align:center;line-height:52px;font-size:18px;font-weight:900;color:#ffffff;">
-                          ${primerNombre.charAt(0).toUpperCase()}${apellido.charAt(0).toUpperCase()}
-                        </div>
-                      </td>
-                      <td style="box-sizing:content-box;vertical-align:middle;padding-left:0;padding-right:0;">
-                        <div style="color:#ffffff;font-weight:700;font-size:17px;">${primerNombre} ${apellido}</div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div style="padding:16px 24px;">
-              <hr style="width:100%;border:none;border-top:1px solid #EEEEEE;margin:0;"/>
-            </div>
-
-            <div style="padding:8px 24px;">
-              <h3 style="font-weight:bold;text-align:left;margin:0;font-size:18px;padding:0 0 6px 0;color:#111827;">Código de confirmación</h3>
-              <p style="font-size:13px;color:#6B7280;margin:0 0 16px 0;">Ingresa estos 6 dígitos en la pantalla de recuperación.</p>
-
-              <table align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 8px auto;border-collapse:separate;border-spacing:0;">
-                <tr>
-                  ${digitos.map((d, i) => `
-                  <td style="padding:0 ${i === 2 ? '8px' : '3px'} 0 ${i === 3 ? '8px' : '3px'};">
-                    <table cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td style="
-                          width:48px;height:60px;
-                          background-color:#111827;
-                          border-bottom:3px solid #F97316;
-                          text-align:center;vertical-align:middle;
-                          font-size:26px;font-weight:800;
-                          color:#FFFFFF;
-                          font-family:'Courier New',monospace;
-                        ">${d}</td>
-                      </tr>
-                    </table>
-                  </td>`).join("")}
-                </tr>
-              </table>
-              <p style="text-align:center;font-family:'Courier New',monospace;font-size:16px;font-weight:900;letter-spacing:0.5em;color:#111827;background:#F3F4F6;padding:10px 0;margin:0 0 16px 0;user-select:all;">${String(codigo)}</p>
-
-              <div style="padding:8px 0 0 0;"><hr style="width:100%;border:none;border-top:1px solid #EEEEEE;margin:0;"/></div>
-            </div>
-
-            <div style="padding:8px 24px 0 24px;">
-              <div style="background-color:#FFFBEB;border:1px solid #FDE68A;border-left:4px solid #F59E0B;padding:14px 18px;font-size:14px;color:#92400E;">
-                Válido por <strong>10 minutos</strong> &mdash; Solicitado el <strong>${ahora}</strong>.
-              </div>
-              <div style="padding:16px 0;"><hr style="width:100%;border:none;border-top:1px solid #EEEEEE;margin:0;"/></div>
-            </div>
-
-            <div style="padding:8px 24px 0 24px;">
-              <h3 style="font-weight:bold;text-align:left;margin:0;font-size:18px;padding:0 0 14px 0;color:#111827;">Cómo usarlo</h3>
-              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:20px;">
-                ${[
-                  ["1", "Regresa a la pantalla de recuperación de contraseña."],
-                  ["2", "Ingresa el código de 6 dígitos en el campo indicado."],
-                  ["3", "Establece tu nueva contraseña y confirma el cambio."],
-                ].map(([n, t]) => `
-                <tr>
-                  <td style="vertical-align:top;padding-bottom:14px;padding-right:14px;width:32px;">
-                    <div style="width:28px;height:28px;background-color:#F97316;border-radius:50%;text-align:center;line-height:28px;font-size:12px;font-weight:800;color:#ffffff;">${n}</div>
-                  </td>
-                  <td style="vertical-align:middle;padding-bottom:14px;border-bottom:1px solid #F3F4F6;">
-                    <span style="font-size:14px;color:#374151;line-height:1.6;">${t}</span>
-                  </td>
-                </tr>`).join("")}
-              </table>
-              <div style="padding:0 0 16px 0;"><hr style="width:100%;border:none;border-top:1px solid #EEEEEE;margin:0;"/></div>
-            </div>
-
-            <div style="padding:8px 24px 0 24px;">
-              <div style="background-color:#F9FAFB;border:1px solid #E5E7EB;padding:14px 18px;font-size:13px;color:#6B7280;line-height:1.6;">
-                La seguridad de tu cuenta es nuestra prioridad. Si no realizaste esta solicitud,
-                por favor ignora este mensaje o contacta a soporte técnico.
-              </div>
-              <div style="padding:16px 0;"><hr style="width:100%;border:none;border-top:1px solid #EEEEEE;margin:0;"/></div>
-            </div>
-
-            <div style="font-size:13px;font-weight:normal;text-align:left;padding:16px 24px 24px 24px;color:#6B7280;">
-              &copy; 2026 <span style="color:#F97316;font-weight:600;">Precision Truck Parts and Accessories</span>. No respondas a este correo.
-            </div>
-
-          </td>
-        </tr>
-      </tbody>
+    <!-- Dígitos -->
+    <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:0 auto 10px auto;">
+      <tr>
+        ${digitos.slice(0, 3).map(celda).join("")}
+        <td style="padding:0 10px;vertical-align:middle;">
+          <div style="width:12px;height:3px;background:#F47920;"></div>
+        </td>
+        ${digitos.slice(3).map(celda).join("")}
+      </tr>
     </table>
-  </div>
-</body>
-</html>`;
+
+    <!-- Código texto -->
+    <p style="text-align:center;font-family:'Courier New',Courier,monospace;
+      font-size:22px;font-weight:900;letter-spacing:0.55em;color:#F47920;margin:0 0 30px 0;">
+      ${String(codigo)}
+    </p>
+
+    <!-- Expiración -->
+    <table class="bg-warn" role="presentation" cellpadding="0" cellspacing="0" width="100%"
+      style="background:#FFFBEB;border:1px solid #FDE68A;border-left:4px solid #F47920;margin-bottom:28px;">
+      <tr>
+        <td style="padding:13px 18px;">
+          <p class="t-warn" style="margin:0 0 3px 0;color:#92400E;font-size:13px;font-weight:700;">
+            C&oacute;digo v&aacute;lido por 10 minutos
+          </p>
+          <p class="t-warn-s" style="margin:0;color:#B45309;font-size:12px;line-height:1.5;">
+            Solicitado el <strong style="color:#78350F;">${ahora}</strong>
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Cómo usarlo -->
+    <p class="t-main" style="margin:0 0 14px 0;color:#111111;font-size:13px;font-weight:700;letter-spacing:0.03em;">
+      C&oacute;mo usar tu c&oacute;digo
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:28px;">
+      ${[
+        ["1", "Regresa a la pantalla de recuperaci&oacute;n de contrase&ntilde;a."],
+        ["2", "Ingresa el c&oacute;digo de 6 d&iacute;gitos en el campo indicado."],
+        ["3", "Crea tu nueva contrase&ntilde;a y confirma el cambio."],
+      ].map(([n, txt], i, arr) => `
+      <tr>
+        <td style="vertical-align:top;padding-right:14px;padding-bottom:${i < arr.length - 1 ? "12px" : "0"};width:32px;">
+          <div style="width:26px;height:26px;background:#F47920;border-radius:50%;
+            text-align:center;line-height:26px;font-size:11px;font-weight:900;color:#FFFFFF;">${n}</div>
+        </td>
+        <td class="step-row" style="vertical-align:middle;padding-bottom:${i < arr.length - 1 ? "12px" : "0"};
+          ${i < arr.length - 1 ? "border-bottom:1px solid #EEEEEE;" : ""}">
+          <p class="t-sub" style="margin:0;color:#555555;font-size:13px;line-height:1.65;">${txt}</p>
+        </td>
+      </tr>`).join("")}
+    </table>
+
+    <!-- Seguridad -->
+    <table class="bg-sec" role="presentation" cellpadding="0" cellspacing="0" width="100%"
+      style="background:#F7F7F7;border:1px solid #E5E5E5;">
+      <tr>
+        <td style="padding:13px 18px;">
+          <p class="t-sec" style="margin:0;color:#777777;font-size:12px;line-height:1.7;">
+            <strong class="t-sec-b" style="color:#333333;">Aviso de seguridad:</strong>
+            Si no realizaste esta solicitud, ignora este mensaje. Tu contrase&ntilde;a no ser&aacute; modificada.
+            Si crees que tu cuenta est&aacute; en riesgo, contacta al administrador del sistema.
+          </p>
+        </td>
+      </tr>
+    </table>`;
 
   await transporter.sendMail({
     from:    process.env.SMTP_FROM,
     to,
-    subject: "=?UTF-8?Q?C=C3=B3digo_de_recuperaci=C3=B3n_de_contrase=C3=B1a?=",
-    html,
-    attachments: [],
+    subject: "=?UTF-8?Q?C=C3=B3digo_de_recuperaci=C3=B3n?=",
+    html:    emailTemplate(body),
   });
 }

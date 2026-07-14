@@ -21,11 +21,13 @@ interface InsumoRow {
   folio_solicitud: string;
   nombre_empleado: string;
   nombre_departamento: string;
+  nombre_sucursal?: string | null;
   prioridad: string;
   estatus: string;
   total_insumos?: number | null;
   total_piezas?: number | null;
   detalle_insumos?: string | null;
+  items_detalle?: string | null;  // "nombre|qty|aprobado|imagen_url;;..."
   fecha: string;
 }
 interface RendimientoRow {
@@ -108,26 +110,62 @@ function VistaIncidencias({ datos, periodo, fechaGen }: { datos: TicketRow[]; pe
 
 function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; periodo: string; fechaGen: string }) {
   const resueltos   = datos.filter(s => s.estatus === "Resuelto").length;
-  const enProceso   = datos.filter(s => s.estatus === "En proceso").length;
   const pendientes  = datos.filter(s => s.estatus === "Pendiente").length;
+  const rechazados  = datos.filter(s => s.estatus === "Rechazado").length;
   const totalPiezas = datos.reduce((a, s) => a + (parseInt(String(s.total_piezas ?? 0)) || 0), 0);
 
+  const parseItems = (raw?: string | null) =>
+    (raw ?? "").split(";;")
+      .filter(Boolean)
+      .map(seg => {
+        const [nombre, qty, aprobado, imagen_url] = seg.split("|");
+        return { nombre: nombre ?? "", qty: qty ?? "1", aprobado: aprobado !== "0", imagen_url: imagen_url || null };
+      });
+
   const rows = datos.map(s => {
-    const prio = PRIO_META[s.prioridad]  ?? PRIO_META.Baja;
-    const est  = ESTATUS_META[s.estatus] ?? ESTATUS_META["Cancelado"];
+    const prio  = PRIO_META[s.prioridad]  ?? PRIO_META.Baja;
+    const est   = ESTATUS_META[s.estatus] ?? ESTATUS_META["Cancelado"];
+    const items = parseItems(s.items_detalle);
     return [
       <span style={{ fontFamily: "monospace", fontWeight: 900, color: "var(--pr-accent)", fontSize: "8pt" }}>{s.folio_solicitud}</span>,
       <div>
-        <div style={{ fontWeight: 600, fontSize: "8pt" }}>{s.nombre_empleado || "—"}</div>
+        <div style={{ fontWeight: 700, fontSize: "8pt", color: "var(--pr-ink)" }}>{s.nombre_empleado || "—"}</div>
         <div style={{ fontSize: "7pt", color: "var(--pr-muted)" }}>{s.nombre_departamento || "—"}</div>
+        {s.nombre_sucursal && <div style={{ fontSize: "6.5pt", color: "var(--pr-faint)" }}>{s.nombre_sucursal}</div>}
       </div>,
       <Badge label={s.prioridad} bg={prio.bg} color={prio.color} border={prio.border} />,
-      <Badge label={s.estatus}   bg={est.bg}  color={est.color}  border={est.border} />,
-      <span style={{ fontSize: "8pt" }}>{s.total_insumos ?? "—"}</span>,
-      <span style={{ fontSize: "8pt" }}>{s.total_piezas  ?? "—"}</span>,
-      <span style={{ fontSize: "7pt", color: "var(--pr-muted)", maxWidth: 160, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
-        {s.detalle_insumos || "—"}
-      </span>,
+      <Badge label={s.estatus} bg={est.bg} color={est.color} border={est.border} />,
+      <div className="pr-items-list" style={{ minWidth: 160 }}>
+        {items.length > 0 ? items.map((it, j) => (
+          <div key={j} className="pr-item-row">
+            {it.imagen_url ? (
+              <img src={it.imagen_url} alt={it.nombre} className="pr-insumo-thumb" />
+            ) : (
+              <div className="pr-insumo-thumb-placeholder">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+              </div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <span className="pr-item-name">{it.nombre}</span>
+              <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+                <span className="pr-item-qty">x{it.qty}</span>
+                <span className="pr-item-aprobado" style={{
+                  background: it.aprobado ? "#f0fdf4" : "#fef2f2",
+                  color:      it.aprobado ? "#15803D" : "#B91C1C",
+                  border:     `1px solid ${it.aprobado ? "#86efac" : "#fca5a5"}`,
+                }}>{it.aprobado ? "✓ Aprobado" : "✕ Rechazado"}</span>
+              </div>
+            </div>
+          </div>
+        )) : (
+          <span style={{ fontSize: "6.5pt", color: "var(--pr-faint)" }}>{s.detalle_insumos || "—"}</span>
+        )}
+      </div>,
+      <span style={{ fontSize: "8pt", fontWeight: 900, color: "#7C3AED" }}>{s.total_piezas ?? "—"}</span>,
       <span style={{ fontSize: "7.5pt", color: "var(--pr-muted)" }}>{fmtFecha(s.fecha)}</span>,
     ];
   });
@@ -146,12 +184,12 @@ function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; period
       <KpiStrip items={[
         { label: "Total del período", value: datos.length,  color: "var(--pr-accent)" },
         { label: "Resueltos",         value: resueltos,     color: "#15803D" },
-        { label: "En proceso",        value: enProceso,     color: "#C2410C" },
         { label: "Pendientes",        value: pendientes,    color: "#1D4ED8" },
+        { label: "Rechazados",        value: rechazados,    color: "#475569" },
         { label: "Total piezas",      value: totalPiezas,   color: "#7C3AED" },
       ]} />
       <ReporteTable
-        headers={["Folio", "Empleado / Área", "Prioridad", "Estatus", "Insumos", "Piezas", "Detalle", "Fecha"]}
+        headers={["Folio", "Empleado / Área", "Prioridad", "Estatus", "Insumos solicitados", "Piezas", "Fecha"]}
         rows={rows}
       />
       <PageFooter right={`Reporte de Insumos · ${fechaGen}`} />
@@ -224,13 +262,12 @@ function VistaRendimiento({ datos, periodo, fechaGen }: { datos: RendimientoRow[
 
 export default function PrintReporteListaView({ payload }: { payload: ReportePayload }) {
   const fechaGen = nowFechaGen();
-
   return (
     <div className="pr-root" data-ready="true">
       <div className="pr-content">
-        {payload.tipo === "incidencias"  && <VistaIncidencias  datos={payload.datos as TicketRow[]}      periodo={payload.periodo} fechaGen={fechaGen} />}
-        {payload.tipo === "insumos"      && <VistaInsumos      datos={payload.datos as InsumoRow[]}      periodo={payload.periodo} fechaGen={fechaGen} />}
-        {payload.tipo === "rendimiento"  && <VistaRendimiento  datos={payload.datos as RendimientoRow[]} periodo={payload.periodo} fechaGen={fechaGen} />}
+        {payload.tipo === "incidencias" && <VistaIncidencias  datos={payload.datos as TicketRow[]}      periodo={payload.periodo} fechaGen={fechaGen} />}
+        {payload.tipo === "insumos"     && <VistaInsumos      datos={payload.datos as InsumoRow[]}      periodo={payload.periodo} fechaGen={fechaGen} />}
+        {payload.tipo === "rendimiento" && <VistaRendimiento  datos={payload.datos as RendimientoRow[]} periodo={payload.periodo} fechaGen={fechaGen} />}
       </div>
     </div>
   );

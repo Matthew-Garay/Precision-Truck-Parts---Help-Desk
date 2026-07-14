@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "server": "node --env-file=.env --env-file=.env.production src/Backend/server.js",
-    "dev:all": "concurrently -k -n FRONT,BACK -c cyan,yellow --timestamp --timefmt \"HH:mm:ss\" \"vite --logLevel warn\" \"node --env-file=.env src/Backend/server.js\"",
+    "server": "cross-env NODE_ENV=production node -r dotenv/config src/Backend/server.js dotenv_config_path=.env",
+    "dev:all": "concurrently -k -n FRONT,BACK -c cyan,yellow --timestamp --timefmt \"HH:mm:ss\" \"vite --logLevel warn\" \"node -r dotenv/config src/Backend/server.js dotenv_config_path=.env\"",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -21,6 +21,8 @@
     "file-type": "^22.0.1",
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.12.0",
     "multer": "^2.1.1",
     "mysql2": "^3.22.3",
@@ -32,14 +34,17 @@
     "sharp": "^0.35.3",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
+    "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.7",
     "@vitejs/plugin-react": "^4.3.1",
     "concurrently": "^10.0.3",
+    "cross-env": "^7.0.3",
     "tailwindcss": "^4.1.7",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "wait-on": "^9.0.10"
   },
   "allowScripts": {
     "esbuild@0.25.12": true

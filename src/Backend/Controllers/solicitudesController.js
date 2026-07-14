@@ -194,7 +194,7 @@ export const getSolicitudesPendientes = async (req, res) => {
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
        JOIN solicitud_insumo si ON s.id_solicitud    = si.id_solicitud
        JOIN insumo i            ON si.id_insumo      = i.id_insumo
-       WHERE s.estatus NOT IN ('Resuelto', 'No Resuelto', 'Rechazado')
+       WHERE s.estatus = 'En proceso'
        GROUP BY s.id_solicitud
        ORDER BY FIELD(s.prioridad,'Urgente','Alta','Media','Baja'), s.fecha ASC
        LIMIT ? OFFSET ?`,
@@ -208,16 +208,18 @@ export const getSolicitudesPendientes = async (req, res) => {
 
 export const getAllSolicitudes = async (req, res) => {
   try {
-    const limit  = Math.min(parseInt(req.query.limit) || 50, 500);
+    const limit  = Math.min(parseInt(req.query.limit) || 50, 2000);
     const page   = Math.max(parseInt(req.query.page)  || 1, 1);
     const offset = (page - 1) * limit;
-    const { estatus, prioridad, busqueda, area, fecha_inicio, fecha_fin } = req.query;
+    const { estatus, prioridad, busqueda, empleado, usuario, area, sucursal, fecha_inicio, fecha_fin } = req.query;
     const { rows, total } = await Solicitud.getAll({
       limit, offset,
       estatus:      estatus      || undefined,
       prioridad:    prioridad    || undefined,
       busqueda:     busqueda     || undefined,
+      empleado:     empleado || usuario || undefined,
       area:         area         || undefined,
+      sucursal:     sucursal     || undefined,
       fecha_inicio: fecha_inicio || undefined,
       fecha_fin:    fecha_fin    || undefined,
     });
@@ -245,7 +247,7 @@ export const aprobarItemsSolicitud = async (req, res) => {
       "SELECT id_solicitud, estatus FROM solicitud WHERE id_solicitud = ? LIMIT 1", [id]
     );
     if (!sol) return res.status(404).json({ error: "Solicitud no encontrada" });
-    if (sol.estatus === "Resuelto" || sol.estatus === "No Resuelto" || sol.estatus === "Rechazado")
+    if (sol.estatus === "Aceptado" || sol.estatus === "Rechazado")
       return res.status(409).json({ error: "La solicitud ya está cerrada" });
     await Solicitud.aprobarItems(id, items);
     res.json({ ok: true });
@@ -259,7 +261,7 @@ export const actualizarEstatusSolicitud = async (req, res) => {
   const { estatus } = req.body;
   if (!estatus) return res.status(400).json({ error: "Estatus requerido" });
   try {
-    if (estatus === "Resuelto") {
+    if (estatus === "Aceptado") {
       const conn = await pool.getConnection();
       try {
         await conn.beginTransaction();
@@ -267,34 +269,51 @@ export const actualizarEstatusSolicitud = async (req, res) => {
           "SELECT id_solicitud, estatus FROM solicitud WHERE id_solicitud = ? FOR UPDATE", [id]
         );
         if (!sol) { await conn.rollback(); return res.status(404).json({ error: "Solicitud no encontrada" }); }
-        // Evitar doble descuento si ya está cerrada
-        if (sol.estatus === "Resuelto" || sol.estatus === "No Resuelto" || sol.estatus === "Rechazado") {
+        if (sol.estatus === "Aceptado" || sol.estatus === "Rechazado") {
           await conn.rollback();
           return res.status(409).json({ error: "La solicitud ya está cerrada" });
         }
-        // Solo descontar los ítems aprobados (aprobado = 1, default NULL se trata como aprobado)
-        const [detalle] = await conn.query(
-          "SELECT id_insumo, cantidad FROM solicitud_insumo WHERE id_solicitud = ? AND (aprobado IS NULL OR aprobado = 1)", [id]
-        );
+        let detalle = [];
+        const itemsBody = Array.isArray(req.body?.items) ? req.body.items : null;
+        if (itemsBody && itemsBody.length > 0) {
+          for (const it of itemsBody) {
+            const id_si = parseInt(it.id_solicitud_insumo, 10);
+            const aprobadoVal = it.aprobado ? 1 : 0;
+            await conn.query(
+              "UPDATE solicitud_insumo SET aprobado = ? WHERE id_solicitud_insumo = ? AND id_solicitud = ?",
+              [aprobadoVal, id_si, id]
+            );
+          }
+          const [rows] = await conn.query(
+            "SELECT id_insumo, cantidad FROM solicitud_insumo WHERE id_solicitud = ? AND aprobado = 1",
+            [id]
+          );
+          detalle = rows;
+        } else {
+          const [rows] = await conn.query(
+            "SELECT id_insumo, cantidad FROM solicitud_insumo WHERE id_solicitud = ? AND (aprobado IS NULL OR aprobado = 1)", [id]
+          );
+          detalle = rows;
+        }
         if (detalle.length > 0) await Insumo.descontarStock(conn, detalle);
         await conn.query("UPDATE solicitud SET estatus = ? WHERE id_solicitud = ?", [estatus, id]);
         await conn.commit();
-        // Verificar stock crítico tras descontar
         try {
           const idsInsumos = detalle.map(d => d.id_insumo);
           if (idsInsumos.length > 0) {
             const [criticos] = await pool.query(
-              `SELECT i.id_insumo, i.nombre, i.stock FROM insumo i WHERE i.id_insumo IN (?) AND i.stock <= 5`,
+              `SELECT i.id_insumo, i.nombre, i.stock, i.imagen_url FROM insumo i WHERE i.id_insumo IN (?) AND i.stock <= 5`,
               [idsInsumos]
             );
             if (criticos.length > 0) {
               const io = getIO();
               criticos.forEach(ins => {
                 io.to("admins").emit("insumo:stock_critico", {
-                  id_insumo: ins.id_insumo,
-                  nombre:    ins.nombre,
-                  stock:     ins.stock,
-                  nivel:     ins.stock === 0 ? "agotado" : "bajo",
+                  id_insumo:  ins.id_insumo,
+                  nombre:     ins.nombre,
+                  stock:      ins.stock,
+                  nivel:      ins.stock === 0 ? "agotado" : "bajo",
+                  imagen_url: ins.imagen_url || null,
                 });
               });
             }
@@ -307,12 +326,11 @@ export const actualizarEstatusSolicitud = async (req, res) => {
         conn.release();
       }
     } else {
-      // Para estatus no-Resuelto verificar que no esté ya cerrada
       const [[sol]] = await pool.query(
         "SELECT estatus FROM solicitud WHERE id_solicitud = ? LIMIT 1", [id]
       );
       if (!sol) return res.status(404).json({ error: "Solicitud no encontrada" });
-      if (sol.estatus === "Resuelto" || sol.estatus === "No Resuelto" || sol.estatus === "Rechazado")
+      if (sol.estatus === "Aceptado" || sol.estatus === "Rechazado")
         return res.status(409).json({ error: "La solicitud ya está cerrada" });
       const ok = await Solicitud.actualizarEstatus(id, estatus);
       if (!ok) return res.status(404).json({ error: "Solicitud no encontrada" });
@@ -403,15 +421,18 @@ export const getReporteSolicitudes = async (req, res) => {
     if (fecha_inicio > fecha_fin)
       return res.status(400).json({ error: "fecha_inicio no puede ser posterior a fecha_fin" });
     const [rows] = await pool.query(
-      `SELECT s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
-              CONCAT(e.nombre,' ',e.ap_paterno) AS nombre_empleado,
+      `SELECT s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
+              TRIM(CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,''))) AS nombre_empleado,
               d.nombre_departamento,
+              su.nombre_sucursal,
               COUNT(si.id_solicitud_insumo) AS total_insumos,
               SUM(si.cantidad) AS total_piezas,
-              GROUP_CONCAT(CONCAT(i.nombre,' x',si.cantidad) ORDER BY i.nombre SEPARATOR ', ') AS detalle_insumos
+              GROUP_CONCAT(CONCAT(i.nombre,' x',si.cantidad) ORDER BY i.nombre SEPARATOR ', ') AS detalle_insumos,
+              GROUP_CONCAT(CONCAT(i.nombre,'|',si.cantidad,'|',IFNULL(si.aprobado,1),'|',IFNULL(i.imagen_url,'')) ORDER BY i.nombre SEPARATOR ';;') AS items_detalle
        FROM solicitud s
        JOIN empleado e          ON s.id_empleado     = e.id_empleado
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       LEFT JOIN sucursal su    ON e.id_sucursal     = su.id_sucursal
        JOIN solicitud_insumo si ON s.id_solicitud    = si.id_solicitud
        JOIN insumo i            ON si.id_insumo      = i.id_insumo
        WHERE DATE(s.fecha) BETWEEN ? AND ?
@@ -454,7 +475,7 @@ export const eliminarInsumo = async (req, res) => {
     const [[{ total }]] = await pool.query(
       `SELECT COUNT(*) AS total FROM solicitud_insumo si
        JOIN solicitud s ON si.id_solicitud = s.id_solicitud
-       WHERE si.id_insumo = ? AND s.estatus NOT IN ('Resuelto', 'No Resuelto', 'Rechazado')`,
+       WHERE si.id_insumo = ? AND s.estatus = 'En proceso'`,
       [id]
     );
     if (total > 0)

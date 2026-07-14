@@ -85,8 +85,7 @@ function ModalRecuperar({ onCerrar }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3"
-      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onCerrar(); }}>
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(2px)" }}>
 
       <div className="w-full rounded-2xl overflow-hidden"
         style={{ maxWidth: "320px", background: COLORS.whiteCard, boxShadow: "0 24px 60px rgba(0,0,0,0.45)", borderTop: `3px solid ${COLORS.orange}` }}>
@@ -191,6 +190,7 @@ function ModalRecuperar({ onCerrar }) {
                     <input id={id} type={show ? "text" : "password"} required value={val} onChange={e => set(e.target.value)}
                       placeholder="Mínimo 8 caracteres" style={{ ...inp, paddingRight: "34px" }}
                       onFocus={INPUT_FOCUS} onBlur={INPUT_BLUR}
+                      className="[&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden"
                       aria-describedby={id === "rec-p1" ? "fuerza-pass" : undefined} />
                     <button type="button" tabIndex={-1} onClick={e => { e.stopPropagation(); toggle(); }}
                       aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"}
@@ -389,11 +389,14 @@ export default function Login({ onLogin }) {
           .login-forgot      { margin-top: 0 !important; }
         }
         @media (max-width: 480px) {
-          .login-card-header { padding: 8px 14px !important; }
-          .login-card-body   { padding: 12px 14px 14px !important; }
-          .login-title-gap   { margin-bottom: 10px !important; }
-          .login-form-gap    { gap: 10px !important; }
-          .login-logo        { height: 26px !important; }
+          .login-card-header { padding: 14px 18px !important; }
+          .login-card-body   { padding: 20px 18px 18px !important; }
+          .login-title-gap   { margin-bottom: 18px !important; }
+          .login-form-gap    { gap: 14px !important; }
+          .login-logo        { height: 30px !important; }
+          .login-input       { padding: 12px 12px 12px 34px !important; font-size: 15px !important; }
+          .login-btn         { padding: 13px 16px !important; font-size: 14px !important; }
+          .login-forgot      { margin-top: 0 !important; }
         }
         @keyframes fade-in-card  { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
         @keyframes shake-card    { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
@@ -408,20 +411,16 @@ export default function Login({ onLogin }) {
 
         {/* Fondo */}
         <div className="fixed inset-0 -z-10" style={BG_IMAGE} />
-        <div className="fixed inset-0 -z-10" style={{ background: BG_OVERLAY }} />
-
-        {/* Diagonal decorativa */}
-        <div className="fixed inset-0 -z-10 hidden lg:block pointer-events-none" style={DIAGONAL.desktop} />
-        <div className="fixed inset-0 -z-10 lg:hidden pointer-events-none" style={DIAGONAL.mobile} />
+        <div className="fixed inset-0 -z-10" style={{ background: "rgba(10,10,10,0.48)" }} />
 
         <div className="min-h-screen flex items-center justify-center px-4 py-6 sm:px-6 lg:justify-end lg:pr-[5vw]">
 
           <div className={`w-full relative ${shakeCard ? "login-card-shake" : "login-card-wrap"}`}
             style={{
-              maxWidth: "min(360px, 92vw)",
-              background: "#FFFFFF",
-              borderRadius: "10px",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.50), 0 0 0 1px rgba(255,255,255,0.06)",
+              maxWidth: "min(370px, 92vw)",
+              background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+              borderRadius: "16px",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.08)",
               overflow: "hidden",
               borderLeft: `3px solid ${COLORS.orange}`,
             }}>
@@ -429,7 +428,7 @@ export default function Login({ onLogin }) {
             {/* Cabecera institucional */}
             <div className="login-card-header flex items-center gap-3"
               style={{
-                padding: "14px 20px",
+                padding: "16px 24px",
                 borderBottom: "1px solid #E2E8F0",
                 background: "#F8FAFC",
               }}>
@@ -443,14 +442,14 @@ export default function Login({ onLogin }) {
             </div>
 
             {/* Cuerpo del formulario */}
-            <div className="login-card-body" style={{ padding: "20px 20px 18px" }}>
+            <div className="login-card-body" style={{ padding: "24px 24px 20px" }}>
 
               {/* Título */}
-              <div className="login-title-gap" style={{ marginBottom: "16px" }}>
-                <h1 style={{ color: "#0F172A", fontSize: "17px", fontWeight: 700, lineHeight: 1.2, letterSpacing: "-0.01em" }}>
+              <div className="login-title-gap" style={{ marginBottom: "20px" }}>
+                <h1 style={{ color: "#0F172A", fontSize: "18px", fontWeight: 700, lineHeight: 1.2, letterSpacing: "-0.02em" }}>
                   Iniciar sesión
                 </h1>
-                <p style={{ color: "#64748B", fontSize: "12px", marginTop: "3px", fontWeight: 400 }}>
+                <p style={{ color: "#64748B", fontSize: "12px", marginTop: "4px", fontWeight: 400, letterSpacing: "0.01em" }}>
                   Ingresa tus credenciales corporativas
                 </p>
               </div>
@@ -637,11 +636,10 @@ export default function Login({ onLogin }) {
               </form>
 
               {/* Divider + Footer */}
-              <div style={{ borderTop: "1px solid #E2E8F0", marginTop: "14px", paddingTop: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ borderTop: "1px solid #E2E8F0", marginTop: "16px", paddingTop: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <p className="select-none" style={{ color: "#94A3B8", fontSize: "10px", fontWeight: 400 }}>
                   © 2026 Precision Truck Parts
                 </p>
-
               </div>
             </div>
           </div>

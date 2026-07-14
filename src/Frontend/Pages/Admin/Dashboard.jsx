@@ -39,7 +39,7 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
         <button onClick={() => onNavigate("/admin/dashboard")} className="focus:outline-none" style={{ cursor: "pointer" }}>
           <img src="/assets/img/logo.png" alt="PTP"
             className="object-contain"
-            style={{ height: "var(--sidebar-logo-h)", width: "auto", maxWidth: "180px", mixBlendMode: "screen" }} />
+            style={{ height: "clamp(72px,10vh,110px)", width: "auto", maxWidth: "200px", mixBlendMode: "screen" }} />
         </button>
       </div>
       {onClose && (
@@ -51,7 +51,7 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
         </button>
       )}
       <p className="px-5 pb-2 font-bold uppercase tracking-[0.18em]"
-        style={{ color: "rgba(255,255,255,0.45)", fontSize: "var(--fs-label)", paddingTop: "clamp(8px,1.5vh,20px)" }}>Panel Administrador</p>
+        style={{ color: "rgba(255,255,255,0.45)", fontSize: "var(--fs-label)", paddingTop: "clamp(8px,1.5vh,20px)" }}>Menú principal</p>
       <div style={{ height: "1px", background: "rgba(255,255,255,0.18)", marginLeft: "20px", marginRight: "20px", marginBottom: "6px" }} />
       <nav className="flex flex-col gap-0.5 flex-1 px-3">
         {NAV.map((item, i) => (
@@ -88,12 +88,12 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
 
 function DashboardContent({ T, usuario, tickets = [], solicitudes = [], metricas, onVerTicket, onVerSolicitud }) {
   return (
-    <div className="flex flex-col" style={{ background: T.bg, minHeight: "100%" }}>
+    <div className="flex flex-col" style={{ background: T.bg, height: "100%", overflowY: "auto" }}>
       <div className="flex-shrink-0" style={{ padding: "var(--content-pt) var(--content-px) 0" }}>
         <SeccionMetricas T={T} metricas={metricas} />
         <SeccionEstadisticas T={T} tickets={tickets} solicitudes={solicitudes} />
       </div>
-      <div className="flex-shrink-0" style={{ padding: "8px var(--content-px) 16px" }}>
+      <div className="flex-shrink-0" style={{ padding: "4px var(--content-px) 10px" }}>
         <KanbanBoard T={T} tickets={tickets} solicitudes={solicitudes} onVerTicket={onVerTicket} onVerSolicitud={onVerSolicitud} inline />
       </div>
     </div>
@@ -316,11 +316,11 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           </div>
         </header>
 
-        <div className="flex-1 min-h-0 overflow-y-auto ptp-scroll-main">
+        <div className="flex-1 min-h-0 overflow-hidden">
           {ticketVer ? (
-            <VistaTicket T={T} ticket={ticketVer} onVolver={() => { setTicketVer(null); cargarTickets(); }} esAdmin usuario={usuario} />
+            <div className="h-full overflow-y-auto"><VistaTicket T={T} ticket={ticketVer} onVolver={() => { setTicketVer(null); cargarTickets(); }} esAdmin usuario={usuario} /></div>
           ) : solicitudVer ? (
-            <VistaSolicitud T={T} id_solicitud={solicitudVer.id_solicitud} esAdmin onBack={() => setSolicitudVer(null)} />
+            <div className="h-full overflow-y-auto"><VistaSolicitud T={T} id_solicitud={solicitudVer.id_solicitud} esAdmin onBack={() => setSolicitudVer(null)} /></div>
           ) : activo === 0 ? (
             <DashboardContent T={T} usuario={usuario} tickets={tickets} solicitudes={solicitudes} metricas={metricas} onVerTicket={setTicketVer} onVerSolicitud={setSolicitudVer} />
           ) : activo === 1 ? (
@@ -328,15 +328,15 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           ) : activo === 2 ? (
             <HistorialInsumos T={T} />
           ) : activo === 3 ? (
-            <Inventario T={T} />
+            <div className="h-full overflow-y-auto"><Inventario T={T} /></div>
           ) : activo === 4 ? (
-            <RendimientoTecnicos T={T} />
+            <div className="h-full overflow-y-auto"><RendimientoTecnicos T={T} /></div>
           ) : activo === 5 ? (
-            <Personal T={T} />
+            <div className="h-full overflow-y-auto"><Personal T={T} /></div>
           ) : activo === 6 ? (
-            <ManualesIncidencias T={T} />
+            <div className="h-full overflow-y-auto"><ManualesIncidencias T={T} /></div>
           ) : activo === 7 ? (
-            <ConfiguracionPerfil T={T} usuario={usuario} onUsuarioActualizado={onUsuarioActualizado} />
+            <div className="h-full overflow-y-auto"><ConfiguracionPerfil T={T} usuario={usuario} onUsuarioActualizado={onUsuarioActualizado} /></div>
           ) : (
             <div className="flex items-center justify-center flex-col gap-3 py-20">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center"

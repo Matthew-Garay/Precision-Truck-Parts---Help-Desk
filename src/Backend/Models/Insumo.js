@@ -37,8 +37,8 @@ const Insumo = {
 
   getDisponibles: async () => {
     const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.nombre, i.marca, i.modelo,
-              i.stock, i.estado, i.id_categoria, i.proveedor,
+      `SELECT i.id_insumo, i.nombre, i.descripcion, i.marca, i.modelo,
+              i.stock, i.estado, i.id_categoria, i.proveedor, i.imagen_url,
               c.nombre_categoria,
               ${DISPONIBILIDAD_EXPR}
        FROM insumo i
@@ -95,7 +95,7 @@ const Insumo = {
 
   getStockBajo: async (umbral = 5) => {
     const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.nombre, i.marca, i.modelo, i.stock,
+      `SELECT i.id_insumo, i.nombre, i.marca, i.modelo, i.stock, i.imagen_url,
               c.nombre_categoria,
               CASE WHEN i.stock = 0 THEN 'agotado' ELSE 'bajo' END AS nivel_alerta
        FROM insumo i
