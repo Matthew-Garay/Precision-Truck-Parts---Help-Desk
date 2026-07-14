@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import {
-  Package, TrendingDown, AlertTriangle, BarChart3,
-  Inbox, Plus, Pencil, Trash2, RefreshCw, Layers, Eye,
-  CheckCircle2, XCircle, Activity,
+  Package, AlertTriangle, BarChart3,
+  Inbox, Plus, Pencil, RefreshCw, Layers, Eye,
+  CheckCircle2, Activity, Download, FileSpreadsheet, FileText,
 } from "lucide-react";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { apiFetch }      from "../../Config/api";
 import FiltrosToolbar    from "../../Components/FiltrosToolbar";
 import { useToast }      from "../../Components/Feedback";
 import ModalInsumo       from "../../Components/Inventario/ModalInsumo";
-import ModalEliminar        from "../../Components/Inventario/ModalEliminar";
 import ModalDetalleInsumo   from "../../Components/Inventario/ModalDetalleInsumo";
 import { useTheme }      from "../../Config/themeContext.js";
 
@@ -19,16 +21,10 @@ const ORANGE  = { base: "#F97316", light: "#fff7ed", border: "#fed7aa", muted: "
 const SLATE   = { 50: "#f8fafc", 100: "#f1f5f9", 200: "#e2e8f0", 300: "#cbd5e1", 400: "#94a3b8", 600: "#475569", 700: "#334155", 900: "#0f172a" };
 
 const ESTADO_META = {
-  Excelente:   { color: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" },
-  Bueno:       { color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe" },
-  Regular:     { color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
-  Malo:        { color: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
-};
-
-const DISPONIBILIDAD_META = {
-  Disponible:   { color: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" },
-  "Stock bajo": { color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
-  "Sin stock":  { color: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
+  Excelente: { color: "#16a34a" },
+  Bueno:     { color: "#2563eb" },
+  Regular:   { color: "#d97706" },
+  Malo:      { color: "#dc2626" },
 };
 
 const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo"];
@@ -50,72 +46,34 @@ const catColor = (name = "") => {
 };
 
 // ── Átomos ────────────────────────────────────────────────────────
-function BadgeEstado({ estado }) {
-  const { T } = useTheme();
-  const s = ESTADO_META[estado] ?? { color: "#94a3b8", bg: "#f1f5f9", border: "#e2e8f0" };
-  const bg = T.isDark ? `${s.color}1a` : s.bg;
-  const border = T.isDark ? `${s.color}40` : s.border;
+function ChipEstado({ estado, T }) {
+  const s = ESTADO_META[estado] ?? { color: "#94a3b8" };
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: "4px",
-      padding: "2px 8px", borderRadius: "99px",
-      fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap",
-      background: bg, color: s.color, border: `1px solid ${border}`,
-    }}>
-      <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: s.color, flexShrink: 0 }} />
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 600, color: s.color }}>
+      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: s.color, flexShrink: 0 }} />
       {estado || "—"}
     </span>
   );
 }
 
-function BadgeDisponibilidad({ disponibilidad }) {
-  const { T } = useTheme();
-  const s = DISPONIBILIDAD_META[disponibilidad] ?? { color: "#94a3b8", bg: "#f1f5f9", border: "#e2e8f0" };
-  const bg = T.isDark ? `${s.color}1a` : s.bg;
-  const border = T.isDark ? `${s.color}40` : s.border;
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: "4px",
-      padding: "2px 10px", borderRadius: "9999px",
-      fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap",
-      background: bg, color: s.color, border: `1px solid ${border}`,
-    }}>
-      <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: s.color, flexShrink: 0 }} />
-      {disponibilidad || "—"}
-    </span>
-  );
-}
-
-function BadgeCategoria({ nombre }) {
-  const { T } = useTheme();
+function ChipCategoria({ nombre, T }) {
   const s = catColor(nombre);
-  const bg = T.isDark ? `${s.color}1a` : s.bg;
-  const border = T.isDark ? `${s.color}40` : s.border;
   return (
     <span style={{
-      display: "inline-flex", alignItems: "center",
-      padding: "2px 9px", borderRadius: "99px",
-      fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap",
-      background: bg, color: s.color, border: `1px solid ${border}`,
+      display: "inline-block",
+      fontSize: "10px", fontWeight: 600,
+      color: s.color,
+      background: `${s.color}14`,
+      border: `1px solid ${s.color}30`,
+      borderRadius: "4px",
+      padding: "2px 7px",
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      maxWidth: "100%",
     }}>
       {nombre || "Sin categoría"}
     </span>
-  );
-}
-
-function StockProgress({ stock, max = 20 }) {
-  const { T } = useTheme();
-  const pct   = max > 0 ? Math.min(100, Math.round((stock / max) * 100)) : 0;
-  const color = stock === 0 ? "#6b7280" : stock <= 3 ? "#dc2626" : stock <= 8 ? "#d97706" : "#0d9488";
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: "110px" }}>
-      <div style={{ flex: 1, height: "4px", borderRadius: "99px", background: T.border, overflow: "hidden" }}>
-        <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: "99px", transition: "width 0.4s ease" }} />
-      </div>
-      <span style={{ fontSize: "11px", fontWeight: 700, color, minWidth: "22px", textAlign: "right", fontFamily: "monospace" }}>
-        {stock}
-      </span>
-    </div>
   );
 }
 
@@ -144,133 +102,323 @@ function KpiCard({ label, value, sub, icon: Icon, color, highlight = false, pct 
   const { T } = useTheme();
   return (
     <div style={{
-      background: T.surface, borderRadius: "10px",
+      background: T.surface, borderRadius: "6px",
       border: `1px solid ${highlight ? `${color}50` : T.border}`,
       boxShadow: highlight ? `0 0 0 1px ${color}18, ${T.shadowSm}` : T.shadowSm,
       overflow: "hidden", display: "flex", flexDirection: "column",
       transition: "box-shadow 0.2s",
     }}>
-      <div style={{ height: "3px", background: `linear-gradient(90deg, ${color}, ${color}88)` }} />
-      <div style={{ padding: "14px 16px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
+      <div style={{ height: "2px", background: `linear-gradient(90deg, ${color}, ${color}88)` }} />
+      <div style={{ padding: "7px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textFaint }}>
+          <p style={{ margin: 0, fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textFaint }}>
             {label}
           </p>
-          <p style={{ margin: "5px 0 0", fontSize: "22px", fontWeight: 900, lineHeight: 1, color: highlight ? color : T.text, fontVariantNumeric: "tabular-nums" }}>
+          <p style={{ margin: "2px 0 0", fontSize: "16px", fontWeight: 900, lineHeight: 1, color: highlight ? color : T.text, fontVariantNumeric: "tabular-nums" }}>
             {value}
           </p>
           {sub && (
-            <p style={{ margin: "5px 0 0", fontSize: "11px", color: T.textFaint, fontWeight: 500, lineHeight: 1.3 }}>{sub}</p>
+            <p style={{ margin: "2px 0 0", fontSize: "9px", color: T.textFaint, fontWeight: 500, lineHeight: 1.3 }}>{sub}</p>
           )}
           {pct !== undefined && (
-            <div style={{ marginTop: "8px", height: "3px", borderRadius: "99px", background: T.border, overflow: "hidden" }}>
+            <div style={{ marginTop: "4px", height: "2px", borderRadius: "99px", background: T.border, overflow: "hidden" }}>
               <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: "99px", transition: "width 0.6s ease" }} />
             </div>
           )}
         </div>
         <div style={{
-          width: "38px", height: "38px", borderRadius: "10px", flexShrink: 0,
+          width: "26px", height: "26px", borderRadius: "6px", flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
           background: `${color}15`, border: `1px solid ${color}25`,
         }}>
-          <Icon size={17} style={{ color }} />
+          <Icon size={12} style={{ color }} />
         </div>
       </div>
     </div>
   );
 }
 
-// ── Tabla de alta densidad ────────────────────────────────────────
-const COLS = ["Nombre del Insumo", "Categoría", "Estado", "Disponibilidad", "Stock", "Nivel de Stock", "Acciones"];
+// ── Tabla ────────────────────────────────────────────────────────
+const COLS = ["", "Nombre", "Categoría", "Estado", "Stock", "Acciones"];
 
-function DataTable({ rows, onEdit, onDelete, onDetail }) {
+function DataTable({ rows, onEdit, onDetail }) {
   const [hoverRow, setHoverRow] = useState(null);
   const { T } = useTheme();
 
   const th = {
-    padding: "7px 12px", fontSize: "10px", fontWeight: 700,
+    padding: "6px 10px", fontSize: "10px", fontWeight: 700,
     textTransform: "uppercase", letterSpacing: "0.07em",
     color: T.textMuted, background: T.surfaceAlt,
     borderBottom: `2px solid ${T.border}`, textAlign: "left",
-    whiteSpace: "nowrap",
-    position: "sticky", top: 0, zIndex: 10,
+    whiteSpace: "nowrap", position: "sticky", top: 0, zIndex: 10,
   };
 
   return (
-    <div>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
-        <thead>
-          <tr>{COLS.map(c => <th key={c} style={th}>{c}</th>)}</tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const isHover = hoverRow === row.id_insumo;
-            const td = {
-              padding: "7px 12px",
-              borderBottom: `1px solid ${T.border}`,
-              background: isHover ? T.surfaceHover : T.surface,
-              color: T.textMuted,
-              transition: "background 0.1s",
-              verticalAlign: "middle",
-            };
-            return (
-              <tr
-                key={row.id_insumo}
-                onMouseEnter={() => setHoverRow(row.id_insumo)}
-                onMouseLeave={() => setHoverRow(null)}
-              >
-                {/* Nombre */}
-                <td style={{ ...td, fontWeight: 600, color: T.text }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <div style={{ width: "3px", height: "30px", borderRadius: "2px", background: ESTADO_META[row.estado]?.color ?? SLATE[400], flexShrink: 0 }} />
-                    <div>
-                      <div style={{ whiteSpace: "nowrap" }}>{row.nombre}</div>
-                      {(row.marca || row.modelo) && (
-                        <div style={{ fontSize: "11px", fontWeight: 400, color: T.textFaint, marginTop: "1px" }}>
-                          {[row.marca, row.modelo].filter(Boolean).join(" · ")}
-                        </div>
-                      )}
+    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", tableLayout: "fixed" }}>
+      <colgroup>
+        <col style={{ width: "44px" }} />
+        <col />
+        <col style={{ width: "150px" }} />
+        <col style={{ width: "96px" }} />
+        <col style={{ width: "96px" }} />
+        <col style={{ width: "72px" }} />
+      </colgroup>
+      <thead>
+        <tr>{COLS.map(c => <th key={c} style={th}>{c}</th>)}</tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => {
+          const isHover = hoverRow === row.id_insumo;
+          const stockColor = (row.stock ?? 0) === 0 ? "#dc2626" : (row.stock ?? 0) <= 3 ? "#d97706" : "#16a34a";
+          const td = {
+            padding: "5px 10px",
+            borderBottom: `1px solid ${T.border}`,
+            background: isHover ? T.surfaceHover : T.surface,
+            transition: "background 0.1s",
+            verticalAlign: "middle",
+            overflow: "hidden",
+          };
+          return (
+            <tr key={row.id_insumo}
+              onMouseEnter={() => setHoverRow(row.id_insumo)}
+              onMouseLeave={() => setHoverRow(null)}
+            >
+              {/* Imagen */}
+              <td style={{ ...td, padding: "4px 4px 4px 10px" }}>
+                {row.imagen_url
+                  ? <img src={row.imagen_url} alt="" style={{ width: "26px", height: "26px", borderRadius: "4px", objectFit: "cover", border: `1px solid ${T.border}`, display: "block" }} />
+                  : <div style={{ width: "26px", height: "26px", borderRadius: "4px", background: T.surfaceAlt, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Package size={11} style={{ color: T.textFaint }} />
                     </div>
+                }
+              </td>
+              {/* Nombre */}
+              <td style={{ ...td }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <div style={{ width: "2px", height: "20px", borderRadius: "2px", background: ESTADO_META[row.estado]?.color ?? SLATE[400], flexShrink: 0 }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: "13px", fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {row.nombre}
+                    </div>
+                    {(row.marca || row.modelo) && (
+                      <div style={{ fontSize: "10px", color: T.textFaint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {[row.marca, row.modelo].filter(Boolean).join(" · ")}
+                      </div>
+                    )}
                   </div>
-                </td>
-                {/* Categoría */}
-                <td style={td}><BadgeCategoria nombre={row.nombre_categoria} /></td>
-                {/* Estado físico */}
-                <td style={td}><BadgeEstado estado={row.estado} /></td>
-                {/* Disponibilidad */}
-                <td style={td}><BadgeDisponibilidad disponibilidad={row.disponibilidad} /></td>
-                {/* Stock numérico */}
-                <td style={{ ...td, textAlign: "center", fontFamily: "monospace", fontWeight: 700, fontSize: "12px", color: T.textMuted }}>
-                  {row.stock ?? 0}
-                </td>
-                {/* Barra de progreso */}
-                <td style={{ ...td, minWidth: "140px" }}>
-                  <StockProgress stock={row.stock ?? 0} />
-                </td>
-                {/* Acciones */}
-                <td style={{ ...td, whiteSpace: "nowrap" }}>
-                  <div style={{ display: "flex", gap: "4px" }}>
-                    <IconBtn onClick={() => onEdit(row)} title="Editar insumo" hoverColor={ORANGE.base} hoverBg={ORANGE.light}>
-                      <Pencil size={13} />
-                    </IconBtn>
-                    <IconBtn onClick={() => onDetail(row)} title="Ver detalles" hoverColor="#2563eb" hoverBg="#eff6ff">
-                      <Eye size={13} />
-                    </IconBtn>
-                    <IconBtn onClick={() => onDelete(row)} title="Eliminar insumo" hoverColor="#dc2626" hoverBg="#fef2f2">
-                      <Trash2 size={13} />
-                    </IconBtn>
+                </div>
+              </td>
+              {/* Categoría */}
+              <td style={{ ...td, overflow: "hidden", maxWidth: 0 }}>
+                <ChipCategoria nombre={row.nombre_categoria} T={T} />
+              </td>
+              {/* Estado */}
+              <td style={td}>
+                <ChipEstado estado={row.estado} T={T} />
+              </td>
+              {/* Stock */}
+              <td style={{ ...td }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: stockColor, fontFamily: "monospace", minWidth: "20px" }}>
+                    {row.stock ?? 0}
+                  </span>
+                  <div style={{ flex: 1, height: "3px", borderRadius: "99px", background: T.border, overflow: "hidden" }}>
+                    <div style={{ width: `${Math.min(100, Math.round(((row.stock ?? 0) / 20) * 100))}%`, height: "100%", background: stockColor, borderRadius: "99px" }} />
                   </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                </div>
+              </td>
+              {/* Acciones */}
+              <td style={{ ...td }}>
+                <div style={{ display: "flex", gap: "3px" }}>
+                  <IconBtn onClick={() => onEdit(row)} title="Editar" hoverColor={ORANGE.base} hoverBg={ORANGE.light}>
+                    <Pencil size={12} />
+                  </IconBtn>
+                  <IconBtn onClick={() => onDetail(row)} title="Ver detalle" hoverColor="#2563eb" hoverBg="#eff6ff">
+                    <Eye size={12} />
+                  </IconBtn>
+                </div>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
-const PAGE_SIZE = 15;
+const PAGE_SIZES = [10, 15, 25, 50];
+const PAGE_SIZE  = 15;
+
+// ── Exportar ─────────────────────────────────────────────────────
+function exportarExcel(datos) {
+  const filas = datos.map(i => ({
+    "Nombre":         i.nombre ?? "",
+    "Marca":          i.marca ?? "",
+    "Modelo":         i.modelo ?? "",
+    "N° Serie":       i.num_serie ?? "",
+    "Categoría":      i.nombre_categoria ?? "",
+    "Estado":         i.estado ?? "",
+    "Disponibilidad": i.disponibilidad ?? "",
+    "Stock":          i.stock ?? 0,
+    "Descripción":    i.descripcion ?? "",
+  }));
+  const ws = XLSX.utils.json_to_sheet(filas);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Inventario");
+  XLSX.writeFile(wb, `Inventario_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function exportarPDF(datos) {
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const fecha = new Date().toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
+
+  // Encabezado
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, 297, 18, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(11); doc.setFont("helvetica", "bold");
+  doc.text("Inventario de Insumos", 14, 7);
+  doc.setFontSize(7); doc.setFont("helvetica", "normal");
+  doc.text("Precision Truck Parts & Accessories", 14, 12);
+  doc.setFontSize(7);
+  doc.text(`Generado: ${fecha}  |  Total: ${datos.length} registros`, 297 - 14, 12, { align: "right" });
+
+  // Línea naranja
+  doc.setDrawColor(244, 121, 32);
+  doc.setLineWidth(0.8);
+  doc.line(0, 18, 297, 18);
+
+  autoTable(doc, {
+    startY: 22,
+    margin: { left: 10, right: 10 },
+    tableWidth: "auto",
+    styles: {
+      fontSize: 7.5,
+      cellPadding: { top: 3, bottom: 3, left: 4, right: 4 },
+      overflow: "linebreak",
+      valign: "middle",
+      lineColor: [226, 232, 240],
+      lineWidth: 0.2,
+    },
+    headStyles: {
+      fillColor: [15, 23, 42],
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+      fontSize: 7,
+      halign: "left",
+    },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { cellWidth: 55, fontStyle: "bold" },  // Nombre
+      1: { cellWidth: 22 },                      // Marca
+      2: { cellWidth: 22 },                      // Modelo
+      3: { cellWidth: 25 },                      // N° Serie
+      4: { cellWidth: 30 },                      // Categoría
+      5: { cellWidth: 20, halign: "center" },    // Estado
+      6: { cellWidth: 22, halign: "center" },    // Disponibilidad
+      7: { cellWidth: 12, halign: "center" },    // Stock
+      8: { cellWidth: "auto" },                  // Descripción
+    },
+    head: [["Nombre", "Marca", "Modelo", "N° Serie", "Categoría", "Estado", "Disponibilidad", "Stock", "Descripción"]],
+    body: datos.map(i => [
+      i.nombre ?? "",
+      i.marca ?? "",
+      i.modelo ?? "",
+      i.num_serie ?? "",
+      i.nombre_categoria ?? "",
+      i.estado ?? "",
+      i.disponibilidad ?? "",
+      i.stock ?? 0,
+      i.descripcion ?? "",
+    ]),
+    didParseCell(data) {
+      // Colorear celda de estado
+      if (data.section === "body" && data.column.index === 5) {
+        const v = data.cell.raw;
+        const c = { Excelente: [22,163,74], Bueno: [37,99,235], Regular: [217,119,6], Malo: [220,38,38] }[v];
+        if (c) { data.cell.styles.textColor = c; data.cell.styles.fontStyle = "bold"; }
+      }
+      // Colorear celda de disponibilidad
+      if (data.section === "body" && data.column.index === 6) {
+        const v = data.cell.raw;
+        const c = { "Disponible": [22,163,74], "Stock bajo": [217,119,6], "Sin stock": [220,38,38] }[v];
+        if (c) { data.cell.styles.textColor = c; data.cell.styles.fontStyle = "bold"; }
+      }
+      // Colorear stock
+      if (data.section === "body" && data.column.index === 7) {
+        const v = Number(data.cell.raw);
+        const c = v === 0 ? [220,38,38] : v <= 3 ? [217,119,6] : [22,163,74];
+        data.cell.styles.textColor = c;
+        data.cell.styles.fontStyle = "bold";
+      }
+    },
+    didDrawPage(data) {
+      // Pie de página
+      const pageCount = doc.internal.getNumberOfPages();
+      doc.setFontSize(6.5); doc.setTextColor(148, 163, 184);
+      doc.text(
+        `Página ${data.pageNumber} de ${pageCount}  —  Precision Truck Parts & Accessories`,
+        297 / 2, 205, { align: "center" }
+      );
+    },
+  });
+
+  doc.save(`Inventario_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+function BtnExportar({ datos, T }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const fn = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", fn);
+    return () => document.removeEventListener("mousedown", fn);
+  }, []);
+  const isDark = T?.isDark;
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: "5px",
+          padding: "7px 12px", borderRadius: "6px",
+          border: `1px solid ${isDark ? "rgba(13,148,136,0.4)" : "#0d9488"}`,
+          background: "transparent",
+          color: "#0d9488", fontSize: "11px", fontWeight: 600, cursor: "pointer",
+        }}
+      >
+        <Download size={12} /> Exportar
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50,
+          background: isDark ? "#1C2230" : "#fff",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0"}`,
+          borderRadius: "6px",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.14)", minWidth: "148px", overflow: "hidden",
+        }}>
+          {[{ label: "Excel (.xlsx)", icon: FileSpreadsheet, color: "#16a34a", fn: () => { exportarExcel(datos); setOpen(false); } },
+            { label: "PDF (.pdf)",   icon: FileText,        color: "#dc2626", fn: () => { exportarPDF(datos);   setOpen(false); } },
+          ].map(({ label, icon: Icon, color, fn }) => (
+            <button key={label} onClick={fn}
+              style={{
+                width: "100%", display: "flex", alignItems: "center", gap: "8px",
+                padding: "8px 12px", background: "transparent", border: "none",
+                fontSize: "12px", fontWeight: 500,
+                color: isDark ? "#e2e8f0" : "#334155",
+                cursor: "pointer", textAlign: "left",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.05)" : "#f8fafc"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            >
+              <Icon size={13} style={{ color }} />{label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Página principal ──────────────────────────────────────────────
 export default function Inventario() {
@@ -278,11 +426,10 @@ export default function Inventario() {
   const [categorias, setCategorias] = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [syncing,    setSyncing]    = useState(false);
-  const [ultimaSync, setUltimaSync] = useState(null);
   const [filtros,    setFiltros]    = useState({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos" });
   const [pagina,     setPagina]     = useState(1);
+  const [pageSize,   setPageSize]   = useState(PAGE_SIZE);
   const [modal,      setModal]      = useState(null);
-  const [confirmDel, setConfirmDel] = useState(null);
   const [detalle,    setDetalle]    = useState(null);
   const prevRef = useRef(null);
   const toast   = useToast();
@@ -293,7 +440,6 @@ export default function Inventario() {
       .then(r => r.json())
       .then(d => {
         const lista = Array.isArray(d) ? d : [];
-        setUltimaSync(new Date());
         setInsumos(prev => {
           if (prevRef.current) {
             const prevIds  = new Set(prevRef.current.map(i => i.id_insumo));
@@ -326,17 +472,6 @@ export default function Inventario() {
     setModal(null);
   };
 
-  const handleDelete = async () => {
-    if (!confirmDel) return;
-    try {
-      const r = await apiFetch(`/api/solicitudes/insumos/${confirmDel.id_insumo}`, { method: "DELETE" });
-      if (!r.ok) { toast.error("Error al eliminar"); return; }
-      setInsumos(prev => prev.filter(i => i.id_insumo !== confirmDel.id_insumo));
-      toast.success("Insumo eliminado");
-    } catch { toast.error("Error de conexión"); }
-    finally { setConfirmDel(null); }
-  };
-
   const catOpts      = ["Todos", ...Array.from(new Set(insumos.map(i => i.nombre_categoria).filter(Boolean)))];
   const camposFiltro = [
     { key: "busqueda",  label: "Búsqueda Rápida", type: "search", placeholder: "Nombre, marca, modelo…" },
@@ -357,9 +492,9 @@ export default function Inventario() {
   });
 
   const hayFiltros    = filtros.busqueda || filtros.estado !== "Todos" || filtros.categoria !== "Todos" || filtros.stock !== "Todos";
-  const totalPaginas  = Math.max(1, Math.ceil(filtrados.length / PAGE_SIZE));
+  const totalPaginas  = Math.max(1, Math.ceil(filtrados.length / pageSize));
   const paginaActual  = Math.min(pagina, totalPaginas);
-  const filasPagina   = filtrados.slice((paginaActual - 1) * PAGE_SIZE, paginaActual * PAGE_SIZE);
+  const filasPagina   = filtrados.slice((paginaActual - 1) * pageSize, paginaActual * pageSize);
   const irPagina      = p => { if (p >= 1 && p <= totalPaginas) setPagina(p); };
   const totalStock     = insumos.reduce((s, i) => s + (i.stock || 0), 0);
   const categoriasCnt  = new Set(insumos.map(i => i.id_categoria).filter(Boolean)).size;
@@ -374,45 +509,30 @@ export default function Inventario() {
 
   return (
     <div style={{ background: T.bg, height: "100%", display: "flex", flexDirection: "column", fontFamily: "'Inter','Segoe UI',system-ui,sans-serif", overflow: "hidden" }}>
-      <div style={{ maxWidth: "1400px", width: "100%", margin: "0 auto", padding: "20px 16px", display: "flex", flexDirection: "column", gap: "16px", flex: 1, minHeight: 0 }}>
+      <div style={{ maxWidth: "1400px", width: "100%", margin: "0 auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "10px", flex: 1, minHeight: 0 }}>
 
         {/* ── Page Header ───────────────────────────────────────── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: "3px", height: "28px", borderRadius: "2px", background: `linear-gradient(180deg, ${TEAL.base}, #06b6d4)`, flexShrink: 0 }} />
-            <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 800, color: T.text, letterSpacing: "-0.02em" }}>
-              Inventario
-            </h1>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {ultimaSync && (
-              <span style={{ fontSize: "11px", color: T.textFaint, display: "flex", alignItems: "center", gap: "5px" }}>
-                {syncing
-                  ? <RefreshCw size={11} style={{ color: TEAL.base, animation: "spin 1s linear infinite" }} />
-                  : <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#16a34a" }} />
-                }
-                {syncing ? "Sincronizando…" : `Actualizado ${ultimaSync.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`}
-              </span>
-            )}
-            <button
-              onClick={() => setModal({})}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: "6px",
-                padding: "8px 14px", borderRadius: "6px", border: "none",
-                background: TEAL.base, color: "#fff",
-                fontSize: "11px", fontWeight: 600, cursor: "pointer",
-                transition: "opacity 0.15s",
-              }}
-              onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
-              onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-            >
-              <Plus size={14} /> Nuevo insumo
-            </button>
-          </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap" }}>
+          {syncing && <RefreshCw size={11} style={{ color: TEAL.base, animation: "spin 1s linear infinite" }} />}
+          <BtnExportar datos={filtrados} T={T} />
+          <button
+            onClick={() => setModal({})}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: "6px",
+              padding: "8px 14px", borderRadius: "6px", border: "none",
+              background: TEAL.base, color: "#fff",
+              fontSize: "11px", fontWeight: 600, cursor: "pointer",
+              transition: "opacity 0.15s",
+            }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+          >
+            <Plus size={14} /> Nuevo insumo
+          </button>
         </div>
 
         {/* ── KPIs ──────────────────────────────────────────────── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(175px, 1fr))", gap: "12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "6px" }}>
           <KpiCard
             label="Total Registrados" value={insumos.length}
             sub={`${categoriasCnt} categoría${categoriasCnt !== 1 ? "s" : ""} · ${insumos.filter(i => i.stock > 0).length} con existencia`}
@@ -453,8 +573,8 @@ export default function Inventario() {
 
           {/* Toolbar de tabla */}
           <div style={{
-            padding: "10px 16px", background: T.surfaceAlt, borderBottom: `1px solid ${T.border}`,
-            display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap",
+            padding: "7px 12px", background: T.surfaceAlt, borderBottom: `1px solid ${T.border}`,
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", flexWrap: "wrap",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <Layers size={14} style={{ color: TEAL.base }} />
@@ -465,21 +585,10 @@ export default function Inventario() {
                 color: "#0d9488",
                 border: T.isDark ? "1px solid rgba(13,148,136,0.35)" : "1px solid #99f6e4",
               }}>
-                {filtrados.length} registro{filtrados.length !== 1 ? "s" : ""} · pág. {paginaActual}/{totalPaginas}
+                {filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}
               </span>
             </div>
-            {hayFiltros && (
-              <button
-                onClick={() => { setFiltros({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos" }); setPagina(1); }}
-                style={{
-                  fontSize: "11px", fontWeight: 600, color: T.textMuted, background: "transparent",
-                  border: `1px solid ${T.border}`, borderRadius: "4px", padding: "3px 10px",
-                  cursor: "pointer",
-                }}
-              >
-                Limpiar filtros
-              </button>
-            )}
+
           </div>
 
           {/* Contenido */}
@@ -498,34 +607,31 @@ export default function Inventario() {
                 </p>
               </div>
             ) : (
-              <DataTable rows={filasPagina} onEdit={setModal} onDelete={setConfirmDel} onDetail={setDetalle} />
+              <DataTable rows={filasPagina} onEdit={setModal} onDetail={setDetalle} />
             )}
           </div>
-        </div>
-        {/* Paginación */}
-        {totalPaginas > 1 && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", padding: "8px 0", flexShrink: 0 }}>
-            <button onClick={() => irPagina(1)} disabled={paginaActual === 1}
-              style={{ padding: "4px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: "pointer", border: `1px solid ${T.border}`, background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, opacity: paginaActual === 1 ? 0.3 : 1 }}>«</button>
-            <button onClick={() => irPagina(paginaActual - 1)} disabled={paginaActual === 1}
-              style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: "pointer", border: `1px solid ${T.border}`, background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, opacity: paginaActual === 1 ? 0.3 : 1 }}>‹ Anterior</button>
-            {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
-              const start = Math.max(1, Math.min(paginaActual - 2, totalPaginas - 4));
-              const p = start + i;
-              if (p > totalPaginas) return null;
-              return (
-                <button key={p} onClick={() => irPagina(p)}
-                  style={{ width: "30px", height: "30px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: "pointer", border: `1px solid ${p === paginaActual ? TEAL.base : T.border}`, background: p === paginaActual ? TEAL.base : (T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt), color: p === paginaActual ? "#fff" : T.textMuted }}>
-                  {p}
-                </button>
-              );
-            })}
-            <button onClick={() => irPagina(paginaActual + 1)} disabled={paginaActual === totalPaginas}
-              style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: "pointer", border: `1px solid ${T.border}`, background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, opacity: paginaActual === totalPaginas ? 0.3 : 1 }}>Siguiente ›</button>
-            <button onClick={() => irPagina(totalPaginas)} disabled={paginaActual === totalPaginas}
-              style={{ padding: "4px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: "pointer", border: `1px solid ${T.border}`, background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, opacity: paginaActual === totalPaginas ? 0.3 : 1 }}>»</button>
+          {/* Paginación — siempre visible, dentro del card */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", borderTop: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <button disabled={paginaActual <= 1} onClick={() => irPagina(paginaActual - 1)}
+                style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: paginaActual <= 1 ? "not-allowed" : "pointer", border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.textMuted, opacity: paginaActual <= 1 ? 0.4 : 1 }}>
+                Anterior
+              </button>
+              <button disabled={paginaActual >= totalPaginas} onClick={() => irPagina(paginaActual + 1)}
+                style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: paginaActual >= totalPaginas ? "not-allowed" : "pointer", border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.textMuted, opacity: paginaActual >= totalPaginas ? 0.4 : 1 }}>
+                Siguiente
+              </button>
+              <span style={{ fontSize: "11px", marginLeft: "6px", color: T.textMuted }}>{`Página ${paginaActual} de ${totalPaginas}`}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <label style={{ fontSize: "10px", color: T.textMuted }}>Mostrar</label>
+              <select value={pageSize} onChange={e => { setPageSize(parseInt(e.target.value, 10)); setPagina(1); }}
+                style={{ padding: "4px", borderRadius: "6px", border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: "11px" }}>
+                {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
           </div>
-        )}
+        </div>
 
       </div>
 
@@ -538,14 +644,7 @@ export default function Inventario() {
         <ModalInsumo insumo={modal} categorias={categorias}
           onClose={() => setModal(null)} onSave={handleSave} T={T} />
       )}
-      {confirmDel && (
-        <ModalEliminar
-          insumo={confirmDel}
-          onClose={() => setConfirmDel(null)}
-          onConfirm={handleDelete}
-          T={T}
-        />
-      )}
+
     </div>
   );
 }
