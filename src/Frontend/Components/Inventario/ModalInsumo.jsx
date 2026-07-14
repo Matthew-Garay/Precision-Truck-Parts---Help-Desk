@@ -1,109 +1,99 @@
 /**
  * ModalInsumo.jsx — Crear / Editar insumo
- *
- * Campos que maneja (coinciden exactamente con la tabla `insumo`):
- *   num_serie, nombre, descripcion, marca, modelo,
- *   stock, estado, id_categoria, proveedor, imagen_url
- *
- * Campo NO incluido: disponibilidad — es calculado por el backend
- * desde el stock (CASE WHEN), no se almacena en BD.
- *
- * Props:
- *   insumo     — objeto del insumo (con id_insumo = edición, sin id = creación)
- *   categorias — [{ id_categoria, nombre_categoria }]
- *   onClose    — cerrar modal
- *   onSave     — function(insumoGuardado, esEdicion)
- *   T          — tokens del tema activo
+ * Mismo sistema visual que ModalDetalleInsumo.
  */
 import { useState, useEffect, useRef } from "react";
-import { Package, Pencil, ImagePlus, X as XIcon } from "lucide-react";
+import { X, Package, Pencil, ImagePlus, XCircle } from "lucide-react";
 import { apiFetch, API_ROUTES } from "../../Config/api";
 import { useToast } from "../Feedback";
-import Modal from "../Modal";
-import { RADIUS, SLATE, NEUTRAL } from "../../Config/DesignSystem";
 
 const ORANGE      = "#F47920";
-const ACCENT_BLUE = "#2563eb";
 const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo"];
 
 const INSUMO_VACIO = {
-  num_serie:   "",
-  nombre:      "",
-  descripcion: "",
-  marca:       "",
-  modelo:      "",
-  stock:       0,
-  estado:      "Bueno",
-  id_categoria: "",
-  proveedor:   "",
-  imagen_url:  "",
+  num_serie: "", nombre: "", descripcion: "", marca: "",
+  modelo: "", stock: 0, estado: "Bueno", id_categoria: "", proveedor: "", imagen_url: "",
 };
 
-export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) {
-  const isDark   = T?.isDark ?? false;
-  const isEdit   = !!insumo?.id_insumo;
-  const toast    = useToast();
-  const firstRef = useRef(null);
-
-  const [form,      setForm]      = useState({ ...INSUMO_VACIO, ...insumo });
-  const [saving,    setSaving]    = useState(false);
-  const [error,     setError]     = useState("");
-  const [fotoFile,  setFotoFile]  = useState(null);
-  const [fotoPreview, setFotoPreview] = useState(insumo?.imagen_url || null);
-  const fotoRef = useRef(null);
-
-  useEffect(() => { firstRef.current?.focus(); }, []);
-
-  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
-
-  /* ── Estilos de campo ── */
-  const borderColor = isDark ? "rgba(255,255,255,0.12)" : "#cbd5e1";
-  const inp = {
-    background:  isDark ? "rgba(255,255,255,0.05)" : NEUTRAL.slate50,
-    border:      `1px solid ${borderColor}`,
-    borderRadius: RADIUS.sm,
-    padding:     "0 10px",
-    height:      "36px",
-    fontSize:    "13px",
-    color:       T?.text ?? SLATE[700],
-    outline:     "none",
-    width:       "100%",
-    boxSizing:   "border-box",
-    transition:  "border-color 0.15s, box-shadow 0.15s, background 0.15s",
-    colorScheme: isDark ? "dark" : "light",
-  };
-  const onFocusI = e => {
-    e.target.style.borderColor = ACCENT_BLUE;
-    e.target.style.boxShadow   = "0 0 0 3px rgba(37,99,235,0.12)";
-    e.target.style.background  = isDark ? "rgba(255,255,255,0.08)" : "#fff";
-  };
-  const onBlurI = e => {
-    e.target.style.borderColor = borderColor;
-    e.target.style.boxShadow   = "none";
-    e.target.style.background  = isDark ? "rgba(255,255,255,0.05)" : NEUTRAL.slate50;
-  };
-
-  const labelColor = isDark ? "rgba(255,255,255,0.5)" : SLATE[600];
-  const divider    = isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0";
-  const cancelBg   = isDark ? "rgba(255,255,255,0.05)" : NEUTRAL.slate50;
-  const cancelHov  = isDark ? "rgba(255,255,255,0.09)" : NEUTRAL.slate100;
-
-  const Field = ({ label, htmlFor, children }) => (
+function Field({ label, htmlFor, required, children, textFaint }) {
+  return (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-      <label
-        htmlFor={htmlFor}
-        style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase",
-          letterSpacing: "0.06em", color: labelColor }}
-      >
-        {label}
+      <label htmlFor={htmlFor} style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: textFaint }}>
+        {label}{required && <span style={{ color: ORANGE, marginLeft: "2px" }}>*</span>}
       </label>
       {children}
     </div>
   );
+}
 
-  /* ── Submit — solo envía campos que existen en la tabla ── */
+export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) {
+  const isDark  = T?.isDark ?? false;
+  const isEdit  = !!insumo?.id_insumo;
+  const toast   = useToast();
+  const firstRef = useRef(null);
+  const fotoRef  = useRef(null);
+
+  const [form,        setForm]        = useState({ ...INSUMO_VACIO, ...insumo });
+  const [saving,      setSaving]      = useState(false);
+  const [error,       setError]       = useState("");
+  const [fotoFile,    setFotoFile]    = useState(null);
+  const [fotoPreview, setFotoPreview] = useState(insumo?.imagen_url || null);
+
+  useEffect(() => { firstRef.current?.focus(); }, []);
+
+  useEffect(() => {
+    const fn = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, [onClose]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  /* ── Tokens ── */
+  const surface    = isDark ? "#161B22" : "#ffffff";
+  const surfaceAlt = isDark ? "#1a2030" : "#f8fafc";
+  const border     = isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0";
+  const borderFocus= "#2563eb";
+  const textMain   = T?.text     ?? (isDark ? "#e2e8f0" : "#1a202c");
+  const textMuted  = T?.textMuted ?? (isDark ? "#8b949e" : "#64748b");
+  const textFaint  = T?.textFaint ?? (isDark ? "rgba(255,255,255,0.30)" : "#a0aec0");
+  const inputBg    = isDark ? "rgba(255,255,255,0.04)" : "#f8fafc";
+
+  const inp = {
+    background: inputBg,
+    border: `1px solid ${border}`,
+    borderRadius: "6px",
+    padding: "0 10px",
+    height: "34px",
+    fontSize: "13px",
+    color: textMain,
+    outline: "none",
+    width: "100%",
+    boxSizing: "border-box",
+    colorScheme: isDark ? "dark" : "light",
+    transition: "border-color 0.12s, box-shadow 0.12s",
+  };
+
+  const onFocus = e => {
+    e.target.style.borderColor = borderFocus;
+    e.target.style.boxShadow   = "0 0 0 3px rgba(37,99,235,0.10)";
+    e.target.style.background  = isDark ? "rgba(255,255,255,0.07)" : "#fff";
+  };
+  const onBlur = e => {
+    e.target.style.borderColor = border;
+    e.target.style.boxShadow   = "none";
+    e.target.style.background  = inputBg;
+  };
+
+  /* ── Submit ── */
   const handleSubmit = async e => {
-    e.preventDefault();
+    e?.preventDefault();
     if (!form.nombre.trim()) return setError("El nombre es requerido.");
     if (!form.id_categoria)  return setError("Selecciona una categoría.");
     if (form.stock < 0)      return setError("El stock no puede ser negativo.");
@@ -133,19 +123,12 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
       const data = await r.json();
       if (!r.ok) return setError(data.error || "Error al guardar.");
 
-      // Subir foto si se seleccionó una
       let imagenFinal = data.imagen_url || null;
       if (fotoFile && data.id_insumo) {
         const fd = new FormData();
         fd.append("foto", fotoFile);
-        const rf = await apiFetch(API_ROUTES.INSUMO_FOTO(data.id_insumo), {
-          method: "POST",
-          body: fd,
-        });
-        if (rf.ok) {
-          const df = await rf.json();
-          imagenFinal = df.imagen_url;
-        }
+        const rf = await apiFetch(API_ROUTES.INSUMO_FOTO(data.id_insumo), { method: "POST", body: fd });
+        if (rf.ok) { const df = await rf.json(); imagenFinal = df.imagen_url; }
       }
 
       toast.success(isEdit ? "Insumo actualizado" : "Insumo creado");
@@ -158,197 +141,298 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
   };
 
   return (
-    <Modal
-      T={T}
-      title={isEdit ? "Editar insumo" : "Nuevo insumo"}
-      subtitle={isEdit ? `Modificando: ${insumo.nombre}` : "Completa los campos del nuevo insumo"}
-      icon={isEdit
-        ? <Pencil  size={13} aria-hidden="true" style={{ color: "#93c5fd" }} />
-        : <Package size={13} aria-hidden="true" style={{ color: "#5eead4" }} />
-      }
-      onClose={onClose}
-      onConfirm={handleSubmit}
-      confirmLabel={saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear insumo"}
-      cancelLabel="Cancelar"
-      loading={saving}
-      maxWidth="520px"
+    <div
+      role="presentation"
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.40)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "16px",
+        animation: "miF 0.15s ease",
+      }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <form
-        id="form-insumo"
-        onSubmit={handleSubmit}
-        noValidate
-        aria-label={isEdit ? "Formulario editar insumo" : "Formulario nuevo insumo"}
-        style={{ display: "flex", flexDirection: "column", gap: "10px" }}
+      <style>{`
+        @keyframes miF { from{opacity:0} to{opacity:1} }
+        @keyframes miS { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
+      `}</style>
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        style={{
+          width: "95%", maxWidth: "500px",
+          background: surface,
+          border: `1px solid ${border}`,
+          borderRadius: "10px",
+          display: "flex", flexDirection: "column",
+          maxHeight: "92vh", overflow: "hidden",
+          boxShadow: isDark
+            ? "0 16px 40px rgba(0,0,0,0.50), 0 1px 0 rgba(255,255,255,0.04) inset"
+            : "0 16px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
+          animation: "miS 0.18s ease",
+        }}
       >
-        {/* Foto del insumo */}
-        <Field htmlFor="fi-foto" label="Foto del insumo">
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            {fotoPreview ? (
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                <img
-                  src={fotoPreview.startsWith("blob:") ? fotoPreview : fotoPreview}
-                  alt="preview"
-                  style={{ width: "52px", height: "52px", objectFit: "cover", borderRadius: "6px",
-                    border: `1px solid ${borderColor}` }}
-                />
-                <button
-                  type="button"
-                  onClick={() => { setFotoFile(null); setFotoPreview(null); }}
-                  style={{
-                    position: "absolute", top: "-6px", right: "-6px",
-                    width: "16px", height: "16px", borderRadius: "50%",
-                    background: "#dc2626", border: "none", cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}
-                >
-                  <XIcon size={9} color="#fff" />
-                </button>
-              </div>
-            ) : (
-              <div style={{
-                width: "52px", height: "52px", borderRadius: "6px", flexShrink: 0,
-                border: `1px dashed ${borderColor}`, display: "flex",
-                alignItems: "center", justifyContent: "center",
-                background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc",
-              }}>
-                <ImagePlus size={18} style={{ color: labelColor }} />
-              </div>
-            )}
-            <div style={{ flex: 1 }}>
-              <input
-                id="fi-foto"
-                ref={fotoRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                style={{ display: "none" }}
-                onChange={e => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setFotoFile(file);
-                  setFotoPreview(URL.createObjectURL(file));
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => fotoRef.current?.click()}
-                style={{
-                  ...inp, height: "32px", cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  gap: "6px", fontSize: "12px", fontWeight: 500,
-                }}
-              >
-                <ImagePlus size={13} /> {fotoPreview ? "Cambiar foto" : "Seleccionar foto"}
-              </button>
-              <p style={{ margin: "3px 0 0", fontSize: "10px", color: labelColor }}>
-                JPEG, PNG o WebP · máx 5 MB
-              </p>
-            </div>
+        {/* Línea acento */}
+        <div style={{ height: "2px", flexShrink: 0, background: ORANGE, borderRadius: "10px 10px 0 0" }} />
+
+        {/* ── Header ── */}
+        <div style={{
+          padding: "14px 18px 12px",
+          borderBottom: `1px solid ${border}`,
+          display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+          gap: "12px", flexShrink: 0,
+        }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>
+              {isEdit ? "Editar insumo" : "Nuevo insumo"}
+            </p>
+            <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+              {isEdit ? insumo.nombre : "Agregar al inventario"}
+            </h2>
+            <p style={{ margin: "3px 0 0", fontSize: "12px", color: textMuted }}>
+              {isEdit ? "Modifica los campos que necesites" : "Completa los datos del nuevo insumo"}
+            </p>
           </div>
-        </Field>
 
-        {/* Nombre */}
-        <Field htmlFor="fi-nombre" label="Nombre del insumo *">
-          <input
-            id="fi-nombre"
-            ref={firstRef}
-            type="text"
-            value={form.nombre}
-            onChange={e => set("nombre", e.target.value)}
-            placeholder="Ej. Filtro de aceite WIX 51348"
-            aria-required="true"
-            style={inp}
-            onFocus={onFocusI}
-            onBlur={onBlurI}
-          />
-        </Field>
-
-        {/* Descripción */}
-        <Field htmlFor="fi-desc" label="Descripción">
-          <textarea
-            id="fi-desc"
-            value={form.descripcion ?? ""}
-            onChange={e => set("descripcion", e.target.value)}
-            placeholder="Descripción opcional del insumo…"
-            rows={2}
-            style={{ ...inp, height: "auto", padding: "6px 10px", resize: "none" }}
-            onFocus={onFocusI}
-            onBlur={onBlurI}
-          />
-        </Field>
-
-        {/* Marca + Modelo */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-          <Field htmlFor="fi-marca" label="Marca">
-            <input id="fi-marca" type="text" value={form.marca}
-              onChange={e => set("marca", e.target.value)}
-              placeholder="Ej. WIX" style={inp} onFocus={onFocusI} onBlur={onBlurI} />
-          </Field>
-          <Field htmlFor="fi-modelo" label="Modelo">
-            <input id="fi-modelo" type="text" value={form.modelo}
-              onChange={e => set("modelo", e.target.value)}
-              placeholder="Ej. 51348" style={inp} onFocus={onFocusI} onBlur={onBlurI} />
-          </Field>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
+            <img
+              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
+              alt="Precision Trucks"
+              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
+            />
+            <button
+              onClick={onClose}
+              aria-label="Cerrar"
+              style={{
+                width: "26px", height: "26px",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "transparent", border: `1px solid ${border}`,
+                borderRadius: "6px", cursor: "pointer", color: textFaint,
+                transition: "all 0.12s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = textMuted; e.currentTarget.style.color = textMain; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = textFaint; }}
+            >
+              <X size={12} strokeWidth={2} />
+            </button>
+          </div>
         </div>
 
-        {/* Num. serie + Proveedor */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-          <Field htmlFor="fi-serie" label="Número de serie">
-            <input id="fi-serie" type="text" value={form.num_serie}
-              onChange={e => set("num_serie", e.target.value)}
-              placeholder="Ej. SN-00421" style={inp} onFocus={onFocusI} onBlur={onBlurI} />
-          </Field>
-          <Field htmlFor="fi-prov" label="Proveedor">
-            <input id="fi-prov" type="text" value={form.proveedor ?? ""}
-              onChange={e => set("proveedor", e.target.value)}
-              placeholder="Ej. Autopartes García" style={inp} onFocus={onFocusI} onBlur={onBlurI} />
-          </Field>
+        {/* ── Body scrollable ── */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px" }}>
+          <form id="form-insumo" onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+
+            {/* Foto */}
+            <Field htmlFor="fi-foto" label="Foto del insumo" textFaint={textFaint}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                {/* Preview / placeholder */}
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  {fotoPreview ? (
+                    <>
+                      <img
+                        src={fotoPreview}
+                        alt="preview"
+                        style={{ width: "52px", height: "52px", objectFit: "cover", borderRadius: "7px", border: `1px solid ${border}`, display: "block" }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setFotoFile(null); setFotoPreview(null); }}
+                        style={{
+                          position: "absolute", top: "-5px", right: "-5px",
+                          width: "16px", height: "16px", borderRadius: "50%",
+                          background: "#dc2626", border: "none", cursor: "pointer",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}
+                      >
+                        <XCircle size={10} color="#fff" />
+                      </button>
+                    </>
+                  ) : (
+                    <div style={{
+                      width: "52px", height: "52px", borderRadius: "7px", flexShrink: 0,
+                      border: `1px dashed ${border}`, display: "flex",
+                      alignItems: "center", justifyContent: "center",
+                      background: isDark ? "rgba(255,255,255,0.03)" : "#f4f6f8",
+                    }}>
+                      {isEdit
+                        ? <Pencil  size={16} style={{ color: textFaint }} />
+                        : <Package size={16} style={{ color: textFaint }} />
+                      }
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <input
+                    id="fi-foto" ref={fotoRef} type="file" accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setFotoFile(file);
+                      setFotoPreview(URL.createObjectURL(file));
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fotoRef.current?.click()}
+                    style={{
+                      ...inp, height: "34px", cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      gap: "6px", fontSize: "12px", fontWeight: 500, color: textMuted,
+                    }}
+                  >
+                    <ImagePlus size={13} />
+                    {fotoPreview ? "Cambiar foto" : "Seleccionar foto"}
+                  </button>
+                  <p style={{ margin: "4px 0 0", fontSize: "10px", color: textFaint }}>
+                    JPG, PNG, WEBP · máx 5 MB
+                  </p>
+                </div>
+              </div>
+            </Field>
+
+            {/* Separador */}
+            <div style={{ height: "1px", background: border }} />
+
+            {/* Nombre */}
+            <Field htmlFor="fi-nombre" label="Nombre" required textFaint={textFaint}>
+              <input
+                id="fi-nombre" ref={firstRef} type="text"
+                value={form.nombre}
+                onChange={e => set("nombre", e.target.value)}
+                placeholder="Ej. Filtro de aceite WIX 51348"
+                style={inp} onFocus={onFocus} onBlur={onBlur}
+              />
+            </Field>
+
+            {/* Descripción */}
+            <Field htmlFor="fi-desc" label="Descripción" textFaint={textFaint}>
+              <textarea
+                id="fi-desc"
+                value={form.descripcion ?? ""}
+                onChange={e => set("descripcion", e.target.value)}
+                placeholder="Descripción opcional…"
+                rows={2}
+                style={{ ...inp, height: "auto", padding: "8px 10px", resize: "none", lineHeight: "1.5" }}
+                onFocus={onFocus} onBlur={onBlur}
+              />
+            </Field>
+
+            {/* Marca + Modelo */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <Field htmlFor="fi-marca" label="Marca" textFaint={textFaint}>
+                <input id="fi-marca" type="text" value={form.marca}
+                  onChange={e => set("marca", e.target.value)}
+                  placeholder="Ej. WIX" style={inp} onFocus={onFocus} onBlur={onBlur} />
+              </Field>
+              <Field htmlFor="fi-modelo" label="Modelo" textFaint={textFaint}>
+                <input id="fi-modelo" type="text" value={form.modelo}
+                  onChange={e => set("modelo", e.target.value)}
+                  placeholder="Ej. 51348" style={inp} onFocus={onFocus} onBlur={onBlur} />
+              </Field>
+            </div>
+
+            {/* N.º serie + Proveedor */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <Field htmlFor="fi-serie" label="N.º de serie" textFaint={textFaint}>
+                <input id="fi-serie" type="text" value={form.num_serie}
+                  onChange={e => set("num_serie", e.target.value)}
+                  placeholder="Ej. SN-00421" style={inp} onFocus={onFocus} onBlur={onBlur} />
+              </Field>
+              <Field htmlFor="fi-prov" label="Proveedor" textFaint={textFaint}>
+                <input id="fi-prov" type="text" value={form.proveedor ?? ""}
+                  onChange={e => set("proveedor", e.target.value)}
+                  placeholder="Ej. Autopartes García" style={inp} onFocus={onFocus} onBlur={onBlur} />
+              </Field>
+            </div>
+
+            {/* Stock + Categoría */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <Field htmlFor="fi-stock" label="Stock" required textFaint={textFaint}>
+                <input id="fi-stock" type="number" min={0} value={form.stock}
+                  onChange={e => set("stock", e.target.value)}
+                  style={inp} onFocus={onFocus} onBlur={onBlur} />
+              </Field>
+              <Field htmlFor="fi-cat" label="Categoría" required textFaint={textFaint}>
+                <select id="fi-cat" value={form.id_categoria}
+                  onChange={e => set("id_categoria", e.target.value)}
+                  style={{ ...inp, cursor: "pointer" }} onFocus={onFocus} onBlur={onBlur}>
+                  <option value="">Seleccionar…</option>
+                  {categorias.map(c => (
+                    <option key={c.id_categoria} value={c.id_categoria}>{c.nombre_categoria}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+
+            {/* Estado */}
+            <Field htmlFor="fi-estado" label="Estado físico" required textFaint={textFaint}>
+              <select id="fi-estado" value={form.estado}
+                onChange={e => set("estado", e.target.value)}
+                style={{ ...inp, cursor: "pointer" }} onFocus={onFocus} onBlur={onBlur}>
+                {ESTADO_OPTS.map(o => <option key={o}>{o}</option>)}
+              </select>
+            </Field>
+
+            {/* Error */}
+            {error && (
+              <p role="alert" style={{
+                margin: 0, padding: "8px 12px", borderRadius: "6px",
+                fontSize: "12px", fontWeight: 500, color: "#dc2626",
+                background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2",
+                border: `1px solid ${isDark ? "rgba(220,38,38,0.25)" : "#fecaca"}`,
+              }}>
+                {error}
+              </p>
+            )}
+          </form>
         </div>
 
-        {/* Stock + Categoría */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-          <Field htmlFor="fi-stock" label="Stock *">
-            <input id="fi-stock" type="number" min={0} value={form.stock}
-              onChange={e => set("stock", e.target.value)}
-              aria-required="true" style={inp} onFocus={onFocusI} onBlur={onBlurI} />
-          </Field>
-          <Field htmlFor="fi-cat" label="Categoría *">
-            <select id="fi-cat" value={form.id_categoria}
-              onChange={e => set("id_categoria", e.target.value)}
-              aria-required="true"
-              style={{ ...inp, cursor: "pointer" }} onFocus={onFocusI} onBlur={onBlurI}>
-              <option value="">Seleccionar…</option>
-              {categorias.map(c => (
-                <option key={c.id_categoria} value={c.id_categoria}>{c.nombre_categoria}</option>
-              ))}
-            </select>
-          </Field>
-        </div>
-
-        {/* Estado */}
-        <Field htmlFor="fi-estado" label="Estado *">
-          <select id="fi-estado" value={form.estado}
-            onChange={e => set("estado", e.target.value)}
-            aria-required="true"
-            style={{ ...inp, cursor: "pointer" }} onFocus={onFocusI} onBlur={onBlurI}>
-            {ESTADO_OPTS.map(o => <option key={o}>{o}</option>)}
-          </select>
-        </Field>
-
-        {/* Error inline */}
-        {error && (
-          <p
-            role="alert"
+        {/* ── Footer ── */}
+        <div style={{
+          padding: "10px 18px",
+          borderTop: `1px solid ${border}`,
+          background: surfaceAlt,
+          display: "flex", alignItems: "center", justifyContent: "flex-end",
+          gap: "8px", flexShrink: 0,
+        }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
             style={{
-              margin: 0, padding: "8px 12px", borderRadius: "4px",
-              fontSize: "12px", fontWeight: 500, color: "#dc2626",
-              background: isDark ? "rgba(220,38,38,0.12)" : "#fef2f2",
-              border:     isDark ? "1px solid rgba(220,38,38,0.3)" : "1px solid #fecaca",
+              padding: "6px 16px", borderRadius: "6px",
+              fontSize: "12px", fontWeight: 600,
+              background: "transparent", border: `1px solid ${border}`,
+              color: textMuted, cursor: "pointer", transition: "all 0.12s",
+              opacity: saving ? 0.5 : 1,
             }}
+            onMouseEnter={e => { if (!saving) { e.currentTarget.style.borderColor = textMuted; e.currentTarget.style.color = textMain; }}}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = textMuted; }}
           >
-            {error}
-          </p>
-        )}
-      </form>
-    </Modal>
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            form="form-insumo"
+            disabled={saving}
+            style={{
+              padding: "6px 18px", borderRadius: "6px",
+              fontSize: "12px", fontWeight: 700,
+              background: saving ? `${ORANGE}99` : ORANGE,
+              border: "none", color: "#fff",
+              cursor: saving ? "not-allowed" : "pointer",
+              transition: "opacity 0.12s",
+            }}
+            onMouseEnter={e => { if (!saving) e.currentTarget.style.opacity = "0.88"; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+          >
+            {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear insumo"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
