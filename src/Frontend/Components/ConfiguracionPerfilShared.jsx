@@ -43,9 +43,8 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
   const [passActual, setPassActual] = useState("");
   const [passNueva,  setPassNueva]  = useState("");
   const [passConf,   setPassConf]   = useState("");
-  const [showActual, setShowActual] = useState(false);
-  const [showNueva,  setShowNueva]  = useState(false);
-  const [showConf,   setShowConf]   = useState(false);
+  const [showNueva, setShowNueva] = useState(false);
+  const [showConf,  setShowConf]  = useState(false);
 
   const fotoUrl = f => f ? `/storage/${f}` : null;
   const [foto,         setFoto]         = useState(fotoUrl(usuario.foto));
@@ -215,22 +214,22 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
         <div className="rounded-xl overflow-hidden" style={card}>
           <div className="px-5 py-3 flex items-center gap-2" style={hdr}>
             <div className="w-1 h-3.5 rounded-full" style={{ background: T.orange }} />
-            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Datos Personales</p>
+            <p className="text-xs font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Datos Personales</p>
           </div>
           <div className="px-5 py-5 flex flex-col gap-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[{ label: "Nombre", val: nombre, set: setNombre }, { label: "Apellido Paterno", val: apPaterno, set: setApPaterno }, { label: "Apellido Materno", val: apMaterno, set: setApMaterno }]
                 .map(({ label, val, set }) => (
                   <div key={label} className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</span>
-                    <input style={inp} value={val} onChange={e => set(e.target.value)}
+                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</span>
+                    <input style={{ ...inp, fontSize: "14px", lineHeight: "1.35" }} value={val} onChange={e => set(e.target.value)}
                       onFocus={e => e.target.style.borderColor = T.orange} onBlur={e => e.target.style.borderColor = T.border} />
                   </div>
                 ))}
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Correo Electrónico</span>
-              <input style={inp} type="email" value={email} onChange={e => { setEmail(e.target.value); setEmailEditado(true); }}
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Correo Electrónico</span>
+              <input style={{ ...inp, fontSize: "14px", lineHeight: "1.35" }} type="email" value={email} onChange={e => { setEmail(e.target.value); setEmailEditado(true); }}
                 onFocus={e => e.target.style.borderColor = T.orange} onBlur={e => e.target.style.borderColor = T.border} />
             </div>
           </div>
@@ -240,19 +239,39 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
         <div className="rounded-xl overflow-hidden" style={card}>
           <div className="px-5 py-3 flex items-center gap-2" style={hdr}>
             <div className="w-1 h-3.5 rounded-full" style={{ background: T.orange }} />
-            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Cambiar Contraseña</p>
+            <p className="text-xs font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Cambiar Contraseña</p>
           </div>
           <div className="px-5 pt-4 pb-5 flex flex-col gap-3">
+            {/* Contraseña Actual — texto plano visible */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Contraseña Actual</span>
+              <input
+                style={{ ...inp, fontSize: "14px", lineHeight: "1.35", color: T.text, WebkitTextFillColor: T.text, caretColor: T.text, opacity: 1 }}
+                type="text"
+                value={passActual || ""}
+                disabled
+                readOnly
+                autoComplete="off"
+                inputMode="text"
+                spellCheck={false}
+                name="password_actual"
+                placeholder="Contraseña actual"
+                onFocus={e => e.target.style.borderColor = T.orange}
+                onBlur={e => e.target.style.borderColor = T.border}
+              />
+            </div>
+
+            {/* Nueva y Confirmación — con botón ojo */}
             {[
-              { label: "Contraseña Actual",           k: "actual", val: passActual, set: setPassActual, show: showActual, setShow: setShowActual },
-              { label: "Nueva Contraseña",            k: "nueva",  val: passNueva,  set: setPassNueva,  show: showNueva,  setShow: setShowNueva  },
-              { label: "Confirmar Nueva Contraseña",  k: "conf",   val: passConf,   set: setPassConf,   show: showConf,   setShow: setShowConf   },
+              { label: "Nueva Contraseña",           k: "nueva", val: passNueva, set: setPassNueva, show: showNueva, setShow: setShowNueva },
+              { label: "Confirmar Nueva Contraseña", k: "conf",  val: passConf,  set: setPassConf,  show: showConf,  setShow: setShowConf  },
             ].map(({ label, k, val, set, show, setShow }) => (
               <div key={k} className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</span>
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</span>
                 <div className="relative">
                   <input className="[&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden"
-                    style={{ ...inp, paddingRight: "36px" }} type={show ? "text" : "password"} value={val} onChange={e => set(e.target.value)}
+                    style={{ ...inp, paddingRight: "36px", color: T.text, WebkitTextFillColor: T.text, caretColor: T.text }}
+                    type={show ? "text" : "password"} value={val} onChange={e => set(e.target.value)}
                     autoComplete="new-password" placeholder="••••••••"
                     onFocus={e => e.target.style.borderColor = T.orange}
                     onBlur={e => e.target.style.borderColor = T.border} />
@@ -289,7 +308,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
         <div className="rounded-xl overflow-hidden" style={card}>
           <div className="px-5 py-3 flex flex-wrap items-center gap-2" style={hdr}>
             <div className="w-1 h-3.5 rounded-full" style={{ background: T.orange }} />
-            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Historial de Accesos</p>
+            <p className="text-xs font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Historial de Accesos</p>
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
               style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted }}>
               {esAdmin ? `${accesosFiltrados.length} de ${accesos.length}` : `Últimos ${accesos.length}`}
@@ -412,7 +431,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
               { label: "Hasta", val: rptHasta, set: setRptHasta },
             ].map(({ label, val, set }) => (
               <div key={label} className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</span>
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</span>
                 <input type="date" value={val} onChange={e => set(e.target.value)}
                   style={{ ...inp, colorScheme: isDark ? "dark" : "light" }}
                   onFocus={e => e.target.style.borderColor = T.orange}

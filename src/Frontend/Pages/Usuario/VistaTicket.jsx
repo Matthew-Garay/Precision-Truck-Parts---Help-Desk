@@ -34,14 +34,14 @@ function HistorialCambios({ T, id_ticket }) {
   const CAMPO_LABEL = { estatus: "Estatus", comentarios: "Comentarios" };
 
   const card = {
-    background: isDark ? "#141720" : "#ffffff",
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "transparent"}`,
-    boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.45)" : "0 8px 30px rgb(0,0,0,0.04)",
+    background: isDark ? "#141720" : T.surface,
+    border: `1px solid ${T.border}`,
+    boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.45)" : "0 2px 8px rgba(0,0,0,0.06)",
     borderRadius: "16px",
   };
   const hdr = {
-    background: isDark ? "rgba(255,255,255,0.025)" : "#f8fafc",
-    borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9"}`,
+    background: T.surfaceAlt,
+    borderBottom: `1px solid ${T.border}`,
   };
 
   return (
@@ -53,7 +53,7 @@ function HistorialCambios({ T, id_ticket }) {
         <div className="flex items-center gap-2.5">
           <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: "#8b5cf6" }} />
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em]"
-            style={{ color: isDark ? "rgba(255,255,255,0.38)" : "#94a3b8" }}>Historial de cambios</p>
+            style={{ color: T.textFaint }}>Historial de cambios</p>
         </div>
         <div className="flex items-center gap-2">
           {items.length > 0 && (
@@ -62,7 +62,7 @@ function HistorialCambios({ T, id_ticket }) {
               {items.length}
             </span>
           )}
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5"
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.textFaint} strokeWidth="2.5"
             style={{ transform: abierto ? "rotate(180deg)" : "none", transition: "transform .2s" }}>
             <polyline points="6 9 12 15 18 9" />
           </svg>
@@ -100,7 +100,7 @@ function HistorialCambios({ T, id_ticket }) {
                         </span>
                       )}
                       {item.valor_anterior && item.valor_nuevo && (
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={T.textFaint} strokeWidth="2">
                           <path d="M5 12h14M12 5l7 7-7 7" />
                         </svg>
                       )}
@@ -133,12 +133,18 @@ const PRIO = {
 
 function CalificacionEstrellas({ T, ticket, estatusActual }) {
   const isDark = T.isDark;
-  const calInicial = ticket.calificacion ? parseInt(ticket.calificacion, 10) : 0;
+  const calInicial = Math.max(0, parseInt(ticket.calificacion, 10) || 0);
   const idTicket   = parseInt(ticket.id_ticket, 10);
   const [hover,        setHover]        = useState(0);
   const [calificacion, setCalificacion] = useState(calInicial);
   const [guardando,    setGuardando]    = useState(false);
   const [guardado,     setGuardado]     = useState(calInicial > 0);
+
+  useEffect(() => {
+    const n = Math.max(0, parseInt(ticket.calificacion, 10) || 0);
+    setCalificacion(n);
+    setGuardado(n > 0);
+  }, [ticket.calificacion]);
   const [error,        setError]        = useState("");
   const MENSAJES = ["", "Muy malo", "Malo", "Regular", "Bueno", "Excelente"];
 
@@ -190,14 +196,7 @@ function CalificacionEstrellas({ T, ticket, estatusActual }) {
 
   return (
     <div className="flex flex-col gap-2">
-      {yaGuardado && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-semibold"
-          style={{ background: isDark ? "rgba(22,163,74,0.08)" : "#f0fdf4", color: "#16a34a", border: "1px solid rgba(22,163,74,0.25)" }}>
-          <CheckCircle2 size={12} />
-          Calificación registrada - gracias por tu opinión
-        </div>
-      )}
-      <div className={`flex items-center justify-center gap-1.5 py-2 ${yaGuardado ? "opacity-60" : ""}`}>
+      <div className="flex items-center justify-center gap-1.5 py-2">
         {[1,2,3,4,5].map(n => {
           const activa = n <= (hover || calificacion);
           return (
@@ -211,7 +210,7 @@ function CalificacionEstrellas({ T, ticket, estatusActual }) {
               <Star size={28} fill={activa ? "#f59e0b" : "none"}
                 style={{
                   color: activa ? "#f59e0b" : isDark ? "rgba(255,255,255,0.15)" : "#d1d5db",
-                  filter: activa && !yaGuardado ? "drop-shadow(0 0 4px rgba(245,158,11,0.6))" : "none",
+                  filter: activa ? "drop-shadow(0 0 4px rgba(245,158,11,0.5))" : "none",
                   transform: hover === n && !yaGuardado ? "scale(1.2)" : "scale(1)",
                   transition: "all 0.15s",
                 }}/>
@@ -223,6 +222,12 @@ function CalificacionEstrellas({ T, ticket, estatusActual }) {
         style={{ color: calificacion ? "#f59e0b" : T.textFaint }}>
         {guardando ? "Guardando..." : calificacion ? MENSAJES[calificacion] : "Selecciona una calificación"}
       </p>
+      {yaGuardado && (
+        <div className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold"
+          style={{ background: isDark ? "rgba(22,163,74,0.08)" : "#f0fdf4", color: "#16a34a", border: "1px solid rgba(22,163,74,0.25)" }}>
+          <CheckCircle2 size={12} /> Gracias por tu opinión
+        </div>
+      )}
       {error && (
         <p className="text-center text-[10px] font-semibold" style={{ color: "#dc2626" }}>{error}</p>
       )}
@@ -658,251 +663,17 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
   const horaResuelto  = fechaResueltoState     ? fmtHora(fechaResueltoState)     : null;
 
   const generarReporte = () => {
-    _generarReporteInline();
-  };
-
-  // Imprime el reporte en un iframe invisible dentro de la misma página
-  // para evitar abrir una pestaña nueva en el navegador.
-  const _imprimirEnIframe = (htmlContent) => {
-    // Eliminar iframe anterior si existe
-    const existing = document.getElementById('__print_iframe__');
-    if (existing) existing.remove();
-
-    const iframe = document.createElement('iframe');
-    iframe.id = '__print_iframe__';
-    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;';
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(htmlContent);
-    doc.close();
-
-    // Esperar a que cargue antes de imprimir
-    iframe.onload = () => {
-      try {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-      } catch (e) {
-        console.warn('[imprimirEnIframe]', e);
-      }
-      // Redirigir al listado de tickets tras cerrar el diálogo de impresión
-      setTimeout(() => {
-        iframe.remove();
-        onVolver();
-      }, 1200);
-    };
-  };
-
-  const _generarReporteInline = () => {
-    const origin     = window.location.origin;
-    const t          = ticketLocal;
-    const fmtF  = (d) => d ? new Date(d).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}) : null;
-    const fmtH  = (d) => d ? new Date(d).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : null;
-    const fmtFL = (d) => d ? new Date(d).toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}) : null;
-    const now        = new Date();
-    const fechaGen   = `${fmtFL(now)} · ${fmtH(now)}`;
-    const fechaAlta  = fmtF(t.fecha_subido);
-    const horaAlta   = fmtH(t.fecha_subido);
-    const fechaRes   = fmtF(fechaResueltoState);
-    const horaRes    = fmtH(fechaResueltoState);
-    const calNum     = t.calificacion ? Math.min(5,Math.max(1,parseInt(t.calificacion,10))) : 0;
-    const CAL_LABELS = ['','Muy malo','Malo','Regular','Bueno','Excelente'];
-    const tecnico    = resueltoporState || 'Pendiente';
-
-    // Tiempo de resolución
-    let tiempoRes = '';
-    if (fechaResueltoState && estatus === 'Resuelto') {
-      const mins = Math.floor((new Date(fechaResueltoState) - new Date(t.fecha_subido)) / 60000);
-      const d = Math.floor(mins/1440), h = Math.floor((mins%1440)/60), m = mins%60;
-      tiempoRes = [d>0?`${d}d`:'', h>0?`${h}h`:'', `${m}m`].filter(Boolean).join(' ');
+    const folio = ticketLocal.folio_ticket;
+    const token = getToken();
+    const url   = `/print/ticket/${encodeURIComponent(folio)}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+    const win   = window.open(url, "_blank", "width=1200,height=800");
+    if (!win) {
+      const aviso = document.createElement("div");
+      aviso.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#1D1D1B;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;border-left:4px solid #F47920;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
+      aviso.textContent = "El navegador bloqueó la ventana emergente. Permite las ventanas emergentes e intenta de nuevo.";
+      document.body.appendChild(aviso);
+      setTimeout(() => aviso.remove(), 5000);
     }
-
-    // Badges colores
-    const PRIO_STYLE = {
-      Urgente: 'background:#FEF2F2;color:#B91C1C;border:1px solid #FCA5A5',
-      Alta:    'background:#FFF7ED;color:#C2410C;border:1px solid #FDBA74',
-      Media:   'background:#FEFCE8;color:#A16207;border:1px solid #FDE047',
-      Baja:    'background:#F0FDF4;color:#15803D;border:1px solid #86EFAC',
-    };
-    const EST_STYLE = {
-      'Resuelto':    'background:#F0FDF4;color:#15803D;border:1px solid #86EFAC',
-      'En proceso':  'background:#FFF7ED;color:#C2410C;border:1px solid #FDBA74',
-      'No Resuelto': 'background:#FEF2F2;color:#B91C1C;border:1px solid #FCA5A5',
-      'Cancelado':   'background:#F1F5F9;color:#475569;border:1px solid #CBD5E1',
-    };
-    const EST_ICON = {Resuelto:'✓','En proceso':'◷','No Resuelto':'✕',Cancelado:'✕'};
-    const prioStyle = PRIO_STYLE[t.prioridad] || PRIO_STYLE.Media;
-    const estStyle  = EST_STYLE[estatus]  || EST_STYLE['En proceso'];
-
-    // Estrellas SVG
-    const stars = (n) => [1,2,3,4,5].map(i =>
-      `<svg width="14" height="14" viewBox="0 0 24 24" fill="${i<=n?'#F59E0B':'none'}" stroke="${i<=n?'#D97706':'#CBD5E1'}" stroke-width="1.5"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>`
-    ).join('');
-
-    // Stepper
-    const step = estatus==='Resuelto'?2:estatus==='En proceso'?1:0;
-    const stepperRows = [
-      {label:'Recibido',   sub:`${fechaAlta} · ${horaAlta}`},
-      {label:'En proceso', sub: tecnico !== 'Pendiente' ? `Técnico: ${tecnico}` : 'Pendiente asignación'},
-      {label:'Resuelto',   sub: fechaRes ? `${fechaRes} · ${horaRes}` : 'Pendiente'},
-    ].map((s,i) => {
-      const done = i <= step;
-      return `
-        <div style="display:flex;gap:8px;align-items:flex-start">
-          <div style="display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0">
-            <div style="width:20px;height:20px;border-radius:50%;background:${done?'#0C1A2E':'#F8FAFC'};border:1.5px solid ${done?'#0C1A2E':'#E2E8F0'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:${done?'#fff':'#94A3B8'};-webkit-print-color-adjust:exact;print-color-adjust:exact">${i<step?'✓':i+1}</div>
-            ${i<2?`<div style="width:1.5px;flex:1;min-height:12px;background:${i<step?'#0C1A2E':'#E2E8F0'};margin:2px 0"></div>`:''}
-          </div>
-          <div style="flex:1;padding:1px 0 10px">
-            <div style="font-size:8pt;font-weight:${done?600:400};color:${done?'#0f172a':'#94A3B8'}">${s.label}</div>
-            <div style="font-size:6pt;color:#475569;margin-top:1px">${s.sub}</div>
-          </div>
-        </div>`;
-    }).join('');
-
-    // Galería evidencias
-    const galeria = imgs.length === 0
-      ? `<div style="display:flex;align-items:center;gap:8px;padding:12px;background:#F8FAFC;border:1px dashed #E2E8F0;border-radius:3px;color:#94A3B8;font-size:7.5pt;font-style:italic">Sin evidencias fotográficas adjuntas.</div>`
-      : `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">${
-          imgs.map((nombre,i) =>
-            `<div style="border:1px solid #E2E8F0;border-radius:3px;overflow:hidden">
-              <img src="${origin}/storage/Evidencias_Tickets/${t.folio_ticket}/${nombre}" style="width:100%;height:70px;object-fit:cover;display:block" />
-              <div style="font-size:5.5pt;color:#475569;padding:3px 6px;background:#F8FAFC;border-top:1px solid #E2E8F0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${String(i+1).padStart(2,'0')} — ${nombre}</div>
-            </div>`
-          ).join('')
-        }</div>`;
-
-    // Fila de datos (grid 4 col, half=span2)
-    const datoCelda = (label, value, half=false) =>
-      `<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-top:2px solid #0C1A2E;border-radius:0 0 3px 3px;padding:5px 8px;display:flex;flex-direction:column;gap:2px;${half?'grid-column:span 2':''}"><div style="font-size:5pt;font-weight:500;text-transform:uppercase;letter-spacing:.15em;color:#94A3B8">${label}</div><div style="font-size:8pt;font-weight:500;color:#0f172a">${value||'—'}</div></div>`;
-
-    const html = `<!DOCTYPE html>
-<html lang="es"><head><meta charset="UTF-8"/>
-<title>Reporte ${t.folio_ticket}</title>
-<style>
-  @page{size:letter portrait;margin:10mm 12mm 18mm 12mm}
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  html,body{width:100%;height:100%;background:#fff;font-family:'Segoe UI',Arial,sans-serif;font-size:7.5pt;color:#0f172a}
-  .wrap{width:100%;padding:0}
-  .sec-hdr{display:flex;align-items:center;gap:8px;padding:4px 10px;background:#0C1A2E}
-  .sec-title{font-size:5.5pt;font-weight:500;text-transform:uppercase;letter-spacing:.2em;color:rgba(255,255,255,.85)}
-  .sec-rule{flex:1;height:1px;background:rgba(255,255,255,.12)}
-  .sec{margin-bottom:7px;border:1px solid #E2E8F0;border-radius:4px;overflow:hidden}
-  .sec-body{padding:7px 10px;background:#fff}
-  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px}
-  .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:6.5pt;font-weight:500;letter-spacing:.03em}
-  .rt{font-size:7.5pt;line-height:1.6;padding:6px 10px;background:#F8FAFC;border-radius:3px;min-height:22px}
-  .lbl{font-size:5pt;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:#94A3B8}
-  .footer{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 12px;border-top:2px solid #0C1A2E;background:#fff}
-</style></head><body>
-<div class="wrap">
-
-<!-- HEADER -->
-<div style="display:flex;align-items:stretch;border-bottom:2.5px solid #0C1A2E;margin-bottom:10px">
-  <div style="display:flex;align-items:center;padding:8px 14px 8px 0;border-right:1px solid #E2E8F0;flex-shrink:0">
-    <img src="${origin}/assets/img/log.png" style="height:70px;width:auto;object-fit:contain;display:block" alt="PTP" />
-  </div>
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:8px 14px;gap:2px">
-    <div style="font-size:9pt;font-weight:500;letter-spacing:.09em;color:#0C1A2E">PRECISION TRUCK PARTS AND ACCESSORIES</div>
-    <div style="font-size:8pt;font-weight:400;color:#475569;text-align:center">Reporte de Incidencia Técnica</div>
-    <div style="font-size:5.5pt;font-weight:400;text-transform:uppercase;letter-spacing:.12em;color:#94A3B8;text-align:center">Departamento de Soporte Técnico</div>
-  </div>
-  <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-end;padding:8px 0 8px 14px;border-left:1px solid #E2E8F0;gap:3px;flex-shrink:0">
-    <div class="lbl">Folio</div>
-    <div style="font-family:monospace;font-size:10pt;font-weight:500;color:#0C1A2E;letter-spacing:.06em">${t.folio_ticket}</div>
-    <div class="lbl" style="margin-top:2px">Generado</div>
-    <div style="font-size:6.5pt;font-weight:400;color:#475569">${fechaGen}</div>
-  </div>
-</div>
-<div style="height:2px;background:#E8621A;margin-top:-6px;margin-bottom:8px"></div>
-
-<!-- BANDA ESTADO -->
-<div style="display:flex;align-items:stretch;border:1px solid #E2E8F0;border-radius:5px;overflow:hidden;margin-bottom:9px;background:#F8FAFC">
-  <div style="flex:1;display:flex;flex-direction:column;gap:3px;padding:8px 12px;border-right:1px solid #E2E8F0;background:#fff">
-    <div style="font-size:5pt;font-weight:500;text-transform:uppercase;letter-spacing:.15em;color:#94A3B8">Título del Incidente</div>
-    <div style="font-size:9.5pt;font-weight:500;color:#0f172a;line-height:1.25">${t.titulo||'—'}</div>
-  </div>
-  <div style="display:flex;flex-direction:column;gap:3px;padding:8px 12px;border-right:1px solid #E2E8F0;flex-shrink:0">
-    <div style="font-size:5pt;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:#94A3B8">Estatus</div>
-    <span class="badge" style="${estStyle}">${EST_ICON[estatus]||''} ${estatus}</span>
-  </div>
-  <div style="display:flex;flex-direction:column;gap:3px;padding:8px 12px;flex-shrink:0">
-    <div style="font-size:5pt;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:#94A3B8">Prioridad</div>
-    <span class="badge" style="${prioStyle}">${t.prioridad}</span>
-  </div>
-  ${tiempoRes?`<div style="display:flex;flex-direction:column;gap:3px;padding:8px 12px;border-left:1px solid #E2E8F0;flex-shrink:0"><div style="font-size:5pt;font-weight:500;text-transform:uppercase;letter-spacing:.15em;color:#94A3B8">Tiempo resolución</div><div style="font-size:8pt;font-weight:500;color:#0f172a;font-family:monospace">${tiempoRes}</div></div>`:''}
-</div>
-
-<!-- DATOS -->
-<div class="sec"><div class="sec-hdr"><span class="sec-title">Datos del Reporte</span><div class="sec-rule"></div></div>
-<div class="sec-body"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
-  ${datoCelda('Folio', t.folio_ticket)}
-  ${datoCelda('Solicitante', t.nombre_empleado)}
-  ${datoCelda('Departamento', t.nombre_departamento)}
-  ${datoCelda('Categoría', t.nombre_categoria)}
-  ${datoCelda('Fecha de alta', `${fechaAlta} · ${horaAlta}`)}
-  ${fechaRes ? datoCelda('Fecha resolución', `${fechaRes} · ${horaRes}`) : datoCelda('Fecha resolución', 'Pendiente')}
-  ${fechaRes ? datoCelda('Resuelto por', tecnico) : datoCelda('Resuelto por', 'Pendiente')}
-  ${tiempoRes ? datoCelda('Tiempo resolución', tiempoRes) : datoCelda('Tiempo resolución', '—')}
-</div></div></div>
-
-<!-- DESCRIPCIÓN -->
-<div class="sec"><div class="sec-hdr"><span class="sec-title">Descripción del Problema</span><div class="sec-rule"></div></div>
-<div class="sec-body"><div class="rt">${t.descripcion||'<em style="color:#94A3B8">Sin descripción registrada.</em>'}</div></div></div>
-
-<!-- RESOLUCIÓN -->
-<div class="sec"><div class="sec-hdr"><span class="sec-title">Resolución y Comentarios del Técnico</span><div class="sec-rule"></div></div>
-<div class="sec-body">
-  <div style="border:1px solid #E2E8F0;border-radius:4px;overflow:hidden">
-    <div style="display:flex;align-items:baseline;gap:8px;padding:5px 10px;background:#F8FAFC;border-bottom:1px solid #E2E8F0">
-      <span style="font-size:8.5pt;font-weight:500;color:#0f172a">${tecnico}</span>
-      <span style="font-size:5.5pt;font-weight:400;text-transform:uppercase;letter-spacing:.1em;color:#475569">Técnico de Soporte</span>
-    </div>
-    <div class="rt" style="background:#fff">${t.comentarios||'<em style="color:#94A3B8">Sin comentarios registrados.</em>'}</div>
-  </div>
-</div></div>
-
-<!-- PROGRESO + CALIFICACIÓN -->
-<div class="two-col">
-  <div class="sec"><div class="sec-hdr"><span class="sec-title">Progreso del Ticket</span><div class="sec-rule"></div></div>
-  <div class="sec-body">${stepperRows}</div></div>
-
-  <div class="sec"><div class="sec-hdr"><span class="sec-title">Calificación y Firma</span><div class="sec-rule"></div></div>
-  <div class="sec-body">
-    ${calNum > 0
-      ? `<div style="display:flex;flex-direction:column;gap:3px;padding:7px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-top:2px solid #D97706;border-radius:0 0 3px 3px;margin-bottom:10px">
-           <div style="display:flex;gap:2px">${stars(calNum)}</div>
-           <div style="font-size:13pt;font-weight:500;color:#B45309;line-height:1">${calNum} / 5</div>
-           <div style="font-size:7pt;font-weight:400;color:#92400E">${CAL_LABELS[calNum]}</div>
-           <div style="font-size:6pt;color:#94A3B8">Evaluado por: ${t.nombre_empleado}</div>
-         </div>`
-      : `<p style="font-size:7.5pt;color:#94A3B8;font-style:italic;margin:4px 2px 10px">Valoración pendiente.</p>`
-    }
-    <div style="margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:3px">
-      <div style="width:100%;height:48px;border-bottom:1px solid #0f172a;margin-bottom:6px"></div>
-      <div style="font-size:8.5pt;font-weight:500;color:#0f172a">${tecnico}</div>
-      <div style="font-size:6.5pt;color:#475569">Técnico de Soporte</div>
-      <div style="font-size:6.5pt;color:#475569">Precision Truck Parts and Accessories</div>
-    </div>
-  </div></div>
-</div>
-
-<!-- EVIDENCIAS -->
-<div class="sec"><div class="sec-hdr"><span class="sec-title">Evidencias Fotográficas${imgs.length>0?' — '+imgs.length+' archivo'+(imgs.length!==1?'s':''):''}</span><div class="sec-rule"></div></div>
-<div class="sec-body">${galeria}</div></div>
-
-</div><!-- /wrap -->
-
-<!-- FOOTER fijo al fondo de cada página -->
-<div class="footer">
-  <img src="${origin}/assets/img/log.png" style="height:20px;width:auto;object-fit:contain;display:block;opacity:.35" alt="" />
-  <span style="flex:1;text-align:center;font-size:6pt;color:#94A3B8">Precision Truck Parts and Accessories — Sistema de Soporte Técnico HelpDesk</span>
-  <span style="font-size:6pt;color:#94A3B8;font-family:monospace;white-space:nowrap">${t.folio_ticket} · ${fechaGen}</span>
-</div>
-</body></html>`;
-
-    _imprimirEnIframe(html);
   };
 
   const handleCancelar = async () => {
@@ -1008,29 +779,29 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
   useSocket(usuario?.id_empleado, handleSocketEvento);
 
   const card = {
-    background: isDark ? "#141720" : "#ffffff",
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "transparent"}`,
+    background: T.surface,
+    border: `1px solid ${T.border}`,
     boxShadow: isDark
       ? "0 8px 32px rgba(0,0,0,0.45)"
-      : "0 8px 30px rgb(0,0,0,0.04)",
+      : "0 2px 8px rgba(0,0,0,0.06)",
     borderRadius: "16px",
     transition: "box-shadow 0.2s ease",
   };
   const cardHover = {
     boxShadow: isDark
       ? "0 12px 40px rgba(0,0,0,0.55)"
-      : "0 12px 40px rgb(0,0,0,0.09)",
+      : "0 6px 20px rgba(0,0,0,0.09)",
   };
   const hdr = {
-    background: isDark ? "rgba(255,255,255,0.025)" : "#f8fafc",
-    borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9"}`,
+    background: T.surfaceAlt,
+    borderBottom: `1px solid ${T.border}`,
   };
-  const labelStyle = { color: isDark ? "rgba(255,255,255,0.38)" : "#94a3b8" };
+  const labelStyle = { color: T.textFaint };
   const valStyle   = { color: T.text };
 
   return (
     <div style={{
-      background: isDark ? T.bg : "#f0f4f8",
+      background: T.bg,
       fontFamily: "'Inter','Segoe UI',system-ui,sans-serif",
       height: "100%",
       display: "flex",
@@ -1061,7 +832,8 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
           cancelLabel="Volver"
           loading={cancelando}
           maxWidth="380px"
-          danger
+          variant="danger"
+          closeOnOverlay={false}
         >
           <p className="text-xs leading-relaxed" style={{color: T.isDark ? "rgba(255,255,255,0.75)" : T.text}}>
             Esta acción no se puede deshacer. El ticket quedará marcado como <strong style={{color: T.isDark ? "#fff" : T.text}}>Cancelado</strong> y no podrá editarse.
@@ -1202,7 +974,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                 onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
                 <div className="px-4 py-3 flex items-center gap-2.5" style={hdr}>
                   <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: "#3b82f6" }} />
-                  <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: isDark?"rgba(255,255,255,0.38)":"#94a3b8" }}>Acceso remoto (TeamViewer)</p>
+                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Acceso remoto (TeamViewer)</p>
                 </div>
                 <div className="px-4 py-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[{ label: "ID de TeamViewer", value: tvId, setter: setTvId, placeholder: "Ej. 123 456 789" },
@@ -1241,7 +1013,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-4 py-3 flex items-center gap-2.5" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: T.orange }} />
-                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: isDark?"rgba(255,255,255,0.38)":"#94a3b8" }}>Descripción del problema</p>
+              <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Descripción del problema</p>
               </div>
               <div className="px-4 py-3">
                 {ticketLocal.descripcion ? (
@@ -1263,7 +1035,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-6 py-4 flex items-center gap-2.5" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: T.orange }} />
-                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: isDark?"rgba(255,255,255,0.38)":"#94a3b8" }}>Información del reporte</p>
+                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Información del reporte</p>
               </div>
               <div className="px-4 sm:px-8 py-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-x-8 sm:gap-y-4">
                 {[
@@ -1274,7 +1046,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                   { icon: User,         label: "Resuelto por",       val: resueltoporState || "Pendiente" },
                 ].map(({ icon: Icon, label, val }) => (
                   <div key={label} className="flex flex-col gap-1">
-                    <p className="font-semibold uppercase tracking-[0.12em] flex items-center gap-1" style={{ fontSize:11, color: "#94a3b8" }}>
+                    <p className="font-semibold uppercase tracking-[0.12em] flex items-center gap-1" style={{ fontSize:11, color: T.textFaint }}>
                       <Icon size={9} style={{ color: T.orange, flexShrink: 0 }} />
                       {label}
                     </p>
@@ -1292,7 +1064,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               <div className="px-6 py-4 flex items-center justify-between" style={hdr}>
                 <div className="flex items-center gap-2.5">
                   <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: T.orange }} />
-                  <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: isDark?"rgba(255,255,255,0.38)":"#94a3b8" }}>Evidencias adjuntas</p>
+                  <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Evidencias adjuntas</p>
                 </div>
                 <span className="font-semibold px-3 py-1 rounded-full flex-shrink-0"
                   style={{ fontSize:11, background: isDark?"rgba(255,255,255,0.06)":"#f1f5f9", color: T.textMuted, border:`1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)"}` }}>
@@ -1346,7 +1118,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-6 py-4 flex items-center gap-2.5" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: T.orange }} />
-                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: isDark?"rgba(255,255,255,0.38)":"#94a3b8" }}>Comentarios del técnico</p>
+                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Comentarios del técnico</p>
               </div>
               <div className="p-5 sm:p-6">
                 {esAdmin ? (
@@ -1437,7 +1209,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               <div className="px-6 py-4 flex items-center justify-between" style={hdr}>
                 <div className="flex items-center gap-2.5">
                   <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background:T.orange }}/>
-                  <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: isDark?"rgba(255,255,255,0.38)":"#94a3b8" }}>Progreso</p>
+                  <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Progreso</p>
                 </div>
                 <span className="font-semibold px-3 py-1 rounded-full"
                   style={{ fontSize:11, background: isDark?"rgba(255,255,255,0.06)":"#f1f5f9", color:T.textMuted, border:`1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)"}` }}>
@@ -1503,20 +1275,51 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               </div>
             </div>
 
-            {/* -- CALIFICACIÓN -- solo usuario -- */}
-            {!esAdmin && (
+            {/* -- CALIFICACIÓN -- usuario: interactiva / admin: solo lectura -- */}
+            {!esAdmin ? (
             <div
               style={card}
               onMouseEnter={e => Object.assign(e.currentTarget.style, cardHover)}
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-6 py-4 flex items-center gap-2.5" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: "#f59e0b" }} />
-                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: isDark?"rgba(255,255,255,0.38)":"#94a3b8" }}>Calificar atención</p>
+                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Calificar atención</p>
               </div>
               <div className="px-6 py-6 flex flex-col gap-3">
                 <CalificacionEstrellas T={T} ticket={ticketLocal} estatusActual={estatus} />
               </div>
-
+            </div>
+            ) : (estatus === "Resuelto" || estatus === "No Resuelto") && (
+            <div
+              style={card}
+              onMouseEnter={e => Object.assign(e.currentTarget.style, cardHover)}
+              onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
+              <div className="px-6 py-4 flex items-center gap-2.5" style={hdr}>
+                <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: "#f59e0b" }} />
+                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Calificación del usuario</p>
+              </div>
+              <div className="px-6 py-5 flex flex-col gap-2">
+                {(() => {
+                  const calNum = Math.max(0, parseInt(ticketLocal.calificacion, 10) || 0);
+                  const MENSAJES = ["", "Muy malo", "Malo", "Regular", "Bueno", "Excelente"];
+                  return calNum > 0 ? (
+                    <>
+                      <div className="flex items-center justify-center gap-1.5 py-2">
+                        {[1,2,3,4,5].map(n => (
+                          <Star key={n} size={28} fill={n <= calNum ? "#f59e0b" : "none"}
+                            style={{ color: n <= calNum ? "#f59e0b" : isDark ? "rgba(255,255,255,0.15)" : "#d1d5db",
+                              filter: n <= calNum ? "drop-shadow(0 0 4px rgba(245,158,11,0.5))" : "none" }}/>
+                        ))}
+                      </div>
+                      <p className="text-center text-[11px] font-bold" style={{ color: "#f59e0b" }}>
+                        {MENSAJES[calNum]} · {calNum}/5
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-center text-xs py-3" style={{ color: T.textFaint }}>Sin calificación aún</p>
+                  );
+                })()}
+              </div>
             </div>
             )}
 
@@ -1528,7 +1331,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-6 py-4 flex items-center gap-2.5" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: "#dc2626" }} />
-                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: isDark?"rgba(255,255,255,0.38)":"#94a3b8" }}>Exportar reporte</p>
+                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Exportar reporte</p>
               </div>
               <div className="px-5 py-5">
                 <p className="mb-3" style={{ fontSize:12, color: T.textFaint }}>Genera un PDF con toda la información de esta incidencia.</p>
@@ -1571,7 +1374,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-6 py-4 flex items-center gap-2.5" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: "#dc2626" }} />
-                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: isDark?"rgba(255,255,255,0.38)":"#94a3b8" }}>Exportar reporte</p>
+                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Exportar reporte</p>
               </div>
               <div className="px-5 py-5">
                 <p className="mb-3" style={{ fontSize:12, color: T.textFaint }}>Genera un PDF con toda la información de esta incidencia.</p>
@@ -1616,7 +1419,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                 <div className="px-6 py-4 flex items-center justify-between" style={hdr}>
                   <div className="flex items-center gap-2.5">
                     <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: "#16a34a" }} />
-                    <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: isDark?"rgba(255,255,255,0.38)":"#94a3b8" }}>Acciones del administrador</p>
+                    <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Acciones del administrador</p>
                   </div>
                   {estatus === "Resuelto" && (
                     <span className="flex items-center gap-1 px-3 py-1 rounded-full font-semibold"
@@ -1665,6 +1468,8 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                           cancelLabel="Cancelar"
                           loading={guardando}
                           maxWidth="360px"
+                          variant="success"
+                          closeOnOverlay={false}
                         >
                           <p className="text-xs leading-relaxed" style={{ color: T.isDark ? "rgba(255,255,255,0.75)" : T.text }}>
                             Marcará el ticket como <strong style={{ color: T.isDark ? "#fff" : T.text }}>Resuelto</strong> y guardará los comentarios.

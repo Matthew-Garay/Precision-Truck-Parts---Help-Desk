@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { getToken, setToken } from "../Config/api";
 import PrintSolicitudView from "../Components/PrintSolicitudView";
 import { LoadingPrint, ErrorPrint } from "../Components/PrintShared";
-import { triggerPrint } from "../Config/printUtils";
+import { waitForImages } from "../Config/printUtils";
 
 interface DetalleItem {
   id_solicitud_insumo: number;
@@ -25,6 +25,7 @@ interface Solicitud {
   prioridad: string;
   nombre_empleado: string;
   nombre_departamento: string;
+  nombre_sucursal?: string | null;
   detalle: DetalleItem[];
 }
 
@@ -33,12 +34,7 @@ export default function PrintSolicitudPage() {
   const [searchParams]            = useSearchParams();
   const [solicitud, setSolicitud] = useState<Solicitud | null>(null);
   const [error, setError]         = useState<string>("");
-  const printedRef                = useRef(false);
-
-  useEffect(() => {
-    document.body.classList.add("print-preview");
-    return () => document.body.classList.remove("print-preview");
-  }, []);
+  const [ready, setReady]         = useState(false);
 
   useEffect(() => {
     if (!folio) return;
@@ -65,13 +61,29 @@ export default function PrintSolicitudPage() {
   }, [folio, searchParams]);
 
   useEffect(() => {
-    if (!solicitud || printedRef.current) return;
-    printedRef.current = true;
-    triggerPrint();
+    if (!solicitud) return;
+    waitForImages().then(() => setReady(true));
   }, [solicitud]);
 
   if (error)      return <ErrorPrint message={error} />;
   if (!solicitud) return <LoadingPrint />;
 
-  return <PrintSolicitudView solicitud={solicitud} />;
+  return (
+    <>
+      <div className="pr-toolbar">
+        <span className="pr-toolbar-title">Vista previa de solicitud {solicitud.folio_solicitud}</span>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="pr-btn pr-btn--outline" onClick={() => window.close()}>Cerrar</button>
+          <button
+            className="pr-btn pr-btn--primary"
+            disabled={!ready}
+            onClick={() => window.print()}
+          >
+            {ready ? "🖨  Imprimir / Guardar PDF" : "Cargando…"}
+          </button>
+        </div>
+      </div>
+      <PrintSolicitudView solicitud={solicitud} />
+    </>
+  );
 }

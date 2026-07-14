@@ -83,7 +83,7 @@ router.get("/reporte",    requireAdmin, getReporte);
 router.get("/rendimiento", requireAdmin, getRendimientoTecnicos);
 router.get("/",           requireAdmin, (req, res, next) => {
   const r = schemaFiltrosTickets.safeParse(req.query);
-  if (!r.success) return res.status(422).json({ error: "Parámetros inválidos", errores: r.error.errors.map(e => ({ campo: e.path.join("."), mensaje: e.message })) });
+  if (!r.success) return res.status(422).json({ error: "Parámetros inválidos", errores: r.error.issues.map(e => ({ campo: e.path.join("."), mensaje: e.message })) });
   req.queryValidado = r.data;
   next();
 }, getAllTickets);

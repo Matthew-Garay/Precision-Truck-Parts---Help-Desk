@@ -189,10 +189,11 @@ export function iniciarWorkers(io) {
       if (nuevos.length === 0) return;
       nuevos.forEach(ins => {
         io.to("admins").emit("insumo:stock_critico", {
-          id_insumo: ins.id_insumo,
-          nombre:    ins.nombre,
-          stock:     ins.stock,
-          nivel:     ins.nivel_alerta,
+          id_insumo:  ins.id_insumo,
+          nombre:     ins.nombre,
+          stock:      ins.stock,
+          nivel:      ins.nivel_alerta,
+          imagen_url: ins.imagen_url || null,
         });
         stockAlertados.add(ins.id_insumo);
       });

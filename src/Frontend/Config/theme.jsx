@@ -56,18 +56,18 @@ export function RelojFecha({ T }) {
     }}>
       {/* Hora principal */}
       <div style={{
-        padding: "12px 14px 10px",
+        padding: "8px 12px 7px",
         background: isDark ? `linear-gradient(135deg, rgba(244,121,32,0.08), rgba(59,130,246,0.05))` : `linear-gradient(135deg, rgba(244,121,32,0.05), rgba(59,130,246,0.03))`,
         borderBottom: `1px solid ${T.border}`,
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: "1px" }}>
-          <span style={{ fontSize: "32px", fontWeight: 900, lineHeight: 1, color: T.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.03em" }}>{h12}</span>
-          <span style={{ fontSize: "32px", fontWeight: 900, lineHeight: 1, color: T.orange, margin: "0 2px" }}>:</span>
-          <span style={{ fontSize: "32px", fontWeight: 900, lineHeight: 1, color: T.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.03em" }}>{min}</span>
-          <div style={{ display: "flex", flexDirection: "column", marginLeft: "5px", gap: "2px", paddingBottom: "3px", alignSelf: "flex-end" }}>
-            <span style={{ fontSize: "12px", fontWeight: 800, color: T.orange, lineHeight: 1 }}>{ampm}</span>
-            <span style={{ fontSize: "13px", fontWeight: 700, color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{seg}s</span>
+          <span style={{ fontSize: "22px", fontWeight: 900, lineHeight: 1, color: T.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.03em" }}>{h12}</span>
+          <span style={{ fontSize: "22px", fontWeight: 900, lineHeight: 1, color: T.orange, margin: "0 2px" }}>:</span>
+          <span style={{ fontSize: "22px", fontWeight: 900, lineHeight: 1, color: T.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.03em" }}>{min}</span>
+          <div style={{ display: "flex", flexDirection: "column", marginLeft: "4px", gap: "2px", paddingBottom: "2px", alignSelf: "flex-end" }}>
+            <span style={{ fontSize: "10px", fontWeight: 800, color: T.orange, lineHeight: 1 }}>{ampm}</span>
+            <span style={{ fontSize: "10px", fontWeight: 700, color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{seg}s</span>
           </div>
         </div>
         {/* Punto naranja pulsante */}
@@ -77,9 +77,9 @@ export function RelojFecha({ T }) {
         </div>
       </div>
       {/* Fecha */}
-      <div style={{ padding: "7px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: "12px", fontWeight: 700, color: T.textMuted }}>{diaMes} de {mesNombre}</span>
-        <span style={{ fontSize: "12px", fontWeight: 800, color: T.text }}>{anio}</span>
+      <div style={{ padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: "10px", fontWeight: 700, color: T.textMuted }}>{diaMes} de {mesNombre}</span>
+        <span style={{ fontSize: "10px", fontWeight: 800, color: T.text }}>{anio}</span>
       </div>
     </div>
   );
@@ -117,14 +117,14 @@ export function Calendario({ T }) {
       {/* Encabezado mes */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "center",
-        marginBottom: "8px", gap: "6px",
+        marginBottom: "5px", gap: "5px",
       }}>
         <div style={{
-          width: "3px", height: "12px", borderRadius: "99px",
+          width: "3px", height: "10px", borderRadius: "99px",
           background: `linear-gradient(180deg, ${T.orange}, ${T.orangeDark})`,
           flexShrink: 0,
         }} />
-        <p style={{ fontSize: "13px", fontWeight: 800, color: T.text, letterSpacing: "-0.01em" }}>
+        <p style={{ fontSize: "11px", fontWeight: 800, color: T.text, letterSpacing: "-0.01em" }}>
           {MESES[mes]} <span style={{ color: T.textMuted, fontWeight: 500 }}>{anio}</span>
         </p>
       </div>
@@ -138,7 +138,7 @@ export function Calendario({ T }) {
       }}>
         {DIAS.map((d, i) => (
           <div key={i} style={{
-            textAlign: "center", fontSize: "10px", fontWeight: 700,
+            textAlign: "center", fontSize: "9px", fontWeight: 700,
             color: (i === 0 || i === 6) ? T.orange : T.textMuted,
           }}>
             {d}
@@ -155,18 +155,18 @@ export function Calendario({ T }) {
           return (
             <div key={i} style={{
               display: "flex", alignItems: "center", justifyContent: "center",
-              height: "30px",
+              height: "22px",
             }}>
               {dia && (
                 <span style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  width: "26px", height: "26px",
-                  borderRadius: esHoy ? "7px" : "5px",
+                  width: "20px", height: "20px",
+                  borderRadius: esHoy ? "5px" : "4px",
                   background: esHoy
                     ? `linear-gradient(135deg, ${T.orange}, ${T.orangeDark})`
                     : "transparent",
                   color: esHoy ? "#fff" : finde ? T.orange : T.textMuted,
-                  fontSize: "11px",
+                  fontSize: "9px",
                   fontWeight: esHoy ? 800 : finde ? 600 : 400,
                   boxShadow: esHoy ? `0 2px 8px rgba(244,121,32,0.45)` : "none",
                   userSelect: "none",
@@ -180,7 +180,7 @@ export function Calendario({ T }) {
       </div>
 
       {/* Indicador hoy */}
-      <div style={{ marginTop: "6px", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+      <div style={{ marginTop: "4px", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
           <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: T.orange, boxShadow: `0 0 6px ${T.orange}` }} />
           <span style={{ fontSize: "10px", fontWeight: 600, color: T.orange }}>Hoy</span>

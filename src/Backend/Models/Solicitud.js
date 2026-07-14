@@ -100,12 +100,18 @@ const Solicitud = {
     );
     const [rows] = await pool.query(
       `SELECT s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
+              IFNULL(CONCAT(e.nombre,' ',e.ap_paterno),'[Empleado eliminado]') AS nombre_empleado,
+              d.nombre_departamento,
+              su.nombre_sucursal,
               GROUP_CONCAT(i.nombre ORDER BY i.nombre SEPARATOR ', ') AS insumos_nombres,
               SUM(si.cantidad) AS total_piezas,
               COUNT(si.id_solicitud_insumo) AS total_insumos
        FROM solicitud s
-       JOIN solicitud_insumo si ON s.id_solicitud = si.id_solicitud
-       JOIN insumo i            ON si.id_insumo   = i.id_insumo
+       LEFT JOIN empleado e          ON s.id_empleado    = e.id_empleado
+       LEFT JOIN departamento d      ON e.id_departamento = d.id_departamento
+       LEFT JOIN sucursal su         ON e.id_sucursal    = su.id_sucursal
+       LEFT JOIN solicitud_insumo si ON s.id_solicitud   = si.id_solicitud
+       LEFT JOIN insumo i            ON si.id_insumo     = i.id_insumo
        WHERE s.id_empleado = ?
        GROUP BY s.id_solicitud
        ORDER BY s.fecha DESC
@@ -120,10 +126,12 @@ const Solicitud = {
       `SELECT s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
               s.id_empleado,
               IFNULL(CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')),'[Empleado eliminado]') AS nombre_empleado,
-              d.nombre_departamento
+              d.nombre_departamento,
+              su.nombre_sucursal
        FROM solicitud s
-       LEFT JOIN empleado e    ON s.id_empleado    = e.id_empleado
+       LEFT JOIN empleado e     ON s.id_empleado     = e.id_empleado
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       LEFT JOIN sucursal su    ON e.id_sucursal     = su.id_sucursal
        WHERE s.id_solicitud = ?`,
       [id_solicitud]
     );
@@ -131,46 +139,53 @@ const Solicitud = {
     const [detalle] = await pool.query(
       `SELECT si.id_solicitud_insumo, si.cantidad, si.aprobado,
               i.id_insumo, IFNULL(i.nombre,'[Insumo eliminado]') AS nombre,
-              i.marca, i.modelo, i.num_serie, IFNULL(i.stock,0) AS stock, i.estado
+              i.marca, i.modelo, i.num_serie, IFNULL(i.stock,0) AS stock, i.estado,
+              i.imagen_url, i.descripcion, i.proveedor, i.id_categoria,
+              c.nombre_categoria
        FROM solicitud_insumo si
        LEFT JOIN insumo i ON si.id_insumo = i.id_insumo
+       LEFT JOIN categoria c ON i.id_categoria = c.id_categoria
        WHERE si.id_solicitud = ?`,
       [id_solicitud]
     );
     return { ...solicitud, detalle };
   },
 
-  getAll: async ({ limit = 100, offset = 0, estatus, prioridad, empleado, busqueda, area, fecha_inicio, fecha_fin } = {}) => {
+  getAll: async ({ limit = 100, offset = 0, estatus, prioridad, empleado, busqueda, area, sucursal, fecha_inicio, fecha_fin } = {}) => {
     const where = [];
     const params = [];
     if (estatus)              { where.push("s.estatus = ?");                                                                                                params.push(estatus); }
     if (prioridad)            { where.push("s.prioridad = ?");                                                                                              params.push(prioridad); }
-    if (empleado || busqueda) { where.push("(CONCAT(e.nombre,' ',e.ap_paterno) LIKE ? OR s.folio_solicitud LIKE ?)"); const q = `%${empleado || busqueda}%`; params.push(q, q); }
+    if (empleado || busqueda) { where.push("(CONCAT(IFNULL(e.nombre,''),' ',IFNULL(e.ap_paterno,'')) LIKE ? OR s.folio_solicitud LIKE ?)"); const q = `%${empleado || busqueda}%`; params.push(q, q); }
     if (area)                 { where.push("d.nombre_departamento = ?");                                                                                    params.push(area); }
-    if (fecha_inicio) { where.push("DATE(s.fecha) >= ?");                               params.push(fecha_inicio); }
-    if (fecha_fin)    { where.push("DATE(s.fecha) <= ?");                               params.push(fecha_fin); }
+    if (sucursal)             { where.push("su.nombre_sucursal = ?");                                                                                       params.push(sucursal); }
+    if (fecha_inicio) { where.push("DATE(s.fecha) >= ?"); params.push(fecha_inicio); }
+    if (fecha_fin)    { where.push("DATE(s.fecha) <= ?"); params.push(fecha_fin); }
     const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
     const [[{ total }]] = await pool.query(
       `SELECT COUNT(DISTINCT s.id_solicitud) AS total
        FROM solicitud s
-       JOIN empleado e          ON s.id_empleado     = e.id_empleado
-       LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       LEFT JOIN empleado e     ON s.id_empleado      = e.id_empleado
+       LEFT JOIN departamento d ON e.id_departamento  = d.id_departamento
+       LEFT JOIN sucursal su    ON e.id_sucursal      = su.id_sucursal
        ${whereSQL}`,
       params
     );
     const [rows] = await pool.query(
       `SELECT s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
-              CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
+              IFNULL(CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')),'[Empleado eliminado]') AS nombre_empleado,
               d.nombre_departamento,
+              su.nombre_sucursal,
               COUNT(si.id_solicitud_insumo) AS total_insumos,
               SUM(si.cantidad) AS total_piezas,
               GROUP_CONCAT(i.nombre ORDER BY i.nombre SEPARATOR ', ') AS insumos_nombres
        FROM solicitud s
-       JOIN empleado e          ON s.id_empleado      = e.id_empleado
+       LEFT JOIN empleado e     ON s.id_empleado      = e.id_empleado
        LEFT JOIN departamento d ON e.id_departamento  = d.id_departamento
-       JOIN solicitud_insumo si ON s.id_solicitud     = si.id_solicitud
-       JOIN insumo i            ON si.id_insumo       = i.id_insumo
+       LEFT JOIN sucursal su    ON e.id_sucursal      = su.id_sucursal
+       LEFT JOIN solicitud_insumo si ON s.id_solicitud     = si.id_solicitud
+       LEFT JOIN insumo i            ON si.id_insumo       = i.id_insumo
        ${whereSQL}
        GROUP BY s.id_solicitud
        ORDER BY s.fecha DESC
@@ -184,18 +199,20 @@ const Solicitud = {
     const [[row]] = await pool.query(
       `SELECT
          COUNT(*) AS total,
-         SUM(estatus = 'Pendiente')    AS pendientes,
          SUM(estatus = 'En proceso')   AS en_proceso,
-         SUM(estatus = 'Resuelto')     AS resueltos,
-         SUM(estatus = 'No Resuelto')  AS no_resueltos,
-         SUM(estatus = 'Rechazado')    AS rechazados
+         SUM(estatus = 'Aceptado')     AS aceptados,
+         SUM(estatus = 'Rechazado')    AS rechazados,
+         SUM(prioridad = 'Urgente')    AS p_urgente,
+         SUM(prioridad = 'Alta')       AS p_alta,
+         SUM(prioridad = 'Media')      AS p_media,
+         SUM(prioridad = 'Baja')       AS p_baja
        FROM solicitud`
     );
     return row;
   },
 
   actualizarEstatus: async (id_solicitud, estatus) => {
-    const PERMITIDOS = new Set(["En proceso", "Resuelto", "No Resuelto", "Rechazado"]);
+    const PERMITIDOS = new Set(["En proceso", "Aceptado", "Rechazado"]);
     if (!PERMITIDOS.has(estatus)) throw new Error("Estatus no válido");
     const [result] = await pool.query(
       "UPDATE solicitud SET estatus = ? WHERE id_solicitud = ?",

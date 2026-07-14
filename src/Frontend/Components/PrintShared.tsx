@@ -76,7 +76,7 @@ export function PageHeader({ titulo, subtitulo, dept, metaRows }: {
   return (
     <header className="pr-page-header">
       <div className="pr-header-logo">
-        <img src="/assets/img/logo negro.png" alt="Precision Truck Parts" className="pr-logo-img" />
+        <img src="/assets/img/log.png" alt="Precision Truck Parts" className="pr-logo-img" />
       </div>
       <div className="pr-header-center">
         <span className="pr-header-company">PRECISION TRUCK PARTS &amp; ACCESSORIES</span>

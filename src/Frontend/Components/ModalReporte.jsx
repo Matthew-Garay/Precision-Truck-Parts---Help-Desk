@@ -17,7 +17,9 @@ import Modal from "./Modal";
 const ORANGE = "#F47920";
 
 export default function ModalReporte({ T, admins = [], onClose, onGenerar, generando = false }) {
-  const [params, setParams] = useState({ fecha_inicio: "", fecha_fin: "", id_tecnico: "todos" });
+  const hoy = new Date().toISOString().slice(0, 10);
+  const primerDiaMes = hoy.slice(0, 8) + "01";
+  const [params, setParams] = useState({ fecha_inicio: primerDiaMes, fecha_fin: hoy, id_tecnico: "todos" });
   const set    = (k, v) => setParams(p => ({ ...p, [k]: v }));
   const valido = params.fecha_inicio && params.fecha_fin;
   const isDark = T?.isDark ?? false;
@@ -54,12 +56,13 @@ export default function ModalReporte({ T, admins = [], onClose, onGenerar, gener
       T={T}
       title="Generar Reporte"
       subtitle="Define el rango y los parámetros"
-      icon={<FileDown size={14} aria-hidden="true" color="rgba(255,255,255,0.75)" />}
+      icon={<FileDown size={14} aria-hidden="true" />}
       onClose={onClose}
       onConfirm={valido && !generando ? () => onGenerar(params) : undefined}
       confirmLabel={generando ? "Generando…" : "Generar Reporte"}
       loading={generando}
       maxWidth="400px"
+      variant="info"
     >
       <Field htmlFor="mr-fecha-inicio" label="Fecha inicio">
         <input
@@ -87,6 +90,7 @@ export default function ModalReporte({ T, admins = [], onClose, onGenerar, gener
         />
       </Field>
 
+      {admins.length > 0 && (
       <Field htmlFor="mr-tecnico" label="Técnico">
         <select
           id="mr-tecnico"
@@ -102,6 +106,7 @@ export default function ModalReporte({ T, admins = [], onClose, onGenerar, gener
           ))}
         </select>
       </Field>
+      )}
     </Modal>
   );
 }

@@ -39,7 +39,7 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
         <button onClick={() => onNavigate("/usuario/dashboard")} className="focus:outline-none" style={{ cursor: "pointer" }}>
           <img src="/assets/img/logo.png" alt="PTP"
             className="object-contain"
-            style={{ height: "var(--sidebar-logo-h)", width: "auto", maxWidth: "180px", mixBlendMode: "screen" }} />
+            style={{ height: "clamp(72px,10vh,110px)", width: "auto", maxWidth: "200px", mixBlendMode: "screen" }} />
         </button>
       </div>
 

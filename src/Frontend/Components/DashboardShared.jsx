@@ -85,7 +85,7 @@ function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
       )}
 
       {/* Zona de barras */}
-      <div style={{ display: "flex", alignItems: "flex-end", gap: "4px", height: "68px", width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: "3px", height: "48px", width: "100%" }}>
         {tendencia.map((t, i) => {
           const esActivo = i === idxActivo;
           const pctT = t.total     > 0 ? Math.max((t.total     / maxVal) * 100, 5) : 0;
@@ -123,7 +123,7 @@ function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
 
       {/* Panel de datos globales */}
       <div style={{
-        marginTop: "10px", borderRadius: "8px", overflow: "hidden",
+        marginTop: "6px", borderRadius: "6px", overflow: "hidden",
         border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`,
       }}>
         <div style={{
@@ -136,7 +136,7 @@ function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
             { label: "Tasa",      val: `${tasaGlobal}%`, color: tasaGlobal >= 75 ? "#16a34a" : tasaGlobal >= 50 ? "#ca8a04" : "#dc2626" },
           ].map(({ label, val, color }, i) => (
             <div key={i} style={{
-              padding: "7px 8px",
+              padding: "4px 6px",
               borderRight: i < 2 ? `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}` : "none",
               display: "flex", flexDirection: "column", alignItems: "center", gap: "2px",
             }}>
@@ -148,7 +148,7 @@ function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
       </div>
 
       {/* Leyenda */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "8px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "5px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
           <span style={{ width: "8px", height: "8px", borderRadius: "2px", background: T.orange, flexShrink: 0 }} />
           <span style={{ fontSize: "9px", fontWeight: 600, color: isDark ? "rgba(255,255,255,0.35)" : "#94a3b8" }}>Total</span>
@@ -233,22 +233,22 @@ export function SeccionMetricas({ T, metricas }) {
   const maxDepto = Math.max(...deptos.map(d => d.total), 1);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3 w-full">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2 w-full">
 
       {/* Tiempo promedio de resolucion */}
       <div className="rounded-xl overflow-hidden" style={cardStyle}>
-        <div className="px-4 py-2.5 flex items-center gap-2" style={hdr}>
-          <div className="w-1 h-3.5 rounded-full" style={{ background: "#3b82f6" }} />
-          <Timer size={11} style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }} />
+        <div className="px-3 py-1.5 flex items-center gap-2" style={hdr}>
+          <div className="w-1 h-3 rounded-full" style={{ background: "#3b82f6" }} />
+          <Timer size={10} style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }} />
           <p className="text-[10px] font-black uppercase tracking-widest"
             style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Tiempo Prom. Resolucion</p>
         </div>
-        <div className="px-4 py-4 flex flex-col items-center justify-center gap-1">
-          <span className="text-3xl sm:text-4xl font-black" style={{ color: "#3b82f6" }}>{tiempoLabel}</span>
+        <div className="px-3 py-2 flex flex-col items-center justify-center gap-0.5">
+          <span className="text-2xl sm:text-3xl font-black" style={{ color: "#3b82f6" }}>{tiempoLabel}</span>
           <span className="text-[10px] font-semibold" style={{ color: T.textMuted }}>promedio por ticket resuelto</span>
-          <div className="mt-2 flex items-center gap-1.5 px-3 py-1 rounded-full"
+          <div className="mt-1 flex items-center gap-1.5 px-2 py-0.5 rounded-full"
             style={{ background: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff", border: "1px solid rgba(59,130,246,0.2)" }}>
-            <Clock size={10} style={{ color: "#3b82f6" }} />
+            <Clock size={9} style={{ color: "#3b82f6" }} />
             <span className="text-[10px] font-bold" style={{ color: "#3b82f6" }}>SLA: 2 días</span>
           </div>
         </div>
@@ -256,13 +256,13 @@ export function SeccionMetricas({ T, metricas }) {
 
       {/* Tickets por departamento */}
       <div className="rounded-xl overflow-hidden" style={cardStyle}>
-        <div className="px-4 py-2.5 flex items-center gap-2" style={hdr}>
-          <div className="w-1 h-3.5 rounded-full" style={{ background: "#F47920" }} />
-          <Building2 size={11} style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }} />
+        <div className="px-3 py-1.5 flex items-center gap-2" style={hdr}>
+          <div className="w-1 h-3 rounded-full" style={{ background: "#F47920" }} />
+          <Building2 size={10} style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }} />
           <p className="text-[10px] font-black uppercase tracking-widest"
             style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Tickets por Departamento</p>
         </div>
-        <div className="px-4 py-3 flex flex-col gap-2">
+        <div className="px-3 py-2 flex flex-col gap-1.5">
           {deptos.length === 0 ? (
             <p className="text-xs text-center py-3" style={{ color: T.textFaint }}>Sin datos</p>
           ) : deptos.map((d, i) => {
@@ -293,10 +293,10 @@ export function SeccionMetricas({ T, metricas }) {
 
       {/* Tendencia mensual */}
       <div className="rounded-xl overflow-hidden" style={cardStyle}>
-        <div className="px-4 py-2.5 flex items-center justify-between" style={hdr}>
+        <div className="px-3 py-1.5 flex items-center justify-between" style={hdr}>
           <div className="flex items-center gap-2">
-            <div className="w-1 h-3.5 rounded-full" style={{ background: "#16a34a" }} />
-            <BarChart2 size={11} style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }} />
+            <div className="w-1 h-3 rounded-full" style={{ background: "#16a34a" }} />
+            <BarChart2 size={10} style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }} />
             <p className="text-[10px] font-black uppercase tracking-widest"
               style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Tendencia Mensual</p>
           </div>
@@ -314,7 +314,7 @@ export function SeccionMetricas({ T, metricas }) {
             );
           })()}
         </div>
-        <div className="px-3 pt-3 pb-2">
+        <div className="px-2 pt-2 pb-1">
           {tendencia.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-6 gap-2">
               <BarChart2 size={20} style={{ color: T.textFaint }} />
@@ -408,14 +408,14 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
   const { card: cardStyle, hdr } = useCardStyles(T, "elevated");
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3 w-full">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2 w-full">
       <div className="rounded-xl overflow-hidden" style={cardStyle}>
-        <div className="px-4 py-2.5 flex items-center gap-2" style={hdr}>
-          <div className="w-1 h-3.5 rounded-full" style={{ background: "#F47920" }} />
+        <div className="px-3 py-1.5 flex items-center gap-2" style={hdr}>
+          <div className="w-1 h-3 rounded-full" style={{ background: "#F47920" }} />
           <p className="text-[10px] font-black uppercase tracking-widest"
             style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Reportes por Prioridad</p>
         </div>
-        <div className="px-4 py-3 flex flex-col gap-2.5">
+        <div className="px-3 py-2 flex flex-col gap-1.5">
           {prioridadData.map((p, i) => {
             const totalFila = p.valor + p.insumos;
             const pct = total > 0 ? Math.round((totalFila / (total + solicitudes.length)) * 100) : 0;
@@ -437,7 +437,7 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
                     )}
                   </div>
                 </div>
-                <div className="relative h-4 rounded-full overflow-hidden"
+                <div className="relative h-3 rounded-full overflow-hidden"
                   style={{ background: isDark ? "rgba(255,255,255,0.06)" : p.bg }}>
                   <div className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-700"
                     style={{ width: `${pct > 0 ? Math.max(pct, 10) : 0}%`, background: p.color }}>
@@ -455,14 +455,14 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
       </div>
 
       <div className="rounded-xl overflow-hidden flex flex-col" style={cardStyle}>
-        <div className="px-4 py-2.5 flex items-center gap-2" style={hdr}>
-          <div className="w-1 h-3.5 rounded-full" style={{ background: "#F47920" }} />
+        <div className="px-3 py-1.5 flex items-center gap-2" style={hdr}>
+          <div className="w-1 h-3 rounded-full" style={{ background: "#F47920" }} />
           <p className="text-[10px] font-black uppercase tracking-widest"
             style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Reportes por Estatus</p>
         </div>
-        <div className="px-4 py-3 flex gap-4 flex-1">
-          <div className="flex-shrink-0"><GraficaPastel data={estatusData} size={80} T={T} /></div>
-          <div className="flex flex-col gap-2.5 flex-1 justify-center">
+        <div className="px-3 py-2 flex gap-3 flex-1">
+          <div className="flex-shrink-0"><GraficaPastel data={estatusData} size={64} T={T} /></div>
+          <div className="flex flex-col gap-1.5 flex-1 justify-center">
             {estatusData.map((e, i) => {
               const pct = totalEstatus > 0 ? Math.round((e.valor / totalEstatus) * 100) : 0;
               return (
@@ -486,7 +486,7 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
                 </div>
               );
             })}
-            <div className="mt-1 pt-2 border-t" style={{ borderColor: isDark ? "rgba(255,255,255,0.07)" : T.border }}>
+            <div className="mt-1 pt-1 border-t" style={{ borderColor: isDark ? "rgba(255,255,255,0.07)" : T.border }}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>
                   Tasa de resolucion
@@ -545,20 +545,20 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
         className="flex flex-col rounded-xl overflow-hidden w-full"
         style={{ background: bgCol, border: `1px solid ${borderCol}`,
           boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 1px 6px rgba(0,0,0,0.06)' }}>
-        <div className="px-4 py-3 flex items-center justify-between flex-shrink-0"
+        <div className="px-3 py-2 flex items-center justify-between flex-shrink-0"
           style={{ background: isDark ? 'rgba(255,255,255,0.03)' : T.surfaceAlt,
             borderBottom: `1px solid ${borderCol}` }}>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full" style={{ background: prioridad.color }} />
-            <span className="text-sm font-bold" style={{ color: prioridad.color }}>{prioridad.label}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{ background: prioridad.color }} />
+            <span className="text-xs font-bold" style={{ color: prioridad.color }}>{prioridad.label}</span>
           </div>
-          <span className="px-2 py-0.5 rounded-full text-xs font-bold"
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
             style={{ background: isDark ? prioridad.bgDark : prioridad.bg, color: prioridad.color }}>
             {total}
           </span>
         </div>
-        <div className="p-3 flex flex-col gap-2.5"
-          style={{ minHeight: '80px' }}>
+        <div className="p-2 flex flex-col gap-1.5"
+          style={{ minHeight: '60px' }}>
           {total === 0 ? (
             <div className="flex items-center justify-center py-6">
               <p className="text-xs" style={{ color: T.textFaint }}>Sin elementos</p>
@@ -576,28 +576,26 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
               // ── Card de INSUMO ──────────────────────────────────────
               <div key={`sol-${item.id_solicitud}`}
                 onClick={() => onVerSolicitud?.(item)}
-                className={`p-3 rounded-xl flex flex-col gap-2${onVerSolicitud ? ' cursor-pointer transition-all hover:scale-[1.01] active:scale-95' : ''}`}
+                className={`p-2 rounded-lg flex flex-col gap-1${onVerSolicitud ? ' cursor-pointer transition-all hover:scale-[1.01] active:scale-95' : ''}`}
                 style={{ background: cardBg, border: `1px solid ${cardBorder}`,
                   boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.3)' : '0 1px 4px rgba(59,130,246,0.08)' }}>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: prioridad.color }} />
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: prioridad.color }} />
                     <span className="text-[10px] font-mono font-black" style={{ color: '#3b82f6' }}>
                       #{item.folio_solicitud}
                     </span>
                   </div>
-                  {/* Badge INSUMO */}
-                  <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black flex-shrink-0"
+                  <span className="flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[9px] font-black flex-shrink-0"
                     style={{ background: isDark ? 'rgba(59,130,246,0.2)' : '#dbeafe',
                       color: '#3b82f6', border: '1px solid rgba(59,130,246,0.35)' }}>
-                    <Package size={8} />
-                    INSUMO
+                    <Package size={7} />INSUMO
                   </span>
                 </div>
-                <p className="text-xs font-semibold leading-snug line-clamp-2" style={{ color: T.text }}>
+                <p className="text-[10px] font-semibold leading-snug line-clamp-2" style={{ color: T.text }}>
                   {item.insumos_nombres || '—'}
                 </p>
-                <div className="pt-1.5 flex items-center justify-between"
+                <div className="pt-1 flex items-center justify-between"
                   style={{ borderTop: `1px solid ${cardBorder}` }}>
                   <span className="text-[10px] truncate max-w-[60%]" style={{ color: T.textMuted }}>
                     {item.nombre_empleado || '—'}
@@ -612,24 +610,24 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
             ) : (
               // ── Card de TICKET ──────────────────────────────────────
               <div key={`tk-${item.id_ticket}`}
-                className="p-3 rounded-xl cursor-pointer transition-all hover:scale-[1.01] active:scale-95 flex flex-col gap-2"
+                className="p-2 rounded-lg cursor-pointer transition-all hover:scale-[1.01] active:scale-95 flex flex-col gap-1"
                 style={{ background: cardBg, border: `1px solid ${cardBorder}`,
                   boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.06)' }}
                 onClick={() => onVerTicket(item)}>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: prioridad.color }} />
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: prioridad.color }} />
                     <span className="text-[10px] font-mono font-black" style={{ color: T.orange }}>
                       #{item.folio_ticket}
                     </span>
                   </div>
                   <img src={isDark ? '/assets/img/logo%20blanco.png' : '/assets/img/logo%20negro.png'}
-                    alt="logo" className="h-4 object-contain opacity-50" />
+                    alt="logo" className="h-3 object-contain opacity-50" />
                 </div>
-                <p className="text-xs font-semibold leading-snug line-clamp-2" style={{ color: T.text }}>
+                <p className="text-[10px] font-semibold leading-snug line-clamp-2" style={{ color: T.text }}>
                   {item.titulo}
                 </p>
-                <div className="pt-1.5 flex items-center justify-between"
+                <div className="pt-1 flex items-center justify-between"
                   style={{ borderTop: `1px solid ${cardBorder}` }}>
                   <span className="text-[10px] truncate max-w-[60%]" style={{ color: T.textMuted }}>
                     {item.nombre_empleado || '—'}
@@ -649,7 +647,7 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
   });
 
   if (inline) return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" style={{ minWidth: 0 }}>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2" style={{ minWidth: 0 }}>
       {columnas}
     </div>
   );
@@ -691,55 +689,50 @@ export function PanelDerecho({ T, nombre, departamento, foto, tickets = [], tota
       <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
 
         {/* -- PERFIL -- */}
-        <div className="flex-shrink-0 px-3 pt-2 pb-2" style={{ borderBottom: `1px solid ${T.border}` }}>
-          <div className="rounded-xl overflow-hidden"
-            style={{ background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt, border: `1px solid ${T.border}` }}>
-            <div style={{ height: "22px", background: `linear-gradient(135deg, ${T.orange}40, #3b82f630)` }} />
-            <div className="px-3 pb-2" style={{ marginTop: "-14px" }}>
-              <div className="flex items-end gap-2">
-                <div className="flex-shrink-0 rounded-full overflow-hidden"
-                  style={{ width: "30px", height: "30px", border: `2px solid ${T.surface}`, outline: `2px solid ${T.orange}`, background: T.bg }}>
-                  {foto
-                    ? <img src={foto} alt="perfil" className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center"><User size={13} style={{ color: T.textFaint }} /></div>}
-                </div>
-                <div className="min-w-0 pb-0.5">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold"
-                    style={{ background: isDark ? "rgba(22,163,74,0.18)" : "#f0fdf4", color: "#16a34a", border: `1px solid rgba(22,163,74,0.3)` }}>
-                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#16a34a" }} />
-                    Activo
-                  </span>
-                </div>
-              </div>
-              <p className="text-[12px] font-black truncate mt-1" style={{ color: T.text }}>{nombre || "—"}</p>
-              <p className="text-[10px] truncate" style={{ color: T.textMuted }}>{departamento || "—"}</p>
+        <div className="flex-shrink-0 px-3 pt-3 pb-3" style={{ borderBottom: `1px solid ${T.border}` }}>
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="flex-shrink-0 rounded-full overflow-hidden"
+              style={{ width: "42px", height: "42px", border: `2px solid ${T.surface}`, outline: `2px solid ${T.orange}`, background: T.bg, boxShadow: `0 0 0 3px ${isDark ? "rgba(244,121,32,0.15)" : "rgba(244,121,32,0.1)"}` }}>
+              {foto
+                ? <img src={foto} alt="perfil" className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex items-center justify-center"><User size={17} style={{ color: T.textFaint }} /></div>}
+            </div>
+            <div className="w-full text-center">
+              <p className="text-[11px] font-bold leading-snug" style={{ color: T.text, wordBreak: "break-word" }}>{nombre || "—"}</p>
+              <p className="text-[10px] leading-tight mt-0.5 truncate" style={{ color: T.textMuted }}>{departamento || "—"}</p>
+              <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[9px] font-semibold"
+                style={{ background: isDark ? "rgba(22,163,74,0.18)" : "#f0fdf4", color: "#16a34a", border: `1px solid rgba(22,163,74,0.3)` }}>
+                <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#16a34a", flexShrink: 0 }} />
+                Activo
+              </span>
             </div>
           </div>
         </div>
 
         {/* -- RELOJ -- */}
-        <div className="flex-shrink-0 px-3 py-1.5" style={{ borderBottom: `1px solid ${T.border}` }}>
+        <div className="flex-shrink-0 px-3 py-2" style={{ borderBottom: `1px solid ${T.border}` }}>
+          <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: T.textFaint }}>Fecha y hora</p>
           <RelojFecha T={T} />
         </div>
 
         {/* -- MÉTRICAS -- */}
-        <div className="flex-shrink-0 px-3 py-2 flex flex-col gap-1.5" style={{ borderBottom: `1px solid ${T.border}` }}>
-          <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>Mis estadísticas</p>
-          <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+        <div className="flex-shrink-0 px-3 py-2.5 flex flex-col gap-2" style={{ borderBottom: `1px solid ${T.border}` }}>
+          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: T.textFaint }}>Mis estadísticas</p>
+          <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
             {stats.map((s, i) => (
-              <div key={i} className="flex flex-col items-center justify-center py-1.5 rounded-lg gap-0.5"
-                style={{ background: isDark ? s.bgD : s.bgL, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`, minWidth: 0 }}>
-                <s.icon size={11} style={{ color: s.color, flexShrink: 0 }} />
-                <span className="font-black leading-none" style={{ color: s.color, fontSize: "17px" }}>{s.valor}</span>
-                <span className="font-semibold text-center leading-tight" style={{ color: T.textFaint, fontSize: "9px" }}>{s.label}</span>
+              <div key={i} className="flex flex-col items-center justify-center py-2.5 rounded-xl gap-1"
+                style={{ background: isDark ? s.bgD : s.bgL, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`, minWidth: 0 }}>
+                <s.icon size={13} style={{ color: s.color, flexShrink: 0 }} />
+                <span className="font-black leading-none" style={{ color: s.color, fontSize: "18px" }}>{s.valor}</span>
+                <span className="font-medium text-center leading-tight px-0.5" style={{ color: T.textFaint, fontSize: "9px" }}>{s.label}</span>
               </div>
             ))}
           </div>
-          <div className="px-3 py-1.5 rounded-lg"
+          <div className="px-3 py-2 rounded-xl"
             style={{ background: isDark ? "rgba(22,163,74,0.08)" : "#f0fdf4", border: `1px solid ${isDark ? "rgba(22,163,74,0.2)" : "#bbf7d0"}` }}>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-bold" style={{ color: T.textMuted }}>Tasa de resolución</span>
-              <span className="text-[12px] font-black" style={{ color: "#16a34a" }}>{tasaRes}%</span>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-semibold" style={{ color: T.textMuted }}>Tasa de resolución</span>
+              <span className="text-[13px] font-black" style={{ color: "#16a34a" }}>{tasaRes}%</span>
             </div>
             <div className="h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.08)" : "#dcfce7" }}>
               <div className="h-full rounded-full transition-all duration-700"
@@ -749,19 +742,12 @@ export function PanelDerecho({ T, nombre, departamento, foto, tickets = [], tota
         </div>
 
         {/* -- CALENDARIO -- */}
-        <div className="flex-shrink-0 px-3 py-2 flex flex-col gap-1.5">
-          <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>Calendario</p>
+        <div className="flex-shrink-0 px-3 py-2.5 flex flex-col gap-1.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: T.textFaint }}>Calendario</p>
           <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${T.border}` }}>
-            <div className="px-3 py-2" style={{ background: T.surface }}>
+            <div className="px-2 py-2" style={{ background: T.surface }}>
               <Calendario T={T} />
             </div>
-          </div>
-          <div className="flex items-center justify-center py-3">
-            <img
-              src={isDark ? '/assets/img/logo%20blanco.png' : '/assets/img/logo%20negro.png'}
-              alt="Precision Trucks"
-              style={{ height: "48px", objectFit: "contain", opacity: 0.35 }}
-            />
           </div>
         </div>
 

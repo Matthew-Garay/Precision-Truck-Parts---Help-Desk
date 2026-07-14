@@ -16,10 +16,8 @@ export function waitForImages(): Promise<void> {
 }
 
 export async function triggerPrint(): Promise<void> {
-  await new Promise(r => setTimeout(r, 300));
+  await new Promise(r => setTimeout(r, 400));
   await waitForImages();
-  document.body.classList.remove("print-preview");
-  await new Promise(r => setTimeout(r, 100));
+  await new Promise(r => setTimeout(r, 150));
   window.print();
-  document.body.classList.add("print-preview");
 }

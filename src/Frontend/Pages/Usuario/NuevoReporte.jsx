@@ -597,7 +597,7 @@ const card = {
                       e.currentTarget.parentElement.style.boxShadow   = "none";
                     }}
                     className="outline-none px-3 py-2 text-xs leading-relaxed"
-                    style={{ minHeight:"110px", color:textColor, background:"transparent" }}
+                    style={{ minHeight:"200px", color:textColor, background:"transparent" }}
                     data-placeholder="Describe el problema con el mayor detalle posible: cuándo ocurrió, qué estabas haciendo, mensajes de error, etc."
                     ref={el => { editorRef.current = el; }}
                   />

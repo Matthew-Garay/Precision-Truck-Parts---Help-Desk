@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Eye, Inbox, FileDown, Star } from "lucide-react";
 import { apiFetch } from "../../Config/api";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
@@ -22,71 +22,95 @@ function Estrellas({ n, isDark }) {
 export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onRecargarRef }) {
   const isDark = T.isDark;
   const [tickets,      setTickets]      = useState([]);
+  const [page,         setPage]         = useState(1);
+  const [pages,        setPages]        = useState(1);
+  const [limit,        setLimit]        = useState(25);
+  const [totalCount,   setTotalCount]   = useState(0);
+  const [categoriasOpts, setCategoriasOpts] = useState([]);
   const [filtros,      setFiltros]      = useState({ busqueda:"", estatus:"Todos", prioridad:"Todos", categoria:"Todos" });
   const [modalReporte, setModalReporte] = useState(false);
   const [paramReporte, setParamReporte] = useState({ fecha_inicio:"", fecha_fin:"", periodo:"mensual" });
-  const [pagina,       setPagina]       = useState(1);
   const [cargando,     setCargando]     = useState(false);
-  const LIMIT = 50;
+  const [statsGlobal,  setStatsGlobal]  = useState({ resueltos:0, activos:0, noRes:0, califs:[] });
 
-  const cargarRef = useRef(null);
+  const filtrosRef = useRef(filtros);
+  filtrosRef.current = filtros;
+
+  const cargar = useCallback((f, p = 1, l = 25) => {
+    if (!usuario?.id_empleado) return;
+    setCargando(true);
+    const qs = new URLSearchParams({ limit: l, page: p });
+    if (f.busqueda)                             qs.set("q",         f.busqueda);
+    if (f.estatus   && f.estatus   !== "Todos") qs.set("estatus",   f.estatus);
+    if (f.prioridad && f.prioridad !== "Todos") qs.set("prioridad", f.prioridad);
+    if (f.categoria && f.categoria !== "Todos") qs.set("categoria", f.categoria);
+    apiFetch(`/api/tickets/empleado/${usuario.id_empleado}?${qs}`)
+      .then(r => r.json())
+      .then(d => {
+        const lista = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
+        setTickets(prev => JSON.stringify(prev) === JSON.stringify(lista) ? prev : lista);
+        if (!Array.isArray(d) && typeof d.total === "number") {
+          setTotalCount(d.total);
+          setPages(d.pages || Math.max(1, Math.ceil(d.total / l)));
+        } else {
+          setTotalCount(lista.length);
+          setPages(1);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCargando(false));
+  }, [usuario?.id_empleado]); // eslint-disable-line
+
+  const filtrosStr = JSON.stringify(filtros);
+  useEffect(() => { cargar(filtros, page, limit); }, [filtrosStr, page, limit]); // eslint-disable-line
 
   useEffect(() => {
+    if (onRecargarRef) onRecargarRef.current = () => cargar(filtrosRef.current, page, limit);
+  }, [onRecargarRef, cargar, page, limit]);
+
+  useAutoRefresh(() => cargar(filtrosRef.current, page, limit), 30000, [page, limit]);
+
+  // Carga sin filtros una sola vez para stats globales y opciones de categoría
+  useEffect(() => {
     if (!usuario?.id_empleado) return;
-    const cargar = () => {
-      setCargando(true);
-      return apiFetch(`/api/tickets/empleado/${usuario.id_empleado}`)
-        .then(r => r.json())
-        .then(d => {
-          const arr = Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : null;
-          if (arr) setTickets(prev => JSON.stringify(prev) === JSON.stringify(arr) ? prev : arr);
-        })
-        .catch(() => {})
-        .finally(() => setCargando(false));
-    };
-    cargarRef.current = cargar;
-    if (onRecargarRef) onRecargarRef.current = cargar;
-  }, [usuario?.id_empleado, onRecargarRef]);
+    apiFetch(`/api/tickets/empleado/${usuario.id_empleado}?limit=2000&page=1`)
+      .then(r => r.json())
+      .then(d => {
+        const lista = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
+        setCategoriasOpts(Array.from(new Set(lista.map(t => t.nombre_categoria).filter(Boolean))).sort());
+        setStatsGlobal({
+          resueltos: lista.filter(t => t.estatus === "Resuelto").length,
+          activos:   lista.filter(t => t.estatus === "En proceso").length,
+          noRes:     lista.filter(t => t.estatus === "No Resuelto").length,
+          califs:    lista.filter(t => t.calificacion && parseInt(t.calificacion) > 0),
+        });
+      })
+      .catch(() => {});
+  }, [usuario?.id_empleado]); // eslint-disable-line
 
-  useAutoRefresh(() => cargarRef.current?.(), 30000, [usuario?.id_empleado]);
-
-  const total     = tickets.length;
-  const activos   = tickets.filter(t => t.estatus === "En proceso").length;
-  const resueltos = tickets.filter(t => t.estatus === "Resuelto").length;
-  const noRes     = tickets.filter(t => t.estatus === "No Resuelto").length;
-  const califs    = tickets.filter(t => t.calificacion && parseInt(t.calificacion) > 0);
+  const total     = totalCount;
+  const resueltos = statsGlobal.resueltos;
+  const activos   = statsGlobal.activos;
+  const noRes     = statsGlobal.noRes;
+  const califs    = statsGlobal.califs;
   const pctSat    = califs.length > 0
     ? Math.round((califs.reduce((s, t) => s + parseInt(t.calificacion), 0) / (califs.length * 5)) * 100)
     : 0;
   const satColor  = pctSat >= 75 ? "#16a34a" : pctSat >= 50 ? "#ca8a04" : "#dc2626";
 
-  const categoriasOpts = ["Todos", ...Array.from(new Set(tickets.map(t => t.nombre_categoria).filter(Boolean)))];
+  const toOpts = arr => ["Todos", ...arr];
   const camposFiltro = [
-    { key:"busqueda",  label:"Búsqueda Rápida", type:"search",  placeholder:"Título o folio..." },
+    { key:"busqueda",  label:"Búsqueda Rápida", type:"search",  placeholder:"Título o folio...", debounce:300 },
     { key:"estatus",   label:"Estatus",          type:"select",  opts:["Todos","Resuelto","En proceso","No Resuelto"] },
-    { key:"prioridad", label:"Prioridad",         type:"select",  opts:["Todos","Urgente","Alta","Media"] },
-    { key:"categoria", label:"Categoría",         type:"select",  opts:categoriasOpts },
+    { key:"prioridad", label:"Prioridad",         type:"select",  opts:["Todos","Urgente","Alta","Media","Baja"] },
+    { key:"categoria", label:"Categoría",         type:"select",  opts:toOpts(categoriasOpts) },
   ];
 
-  const limpiar = () => { setFiltros({ busqueda:"", estatus:"Todos", prioridad:"Todos", categoria:"Todos" }); setPagina(1); };
+  const limpiar = () => { setFiltros({ busqueda:"", estatus:"Todos", prioridad:"Todos", categoria:"Todos" }); setPage(1); };
   const hayFiltros = filtros.busqueda || filtros.estatus!=="Todos" || filtros.prioridad!=="Todos" || filtros.categoria!=="Todos";
-  const handleFiltroChange = (k, v) => { setFiltros(p => ({...p,[k]:v})); setPagina(1); };
+  const handleFiltroChange = (k, v) => { setFiltros(p => ({...p,[k]:v})); setPage(1); };
 
-  const filtrados = tickets.filter(t => {
-    if (filtros.busqueda) {
-      const q = filtros.busqueda.toLowerCase();
-      if (!t.titulo?.toLowerCase().includes(q) && !t.folio_ticket?.toLowerCase().includes(q)) return false;
-    }
-    if (filtros.prioridad !== "Todos" && t.prioridad        !== filtros.prioridad)  return false;
-    if (filtros.estatus   !== "Todos" && t.estatus          !== filtros.estatus)    return false;
-    if (filtros.categoria !== "Todos" && t.nombre_categoria !== filtros.categoria)  return false;
-    return true;
-  });
-
-  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / LIMIT));
-  const paginados    = filtrados.slice((pagina - 1) * LIMIT, pagina * LIMIT);
-  const irPagina     = p => { if (p >= 1 && p <= totalPaginas) setPagina(p); };
-  const fmt          = d => d ? new Date(d).toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"}) : "-";
+  const fmt = d => d ? new Date(d).toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"}) : "-";
 
   const labelPeriodo = () => {
     const ahora = new Date();
@@ -174,7 +198,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
       return;
     }
     win.document.write(html); win.document.close();
-    win.onload = () => { win.focus(); win.print(); };
+    setTimeout(() => { win.focus(); win.print(); }, 600);
   };
 
   const { card, hdr } = useCardStyles(T);
@@ -319,7 +343,6 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           </button>
         </FiltrosToolbar>
 
-        {/* ── Tabla ── */}
         <div className="rounded-xl overflow-hidden flex flex-col" style={{ ...card, flex:"1 1 0", minHeight:0 }}>
           <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={hdr}>
             <div className="flex items-center gap-1.5">
@@ -332,39 +355,39 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
               )}
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
                 style={{ background:T.bg, color:T.textMuted, border:`1px solid ${T.border}` }}>
-                {filtrados.length} resultado{filtrados.length!==1?"s":""}{totalPaginas > 1 ? ` · pág. ${pagina}/${totalPaginas}` : ""}
+                {totalCount} resultado{totalCount!==1?"s":""}
               </span>
             </div>
           </div>
 
           {/* Móvil */}
-          <div className="flex flex-col gap-2 p-3 sm:hidden">
-            {paginados.length === 0
+          <div className="flex flex-col gap-2 p-3 sm:hidden" style={{ overflowY:"auto" }}>
+            {tickets.length === 0
               ? <div className="flex flex-col items-center justify-center py-8 gap-2">
                   <Inbox size={20} style={{ color:T.textFaint }}/>
                   <p className="text-xs font-bold" style={{ color:T.textMuted }}>{hayFiltros?"Sin resultados":"No hay incidencias"}</p>
                 </div>
-              : paginados.map(t => {
+              : tickets.map(t => {
+                  const calNum = t.calificacion ? parseInt(t.calificacion) : 0;
                   const eBg    = t.estatus==="Resuelto"?(isDark?"rgba(22,163,74,0.15)":"#dcfce7"):t.estatus==="No Resuelto"?(isDark?"rgba(220,38,38,0.15)":"#fee2e2"):(isDark?"rgba(234,88,12,0.15)":"#ffedd5");
                   const eColor = t.estatus==="Resuelto"?"#16a34a":t.estatus==="No Resuelto"?"#dc2626":"#ea580c";
                   return (
-                    <div key={t.id_ticket}
-                      className="rounded-xl p-3 flex flex-col gap-2 active:scale-[0.98] transition-all cursor-pointer"
-                      style={{ background:isDark?"rgba(255,255,255,0.04)":T.surfaceAlt, border:`1px solid ${T.border}` }}
+                    <div key={t.id_ticket} className="rounded-xl p-3 flex flex-col gap-2 cursor-pointer"
+                      style={{ ...card, border:`1px solid ${T.border}` }}
                       onClick={() => onVerTicket?.(t)}>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-[11px] font-black" style={{ color:T.orange }}>{t.folio_ticket}</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background:eBg, color:eColor }}>{t.estatus}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[10px] font-bold" style={{ color:T.orange }}>{t.folio_ticket}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold" style={{ background:eBg, color:eColor }}>{t.estatus}</span>
                       </div>
-                      <p className="text-xs font-semibold leading-snug" style={{ color:T.text }}>{t.titulo}</p>
+                      <p className="text-[12px] font-semibold truncate" style={{ color:T.text }}>{t.titulo}</p>
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1 text-[11px] font-bold">
-                          <span className="w-2 h-2 rounded-full" style={{ background:PCOLOR[t.prioridad]||"#94a3b8" }}/>
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background:PCOLOR[t.prioridad]||"#94a3b8" }}/>
                           <span style={{ color:PCOLOR[t.prioridad]||T.textMuted }}>{t.prioridad}</span>
                         </span>
-                        {t.calificacion && parseInt(t.calificacion) > 0 && <Estrellas n={parseInt(t.calificacion)} isDark={isDark} />}
-                        <span className="text-[11px]" style={{ color:T.textFaint }}>{fmt(t.fecha_subido)}</span>
+                        <span className="text-[10px]" style={{ color:T.textMuted }}>{fmt(t.fecha_subido)}</span>
                       </div>
+                      {calNum > 0 && <Estrellas n={calNum} isDark={isDark}/>}
                     </div>
                   );
                 })
@@ -372,7 +395,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           </div>
 
           {/* Desktop */}
-          <div className="hidden sm:block" style={{ overflowX:"auto" }}>
+          <div className="hidden sm:block overflow-y-auto overflow-x-auto" style={{ flex:"1 1 0", minHeight:0 }}>
             <table className="w-full border-collapse" style={{ minWidth:"760px" }}>
               <thead className="sticky top-0 z-10">
                 <tr style={{ background:isDark?"rgba(255,255,255,0.03)":T.surfaceAlt }}>
@@ -385,14 +408,14 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                 </tr>
               </thead>
               <tbody>
-                {paginados.length===0
+                {tickets.length===0
                   ? <tr><td colSpan={9}>
                       <div className="flex flex-col items-center justify-center py-12 gap-2">
                         <Inbox size={22} style={{ color:T.textFaint }}/>
                         <p className="text-xs font-bold" style={{ color:T.textMuted }}>{hayFiltros?"Sin resultados":"No hay incidencias registradas"}</p>
                       </div>
                     </td></tr>
-                  : paginados.map((t,i) => {
+                  : tickets.map((t,i) => {
                     const bgRow  = i%2===0?(isDark?"#141720":T.surface):(isDark?"#1c2030":T.surfaceAlt);
                     const calNum = t.calificacion?parseInt(t.calificacion):0;
                     const eBg    = t.estatus==="Resuelto"?(isDark?"rgba(22,163,74,0.15)":"#dcfce7"):t.estatus==="No Resuelto"?(isDark?"rgba(220,38,38,0.15)":"#fee2e2"):(isDark?"rgba(234,88,12,0.15)":"#ffedd5");
@@ -439,25 +462,28 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
               </tbody>
             </table>
           </div>
-        </div>
-
-        {/* ── Paginación ── */}
-        {totalPaginas > 1 && (
-          <div className="flex items-center justify-center gap-2 py-2">
-            {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
-              const start = Math.max(1, Math.min(pagina-2, totalPaginas-4));
-              const p = start + i;
-              if (p > totalPaginas) return null;
-              return (
-                <button key={p} onClick={() => irPagina(p)}
-                  className="w-8 h-8 rounded-lg text-[11px] font-bold transition-all hover:brightness-110"
-                  style={{ background:p===pagina?T.orange:(isDark?"rgba(255,255,255,0.06)":T.surfaceAlt), color:p===pagina?"#fff":T.textMuted, border:`1px solid ${p===pagina?T.orange:T.border}` }}>
-                  {p}
-                </button>
-              );
-            })}
+          {/* ── Paginación ── */}
+          <div className="flex items-center justify-between px-3 py-2 flex-shrink-0" style={{ borderTop:`1px solid ${T.border}`, background:T.bg }}>
+            <div className="flex items-center gap-2">
+              <button disabled={page<=1 || cargando} onClick={() => setPage(p => Math.max(1, p-1))}
+                className="px-2 py-1 rounded border" style={{ borderColor:T.border, background:T.surfaceAlt, color:T.text }}>
+                Anterior
+              </button>
+              <button disabled={page>=pages || cargando} onClick={() => setPage(p => Math.min(pages, p+1))}
+                className="px-2 py-1 rounded border" style={{ borderColor:T.border, background:T.surfaceAlt, color:T.text }}>
+                Siguiente
+              </button>
+              <span className="text-[11px] ml-2" style={{ color:T.textMuted }}>{`Página ${page} de ${pages}`}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label style={{ color:T.textMuted, fontSize:10 }}>Mostrar</label>
+              <select value={limit} onChange={e => { setLimit(parseInt(e.target.value,10)); setPage(1); }}
+                style={{ padding:"4px", borderRadius:6, border:`1px solid ${T.border}`, background:T.surface, color:T.text }}>
+                {[10,25,50,100].map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
           </div>
-        )}
+        </div>
 
       </div>
     </div>

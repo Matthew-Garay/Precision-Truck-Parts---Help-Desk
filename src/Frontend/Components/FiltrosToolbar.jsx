@@ -41,13 +41,13 @@ function inputBg(activo, isDark, orange) {
 }
 
 const BASE_INPUT = {
-  paddingTop: "3px", paddingBottom: "3px",
-  fontSize: "11px", borderRadius: R, outline: "none",
+  paddingTop: "2px", paddingBottom: "2px",
+  fontSize: "10px", borderRadius: R, outline: "none",
   transition: "border-color 0.15s, box-shadow 0.15s, background 0.15s",
 };
 
 const LABEL_ST = (activo, orange, textMuted) => ({
-  fontSize: "9px", fontWeight: 700, textTransform: "uppercase",
+  fontSize: "8px", fontWeight: 700, textTransform: "uppercase",
   letterSpacing: "0.07em",
   color: activo ? orange : textMuted,
 });
@@ -100,10 +100,10 @@ function SearchField({ campo, valor, onChange, disabled, T }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: "130px", flex: "1 1 130px", maxWidth: "200px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: "110px", flex: "1 1 110px", maxWidth: "170px" }}>
       <label style={LABEL_ST(activo, orange, textMuted)}>{campo.label}</label>
       <div style={{ position: "relative" }}>
-        <Search size={10} style={{ position: "absolute", left: "6px", top: "50%", transform: "translateY(-50%)", color: activo ? orange : textFaint, pointerEvents: "none" }} />
+        <Search size={9} style={{ position: "absolute", left: "5px", top: "50%", transform: "translateY(-50%)", color: activo ? orange : textFaint, pointerEvents: "none" }} />
         <input
           type="text"
           value={localVal}
@@ -112,7 +112,7 @@ function SearchField({ campo, valor, onChange, disabled, T }) {
           disabled={disabled}
           style={{
             ...BASE_INPUT,
-            width: "100%", paddingLeft: "22px", paddingRight: activo ? "20px" : "6px",
+            width: "100%", paddingLeft: "18px", paddingRight: activo ? "18px" : "5px",
             background: inputBg(activo, isDark, orange),
             border: `1px solid ${borderColor(activo, isDark, orange)}`,
             color: text,
@@ -146,7 +146,7 @@ function SelectField({ campo, valor, onChange, disabled, T }) {
   const activo = isActive(campo, currentVal);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: "90px", flexShrink: 0 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: "75px", flexShrink: 0 }}>
       <label style={LABEL_ST(activo, orange, textMuted)}>{campo.label}</label>
       <div style={{ position: "relative" }}>
         <select
@@ -156,7 +156,7 @@ function SelectField({ campo, valor, onChange, disabled, T }) {
           style={{
             ...BASE_INPUT,
             appearance: "none", WebkitAppearance: "none",
-            width: "100%", paddingLeft: "6px", paddingRight: "18px",
+            width: "100%", paddingLeft: "5px", paddingRight: "15px",
             fontWeight: activo ? 600 : 400,
             background: inputBg(activo, isDark, orange),
             border: `1px solid ${borderColor(activo, isDark, orange)}`,
@@ -186,7 +186,7 @@ function DateField({ campo, valor, onChange, disabled, T }) {
   const activo = !!valor;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: "110px", flexShrink: 0 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: "95px", flexShrink: 0 }}>
       <label style={LABEL_ST(activo, orange, textMuted)}>{campo.label}</label>
       <input
         type="date"
@@ -195,7 +195,7 @@ function DateField({ campo, valor, onChange, disabled, T }) {
         disabled={disabled}
         style={{
           ...BASE_INPUT,
-          paddingLeft: "6px", paddingRight: "6px",
+          paddingLeft: "5px", paddingRight: "5px",
           fontWeight: activo ? 600 : 400,
           background: inputBg(activo, isDark, orange),
           border: `1px solid ${borderColor(activo, isDark, orange)}`,
@@ -247,7 +247,7 @@ function CheckboxField({ campo, valor, onChange, disabled, T }) {
           disabled={disabled}
           style={{ position: "absolute", opacity: 0, width: 0, height: 0 }}
         />
-        <span style={{ fontSize: "11px", fontWeight: activo ? 600 : 400, color: activo ? orange : text }}>
+        <span style={{ fontSize: "10px", fontWeight: activo ? 600 : 400, color: activo ? orange : text }}>
           {campo.label}
         </span>
       </label>
@@ -337,15 +337,15 @@ export default function FiltrosToolbar({
 
       {/* ── Fila de controles ── */}
       <div style={{
-        display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: "8px",
-        padding: "7px 10px",
+        display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: "6px",
+        padding: "5px 8px",
         borderBottom: hayFiltros ? `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#E5E7EB"}` : "none",
       }}>
 
         {/* Icono + label */}
-        <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0, alignSelf: "flex-end", paddingBottom: "5px" }}>
-          <SlidersHorizontal size={11} style={{ color: orange }} />
-          <span style={{ fontSize: "9px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: textMuted }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0, alignSelf: "flex-end", paddingBottom: "3px" }}>
+          <SlidersHorizontal size={10} style={{ color: orange }} />
+          <span style={{ fontSize: "8px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: textMuted }}>
             Filtros
           </span>
         </div>
@@ -360,7 +360,7 @@ export default function FiltrosToolbar({
         <div style={{ flex: 1, minWidth: "8px" }} />
 
         {/* Acciones */}
-        <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", flexShrink: 0, paddingBottom: "1px" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", flexShrink: 0, paddingBottom: "1px", marginLeft: "auto" }}>
 
           {/* Spinner de carga */}
           {loading && <Spinner color={orange} />}
@@ -370,8 +370,8 @@ export default function FiltrosToolbar({
               onClick={onLimpiar}
               style={{
                 background: "none", border: "none", cursor: "pointer",
-                fontSize: "11px", fontWeight: 600, color: textMuted,
-                padding: "3px 2px", textDecoration: "underline", textUnderlineOffset: "2px",
+                fontSize: "10px", fontWeight: 600, color: textMuted,
+                padding: "2px 2px", textDecoration: "underline", textUnderlineOffset: "2px",
                 whiteSpace: "nowrap", transition: "color 0.15s",
               }}
               onMouseEnter={e => e.currentTarget.style.color = "#DC2626"}
@@ -387,20 +387,6 @@ export default function FiltrosToolbar({
       </div>
 
       {/* ── Tags de filtros activos ── */}
-      {hayFiltros && (
-        <div style={{
-          display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px",
-          padding: "4px 10px",
-          background: isDark ? "rgba(244,121,32,0.04)" : "rgba(244,121,32,0.03)",
-        }}>
-          <span style={{ fontSize: "10px", fontWeight: 700, color: textFaint, textTransform: "uppercase", letterSpacing: "0.07em", flexShrink: 0 }}>
-            Activos:
-          </span>
-          {camposActivos.map(campo => (
-            <FilterTag key={campo.key} campo={campo} valor={valores[campo.key]} onRemove={handleRemove} T={T} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

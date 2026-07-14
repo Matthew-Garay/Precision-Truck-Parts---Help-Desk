@@ -23,6 +23,7 @@ interface Solicitud {
   prioridad: string;
   nombre_empleado: string;
   nombre_departamento: string;
+  nombre_sucursal?: string | null;
   detalle: DetalleItem[];
 }
 
@@ -183,6 +184,7 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
             { label: "Folio",              value: solicitud.folio_solicitud, half: true },
             { label: "Solicitante",        value: solicitud.nombre_empleado, half: true },
             { label: "Departamento",       value: solicitud.nombre_departamento, half: true },
+            { label: "Sucursal",           value: solicitud.nombre_sucursal ?? "—", half: true },
             { label: "Fecha de solicitud", value: fechaSol, half: true },
             { label: "Estatus",            value: solicitud.estatus, half: true },
             { label: "Prioridad",          value: solicitud.prioridad, half: true },

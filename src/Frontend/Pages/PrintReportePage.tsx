@@ -1,23 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import PrintReporteListaView, { type ReportePayload } from "../Components/PrintReporteListaView";
 import { LoadingPrint, ErrorPrint } from "../Components/PrintShared";
-import { triggerPrint } from "../Config/printUtils";
+import { waitForImages } from "../Config/printUtils";
 
 export const REPORTE_STORAGE_KEY = "pr_reporte_lista_payload";
 
 export default function PrintReportePage() {
   const [payload, setPayload] = useState<ReportePayload | null>(null);
   const [error,   setError]   = useState("");
-  const printedRef             = useRef(false);
-
-  useEffect(() => {
-    document.body.classList.add("print-preview");
-    return () => document.body.classList.remove("print-preview");
-  }, []);
+  const [ready,   setReady]   = useState(false);
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(REPORTE_STORAGE_KEY);
+      const raw = localStorage.getItem(REPORTE_STORAGE_KEY);
       if (!raw) throw new Error("No se encontraron datos del reporte.");
       setPayload(JSON.parse(raw));
     } catch (e: any) {
@@ -26,20 +21,35 @@ export default function PrintReportePage() {
   }, []);
 
   useEffect(() => {
-    if (!payload || printedRef.current) return;
-    printedRef.current = true;
-    triggerPrint();
+    if (!payload) return;
+    waitForImages().then(() => setReady(true));
   }, [payload]);
 
-  if (error)   return <ErrorPrint message={error} />;
+  if (error)    return <ErrorPrint message={error} />;
   if (!payload) return <LoadingPrint />;
 
-  return <PrintReporteListaView payload={payload} />;
+  return (
+    <>
+      <div className="pr-toolbar">
+        <span className="pr-toolbar-title">Vista previa del reporte</span>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="pr-btn pr-btn--outline" onClick={() => window.close()}>Cerrar</button>
+          <button
+            className="pr-btn pr-btn--primary"
+            disabled={!ready}
+            onClick={() => window.print()}
+          >
+            {ready ? "🖨  Imprimir / Guardar PDF" : "Cargando…"}
+          </button>
+        </div>
+      </div>
+      <PrintReporteListaView payload={payload} />
+    </>
+  );
 }
 
-/** Guarda el payload en sessionStorage y abre /print/reporte en nueva pestaña */
 export function abrirReporteLista(payload: ReportePayload): void {
-  sessionStorage.setItem(REPORTE_STORAGE_KEY, JSON.stringify(payload));
+  localStorage.setItem(REPORTE_STORAGE_KEY, JSON.stringify(payload));
   const win = window.open("/print/reporte", "_blank", "width=1200,height=800");
   if (!win) {
     const aviso = document.createElement("div");

@@ -111,13 +111,14 @@ function ModalForm({ T, categorias, manual, archivo, onClose, onGuardado }) {
     <Modal
       T={T}
       title={esEdicion ? "Editar manual" : "Subir manual"}
-      icon={<FileText size={13} style={{ color: "#fca5a5" }} />}
+      icon={<FileText size={13} />}
       onClose={onClose}
       onConfirm={handleSubmit}
       confirmLabel={loading ? (esEdicion ? "Guardando..." : "Subiendo...") : (esEdicion ? "Guardar cambios" : "Subir manual")}
       loading={loading}
       maxWidth={preview ? "860px" : "480px"}
       noBodyPadding
+      closeOnOverlay={false}
     >
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <div style={{ display: "flex", flexDirection: "column", flex: preview ? "0 0 340px" : "1", padding: "20px", gap: 16 }}>
@@ -177,13 +178,13 @@ function ModalEliminar({ T, manual, onConfirm, onClose, loading }) {
     <Modal
       T={T}
       title="Eliminar manual"
-      icon={<Trash2 size={13} style={{ color: "#fca5a5" }} />}
+      icon={<Trash2 size={13} />}
       onClose={onClose}
       onConfirm={onConfirm}
       confirmLabel={loading ? "Eliminando..." : "Eliminar"}
       cancelLabel="Cancelar"
       loading={loading}
-      danger
+      variant="danger"
       maxWidth="400px"
     >
       <p style={{ ...FONT.body, color: T.text, margin: 0 }}>
