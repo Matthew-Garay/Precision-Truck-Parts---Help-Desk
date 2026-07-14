@@ -27,8 +27,8 @@
  *   ticket:sin_atender    - un ticket lleva mas de 24 horas sin tecnico asignado
  *
  * La conexion se cierra automaticamente cuando el componente se desmonta.
- * La URL del servidor se deriva de VITE_API_URL o de window.location.origin
- * reemplazando el puerto 5173 de Vite por el 3001 del servidor en desarrollo.
+ * La URL del servidor se deriva de VITE_API_URL o de window.location.origin.
+ * El proxy de Vite reenvía /socket.io al backend tanto en localhost como por IP.
  */
 import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
@@ -45,15 +45,18 @@ export function useSocket(id_empleado, onEvento) {
     if (!token) return;
 
     // En dev con Vite (puerto 5173) el proxy reenvía /socket.io al backend.
-    // En producción el frontend y backend comparten origen, o VITE_API_URL apunta al backend.
+    // En producción el frontend y backend comparten origen (Express sirve el build).
+    // Si VITE_API_URL está definido, úsalo siempre (apunta al backend explícitamente).
     const apiUrl = import.meta.env.VITE_API_URL;
-    // En dev con Vite el proxy reenvía /socket.io al backend (mismo origen).
-    // En producción: si VITE_API_URL apunta al backend úsalo, si no, mismo origen.
-    const SOCKET_URL = apiUrl && window.location.port === "5173"
-      ? apiUrl
-      : window.location.port === "5173"
-        ? window.location.origin.replace(":5173", ":3001")
-        : window.location.origin;
+    let SOCKET_URL;
+    if (apiUrl) {
+      // URL explícita configurada — úsala en cualquier entorno
+      SOCKET_URL = apiUrl;
+    } else {
+      // Dev (Vite proxy) o producción: siempre el mismo origen.
+      // El proxy de Vite reenvía /socket.io al backend en cualquier host (localhost o IP).
+      SOCKET_URL = window.location.origin;
+    }
 
     if (socketRef.current) {
       socketRef.current.disconnect();

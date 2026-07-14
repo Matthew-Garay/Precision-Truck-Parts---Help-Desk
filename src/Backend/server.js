@@ -87,6 +87,7 @@ const PORT       = process.env.PORT || 3001;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
 const CORS_ORIGINS = [...new Set([
   CORS_ORIGIN,
+  process.env.CORS_ORIGIN_LOCAL,
   process.env.APP_URL,
   "http://localhost:5173",
   "http://localhost:3001",
@@ -234,7 +235,7 @@ app.use("/api", (req, res) => {
 if (process.env.NODE_ENV === "production") {
   const distPath = path.resolve(__dirname, "../../dist");
   app.use(express.static(distPath));
-  app.get("*", (_req, res) => res.sendFile(path.join(distPath, "index.html")));
+  app.get("/{*path}", (_req, res) => res.sendFile(path.join(distPath, "index.html")));
 }
 
 // -- Middleware global de errores -----------------------------

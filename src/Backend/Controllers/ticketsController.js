@@ -165,10 +165,11 @@ export const getTicketsByEmpleado = async (req, res) => {
     if (isNaN(idParam)) return res.status(400).json({ error: "ID inválido" });
     if (req.usuario.id_rol !== 1 && req.usuario.id_empleado !== idParam)
       return res.status(403).json({ error: "Acceso no autorizado" });
-    const limit  = Math.min(parseInt(req.query.limit) || 50, 200);
-    const page   = Math.max(parseInt(req.query.page)  || 1, 1);
-    const offset = (page - 1) * limit;
-    const { rows, total } = await Ticket.getByEmpleado(idParam, { limit, offset });
+    const limit    = Math.min(parseInt(req.query.limit) || 50, 200);
+    const page      = Math.max(parseInt(req.query.page)  || 1, 1);
+    const offset    = (page - 1) * limit;
+    const { estatus, prioridad, categoria, q } = req.query;
+    const { rows, total } = await Ticket.getByEmpleado(idParam, { limit, offset, estatus, prioridad, categoria, q });
     res.json({ data: rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
     console.error("[getTicketsByEmpleado]", err.message);
@@ -224,11 +225,12 @@ export const actualizarTicket = async (req, res) => {
           resuelto_por:   updated.resuelto_por   ?? null,
           nombre_tecnico: t.nombre_tecnico        ?? null,
         };
+        const actorId = req.usuario?.id_empleado;
         if (estatus === "Resuelto" || estatus === "No Resuelto") {
           io.to(`empleado_${t.id_empleado}`).emit("ticket:actualizado", payload);
-          io.to("admins").emit("ticket:actualizado", payload);
+          io.to("admins").emit("ticket:actualizado", { ...payload, id_actor: actorId });
         } else if (estatus === "En proceso") {
-          const adminId     = id_resuelto_por || req.usuario?.id_empleado;
+          const adminId     = id_resuelto_por || actorId;
           const nombreAdmin = await Empleado.getNombre(adminId);
           const payloadAtencion = {
             id_ticket,
@@ -236,9 +238,9 @@ export const actualizarTicket = async (req, res) => {
             titulo:         t.titulo,
             nombre_tecnico: nombreAdmin,
             estatus,
+            id_actor:       actorId,
           };
           io.to(`empleado_${t.id_empleado}`).emit("ticket:en_atencion", payloadAtencion);
-          // También notificar a admins con el mismo evento para actualizar la vista en tiempo real
           io.to("admins").emit("ticket:en_atencion", payloadAtencion);
         }
       } catch (emitErr) { console.error("[emit ticket:actualizado]", emitErr.message); }
@@ -391,11 +393,12 @@ export const cancelarTicket = async (req, res) => {
       );
       const t = rows[0];
       if (t) {
+        const actorId = req.usuario?.id_empleado;
         getIO().to(`empleado_${t.id_empleado}`).emit("ticket:actualizado", {
           id_ticket, folio_ticket: t.folio_ticket, titulo: t.titulo, estatus: "Cancelado",
         });
         getIO().to("admins").emit("ticket:actualizado", {
-          id_ticket, folio_ticket: t.folio_ticket, titulo: t.titulo, estatus: "Cancelado",
+          id_ticket, folio_ticket: t.folio_ticket, titulo: t.titulo, estatus: "Cancelado", id_actor: actorId,
         });
       }
     } catch {}
@@ -418,12 +421,12 @@ export const getAdmins = async (req, res) => {
 
 export const getReporte = async (req, res) => {
   try {
-    const { fecha_inicio, fecha_fin, id_tecnico } = req.query;
+    const { fecha_inicio, fecha_fin, id_tecnico, estatus, prioridad, usuario, area, sucursal, q } = req.query;
     if (!fecha_inicio || !fecha_fin) return res.status(400).json({ error: "fecha_inicio y fecha_fin son requeridos" });
     const rows = await Ticket.getReporte({
-      fecha_inicio,
-      fecha_fin,
+      fecha_inicio, fecha_fin,
       id_tecnico: id_tecnico && id_tecnico !== "todos" ? parseInt(id_tecnico) : null,
+      estatus, prioridad, usuario, area, sucursal, q,
     });
     res.json(rows);
   } catch (err) {
@@ -468,11 +471,11 @@ export const getRendimientoTecnicos = async (req, res) => {
 export const getAllTickets = async (req, res) => {
   try {
     const q = req.queryValidado ?? req.query;
-    const limit  = Math.min(parseInt(q.limit)  || 100, 500);
+    const limit  = Math.min(parseInt(q.limit)  || 100, 10000);
     const page   = Math.max(parseInt(q.page)   || 1,   1);
     const offset = (page - 1) * limit;
-    const { estatus, prioridad, q: busqueda, fecha_inicio, fecha_fin } = q;
-    const { rows, total } = await Ticket.getAll({ limit, offset, estatus, prioridad, q: busqueda, fecha_inicio, fecha_fin });
+    const { estatus, prioridad, q: busqueda, fecha_inicio, fecha_fin, tecnico, usuario, area, sucursal } = q;
+    const { rows, total } = await Ticket.getAll({ limit, offset, estatus, prioridad, q: busqueda, fecha_inicio, fecha_fin, tecnico, usuario, area, sucursal });
     res.json({ data: rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
     console.error("[getAllTickets]", err.message);

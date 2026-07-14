@@ -122,12 +122,21 @@ const Ticket = {
     return rows[0] || null;
   },
 
-  getByEmpleado: async (id_empleado, { limit = 50, offset = 0 } = {}) => {
-    // COUNT explícito — evita race condition de FOUND_ROWS() con pool de conexiones
-    const [[{ total }]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM ticket WHERE id_empleado = ?`,
-      [id_empleado]
-    );
+  getByEmpleado: async (id_empleado, { limit = 50, offset = 0, estatus, prioridad, categoria, q } = {}) => {
+    const conditions = ["t.id_empleado = ?"];
+    const params     = [id_empleado];
+    if (estatus)   { conditions.push("t.estatus = ?");           params.push(estatus); }
+    if (prioridad) { conditions.push("t.prioridad = ?");         params.push(prioridad); }
+    if (categoria) { conditions.push("c.nombre_categoria = ?"); params.push(categoria); }
+    if (q)         { conditions.push("(t.folio_ticket LIKE ? OR t.titulo LIKE ?)"); params.push(`%${q}%`, `%${q}%`); }
+    const WHERE = `WHERE ${conditions.join(" AND ")}`;
+    const BASE_JOINS = `
+       FROM ticket t
+       LEFT JOIN categoria c      ON t.id_categoria     = c.id_categoria
+       LEFT JOIN empleado  e      ON t.id_empleado      = e.id_empleado
+       LEFT JOIN empleado  r      ON t.id_tecnico       = r.id_empleado
+       LEFT JOIN departamento dep ON e.id_departamento  = dep.id_departamento`;
+    const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total ${BASE_JOINS} ${WHERE}`, params);
     const [rows] = await pool.query(
       `SELECT t.id_ticket, t.folio_ticket, t.titulo, t.descripcion,
               t.estatus, t.prioridad, t.fecha_subido, t.fecha_resuelto,
@@ -136,15 +145,10 @@ const Ticket = {
               TRIM(CONCAT(e.nombre, ' ', e.ap_paterno, IF(e.ap_materno IS NOT NULL AND e.ap_materno != '', CONCAT(' ', e.ap_materno), ''))) AS nombre_empleado,
               dep.nombre_departamento,
               TRIM(CONCAT(r.nombre, ' ', r.ap_paterno, IF(r.ap_materno IS NOT NULL AND r.ap_materno != '', CONCAT(' ', r.ap_materno), ''))) AS resuelto_por
-       FROM ticket t
-       LEFT JOIN categoria c      ON t.id_categoria     = c.id_categoria
-       LEFT JOIN empleado  e      ON t.id_empleado      = e.id_empleado
-       LEFT JOIN empleado  r      ON t.id_tecnico       = r.id_empleado
-       LEFT JOIN departamento dep ON e.id_departamento  = dep.id_departamento
-       WHERE t.id_empleado = ?
+       ${BASE_JOINS} ${WHERE}
        ORDER BY t.fecha_subido DESC
        LIMIT ? OFFSET ?`,
-      [id_empleado, limit, offset]
+      [...params, limit, offset]
     );
     return { rows, total };
   },
@@ -168,12 +172,17 @@ const Ticket = {
     }
 
     const esCerrado = estatus === "Resuelto" || estatus === "No Resuelto" || estatus === "Cancelado";
+    const esEnProceso = estatus === "En proceso";
     const params = esCerrado
       ? [comentarios ?? null, estatus, id_resuelto_por ?? null, id_ticket]
-      : [comentarios ?? null, estatus, id_ticket];
+      : esEnProceso && id_resuelto_por
+        ? [comentarios ?? null, estatus, id_resuelto_por, id_ticket]
+        : [comentarios ?? null, estatus, id_ticket];
     const sql = esCerrado
       ? "UPDATE ticket SET comentarios = ?, estatus = ?, fecha_resuelto = NOW(), id_tecnico = ? WHERE id_ticket = ?"
-      : "UPDATE ticket SET comentarios = ?, estatus = ? WHERE id_ticket = ?";
+      : esEnProceso && id_resuelto_por
+        ? "UPDATE ticket SET comentarios = ?, estatus = ?, id_tecnico = ? WHERE id_ticket = ?"
+        : "UPDATE ticket SET comentarios = ?, estatus = ? WHERE id_ticket = ?";
 
     const [result] = await pool.query(sql, params);
     if (result.affectedRows === 0) return null;
@@ -367,7 +376,7 @@ const Ticket = {
     return rows;
   },
 
-  getReporte: async ({ fecha_inicio, fecha_fin, id_tecnico }) => {
+  getReporte: async ({ fecha_inicio, fecha_fin, id_tecnico, estatus, prioridad, usuario, area, sucursal, q }) => {
     const reFecha = /^\d{4}-\d{2}-\d{2}$/;
     if (!reFecha.test(fecha_inicio) || !reFecha.test(fecha_fin))
       throw Object.assign(new Error("Formato de fecha inválido. Use YYYY-MM-DD"), { status: 400 });
@@ -377,28 +386,35 @@ const Ticket = {
     if (id_tecnico && (!Number.isInteger(idTecnico) || idTecnico <= 0))
       throw Object.assign(new Error("id_tecnico debe ser un entero positivo"), { status: 400 });
 
-    const BASE_SELECT = `
-      SELECT t.folio_ticket, t.titulo, t.estatus, t.prioridad,
-             t.fecha_subido, t.fecha_resuelto, t.calificacion,
-             c.nombre_categoria,
-             CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
-             dep.nombre_departamento,
-             CONCAT(r.nombre,' ',r.ap_paterno,' ',IFNULL(r.ap_materno,'')) AS resuelto_por
-      FROM ticket t
-      LEFT JOIN categoria c      ON t.id_categoria    = c.id_categoria
-      LEFT JOIN empleado  e      ON t.id_empleado     = e.id_empleado
-      LEFT JOIN departamento dep ON e.id_departamento = dep.id_departamento
-      LEFT JOIN empleado  r      ON t.id_tecnico      = r.id_empleado`;
+    const conditions = ["DATE(t.fecha_subido) BETWEEN ? AND ?"];
+    const params     = [fecha_inicio, fecha_fin];
 
-    const [rows] = idTecnico
-      ? await pool.query(
-          `${BASE_SELECT} WHERE DATE(t.fecha_subido) BETWEEN ? AND ? AND t.id_tecnico = ? ORDER BY t.fecha_subido DESC`,
-          [fecha_inicio, fecha_fin, idTecnico]
-        )
-      : await pool.query(
-          `${BASE_SELECT} WHERE DATE(t.fecha_subido) BETWEEN ? AND ? ORDER BY t.fecha_subido DESC`,
-          [fecha_inicio, fecha_fin]
-        );
+    if (idTecnico) { conditions.push("t.id_tecnico = ?");   params.push(idTecnico); }
+    if (estatus)   { conditions.push("t.estatus = ?");      params.push(estatus); }
+    if (prioridad) { conditions.push("t.prioridad = ?");    params.push(prioridad); }
+    if (area)      { conditions.push("dep.nombre_departamento = ?"); params.push(area); }
+    if (sucursal)  { conditions.push("s.nombre_sucursal = ?");      params.push(sucursal); }
+    if (usuario)   { conditions.push("REGEXP_REPLACE(TRIM(CONCAT(e.nombre,' ',e.ap_paterno,IF(e.ap_materno IS NOT NULL AND e.ap_materno!='',CONCAT(' ',e.ap_materno),''))), ' +', ' ') = ?"); params.push(usuario.replace(/\s+/g, ' ').trim()); }
+    if (q)         { conditions.push("(t.folio_ticket LIKE ? OR t.titulo LIKE ?)"); params.push(`%${q}%`, `%${q}%`); }
+
+    const [rows] = await pool.query(
+      `SELECT t.folio_ticket, t.titulo, t.estatus, t.prioridad,
+              t.fecha_subido, t.fecha_resuelto, t.calificacion,
+              c.nombre_categoria,
+              CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
+              dep.nombre_departamento,
+              s.nombre_sucursal,
+              CONCAT(r.nombre,' ',r.ap_paterno,' ',IFNULL(r.ap_materno,'')) AS resuelto_por
+       FROM ticket t
+       LEFT JOIN categoria c      ON t.id_categoria    = c.id_categoria
+       LEFT JOIN empleado  e      ON t.id_empleado     = e.id_empleado
+       LEFT JOIN departamento dep ON e.id_departamento = dep.id_departamento
+       LEFT JOIN sucursal s       ON e.id_sucursal     = s.id_sucursal
+       LEFT JOIN empleado  r      ON t.id_tecnico      = r.id_empleado
+       WHERE ${conditions.join(" AND ")}
+       ORDER BY t.fecha_subido DESC`,
+      params
+    );
     return rows;
   },
 
@@ -427,14 +443,30 @@ const Ticket = {
          CONCAT(tec.nombre,' ',tec.ap_paterno,' ',IFNULL(tec.ap_materno,'')) AS nombre_tecnico,
          COUNT(t.id_ticket) AS total_atendidos,
          COALESCE(SUM(t.estatus = 'Resuelto'), 0) AS resueltos,
+         COALESCE(SUM(t.estatus = 'No Resuelto'), 0) AS no_resueltos,
          ROUND(AVG(CASE WHEN t.estatus='Resuelto' AND t.fecha_resuelto IS NOT NULL
            THEN TIMESTAMPDIFF(HOUR, t.fecha_subido, t.fecha_resuelto) END), 1) AS promedio_horas,
+         MIN(CASE WHEN t.estatus='Resuelto' AND t.fecha_resuelto IS NOT NULL
+           THEN TIMESTAMPDIFF(HOUR, t.fecha_subido, t.fecha_resuelto) END) AS min_horas,
+         MAX(CASE WHEN t.estatus='Resuelto' AND t.fecha_resuelto IS NOT NULL
+           THEN TIMESTAMPDIFF(HOUR, t.fecha_subido, t.fecha_resuelto) END) AS max_horas,
          ROUND(AVG(CASE WHEN t.calificacion > 0 THEN t.calificacion END), 2) AS calificacion_promedio,
-         COUNT(CASE WHEN t.calificacion > 0 THEN 1 END) AS total_calificaciones
+         COUNT(CASE WHEN t.calificacion > 0 THEN 1 END) AS total_calificaciones,
+         COALESCE(SUM(t.prioridad IN ('Alta','Urgente') AND t.estatus='Resuelto'), 0) AS alta_prioridad_resueltos,
+         (SELECT COUNT(*) FROM ticket ta WHERE ta.id_tecnico = tec.id_empleado AND ta.estatus = 'En proceso') AS en_proceso_activos,
+         COALESCE(SUM(t.estatus = 'Cancelado'), 0) AS tickets_cancelados,
+         ROUND(
+           100.0 * COUNT(CASE WHEN t.calificacion > 0 THEN 1 END) /
+           NULLIF(SUM(t.estatus = 'Resuelto'), 0)
+         , 1) AS pct_calificados,
+         COALESCE(SUM(
+           t.estatus = 'Resuelto' AND t.fecha_resuelto IS NOT NULL
+           AND TIMESTAMPDIFF(HOUR, t.fecha_subido, t.fecha_resuelto) <= 48
+         ), 0) AS resueltos_a_tiempo
        FROM empleado tec
        LEFT JOIN ticket t
          ON t.id_tecnico = tec.id_empleado
-         AND (t.estatus = 'Resuelto' OR t.estatus = 'No Resuelto')
+         AND (t.estatus IN ('Resuelto','No Resuelto','Cancelado'))
          ${ticketFilter}
        WHERE tec.id_rol = 1 AND tec.estatus = 'Activo'
        GROUP BY tec.id_empleado
@@ -445,7 +477,7 @@ const Ticket = {
     return rows;
   },
 
-  getAll: async ({ limit = 100, offset = 0, estatus, prioridad, q, fecha_inicio, fecha_fin } = {}) => {
+  getAll: async ({ limit = 100, offset = 0, estatus, prioridad, q, fecha_inicio, fecha_fin, tecnico, usuario, area, sucursal } = {}) => {
     const conditions = [];
     const params     = [];
 
@@ -457,12 +489,23 @@ const Ticket = {
       conditions.push("(t.folio_ticket LIKE ? OR t.titulo LIKE ?)");
       params.push(`%${q}%`, `%${q}%`);
     }
+    if (tecnico)  { conditions.push("REGEXP_REPLACE(TRIM(CONCAT(r.nombre,' ',r.ap_paterno,IF(r.ap_materno IS NOT NULL AND r.ap_materno!='',CONCAT(' ',r.ap_materno),''))), ' +', ' ') = ?"); params.push(tecnico.replace(/\s+/g, ' ').trim()); }
+    if (usuario)  { conditions.push("REGEXP_REPLACE(TRIM(CONCAT(e.nombre,' ',e.ap_paterno,IF(e.ap_materno IS NOT NULL AND e.ap_materno!='',CONCAT(' ',e.ap_materno),''))), ' +', ' ') = ?"); params.push(usuario.replace(/\s+/g, ' ').trim()); }
+    if (area)     { conditions.push("d.nombre_departamento = ?"); params.push(area); }
+    if (sucursal) { conditions.push("s.nombre_sucursal = ?");     params.push(sucursal); }
+
+    const BASE_JOINS = `
+       FROM ticket t
+       LEFT JOIN categoria c    ON t.id_categoria    = c.id_categoria
+       LEFT JOIN empleado  e    ON t.id_empleado     = e.id_empleado
+       LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal
+       LEFT JOIN empleado  r    ON t.id_tecnico      = r.id_empleado`;
 
     const WHERE = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
-    // COUNT explícito en la misma WHERE — evita race condition de FOUND_ROWS() con pool
     const [[{ total }]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM ticket t ${WHERE}`,
+      `SELECT COUNT(*) AS total ${BASE_JOINS} ${WHERE}`,
       params
     );
     const [rows] = await pool.query(
@@ -470,16 +513,11 @@ const Ticket = {
               t.estatus, t.prioridad, t.fecha_subido, t.fecha_resuelto,
               t.comentarios, t.calificacion, t.id_tecnico,
               c.nombre_categoria,
-              CONCAT(e.nombre, ' ', e.ap_paterno, ' ', IFNULL(e.ap_materno,'')) AS nombre_empleado,
+              TRIM(CONCAT(e.nombre, ' ', e.ap_paterno, IF(e.ap_materno IS NOT NULL AND e.ap_materno != '', CONCAT(' ', e.ap_materno), ''))) AS nombre_empleado,
               d.nombre_departamento,
               s.nombre_sucursal,
-              CONCAT(r.nombre, ' ', r.ap_paterno, ' ', IFNULL(r.ap_materno,'')) AS resuelto_por
-       FROM ticket t
-       LEFT JOIN categoria c    ON t.id_categoria    = c.id_categoria
-       LEFT JOIN empleado  e    ON t.id_empleado     = e.id_empleado
-       LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
-       LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal
-       LEFT JOIN empleado  r    ON t.id_tecnico      = r.id_empleado
+              TRIM(CONCAT(r.nombre, ' ', r.ap_paterno, IF(r.ap_materno IS NOT NULL AND r.ap_materno != '', CONCAT(' ', r.ap_materno), ''))) AS resuelto_por
+       ${BASE_JOINS}
        ${WHERE}
        ORDER BY t.fecha_subido DESC
        LIMIT ? OFFSET ?`,

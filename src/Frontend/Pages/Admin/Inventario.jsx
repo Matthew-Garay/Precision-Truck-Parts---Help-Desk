@@ -154,13 +154,13 @@ function DataTable({ rows, onEdit, onDetail }) {
   };
 
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", tableLayout: "fixed" }}>
+    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", tableLayout: "fixed", minWidth: "520px" }}>
       <colgroup>
         <col style={{ width: "44px" }} />
-        <col />
-        <col style={{ width: "150px" }} />
-        <col style={{ width: "96px" }} />
-        <col style={{ width: "96px" }} />
+        <col style={{ width: "38%" }} />
+        <col style={{ width: "22%" }} />
+        <col style={{ width: "14%" }} />
+        <col style={{ width: "16%" }} />
         <col style={{ width: "72px" }} />
       </colgroup>
       <thead>
@@ -209,7 +209,7 @@ function DataTable({ rows, onEdit, onDetail }) {
                 </div>
               </td>
               {/* Categoría */}
-              <td style={{ ...td, overflow: "hidden", maxWidth: 0 }}>
+              <td style={{ ...td, overflow: "hidden" }}>
                 <ChipCategoria nombre={row.nombre_categoria} T={T} />
               </td>
               {/* Estado */}

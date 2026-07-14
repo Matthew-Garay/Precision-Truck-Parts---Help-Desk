@@ -114,6 +114,7 @@ const TIPO_CONFIG = {
       ? `"${d.nombre}" no tiene unidades disponibles`
       : `"${d.nombre}" tiene solo ${d.stock} unidad${d.stock !== 1 ? "es" : ""} restante${d.stock !== 1 ? "s" : ""}`,
     accion: null,
+    imagen: (d) => d.imagen_url || null,
   },
   "ticket:cancelado": {
     icon:   X,
@@ -309,6 +310,7 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
               const titulo = cfg.titulo(n.data) ?? "";
               const sub    = cfg.sub(n.data) ?? "";
               const accion = typeof cfg.accion === "function" ? cfg.accion(n.data) : cfg.accion;
+              const imgUrl = cfg.imagen ? cfg.imagen(n.data) : null;
 
               const esCalificable = n.tipo === "ticket:actualizado" && n.data.estatus === "Resuelto";
               const tieneAccion = accion && (
@@ -345,13 +347,16 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
 
                     {/* Icono */}
                     <div
-                      className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center mt-0.5"
+                      className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center mt-0.5 overflow-hidden"
                       style={{
-                        background: `${color}20`,
+                        background: imgUrl ? "transparent" : `${color}20`,
                         border: `1px solid ${color}30`,
                         boxShadow: esSLA ? `0 0 8px ${color}40` : "none",
                       }}>
-                      <Icon size={14} style={{ color }} />
+                      {imgUrl
+                        ? <img src={imgUrl} alt="" className="w-full h-full object-cover rounded-xl" />
+                        : <Icon size={14} style={{ color }} />
+                      }
                     </div>
 
                     {/* Texto */}

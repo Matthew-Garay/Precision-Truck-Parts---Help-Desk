@@ -123,6 +123,7 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
       loading={loading}
       maxWidth="448px"
       noBodyPadding
+      closeOnOverlay={false}
     >
       <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14, maxHeight: "62vh", overflowY: "auto" }}>
 
@@ -326,7 +327,7 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
       T={T}
       title="Historial de Accesos"
       subtitle={nombre}
-      icon={<Clock size={13} aria-hidden="true" style={{ color: "rgba(255,255,255,0.75)" }} />}
+      icon={<Clock size={13} aria-hidden="true" />}
       onClose={onCerrar}
       maxWidth="580px"
       noBodyPadding
@@ -534,8 +535,8 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
     fontSize: 10, fontWeight: 700, letterSpacing: "0.07em",
     textTransform: "uppercase", whiteSpace: "nowrap",
     color: T.textMuted,
-    background: isDark ? "rgba(255,255,255,0.03)" : "#F9FAFB",
-    borderBottom: `2px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb"}`,
+    background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt,
+    borderBottom: `2px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`,
     userSelect: "none",
   };
 
@@ -548,7 +549,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
   };
 
   return (
-    <div style={{ borderRadius: 10, overflow: "hidden", background: isDark ? "#141720" : "#ffffff", border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}`, boxShadow: isDark ? "0 1px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.05)" }}>
+    <div style={{ borderRadius: 10, overflow: "hidden", background: T.surface, border: `1px solid ${T.border}`, boxShadow: isDark ? "0 1px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.05)" }}>
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
@@ -569,7 +570,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
             {sorted.map((emp, i) => {
               const nombre = `${emp.nombre} ${emp.ap_paterno} ${emp.ap_materno || ""}`.trim();
               const activo = emp.estatus === "Activo";
-              const rowBg  = i % 2 === 0 ? (isDark ? "transparent" : "#ffffff") : (isDark ? "rgba(255,255,255,0.015)" : "#fafafa");
+              const rowBg  = i % 2 === 0 ? (isDark ? "transparent" : T.surface) : (isDark ? "rgba(255,255,255,0.015)" : T.surfaceAlt);
 
               const fotoSrc = emp.foto
                 ? (emp.foto.startsWith("http") ? emp.foto : `${API_URL}${(emp.foto.startsWith("/storage/") ? emp.foto : `/storage/${emp.foto}`).split("/").map(encodeURIComponent).join("/")}`)
@@ -651,7 +652,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
       </div>
 
       {/* Footer de tabla */}
-      <div style={{ padding: "8px 16px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}`, background: isDark ? "rgba(255,255,255,0.02)" : "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+      <div style={{ padding: "8px 16px", borderTop: `1px solid ${T.border}`, background: isDark ? "rgba(255,255,255,0.02)" : T.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
         <span style={{ fontSize: 11, color: T.textFaint }}>{empleados.length} empleado{empleados.length !== 1 ? "s" : ""}</span>
       </div>
       {lightbox && <LightboxFoto src={lightbox.src} nombre={lightbox.nombre} onCerrar={() => setLightbox(null)} />}
@@ -734,7 +735,8 @@ export default function Personal({ T }) {
   const { card } = useCardStyles(T);
 
   return (
-    <div style={{ background: isDark ? T.bg : "#F9FAFB", height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+    <div style={{ background: T.bg, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+
       <div style={{ maxWidth: 1400, width: "100%", margin: "0 auto", padding: "16px 16px 0", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
 
         {/* KPI Cards */}

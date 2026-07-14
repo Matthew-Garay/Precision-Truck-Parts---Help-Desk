@@ -60,13 +60,11 @@ const EVENTOS_ADMIN = new Set([
   "ticket:sla_warning",
   "insumo:stock_critico",
   "ticket:sin_atender",
-  "ticket:en_atencion",  // admin también recibe para actualizar vista en tiempo real
 ]);
 
 // Eventos exclusivos de usuario (id_rol !== 1)
 const EVENTOS_USUARIO = new Set([
   "ticket:actualizado",
-  "ticket:en_atencion",
   "solicitud:actualizada",
   "ticket:confirmado",
   "ticket:cancelado",
@@ -75,7 +73,6 @@ const EVENTOS_USUARIO = new Set([
 // Eventos que requieren verificar si el ticket aun existe en BD
 const EVENTOS_CON_TICKET_ID = new Set([
   "ticket:actualizado",
-  "ticket:en_atencion",
   "ticket:calificado",
   "ticket:sla_warning",
   "ticket:confirmado",
@@ -98,7 +95,7 @@ function cargarDelStorage(id_empleado) {
     const TIPOS_VALIDOS = new Set([
       "ticket:nuevo", "solicitud:nueva", "ticket:calificado", "tickets:vencidos",
       "ticket:sla_warning", "insumo:stock_critico", "ticket:sin_atender",
-      "ticket:actualizado", "ticket:en_atencion", "solicitud:actualizada",
+      "ticket:actualizado", "solicitud:actualizada",
       "ticket:confirmado", "ticket:cancelado",
     ]);
     return parsed.filter(n => n?.tipo && n?.data && TIPOS_VALIDOS.has(n.tipo));
@@ -135,8 +132,16 @@ export function useTicketNotification({ usuario, onNavegar }) {
   // procesarEvento es estable (sin dependencias que cambien) gracias a los refs
   const procesarEvento = useCallback(async ({ tipo, data }) => {
     const esAdmin = esAdminRef.current;
-    if (esAdmin  && EVENTOS_USUARIO.has(tipo) && !EVENTOS_ADMIN.has(tipo)) return;
-    if (!esAdmin && EVENTOS_ADMIN.has(tipo)   && !EVENTOS_USUARIO.has(tipo)) return;
+    if (!EVENTOS_ADMIN.has(tipo) && !EVENTOS_USUARIO.has(tipo)) return;
+    if (esAdmin  && !EVENTOS_ADMIN.has(tipo)) return;
+    if (!esAdmin && !EVENTOS_USUARIO.has(tipo)) return;
+
+    // Si el admin es quien originó la acción, no notificarle de su propio cambio
+    const actorId = data?.id_actor ?? data?.id_empleado;
+    if (esAdmin && actorId && actorId === idEmpleado) {
+      const EVENTOS_PROPIOS = new Set(["ticket:en_atencion", "ticket:actualizado"]);
+      if (EVENTOS_PROPIOS.has(tipo)) return;
+    }
 
     // entityId solo se usa para deduplicación — no bloquea eventos sin id
     const entityId =

@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { getToken, setToken } from "../Config/api";
 import PrintReportView from "../Components/PrintReportView";
 import { LoadingPrint, ErrorPrint } from "../Components/PrintShared";
-import { triggerPrint } from "../Config/printUtils";
+import { waitForImages } from "../Config/printUtils";
 
 interface TicketPrint {
   folio_ticket: string;
@@ -28,12 +28,7 @@ export default function PrintTicketPage() {
   const [searchParams]      = useSearchParams();
   const [ticket, setTicket] = useState<TicketPrint | null>(null);
   const [error,  setError]  = useState<string>("");
-  const printedRef           = useRef(false);
-
-  useEffect(() => {
-    document.body.classList.add("print-preview");
-    return () => document.body.classList.remove("print-preview");
-  }, []);
+  const [ready,  setReady]  = useState(false);
 
   useEffect(() => {
     if (!folio) return;
@@ -60,13 +55,29 @@ export default function PrintTicketPage() {
   }, [folio, searchParams]);
 
   useEffect(() => {
-    if (!ticket || printedRef.current) return;
-    printedRef.current = true;
-    triggerPrint();
+    if (!ticket) return;
+    waitForImages().then(() => setReady(true));
   }, [ticket]);
 
   if (error)  return <ErrorPrint message={error} />;
   if (!ticket) return <LoadingPrint />;
 
-  return <PrintReportView ticket={ticket} />;
+  return (
+    <>
+      <div className="pr-toolbar">
+        <span className="pr-toolbar-title">Vista previa del ticket {ticket.folio_ticket}</span>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="pr-btn pr-btn--outline" onClick={() => window.close()}>Cerrar</button>
+          <button
+            className="pr-btn pr-btn--primary"
+            disabled={!ready}
+            onClick={() => window.print()}
+          >
+            {ready ? "🖨  Imprimir / Guardar PDF" : "Cargando…"}
+          </button>
+        </div>
+      </div>
+      <PrintReportView ticket={ticket} />
+    </>
+  );
 }

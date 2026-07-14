@@ -26,13 +26,14 @@ export default function ModalEliminar({ insumo, loading = false, onClose, onConf
     <Modal
       T={T}
       title="Eliminar insumo"
-      icon={<Trash2 size={13} aria-hidden="true" style={{ color: "#fca5a5" }} />}
+      icon={<Trash2 size={13} aria-hidden="true" />}
       confirmLabel={loading ? "Eliminando…" : "Eliminar"}
       onConfirm={onConfirm}
       onClose={onClose}
       loading={loading}
       maxWidth="380px"
-      danger
+      variant="danger"
+      closeOnOverlay={false}
     >
       {/* Advertencia — role="alert" para lectores de pantalla */}
       <div

@@ -26,9 +26,12 @@ export default function PdfViewer({ url, isDark }) {
   const canvasRef   = useRef(null);
   const renderTask  = useRef(null);
   const pdfRef      = useRef(null);
+  const scrollRef   = useRef(null);
+  const pageNumRef  = useRef(1);
 
   const [numPages,  setNumPages]  = useState(0);
   const [pageNum,   setPageNum]   = useState(1);
+  const numPagesRef = useRef(0);
   const [scale,     setScale]     = useState(1.2);
   const [rotation,  setRotation]  = useState(0);
   const [loading,   setLoading]   = useState(true);
@@ -49,6 +52,7 @@ export default function PdfViewer({ url, isDark }) {
         const pdf   = await pdfjs.getDocument({ url, withCredentials: false }).promise;
         if (cancelled) return;
         pdfRef.current = pdf;
+        numPagesRef.current = pdf.numPages;
         setNumPages(pdf.numPages);
         setLoading(false);
       } catch (e) {
@@ -94,6 +98,35 @@ export default function PdfViewer({ url, isDark }) {
     if (!loading && !error && pdfRef.current) renderPage();
   }, [loading, error, renderPage]);
 
+  // Sincronizar ref de página para el handler de wheel
+  useEffect(() => { pageNumRef.current = pageNum; }, [pageNum]);
+
+  // Scroll para cambiar de página
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let lastWheel = 0;
+    const onWheel = (e) => {
+      const atTop    = el.scrollTop === 0;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+      const goingDown = e.deltaY > 0;
+      const goingUp   = e.deltaY < 0;
+      if ((goingDown && atBottom) || (goingUp && atTop)) {
+        const now = Date.now();
+        if (now - lastWheel < 400) return;
+        lastWheel = now;
+        e.preventDefault();
+        setPageNum(p => {
+          if (goingDown) return Math.min(numPagesRef.current, p + 1);
+          return Math.max(1, p - 1);
+        });
+        el.scrollTop = goingDown ? 0 : el.scrollHeight;
+      }
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   const bg   = isDark ? "#1e293b" : "#e2e8f0";
   const ctrl = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
   const txt  = isDark ? "rgba(255,255,255,0.7)"  : "#334155";
@@ -131,9 +164,31 @@ export default function PdfViewer({ url, isDark }) {
         <button style={btnSt} onClick={() => setPageNum(p => Math.max(1, p - 1))} disabled={pageNum <= 1 || loading}>
           <ChevronLeft size={14} />
         </button>
-        <span style={{ fontSize: 11, fontWeight: 600, color: txt, minWidth: 70, textAlign: "center" }}>
-          {loading ? "..." : `${pageNum} / ${numPages}`}
-        </span>
+        {loading ? (
+          <span style={{ fontSize: 11, fontWeight: 600, color: txt, minWidth: 70, textAlign: "center" }}>...</span>
+        ) : (
+          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, color: txt }}>
+            <input
+              type="number"
+              min={1}
+              max={numPages}
+              value={pageNum}
+              onChange={e => {
+                const v = parseInt(e.target.value, 10);
+                if (!isNaN(v)) setPageNum(Math.min(numPages, Math.max(1, v)));
+              }}
+              style={{
+                width: 38, height: 24, textAlign: "center", borderRadius: 5,
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)"}`,
+                background: isDark ? "rgba(255,255,255,0.07)" : "#fff",
+                color: txt, fontSize: 11, fontWeight: 600,
+                outline: "none", padding: 0,
+                MozAppearance: "textfield",
+              }}
+            />
+            <span style={{ opacity: 0.55 }}>/ {numPages}</span>
+          </span>
+        )}
         <button style={btnSt} onClick={() => setPageNum(p => Math.min(numPages, p + 1))} disabled={pageNum >= numPages || loading}>
           <ChevronRight size={14} />
         </button>
@@ -160,7 +215,7 @@ export default function PdfViewer({ url, isDark }) {
       </div>
 
       {/* Canvas */}
-      <div style={{ flex: 1, overflow: "auto", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 16 }}>
+      <div ref={scrollRef} style={{ flex: 1, overflow: "auto", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 16 }}>
         {loading ? (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
             <svg className="animate-spin" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F47920" strokeWidth="2">
