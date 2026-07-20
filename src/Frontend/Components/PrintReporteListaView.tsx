@@ -1,6 +1,7 @@
 import {
-  Badge, Stars, PageHeader, PageFooter, KpiStrip, ReporteTable,
+  PageHeader, PageFooter, ReporteTable,
   PRIO_META, ESTATUS_META, nowFechaGen,
+  Stars, fmt,
 } from "./PrintShared";
 
 export type TipoReporte = "incidencias" | "insumos" | "rendimiento";
@@ -27,57 +28,60 @@ interface InsumoRow {
   total_insumos?: number | null;
   total_piezas?: number | null;
   detalle_insumos?: string | null;
-  items_detalle?: string | null;  // "nombre|qty|aprobado|imagen_url;;..."
+  items_detalle?: string | null;
   fecha: string;
 }
 interface RendimientoRow {
+  id_tecnico: number;
   nombre_tecnico: string;
   total_atendidos: number;
   resueltos: number;
+  no_resueltos: number;
   promedio_horas?: number | null;
+  min_horas?: number | null;
+  max_horas?: number | null;
   calificacion_promedio?: number | null;
   total_calificaciones: number;
+  alta_prioridad_resueltos: number;
+  en_proceso_activos: number;
+  tickets_cancelados: number;
+  pct_calificados?: number | null;
+  resueltos_a_tiempo: number;
 }
 export interface ReportePayload {
   tipo: TipoReporte;
   periodo: string;
   datos: TicketRow[] | InsumoRow[] | RendimientoRow[];
+  nombreEmpleado?: string;
 }
 
-const fmtFecha = (d: string) =>
-  new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" });
+function calcTiempo(inicio: string, fin: string): string {
+  const mins = Math.floor((new Date(fin).getTime() - new Date(inicio).getTime()) / 60000);
+  const d = Math.floor(mins / 1440);
+  const h = Math.floor((mins % 1440) / 60);
+  const m = mins % 60;
+  return [d > 0 ? `${d}d` : "", h > 0 ? `${h}h` : "", `${m}m`].filter(Boolean).join(" ");
+}
 
-function VistaIncidencias({ datos, periodo, fechaGen }: { datos: TicketRow[]; periodo: string; fechaGen: string }) {
-  const resueltos   = datos.filter(t => t.estatus === "Resuelto").length;
-  const enProceso   = datos.filter(t => t.estatus === "En proceso").length;
-  const noResueltos = datos.filter(t => t.estatus === "No Resuelto").length;
-  const califs      = datos.filter(t => (t.calificacion ?? 0) > 0);
-  const prom        = califs.length > 0
-    ? (califs.reduce((a, t) => a + (t.calificacion ?? 0), 0) / califs.length).toFixed(1) : "—";
-
+function VistaIncidencias({ datos, periodo, fechaGen, nombreEmpleado }: { datos: TicketRow[]; periodo: string; fechaGen: string; nombreEmpleado?: string }) {
   const rows = datos.map(t => {
-    const calNum = Math.min(5, Math.max(1, t.calificacion ?? 0));
     const prio   = PRIO_META[t.prioridad]  ?? PRIO_META.Baja;
     const est    = ESTATUS_META[t.estatus] ?? ESTATUS_META["Cancelado"];
+    const calNum = t.calificacion ? Math.min(5, Math.max(1, t.calificacion)) : 0;
+    const tiempoRes = t.fecha_resuelto && t.estatus === "Resuelto"
+      ? calcTiempo(t.fecha_subido, t.fecha_resuelto) : null;
     return [
-      <span style={{ fontFamily: "monospace", fontWeight: 900, color: "var(--pr-accent)", fontSize: "8pt" }}>{t.folio_ticket}</span>,
-      <div>
-        <div style={{ fontWeight: 700, fontSize: "8pt", color: "var(--pr-ink)" }}>{t.titulo}</div>
-        <Badge label={t.prioridad} bg={prio.bg} color={prio.color} border={prio.border} />
-      </div>,
-      <Badge label={t.estatus} bg={est.bg} color={est.color} border={est.border} />,
-      <div>
-        <div style={{ fontWeight: 600, fontSize: "8pt" }}>{t.nombre_empleado || "—"}</div>
-        <div style={{ fontSize: "7pt", color: "var(--pr-muted)" }}>{t.nombre_departamento || "—"}</div>
-      </div>,
-      <span style={{ fontSize: "8pt" }}>{t.resuelto_por ? t.resuelto_por.split(" ").slice(0, 2).join(" ") : "—"}</span>,
-      <span style={{ fontSize: "7.5pt", color: "var(--pr-muted)" }}>{fmtFecha(t.fecha_subido)}</span>,
-      <span style={{ fontSize: "7.5pt", color: t.fecha_resuelto ? "#15803D" : "var(--pr-faint)" }}>
-        {t.fecha_resuelto ? fmtFecha(t.fecha_resuelto) : "—"}
-      </span>,
-      (t.calificacion ?? 0) > 0
-        ? <Stars n={calNum} size={11} />
-        : <span style={{ color: "var(--pr-faint)", fontSize: "7pt" }}>—</span>,
+      <span style={{ fontFamily: "monospace", fontSize: "7pt", color: "var(--pr-accent)", whiteSpace: "nowrap" }}>{t.folio_ticket}</span>,
+      <span style={{ fontSize: "7.5pt", color: "var(--pr-ink)", lineHeight: 1.4 }}>{t.titulo}</span>,
+      <span style={{ fontSize: "7pt", color: est.color, whiteSpace: "nowrap" }}>{t.estatus}</span>,
+      <span style={{ fontSize: "7pt", color: prio.color, whiteSpace: "nowrap" }}>{t.prioridad}</span>,
+      <span style={{ fontSize: "7pt", color: "var(--pr-ink)", lineHeight: 1.35 }}>{t.nombre_empleado || "—"}</span>,
+      <span style={{ fontSize: "7pt", color: "var(--pr-muted)", lineHeight: 1.35 }}>{t.nombre_departamento || "—"}</span>,
+      <span style={{ fontSize: "7pt", color: t.resuelto_por ? "var(--pr-ink)" : "var(--pr-faint)", fontStyle: t.resuelto_por ? "normal" : "italic", lineHeight: 1.35 }}>{t.resuelto_por || "—"}</span>,
+      <span style={{ fontSize: "7pt", color: "var(--pr-muted)", whiteSpace: "nowrap" }}>{fmt.fechaCorta(t.fecha_subido)}</span>,
+      <span style={{ fontSize: "7pt", color: t.fecha_resuelto ? "var(--pr-muted)" : "var(--pr-faint)", whiteSpace: "nowrap" }}>{t.fecha_resuelto ? fmt.fechaCorta(t.fecha_resuelto) : "—"}</span>,
+      <span style={{ fontSize: "7pt", color: "var(--pr-muted)", whiteSpace: "nowrap" }}>{tiempoRes ?? "—"}</span>,
+      calNum > 0 ? <Stars n={calNum} size={8} /> : <span style={{ fontSize: "7pt", color: "var(--pr-faint)" }}>—</span>,
     ];
   });
 
@@ -89,31 +93,21 @@ function VistaIncidencias({ datos, periodo, fechaGen }: { datos: TicketRow[]; pe
         metaRows={[
           { label: "Período",    value: periodo },
           { label: "Registros", value: datos.length, mono: true },
+          ...(nombreEmpleado ? [{ label: "Solicitante", value: nombreEmpleado }] : []),
           { label: "Generado",  value: fechaGen },
         ]}
       />
-      <KpiStrip items={[
-        { label: "Total del período",  value: datos.length,  color: "var(--pr-accent)" },
-        { label: "Resueltos",          value: resueltos,     color: "#15803D" },
-        { label: "En proceso",         value: enProceso,     color: "#C2410C" },
-        { label: "Sin resolver",       value: noResueltos,   color: "#B91C1C" },
-        { label: "Satisfacción prom.", value: prom,          color: "#D97706" },
-      ]} />
       <ReporteTable
-        headers={["Folio", "Título / Prioridad", "Estatus", "Usuario / Área", "Técnico", "Inicio", "Cierre", "Satisf."]}
+        headers={["Folio", "Título de la Incidencia", "Estatus", "Prioridad", "Empleado", "Área / Depto.", "Técnico Asignado", "Fecha Alta", "Fecha Cierre", "Tiempo", "Cal."]}
         rows={rows}
+        colWidths={["88px", "auto", "72px", "56px", "110px", "100px", "110px", "68px", "68px", "44px", "32px"]}
       />
-      <PageFooter right={`Reporte de Incidencias · ${fechaGen}`} />
+      <PageFooter right={`Reporte de Incidencias · ${nombreEmpleado ? nombreEmpleado + " · " : ""}${fechaGen}`} />
     </>
   );
 }
 
 function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; periodo: string; fechaGen: string }) {
-  const resueltos   = datos.filter(s => s.estatus === "Resuelto").length;
-  const pendientes  = datos.filter(s => s.estatus === "Pendiente").length;
-  const rechazados  = datos.filter(s => s.estatus === "Rechazado").length;
-  const totalPiezas = datos.reduce((a, s) => a + (parseInt(String(s.total_piezas ?? 0)) || 0), 0);
-
   const parseItems = (raw?: string | null) =>
     (raw ?? "").split(";;")
       .filter(Boolean)
@@ -123,50 +117,30 @@ function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; period
       });
 
   const rows = datos.map(s => {
-    const prio  = PRIO_META[s.prioridad]  ?? PRIO_META.Baja;
-    const est   = ESTATUS_META[s.estatus] ?? ESTATUS_META["Cancelado"];
     const items = parseItems(s.items_detalle);
     return [
-      <span style={{ fontFamily: "monospace", fontWeight: 900, color: "var(--pr-accent)", fontSize: "8pt" }}>{s.folio_solicitud}</span>,
+      <span style={{ fontFamily: "monospace", fontSize: "7pt", color: "var(--pr-ink)" }}>{s.folio_solicitud}</span>,
       <div>
-        <div style={{ fontWeight: 700, fontSize: "8pt", color: "var(--pr-ink)" }}>{s.nombre_empleado || "—"}</div>
-        <div style={{ fontSize: "7pt", color: "var(--pr-muted)" }}>{s.nombre_departamento || "—"}</div>
-        {s.nombre_sucursal && <div style={{ fontSize: "6.5pt", color: "var(--pr-faint)" }}>{s.nombre_sucursal}</div>}
+        <div style={{ fontSize: "7.5pt", color: "var(--pr-ink)" }}>{s.nombre_empleado || "—"}</div>
+        <div style={{ fontSize: "6.5pt", color: "var(--pr-muted)" }}>{s.nombre_departamento || "—"}</div>
       </div>,
-      <Badge label={s.prioridad} bg={prio.bg} color={prio.color} border={prio.border} />,
-      <Badge label={s.estatus} bg={est.bg} color={est.color} border={est.border} />,
-      <div className="pr-items-list" style={{ minWidth: 160 }}>
+      <span style={{ fontSize: "7pt", color: "var(--pr-muted)" }}>{s.nombre_sucursal || "—"}</span>,
+      <span style={{ fontSize: "7pt", color: "var(--pr-ink)" }}>{s.prioridad}</span>,
+      <span style={{ fontSize: "7pt", color: "var(--pr-ink)" }}>{s.estatus}</span>,
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {items.length > 0 ? items.map((it, j) => (
-          <div key={j} className="pr-item-row">
-            {it.imagen_url ? (
-              <img src={it.imagen_url} alt={it.nombre} className="pr-insumo-thumb" />
-            ) : (
-              <div className="pr-insumo-thumb-placeholder">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/>
-                  <circle cx="8.5" cy="8.5" r="1.5"/>
-                  <polyline points="21 15 16 10 5 21"/>
-                </svg>
-              </div>
-            )}
-            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              <span className="pr-item-name">{it.nombre}</span>
-              <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-                <span className="pr-item-qty">x{it.qty}</span>
-                <span className="pr-item-aprobado" style={{
-                  background: it.aprobado ? "#f0fdf4" : "#fef2f2",
-                  color:      it.aprobado ? "#15803D" : "#B91C1C",
-                  border:     `1px solid ${it.aprobado ? "#86efac" : "#fca5a5"}`,
-                }}>{it.aprobado ? "✓ Aprobado" : "✕ Rechazado"}</span>
-              </div>
-            </div>
+          <div key={j} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {it.imagen_url
+              ? <img src={it.imagen_url} alt={it.nombre} style={{ width: 22, height: 22, objectFit: "cover", borderRadius: 2, border: "1px solid #ccc", flexShrink: 0 }} />
+              : <div style={{ width: 22, height: 22, flexShrink: 0 }} />}
+            <span style={{ fontSize: "6.5pt", color: "var(--pr-ink)" }}>{it.nombre} · x{it.qty} · {it.aprobado ? "Aprobado" : "Rechazado"}</span>
           </div>
         )) : (
           <span style={{ fontSize: "6.5pt", color: "var(--pr-faint)" }}>{s.detalle_insumos || "—"}</span>
         )}
       </div>,
-      <span style={{ fontSize: "8pt", fontWeight: 900, color: "#7C3AED" }}>{s.total_piezas ?? "—"}</span>,
-      <span style={{ fontSize: "7.5pt", color: "var(--pr-muted)" }}>{fmtFecha(s.fecha)}</span>,
+      <span style={{ fontSize: "7pt", color: "var(--pr-ink)" }}>{s.total_piezas ?? "—"}</span>,
+      <span style={{ fontSize: "7pt", color: "var(--pr-muted)" }}>{fmt.fechaCorta(s.fecha)}</span>,
     ];
   });
 
@@ -176,20 +150,13 @@ function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; period
         titulo="Reporte de Solicitudes de Insumos"
         subtitulo="Departamento de Soporte Técnico"
         metaRows={[
-          { label: "Período",    value: periodo },
+          { label: "Período",   value: periodo },
           { label: "Registros", value: datos.length, mono: true },
           { label: "Generado",  value: fechaGen },
         ]}
       />
-      <KpiStrip items={[
-        { label: "Total del período", value: datos.length,  color: "var(--pr-accent)" },
-        { label: "Resueltos",         value: resueltos,     color: "#15803D" },
-        { label: "Pendientes",        value: pendientes,    color: "#1D4ED8" },
-        { label: "Rechazados",        value: rechazados,    color: "#475569" },
-        { label: "Total piezas",      value: totalPiezas,   color: "#7C3AED" },
-      ]} />
       <ReporteTable
-        headers={["Folio", "Empleado / Área", "Prioridad", "Estatus", "Insumos solicitados", "Piezas", "Fecha"]}
+        headers={["Folio", "Empleado / Área", "Sucursal", "Prioridad", "Estatus", "Insumos solicitados", "Piezas", "Fecha"]}
         rows={rows}
       />
       <PageFooter right={`Reporte de Insumos · ${fechaGen}`} />
@@ -198,63 +165,181 @@ function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; period
 }
 
 function VistaRendimiento({ datos, periodo, fechaGen }: { datos: RendimientoRow[]; periodo: string; fechaGen: string }) {
-  const totalAtendidos = datos.reduce((a, r) => a + Number(r.total_atendidos ?? 0), 0);
-  const totalResueltos = datos.reduce((a, r) => a + Number(r.resueltos ?? 0), 0);
-  const promedioHoras  = datos.length > 0
-    ? (datos.reduce((a, r) => a + Number(r.promedio_horas ?? 0), 0) / datos.length).toFixed(1) : "—";
-  const conCalif = datos.filter(r => (r.calificacion_promedio ?? 0) > 0);
-  const promedioCalif = conCalif.length > 0
-    ? (conCalif.reduce((a, r) => a + Number(r.calificacion_promedio), 0) / conCalif.length).toFixed(2) : "—";
+  const header = (
+    <PageHeader
+      titulo="Reporte de Rendimiento por Técnico"
+      subtitulo="Departamento de Soporte Técnico"
+      metaRows={[
+        { label: "Período",  value: periodo },
+        { label: "Técnicos", value: datos.length, mono: true },
+        { label: "Generado", value: fechaGen },
+      ]}
+    />
+  );
+
+  if (datos.length === 0) return (
+    <>
+      {header}
+      <p style={{ textAlign: "center", color: "#94a3b8", fontSize: "8pt", fontStyle: "italic", margin: "32px 0" }}>
+        Sin registros en el período seleccionado.
+      </p>
+      <PageFooter right={`Rendimiento por Técnico · ${fechaGen}`} />
+    </>
+  );
+
+  /* ── estilos de celda ── */
+  const th: React.CSSProperties = {
+    padding: "5px 8px", fontSize: "5.5pt", fontWeight: 900,
+    textTransform: "uppercase" as const, letterSpacing: "0.12em",
+    color: "rgba(255,255,255,0.85)", whiteSpace: "nowrap" as const,
+    textAlign: "center" as const, background: "#1e293b",
+  };
+  const thLeft: React.CSSProperties = { ...th, textAlign: "left" as const };
+  const td: React.CSSProperties = {
+    padding: "7px 8px", fontSize: "8pt", fontWeight: 700,
+    color: "#0f172a", textAlign: "center" as const,
+    verticalAlign: "middle" as const, borderBottom: "1px solid #e2e8f0",
+  };
+  const tdLeft: React.CSSProperties = { ...td, textAlign: "left" as const, minWidth: 150 };
+  const thSep: React.CSSProperties = { ...th, borderLeft: "2px solid rgba(255,255,255,0.15)" };
+  const tdSep: React.CSSProperties = { ...td, borderLeft: "2px solid #e2e8f0" };
+
+  /* barra de progreso inline */
+  const PctBar = ({ pct }: { pct: number }) => (
+    <div style={{ marginTop: 3, height: 3, borderRadius: 2,
+      background: "#e2e8f0", overflow: "hidden" as const, width: "100%" }}>
+      <div style={{ height: "100%", width: `${Math.min(100, pct)}%`,
+        background: "#0f172a", borderRadius: 2 }} />
+    </div>
+  );
 
   const rows = datos.map((r, i) => {
-    const tasa  = r.total_atendidos > 0 ? Math.round((r.resueltos / r.total_atendidos) * 100) : 0;
-    const calif = Number(r.calificacion_promedio ?? 0);
-    const tasaColor = tasa >= 75 ? "#15803D" : tasa >= 50 ? "#A16207" : "#B91C1C";
-    return [
-      <span style={{ fontSize: "8pt", fontWeight: 900, color: "var(--pr-faint)" }}>{i + 1}</span>,
-      <span style={{ fontSize: "8.5pt", fontWeight: 700, color: "var(--pr-ink)" }}>{r.nombre_tecnico}</span>,
-      <span style={{ fontSize: "9pt", fontWeight: 900, color: "#1D4ED8" }}>{r.total_atendidos}</span>,
-      <span style={{ fontSize: "9pt", fontWeight: 900, color: "#15803D" }}>{r.resueltos}</span>,
-      <span style={{
-        display: "inline-block", padding: "1px 7px", borderRadius: 3,
-        fontSize: "7.5pt", fontWeight: 800,
-        background: `${tasaColor}18`, color: tasaColor, border: `1px solid ${tasaColor}30`,
-      }}>{tasa}%</span>,
-      <span style={{ fontSize: "8.5pt", fontWeight: 700, color: "#7C3AED" }}>
-        {r.promedio_horas != null ? `${r.promedio_horas}h` : "—"}
-      </span>,
-      calif > 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <Stars n={Math.round(calif)} size={11} />
-          <span style={{ fontSize: "6.5pt", color: "var(--pr-faint)" }}>{calif.toFixed(2)} / 5.00</span>
-        </div>
-      ) : <span style={{ color: "var(--pr-faint)", fontSize: "7pt" }}>—</span>,
-      <span style={{ fontSize: "8pt", color: "var(--pr-muted)" }}>{r.total_calificaciones}</span>,
-    ];
+    const tasa   = r.total_atendidos > 0 ? Math.round((r.resueltos / r.total_atendidos) * 100) : 0;
+    const slaPct = r.resueltos > 0 ? Math.round((r.resueltos_a_tiempo / r.resueltos) * 100) : 0;
+    const calif  = Number(r.calificacion_promedio ?? 0);
+    const rowBg  = i % 2 === 0 ? "#fff" : "#f8fafc";
+    return (
+      <tr key={i} style={{ background: rowBg }}>
+        {/* Técnico — acento naranja de marca */}
+        <td style={{ ...tdLeft, background: rowBg,
+          borderLeft: "3px solid #F47920", paddingLeft: 10 }}>
+          <div style={{ fontSize: "5pt", fontWeight: 700, textTransform: "uppercase" as const,
+            letterSpacing: "0.16em", color: "#94a3b8", marginBottom: 2 }}>
+            Técnico &nbsp;·&nbsp; #{String(i + 1).padStart(2, "0")}
+          </div>
+          <div style={{ fontSize: "9.5pt", fontWeight: 900, color: "#0f172a",
+            letterSpacing: "-0.01em", lineHeight: 1.2, marginBottom: 3 }}>
+            {r.nombre_tecnico}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <span style={{ fontSize: "5.5pt", color: "#64748b", fontWeight: 600 }}>
+              En proceso: <strong style={{ color: "#0f172a" }}>{r.en_proceso_activos}</strong>
+            </span>
+            <span style={{ fontSize: "5.5pt", color: "#64748b", fontWeight: 600 }}>
+              Cancelados: <strong style={{ color: "#0f172a" }}>{r.tickets_cancelados}</strong>
+            </span>
+          </div>
+        </td>
+        {/* Volumen */}
+        <td style={{ ...td, background: rowBg }}>
+          <div>{r.total_atendidos}</div>
+          <div style={{ fontSize: "5.5pt", color: "#94a3b8", fontWeight: 600, marginTop: 1 }}>
+            {r.en_proceso_activos > 0 ? `${r.en_proceso_activos} activos` : "sin activos"}
+          </div>
+        </td>
+        <td style={{ ...td, background: rowBg }}>
+          <div>{r.resueltos}</div>
+          <div style={{ fontSize: "5.5pt", color: "#94a3b8", fontWeight: 600, marginTop: 1 }}>
+            {r.alta_prioridad_resueltos > 0 ? `${r.alta_prioridad_resueltos} alta prior.` : "—"}
+          </div>
+        </td>
+        <td style={{ ...td, background: rowBg, color: "#475569" }}>{r.no_resueltos}</td>
+        <td style={{ ...td, background: rowBg, color: "#475569" }}>{r.tickets_cancelados}</td>
+        {/* Eficiencia */}
+        <td style={{ ...tdSep, background: rowBg }}>
+          <div>{tasa}%</div>
+          <PctBar pct={tasa} />
+        </td>
+        <td style={{ ...td, background: rowBg }}>
+          <div>{slaPct}%</div>
+          <PctBar pct={slaPct} />
+        </td>
+        <td style={{ ...td, background: rowBg, color: "#475569" }}>{r.alta_prioridad_resueltos}</td>
+        {/* Tiempos */}
+        <td style={{ ...tdSep, background: rowBg }}>
+          {r.promedio_horas != null ? `${r.promedio_horas}h` : "—"}
+        </td>
+        <td style={{ ...td, background: rowBg, color: "#475569" }}>
+          {r.min_horas != null ? `${r.min_horas}h` : "—"}
+        </td>
+        <td style={{ ...td, background: rowBg, color: "#475569" }}>
+          {r.max_horas != null ? `${r.max_horas}h` : "—"}
+        </td>
+        {/* Satisfacción */}
+        <td style={{ ...tdSep, background: rowBg }}>
+          {calif > 0
+            ? <span style={{ display: "inline-flex", flexDirection: "column" as const, alignItems: "center", gap: 1 }}>
+                <Stars n={Math.round(calif)} size={7} />
+                <span style={{ fontSize: "7.5pt", fontWeight: 800 }}>{calif.toFixed(1)}</span>
+              </span>
+            : <span style={{ color: "#94a3b8" }}>—</span>}
+        </td>
+        <td style={{ ...td, background: rowBg, color: "#475569", fontSize: "7.5pt" }}>
+          {r.total_calificaciones}
+          {r.pct_calificados != null &&
+            <div style={{ fontSize: "6pt", color: "#94a3b8", fontWeight: 600 }}>{r.pct_calificados}%</div>}
+        </td>
+      </tr>
+    );
   });
 
   return (
     <>
-      <PageHeader
-        titulo="Reporte de Rendimiento por Técnico"
-        subtitulo="Departamento de Soporte Técnico"
-        metaRows={[
-          { label: "Período",    value: periodo },
-          { label: "Técnicos",  value: datos.length, mono: true },
-          { label: "Generado",  value: fechaGen },
-        ]}
-      />
-      <KpiStrip items={[
-        { label: "Técnicos activos",   value: datos.length,   color: "var(--pr-accent)" },
-        { label: "Total atendidos",    value: totalAtendidos, color: "#1D4ED8" },
-        { label: "Total resueltos",    value: totalResueltos, color: "#15803D" },
-        { label: "Prom. horas",        value: promedioHoras,  color: "#7C3AED" },
-        { label: "Satisfacción prom.", value: promedioCalif,  color: "#D97706" },
-      ]} />
-      <ReporteTable
-        headers={["#", "Técnico", "Atendidos", "Resueltos", "Tasa resolución", "Prom. horas", "Calificación prom.", "Calif. recibidas"]}
-        rows={rows}
-      />
+      {header}
+      <div style={{ overflowX: "auto" as const }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "auto" as const }}>
+          <thead>
+            {/* Fila de grupos */}
+            <tr style={{ background: "#0f172a" }}>
+              <th style={{ ...thLeft, background: "#0f172a", borderBottom: "1px solid rgba(255,255,255,0.08)" }} rowSpan={2}>
+                Técnico
+              </th>
+              <th style={{ ...th, background: "#0f172a", borderBottom: "1px solid rgba(255,255,255,0.08)",
+                borderLeft: "1px solid rgba(255,255,255,0.08)" }} colSpan={4}>
+                Volumen
+              </th>
+              <th style={{ ...th, background: "#0f172a", borderBottom: "1px solid rgba(255,255,255,0.08)",
+                borderLeft: "2px solid rgba(255,255,255,0.15)" }} colSpan={3}>
+                Eficiencia
+              </th>
+              <th style={{ ...th, background: "#0f172a", borderBottom: "1px solid rgba(255,255,255,0.08)",
+                borderLeft: "2px solid rgba(255,255,255,0.15)" }} colSpan={3}>
+                Tiempos
+              </th>
+              <th style={{ ...th, background: "#0f172a", borderBottom: "1px solid rgba(255,255,255,0.08)",
+                borderLeft: "2px solid rgba(255,255,255,0.15)" }} colSpan={2}>
+                Satisfacción
+              </th>
+            </tr>
+            {/* Fila de columnas */}
+            <tr style={{ background: "#1e293b" }}>
+              <th style={{ ...thSep }}>Atendidos</th>
+              <th style={th}>Resueltos</th>
+              <th style={th}>No res.</th>
+              <th style={th}>Cancelados</th>
+              <th style={{ ...thSep }}>Tasa %</th>
+              <th style={th}>SLA %</th>
+              <th style={th}>Alta prior.</th>
+              <th style={{ ...thSep }}>Prom.</th>
+              <th style={th}>Mín.</th>
+              <th style={th}>Máx.</th>
+              <th style={{ ...thSep }}>Calif.</th>
+              <th style={th}>Votos</th>
+            </tr>
+          </thead>
+          <tbody>{rows}</tbody>
+        </table>
+      </div>
       <PageFooter right={`Rendimiento por Técnico · ${fechaGen}`} />
     </>
   );
@@ -262,10 +347,11 @@ function VistaRendimiento({ datos, periodo, fechaGen }: { datos: RendimientoRow[
 
 export default function PrintReporteListaView({ payload }: { payload: ReportePayload }) {
   const fechaGen = nowFechaGen();
+  const isLandscape = true;
   return (
-    <div className="pr-root" data-ready="true">
+    <div className={`pr-root${isLandscape ? " pr-landscape" : ""}`} data-ready="true">
       <div className="pr-content">
-        {payload.tipo === "incidencias" && <VistaIncidencias  datos={payload.datos as TicketRow[]}      periodo={payload.periodo} fechaGen={fechaGen} />}
+        {payload.tipo === "incidencias" && <VistaIncidencias  datos={payload.datos as TicketRow[]}      periodo={payload.periodo} fechaGen={fechaGen} nombreEmpleado={payload.nombreEmpleado} />}
         {payload.tipo === "insumos"     && <VistaInsumos      datos={payload.datos as InsumoRow[]}      periodo={payload.periodo} fechaGen={fechaGen} />}
         {payload.tipo === "rendimiento" && <VistaRendimiento  datos={payload.datos as RendimientoRow[]} periodo={payload.periodo} fechaGen={fechaGen} />}
       </div>

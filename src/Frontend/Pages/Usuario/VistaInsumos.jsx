@@ -100,8 +100,8 @@ function TarjetaInsumo({ i, onClick }) {
             </div>
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: "1.3" }}>{i.nombre}</p>
-            <p style={{ margin: 0, fontSize: "11px", color: T.textMuted, marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <p style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: "1.3" }}>{i.nombre}</p>
+            <p style={{ margin: 0, fontSize: "0.95rem", color: T.textMuted, marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {[i.marca, i.modelo].filter(Boolean).join(" · ") || <em style={{ opacity: 0.5 }}>Sin marca</em>}
             </p>
           </div>
@@ -110,19 +110,19 @@ function TarjetaInsumo({ i, onClick }) {
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
             <Tag size={10} style={{ color: T.textFaint, flexShrink: 0 }} />
-            <span style={{ fontSize: "11px", fontWeight: 600, color: T.textMuted, background: isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`, borderRadius: "3px", padding: "1px 6px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: "0.95rem", fontWeight: 600, color: T.textMuted, background: isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`, borderRadius: "3px", padding: "1px 6px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {i.nombre_categoria || "Sin categoría"}
             </span>
           </div>
           {i.num_serie && (
             <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
               <Hash size={10} style={{ color: T.textFaint, flexShrink: 0 }} />
-              <span style={{ fontSize: "11px", fontFamily: "monospace", color: T.textFaint }}>{i.num_serie}</span>
+              <span style={{ fontSize: "0.9rem", fontFamily: "monospace", color: T.textFaint }}>{i.num_serie}</span>
             </div>
           )}
         </div>
         <div style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}`, paddingTop: "7px" }}>
-          <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: T.textFaint, display: "block", marginBottom: "5px" }}>Stock</span>
+          <span style={{ fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: T.textFaint, display: "block", marginBottom: "5px" }}>Stock</span>
           <StockBar stock={i.stock ?? 0} isDark={isDark} />
         </div>
       </div>
@@ -137,7 +137,7 @@ function TablaInsumos({ filtrados, onSelect }) {
   const [hoverRow, setHoverRow] = useState(null);
 
   const thBase = {
-    padding: "8px 10px", fontSize: "10px", fontWeight: 700,
+    padding: "8px 10px", fontSize: "0.9rem", fontWeight: 700,
     textTransform: "uppercase", letterSpacing: "0.07em",
     color: T.textFaint, textAlign: "left", whiteSpace: "nowrap",
     borderBottom: `2px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`,
@@ -194,7 +194,7 @@ function TablaInsumos({ filtrados, onSelect }) {
                     ? <img src={`${API_BASE}${i.imagen_url}`} alt={i.nombre} onError={e => { e.target.style.display = "none"; }} style={{ width: "24px", height: "24px", borderRadius: "4px", objectFit: "cover", flexShrink: 0 }} />
                     : <div style={{ width: "3px", height: "18px", borderRadius: "2px", flexShrink: 0, background: ESTADO_META[i.estado]?.color || "#94a3b8" }} />
                   }
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "12px", fontWeight: 600, color: T.text }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "1.1rem", fontWeight: 600, color: T.text }}>
                     {i.nombre}
                   </span>
                 </div>
@@ -203,7 +203,7 @@ function TablaInsumos({ filtrados, onSelect }) {
               <td style={{ ...tdBase, borderBottom: borderB }}>
                 <span style={{
                   display: "inline-block", maxWidth: "100%",
-                  fontSize: "11px", fontWeight: 600, color: T.textMuted,
+                  fontSize: "0.95rem", fontWeight: 600, color: T.textMuted,
                   background: isDark ? "rgba(255,255,255,0.05)" : T.surfaceAlt,
                   border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`,
                   borderRadius: "3px", padding: "2px 6px",
@@ -214,11 +214,11 @@ function TablaInsumos({ filtrados, onSelect }) {
                 </span>
               </td>
               {/* Marca / Modelo */}
-              <td style={{ ...tdBase, borderBottom: borderB, fontSize: "12px", color: T.textMuted }}>
+              <td style={{ ...tdBase, borderBottom: borderB, fontSize: "0.95rem", color: T.textMuted }}>
                 {[i.marca, i.modelo].filter(Boolean).join(" / ") || <span style={{ fontStyle: "italic", color: T.textFaint }}>—</span>}
               </td>
               {/* N° Serie */}
-              <td style={{ ...tdBase, borderBottom: borderB, fontFamily: "monospace", fontSize: "11px", color: T.textFaint }}>
+              <td style={{ ...tdBase, borderBottom: borderB, fontFamily: "monospace", fontSize: "0.9rem", color: T.textFaint }}>
                 {i.num_serie || "—"}
               </td>
               {/* Estado */}
@@ -301,12 +301,8 @@ export default function VistaInsumos({ T }) {
       <div style={{
         background: T.bg,
         fontFamily: "'Inter','Segoe UI',system-ui,sans-serif",
-        height: "100%", display: "flex", flexDirection: "column", overflow: "hidden",
+        padding: "12px",
       }}>
-        <div style={{
-          flex: 1, minHeight: 0, overflowY: "auto", overflowX: "auto",
-          padding: "12px", display: "flex", flexDirection: "column", gap: "10px",
-        }}>
           <div style={{ maxWidth: "1400px", width: "100%", margin: "0 auto", display: "flex", flexDirection: "column", gap: "10px" }}>
 
             {/* KPIs */}
@@ -406,7 +402,6 @@ export default function VistaInsumos({ T }) {
             </div>
 
           </div>
-        </div>
       </div>
 
       {insumoSel && (

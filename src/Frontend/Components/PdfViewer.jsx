@@ -37,6 +37,14 @@ export default function PdfViewer({ url, isDark }) {
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState(false);
 
+  // Bloquear zoom en móvil/tablet (< 1024px)
+  const [isMobileOrTablet, setIsMobileOrTablet] = useState(() => window.innerWidth < 1024);
+  useEffect(() => {
+    const check = () => setIsMobileOrTablet(window.innerWidth < 1024);
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   // Cargar documento
   useEffect(() => {
     if (!url) return;
@@ -54,6 +62,13 @@ export default function PdfViewer({ url, isDark }) {
         pdfRef.current = pdf;
         numPagesRef.current = pdf.numPages;
         setNumPages(pdf.numPages);
+        // Ajustar scale al ancho del contenedor
+        if (scrollRef.current) {
+          const page1 = await pdf.getPage(1);
+          const vp = page1.getViewport({ scale: 1, rotation: 0 });
+          const available = scrollRef.current.clientWidth - 32;
+          if (vp.width > available) setScale(+(available / vp.width).toFixed(2));
+        }
         setLoading(false);
       } catch (e) {
         console.error("[PdfViewer] load error", e);
@@ -155,8 +170,8 @@ export default function PdfViewer({ url, isDark }) {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: bg }}>
       {/* Barra de controles */}
       <div style={{
-        height: 40, flexShrink: 0, display: "flex", alignItems: "center",
-        justifyContent: "center", gap: 8, padding: "0 12px",
+        minHeight: 40, flexShrink: 0, display: "flex", alignItems: "center",
+        justifyContent: "center", gap: 6, padding: "6px 10px", flexWrap: "wrap",
         background: isDark ? "#0f1117" : "#f1f5f9",
         borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)"}`,
       }}>
@@ -195,18 +210,39 @@ export default function PdfViewer({ url, isDark }) {
 
         <div style={{ width: 1, height: 20, background: isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)", margin: "0 4px" }} />
 
-        {/* Zoom */}
-        <button style={btnSt} onClick={() => setScale(s => Math.max(0.5, +(s - 0.2).toFixed(1)))} disabled={loading}>
-          <ZoomOut size={13} />
-        </button>
-        <span style={{ fontSize: 11, fontWeight: 600, color: txt, minWidth: 38, textAlign: "center" }}>
-          {Math.round(scale * 100)}%
-        </span>
-        <button style={btnSt} onClick={() => setScale(s => Math.min(3, +(s + 0.2).toFixed(1)))} disabled={loading}>
-          <ZoomIn size={13} />
-        </button>
-
-        <div style={{ width: 1, height: 20, background: isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)", margin: "0 4px" }} />
+        {/* Zoom — oculto en móvil/tablet */}
+        {!isMobileOrTablet && (
+          <>
+            <button style={btnSt} onClick={() => setScale(s => Math.max(0.5, +(s - 0.2).toFixed(1)))} disabled={loading}>
+              <ZoomOut size={13} />
+            </button>
+            <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: txt }}>
+              <input
+                type="number"
+                min={50}
+                max={300}
+                value={Math.round(scale * 100)}
+                onChange={e => {
+                  const v = parseInt(e.target.value, 10);
+                  if (!isNaN(v)) setScale(Math.min(3, Math.max(0.5, v / 100)));
+                }}
+                style={{
+                  width: 44, height: 24, textAlign: "center", borderRadius: 5,
+                  border: `1px solid ${isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)"}`,
+                  background: isDark ? "rgba(255,255,255,0.07)" : "#fff",
+                  color: txt, fontSize: 11, fontWeight: 600,
+                  outline: "none", padding: 0,
+                  MozAppearance: "textfield",
+                }}
+              />
+              <span style={{ opacity: 0.55 }}>%</span>
+            </span>
+            <button style={btnSt} onClick={() => setScale(s => Math.min(3, +(s + 0.2).toFixed(1)))} disabled={loading}>
+              <ZoomIn size={13} />
+            </button>
+            <div style={{ width: 1, height: 20, background: isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)", margin: "0 4px" }} />
+          </>
+        )}
 
         {/* Rotar */}
         <button style={btnSt} onClick={() => setRotation(r => (r + 90) % 360)} disabled={loading}>

@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Camera, X, ChevronLeft, ChevronRight, Trash2,
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
-  AlignLeft, AlignCenter, AlignRight, Minus, ArrowRight, ArrowLeft, Send } from "lucide-react";
+  AlignLeft, AlignCenter, AlignRight, Minus, FileDown, CheckCircle2 } from "lucide-react";
 import { apiFetch } from "../../Config/api";
 import Modal from "../../Components/Modal";
 
@@ -315,8 +315,15 @@ const card = {
     : null;
 
   return (
-    <div className="h-full overflow-y-auto py-6 px-2 md:py-8 md:px-4"
-      style={{ background:T.bg }}
+    <div style={{
+      background: T.bg,
+      height: "100%",
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+    }}>
+    <div className="py-6 px-2 md:py-8 md:px-4"
+      style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}
       onDragOver={e => { e.preventDefault(); setDragging(true); }}
       onDragEnter={e => { e.preventDefault(); setDragging(true); }}
       onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
@@ -761,37 +768,20 @@ const card = {
 
       {/* Modal resultado envío */}
       {modal && (
-        <Modal
-          T={T}
-          title={modal.titulo}
-          onClose={() => { setModal(null); if (!modal.ok) return; if (modal.id_ticket && onVerTicket) onVerTicket(modal.id_ticket); else onSuccess?.(); }}
-          onConfirm={() => { setModal(null); if (modal.ok && modal.id_ticket && onVerTicket) onVerTicket(modal.id_ticket); else onSuccess?.(); }}
-          confirmLabel={modal.ok ? (onVerTicket ? "Ver mi ticket" : "Aceptar") : "Cerrar"}
-          cancelLabel={null}
-          maxWidth="380px"
-          danger={!modal.ok}
-        >
-          {modal.ok ? (
-            <div className="flex flex-col gap-2.5">
-              <span className="text-sm font-mono font-bold" style={{ color:"#FF6600" }}>#{modal.folio}</span>
-              <div className="flex flex-col gap-1.5 text-xs pt-2" style={{ borderTop:`1px solid ${T.border}` }}>
-                {[
-                  ["Prioridad", modal.prioridad, PRIORIDADES.find(p => p.nivel === modal.prioridad)?.color],
-                  ["Estado",    "En Proceso",    "#ca8a04"],
-                  ["Categoría", modal.categoria, null],
-                  ["Fecha",     new Date().toLocaleDateString("es-MX"), null],
-                ].map(([lbl, val, color]) => (
-                  <div key={lbl} className="flex items-center justify-between">
-                    <span style={{ color: T.textMuted }}>{lbl}:</span>
-                    <span style={{ fontWeight:600, color: color || T.text }}>{val}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm" style={{ color: T.text }}>{modal.msg}</p>
-          )}
-        </Modal>
+        modal.ok
+          ? <ModalReporteEnviado T={T} modal={modal} onVerTicket={onVerTicket} onSuccess={onSuccess} onClose={() => setModal(null)} />
+          : <Modal
+              T={T}
+              title={modal.titulo}
+              onClose={() => setModal(null)}
+              onConfirm={() => setModal(null)}
+              confirmLabel="Cerrar"
+              cancelLabel={null}
+              maxWidth="380px"
+              danger
+            >
+              <p className="text-sm" style={{ color: T.text }}>{modal.msg}</p>
+            </Modal>
       )}
 
       {/* Visor modal */}
@@ -839,6 +829,199 @@ const card = {
           </button>
         </div>
       )}
+    </div>
+    </div>
+  );
+}
+
+function ModalReporteEnviado({ T, modal, onVerTicket, onSuccess, onClose }) {
+  const isDark    = T?.isDark ?? false;
+  const surface    = isDark ? "#161B22" : "#ffffff";
+  const surfaceAlt = isDark ? "#1a2030" : "#f8fafc";
+  const border     = isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0";
+  const textMain   = T?.text      ?? (isDark ? "#e2e8f0" : "#1a202c");
+  const textMuted  = T?.textMuted ?? (isDark ? "#8b949e" : "#64748b");
+  const textFaint  = T?.textFaint ?? (isDark ? "rgba(255,255,255,0.25)" : "#a0aec0");
+  const ORANGE = "#F47920";
+
+  useEffect(() => {
+    const fn = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, [onClose]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  const prioColor = PRIORIDADES.find(p => p.nivel === modal.prioridad)?.color;
+
+  const rows = [
+    { label: "Folio",     value: `#${modal.folio}`,                                  color: ORANGE },
+    { label: "Prioridad", value: modal.prioridad,                                     color: prioColor },
+    { label: "Estado",    value: "En Proceso",                                        color: "#ca8a04" },
+    { label: "Categoría", value: modal.categoria,                                     color: null },
+    { label: "Fecha",     value: new Date().toLocaleDateString("es-MX"), color: null },
+  ];
+
+  const handleConfirm = () => {
+    onClose();
+    if (modal.id_ticket && onVerTicket) onVerTicket(modal.id_ticket);
+    else onSuccess?.();
+  };
+
+  return (
+    <div
+      role="presentation"
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.40)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "16px",
+        animation: "dmFade 0.15s ease",
+      }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        style={{
+          width: "95%", maxWidth: "460px",
+          background: surface,
+          border: `1px solid ${border}`,
+          borderRadius: "10px",
+          display: "flex", flexDirection: "column",
+          maxHeight: "90vh", overflow: "hidden",
+          boxShadow: isDark
+            ? "0 16px 40px rgba(0,0,0,0.50), 0 1px 0 rgba(255,255,255,0.04) inset"
+            : "0 16px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
+          animation: "dmSlide 0.18s ease",
+        }}
+      >
+        <div style={{ height: "2px", flexShrink: 0, background: "#16a34a", borderRadius: "10px 10px 0 0" }} />
+
+        {/* Header */}
+        <div style={{
+          padding: "14px 18px 12px",
+          background: surface,
+          borderBottom: `1px solid ${border}`,
+          display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+          gap: "12px", flexShrink: 0,
+        }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: 0, fontSize: "11px", fontWeight: 700, textTransform: "uppercase",
+              letterSpacing: "0.09em", color: "#16a34a" }}>
+              Incidencias
+            </p>
+            <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: textMain,
+              letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+              Reporte enviado
+            </h2>
+            <p style={{ margin: "4px 0 0", fontSize: "12px", color: textMuted, fontWeight: 400 }}>
+              Tu ticket fue registrado correctamente
+            </p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
+            <img
+              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
+              alt="Precision Trucks"
+              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
+            />
+            <button
+              onClick={onClose}
+              aria-label="Cerrar"
+              style={{
+                width: "26px", height: "26px",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "transparent",
+                border: `1px solid ${border}`,
+                borderRadius: "6px", cursor: "pointer",
+                color: textFaint, transition: "all 0.12s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = textMuted; e.currentTarget.style.color = textMain; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = border;    e.currentTarget.style.color = textFaint; }}
+            >
+              <X size={12} strokeWidth={2} />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px" }}>
+          {/* Ícono de éxito */}
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+            <div style={{
+              width: "48px", height: "48px", borderRadius: "50%",
+              background: "rgba(22,163,74,0.10)", border: "1px solid rgba(22,163,74,0.25)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <CheckCircle2 size={24} style={{ color: "#16a34a" }} />
+            </div>
+          </div>
+
+          {/* Filas de detalle */}
+          {rows.map(({ label, value, color }) => (
+            <div key={label} style={{
+              display: "grid", gridTemplateColumns: "108px 1fr",
+              alignItems: "center", gap: "10px",
+              padding: "8px 0",
+              borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}`,
+            }}>
+              <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase",
+                letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0" }}>
+                {label}
+              </span>
+              <span style={{ fontSize: "13px", fontWeight: 600, color: color || textMain }}>
+                {value}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: "10px 18px",
+          borderTop: `1px solid ${border}`,
+          background: surfaceAlt,
+          display: "flex", justifyContent: "flex-end", gap: "8px",
+          flexShrink: 0,
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: "6px 16px", borderRadius: "6px",
+              fontSize: "12px", fontWeight: 600,
+              background: "transparent",
+              border: `1px solid ${border}`,
+              color: textMuted, cursor: "pointer", transition: "all 0.12s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = textMuted; e.currentTarget.style.color = textMain; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = border;    e.currentTarget.style.color = textMuted; }}
+          >
+            Cerrar
+          </button>
+          {onVerTicket && (
+            <button
+              onClick={handleConfirm}
+              style={{
+                padding: "6px 16px", borderRadius: "6px",
+                fontSize: "12px", fontWeight: 700,
+                background: "#16a34a", color: "#fff",
+                border: "none", cursor: "pointer",
+                display: "flex", alignItems: "center", gap: "6px",
+                transition: "filter 0.12s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.filter = "brightness(1.08)"; }}
+              onMouseLeave={e => { e.currentTarget.style.filter = "none"; }}
+            >
+              <FileDown size={12} strokeWidth={2.5} />
+              Ver mi ticket
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

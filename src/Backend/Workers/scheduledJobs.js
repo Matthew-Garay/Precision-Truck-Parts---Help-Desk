@@ -96,7 +96,7 @@ export function iniciarWorkers(io) {
           console.error("[SLA emit]", emitErr.message);
         }
       }
-      console.log(`Alertas SLA enviadas: ${nuevos.length} ticket(s)`);
+
     } catch (err) {
       console.error("Error verificando SLA:", err.message);
     } finally {
@@ -114,7 +114,7 @@ export function iniciarWorkers(io) {
     try {
       const vencidos = await Ticket.cerrarVencidos();
       if (vencidos.length === 0) return;
-      console.log(`Tickets cerrados automaticamente: ${vencidos.length}`);
+      // Solo notificar al empleado dueño (ticket:actualizado es evento de usuario)
       vencidos.forEach(t => {
         const payload = {
           id_ticket:      t.id_ticket,
@@ -125,8 +125,8 @@ export function iniciarWorkers(io) {
           resuelto_por:   null,
         };
         io.to(`empleado_${t.id_empleado}`).emit("ticket:actualizado", payload);
-        io.to("admins").emit("ticket:actualizado", payload);
       });
+      // Notificar a admins con el evento correcto de admin
       io.to("admins").emit("tickets:vencidos", { total: vencidos.length });
     } catch (err) {
       console.error("Error cerrando tickets vencidos:", err.message);
@@ -147,28 +147,22 @@ export function iniciarWorkers(io) {
          WHERE fecha_salida IS NULL
          AND fecha_entrada < DATE_SUB(NOW(), INTERVAL 12 HOUR)`
       );
-      if (result.affectedRows > 0)
-        console.log(`Sesiones huerfanas cerradas: ${result.affectedRows}`);
     } catch (err) {
-      console.error("Error limpiando sesiones huérfanas:", err.message);
+      console.error("[sesiones]", err.message);
     }
-    // Purgar registros de historial_acceso con más de 90 días (evita crecimiento ilimitado)
     try {
       const [purga] = await pool.query(
         `DELETE FROM historial_acceso
          WHERE fecha_salida IS NOT NULL
          AND fecha_entrada < DATE_SUB(NOW(), INTERVAL 90 DAY)`
       );
-      if (purga.affectedRows > 0)
-        console.log(`Historial de accesos purgado: ${purga.affectedRows} registros eliminados`);
     } catch (err) {
-      console.error("Error purgando historial de accesos:", err.message);
+      console.error("[purga historial]", err.message);
     }
-    // Limpiar tokens JWT revocados ya expirados
     try {
       await limpiarTokensRevocados();
     } catch (err) {
-      console.error("Error limpiando tokens revocados:", err.message);
+      console.error("[tokens revocados]", err.message);
     } finally {
       corriendo.sesiones = false;
     }
@@ -197,7 +191,7 @@ export function iniciarWorkers(io) {
         });
         stockAlertados.add(ins.id_insumo);
       });
-      console.log(`Stock critico: ${nuevos.length} insumo(s)`);
+
     } catch (err) {
       console.error("Error verificando stock crítico:", err.message);
     } finally {
@@ -234,7 +228,7 @@ export function iniciarWorkers(io) {
         });
         sinAtenderAlertados.add(t.id_ticket);
       });
-      console.log(`Tickets sin atender >24h: ${nuevos.length}`);
+
     } catch (err) {
       console.error("Error verificando tickets sin atender:", err.message);
     } finally {

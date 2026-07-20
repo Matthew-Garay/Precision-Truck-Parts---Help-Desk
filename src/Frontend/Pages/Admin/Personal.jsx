@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+
+import React, { useState, useEffect, useCallback } from "react";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import { apiFetch } from "../../Config/api";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
-import { useCardStyles } from "../../Components/Card";
-import Modal from "../../Components/Modal";
-import { Clock } from "lucide-react";
+import { X } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
+const ORANGE  = "#F47920";
 
 // ── Avatar ────────────────────────────────────────────────────────
 function Avatar({ nombre, foto, size = 48, isDark }) {
@@ -52,220 +52,314 @@ function passStrength(p) {
   return s;
 }
 
-// ── Modal Empleado ────────────────────────────────────────────────
-function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucursales, onGuardar, onCerrar }) {
-  const ORANGE = "#F7941E";
-  const [form, setForm] = useState({
-    num_empleado:    empleado?.num_empleado    || "",
-    nombre:          empleado?.nombre          || "",
-    ap_paterno:      empleado?.ap_paterno      || "",
-    ap_materno:      empleado?.ap_materno      || "",
-    email:           empleado?.email           || "",
-    id_rol:          empleado?.id_rol          ? String(empleado.id_rol) : "",
-    id_departamento: empleado?.id_departamento ? String(empleado.id_departamento) : "",
-    id_sucursal:     empleado?.id_sucursal     ? String(empleado.id_sucursal) : "",
-    estatus:         empleado?.estatus         || "Activo",
-    password_nueva:  "",
-  });
-  const [showPass, setShowPass] = useState(false);
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState("");
-  const [exito,    setExito]    = useState("");
-
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  const guardar = async () => {
-    if ((modo === "crear" && !form.num_empleado.trim()) || !form.nombre.trim() || !form.ap_paterno.trim() || !form.email.trim() || !form.id_rol || !form.id_departamento)
-      return setError("Completa todos los campos obligatorios");
-    if (modo === "crear" && !form.password_nueva.trim())
-      return setError("La contraseña es obligatoria al crear un empleado");
-    if (form.password_nueva && form.password_nueva.trim().length < 8)
-      return setError("La contraseña debe tener al menos 8 caracteres");
-    setLoading(true); setError(""); setExito("");
-    try {
-      await onGuardar(form);
-      setExito(modo === "crear" ? "Empleado creado correctamente" : "Cambios guardados correctamente");
-    } catch (e) {
-      setError(e.message || "Error al guardar");
-    } finally {
-      setLoading(false);
-    }
+// ── Tokens helper ─────────────────────────────────────────────────
+function useTokens(T, isDark) {
+  return {
+    surface:    isDark ? "#161B22" : "#ffffff",
+    surfaceAlt: isDark ? "#1a2030" : "#f8fafc",
+    border:     isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0",
+    textMain:   T?.text      ?? (isDark ? "#e2e8f0" : "#1a202c"),
+    textMuted:  T?.textMuted ?? (isDark ? "#8b949e" : "#64748b"),
+    textFaint:  T?.textFaint ?? (isDark ? "rgba(255,255,255,0.30)" : "#a0aec0"),
+    inputBg:    isDark ? "rgba(255,255,255,0.04)" : "#f8fafc",
   };
+}
 
-  const nombreCompleto = empleado ? `${empleado.nombre} ${empleado.ap_paterno}`.trim() : "";
-  const iconEmpleado = (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isDark ? "#93c5fd" : ORANGE} strokeWidth="2.5">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-    </svg>
-  );
-
-  const inp = {
-    background: isDark ? "rgba(255,255,255,0.05)" : "#f8fafc",
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : T.border}`,
-    color: T.text, borderRadius: "8px", padding: "9px 12px",
-    fontSize: "13px", outline: "none", width: "100%", transition: "border-color .15s, box-shadow .15s",
-  };
-
-  const Lbl = ({ children }) => (
-    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textMuted }}>{children}</span>
-  );
-
+// ── Field label ───────────────────────────────────────────────────
+function Field({ label, htmlFor, required, children, textFaint }) {
   return (
-    <Modal
-      title={modo === "crear" ? "Nuevo Empleado" : "Editar Empleado"}
-      subtitle={modo === "crear" ? "Registrar nuevo miembro del equipo" : nombreCompleto}
-      icon={iconEmpleado}
-      accentColor={ORANGE}
-      onClose={onCerrar}
-      onConfirm={guardar}
-      confirmLabel={loading ? "Guardando…" : modo === "crear" ? "Crear Empleado" : "Guardar Cambios"}
-      cancelLabel="Cancelar"
-      loading={loading}
-      maxWidth="448px"
-      noBodyPadding
-      closeOnOverlay={false}
-    >
-      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14, maxHeight: "62vh", overflowY: "auto" }}>
-
-          {/* N° Empleado */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            <Lbl>N° Empleado</Lbl>
-            <input
-              style={{ ...inp, background: modo === "editar" ? (isDark ? "rgba(255,255,255,0.02)" : "#f1f5f9") : inp.background, color: modo === "editar" ? T.textFaint : T.text, cursor: modo === "editar" ? "default" : "text", borderStyle: modo === "editar" ? "dashed" : "solid" }}
-              value={form.num_empleado}
-              onChange={e => modo === "crear" && set("num_empleado", e.target.value)}
-              readOnly={modo === "editar"}
-              placeholder="EMP-001"
-              onFocus={e => { if (modo === "crear") { e.target.style.borderColor = "#F7941E"; e.target.style.boxShadow = "0 0 0 3px rgba(247,148,30,0.15)"; } }}
-              onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : T.border; e.target.style.boxShadow = "none"; }} />
-          </div>
-
-          {/* Nombre */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            <Lbl>Nombre Completo</Lbl>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-              {[
-                { key: "nombre",     ph: "Nombre",          lbl: "Nombre"    },
-                { key: "ap_paterno", ph: "Ej. García",       lbl: "Paterno"   },
-                { key: "ap_materno", ph: "Opc.",             lbl: "Materno"   },
-              ].map(({ key, ph, lbl }) => (
-                <div key={key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: T.textFaint }}>{lbl}</span>
-                  <input style={inp} value={form[key]} onChange={e => set(key, e.target.value)} placeholder={ph}
-                    onFocus={e => { e.target.style.borderColor = "#F7941E"; e.target.style.boxShadow = "0 0 0 3px rgba(247,148,30,0.15)"; }}
-                    onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : T.border; e.target.style.boxShadow = "none"; }} />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Email */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            <Lbl>Correo Electrónico</Lbl>
-            <input style={inp} type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="correo@empresa.com"
-              onFocus={e => { e.target.style.borderColor = "#F7941E"; e.target.style.boxShadow = "0 0 0 3px rgba(247,148,30,0.15)"; }}
-              onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : T.border; e.target.style.boxShadow = "none"; }} />
-          </div>
-
-          {/* Rol y Depto */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            {[
-              { key: "id_rol",          opts: roles.map(r => ({ val: r.id_rol, lbl: r.nombre_rol })),                          lbl: "Rol",         ph: "Seleccionar rol"  },
-              { key: "id_departamento", opts: departamentos.map(d => ({ val: d.id_departamento, lbl: d.nombre_departamento })), lbl: "Departamento", ph: "Seleccionar área" },
-            ].map(({ key, opts, lbl, ph }) => (
-              <div key={key} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                <Lbl>{lbl}</Lbl>
-                <select style={{ ...inp, cursor: "pointer", colorScheme: isDark ? "dark" : "light" }}
-                  value={form[key]} onChange={e => set(key, e.target.value)}
-                  onFocus={e => { e.target.style.borderColor = "#F7941E"; e.target.style.boxShadow = "0 0 0 3px rgba(247,148,30,0.15)"; }}
-                  onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : T.border; e.target.style.boxShadow = "none"; }}>
-                  <option value="">{ph}</option>
-                  {opts.map(o => <option key={o.val} value={o.val}>{o.lbl}</option>)}
-                </select>
-              </div>
-            ))}
-          </div>
-
-          {/* Sucursal */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            <Lbl>Sucursal</Lbl>
-            <select style={{ ...inp, cursor: "pointer", colorScheme: isDark ? "dark" : "light" }}
-              value={form.id_sucursal} onChange={e => set("id_sucursal", e.target.value)}
-              onFocus={e => { e.target.style.borderColor = "#F7941E"; e.target.style.boxShadow = "0 0 0 3px rgba(247,148,30,0.15)"; }}
-              onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : T.border; e.target.style.boxShadow = "none"; }}>
-              <option value="">Sin sucursal</option>
-              {sucursales.map(s => <option key={s.id_sucursal} value={s.id_sucursal}>{s.nombre_sucursal}</option>)}
-            </select>
-          </div>
-
-          {/* Estatus toggle (solo editar) */}
-          {modo === "editar" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              <Lbl>Estatus</Lbl>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 8, background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}` }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: form.estatus === "Activo" ? "#22c55e" : "#94a3b8", boxShadow: form.estatus === "Activo" ? "0 0 0 3px rgba(34,197,94,0.2)" : "none" }} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: form.estatus === "Activo" ? "#16a34a" : "#64748b" }}>{form.estatus === "Activo" ? "Activo" : "Inactivo"}</span>
-                </div>
-                <button type="button" onClick={() => set("estatus", form.estatus === "Activo" ? "Inactivo" : "Activo")}
-                  style={{ position: "relative", width: 44, height: 24, borderRadius: 12, background: form.estatus === "Activo" ? "#16a34a" : (isDark ? "rgba(255,255,255,0.12)" : "#cbd5e1"), border: "none", cursor: "pointer", padding: 0, transition: "background .25s" }}>
-                  <span style={{ position: "absolute", top: 3, left: form.estatus === "Activo" ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.25)", transition: "left .25s", display: "block" }} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Contraseña */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            <Lbl>{modo === "crear" ? "Contraseña" : "Nueva Contraseña (opcional)"}</Lbl>
-            <div style={{ position: "relative" }}>
-              <input style={{ ...inp, paddingRight: "40px" }} type={showPass ? "text" : "password"}
-                value={form.password_nueva} onChange={e => set("password_nueva", e.target.value)}
-                placeholder={modo === "crear" ? "Mínimo 8 caracteres" : "Dejar vacío para no cambiar"}
-                onFocus={e => { e.target.style.borderColor = "#F7941E"; e.target.style.boxShadow = "0 0 0 3px rgba(247,148,30,0.15)"; }}
-                onBlur={e  => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : T.border; e.target.style.boxShadow = "none"; }} />
-              <button type="button" onClick={() => setShowPass(p => !p)}
-                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 0, color: showPass ? "#F7941E" : (isDark ? "#64748b" : "#475569") }}>
-                {showPass
-                  ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                  : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                }
-              </button>
-            </div>
-            {form.password_nueva && (() => {
-              const s = passStrength(form.password_nueva);
-              const color = s <= 1 ? "#ef4444" : s <= 2 ? "#f97316" : s <= 3 ? "#eab308" : s <= 4 ? "#84cc16" : "#22c55e";
-              const label = s <= 1 ? "Muy débil" : s <= 2 ? "Débil" : s <= 3 ? "Regular" : s <= 4 ? "Fuerte" : "Muy fuerte";
-              return (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
-                  <div style={{ height: 3, borderRadius: 9999, background: isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0" }}>
-                    <div style={{ width: `${(s/5)*100}%`, height: "100%", background: color, borderRadius: 9999, transition: "width .3s" }} />
-                  </div>
-                  <span style={{ fontSize: 10, fontWeight: 600, color }}>{label}</span>
-                </div>
-              );
-            })()}
-          </div>
-
-          {error && (
-            <div style={{ padding: "10px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 8, background: isDark ? "rgba(220,38,38,0.1)" : "#fff1f1", color: "#dc2626", border: "1px solid rgba(220,38,38,0.2)" }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              {error}
-            </div>
-          )}
-          {exito && (
-            <div style={{ padding: "10px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 8, background: isDark ? "rgba(22,163,74,0.1)" : "#f0fdf4", color: "#16a34a", border: "1px solid rgba(22,163,74,0.2)" }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              {exito}
-            </div>
-          )}
-        </div>
-    </Modal>
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      <label htmlFor={htmlFor} style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: textFaint }}>
+        {label}{required && <span style={{ color: ORANGE, marginLeft: "2px" }}>*</span>}
+      </label>
+      {children}
+    </div>
   );
 }
 
+const FORM_VACIO = {
+  num_empleado: "", nombre: "", ap_paterno: "", ap_materno: "",
+  email: "", password_nueva: "", id_rol: "", id_departamento: "",
+  id_sucursal: "", estatus: "Activo",
+};
+
+// ── Modal Empleado (crear / editar) ───────────────────────────────
+function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucursales, onGuardar, onCerrar }) {
+  const isEdit = modo === "editar";
+  const tk = useTokens(T, isDark);
+  const [form,   setForm]   = useState({ ...FORM_VACIO, ...(isEdit ? { ...empleado, password_nueva: "", id_sucursal: empleado.id_sucursal != null ? String(empleado.id_sucursal) : "", id_rol: String(empleado.id_rol ?? ""), id_departamento: String(empleado.id_departamento ?? "") } : {}) });
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState("");
+  const [strength, setStrength] = useState(0);
+
+  useEffect(() => { setStrength(passStrength(form.password_nueva)); }, [form.password_nueva]);
+
+  useEffect(() => {
+    const fn = e => { if (e.key === "Escape") onCerrar(); };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, [onCerrar]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const inp = {
+    background: tk.inputBg, border: `1px solid ${tk.border}`,
+    borderRadius: "6px", padding: "0 10px", height: "34px",
+    fontSize: "13px", color: tk.textMain, outline: "none",
+    width: "100%", boxSizing: "border-box",
+    colorScheme: isDark ? "dark" : "light",
+    transition: "border-color 0.12s, box-shadow 0.12s",
+  };
+  const borderFocus = "#2563eb";
+  const onFocus = e => { e.target.style.borderColor = borderFocus; e.target.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.10)"; e.target.style.background = isDark ? "rgba(255,255,255,0.07)" : "#fff"; };
+  const onBlur  = e => { e.target.style.borderColor = tk.border; e.target.style.boxShadow = "none"; e.target.style.background = tk.inputBg; };
+
+  const validarPassword = (p) => {
+    if (p.length < 8)              return "La contraseña debe tener al menos 8 caracteres.";
+    if (!/[A-Z]/.test(p))          return "Debe contener al menos una mayúscula.";
+    if (!/[0-9]/.test(p))          return "Debe contener al menos un número.";
+    if (!/[^A-Za-z0-9]/.test(p))   return "Debe contener al menos un carácter especial (ej. .)";
+    return null;
+  };
+
+  const guardar = async () => {
+    if (!form.nombre.trim())     return setError("El nombre es requerido.");
+    if (!form.ap_paterno.trim()) return setError("El apellido paterno es requerido.");
+    if (!form.email.trim())      return setError("El correo es requerido.");
+    const pass = form.password_nueva.trim();
+    if (!isEdit && !pass)        return setError("La contraseña es requerida.");
+    if (pass) {
+      const passErr = validarPassword(pass);
+      if (passErr) return setError(passErr);
+    }
+    if (!form.id_rol)            return setError("Selecciona un rol.");
+    if (!form.id_departamento)   return setError("Selecciona un área.");
+    setSaving(true); setError("");
+    try {
+      await onGuardar(form, modo, empleado?.id_empleado);
+    } catch (err) {
+      setError(err.message || "Error al guardar.");
+      setSaving(false);
+    }
+  };
+
+  const strColors = ["#dc2626", "#f59e0b", "#f59e0b", "#16a34a", "#16a34a"];
+  const strLabels = ["", "Débil", "Regular", "Buena", "Fuerte", "Muy fuerte"];
+
+  return (
+    <div
+      role="presentation"
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.40)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "16px", animation: "miF 0.15s ease",
+      }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onCerrar(); }}
+    >
+      <style>{`@keyframes miF{from{opacity:0}to{opacity:1}} @keyframes miS{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <div
+        role="dialog" aria-modal="true"
+        style={{
+          width: "95%", maxWidth: "520px",
+          background: tk.surface, border: `1px solid ${tk.border}`,
+          borderRadius: "10px", display: "flex", flexDirection: "column",
+          maxHeight: "92vh", overflow: "hidden",
+          boxShadow: isDark
+            ? "0 16px 40px rgba(0,0,0,0.50), 0 1px 0 rgba(255,255,255,0.04) inset"
+            : "0 16px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
+          animation: "miS 0.18s ease",
+        }}
+      >
+        {/* Línea acento */}
+        <div style={{ height: "2px", flexShrink: 0, background: ORANGE, borderRadius: "10px 10px 0 0" }} />
+
+        {/* Header */}
+        <div style={{ padding: "14px 18px 12px", borderBottom: `1px solid ${tk.border}`, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", flexShrink: 0 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>
+              {isEdit ? "Editar empleado" : "Nuevo empleado"}
+            </p>
+            <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: tk.textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+              {isEdit ? `${empleado.nombre} ${empleado.ap_paterno}` : "Agregar al personal"}
+            </h2>
+            <p style={{ margin: "3px 0 0", fontSize: "12px", color: tk.textMuted }}>
+              {isEdit ? "Modifica los campos que necesites" : "Completa los datos del nuevo empleado"}
+            </p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
+            <img src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"} alt="Precision Trucks"
+              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }} />
+            <button onClick={onCerrar} aria-label="Cerrar"
+              style={{ width: "26px", height: "26px", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${tk.border}`, borderRadius: "6px", cursor: "pointer", color: tk.textFaint, transition: "all 0.12s" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = tk.textMuted; e.currentTarget.style.color = tk.textMain; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = tk.border; e.currentTarget.style.color = tk.textFaint; }}>
+              <X size={12} strokeWidth={2} />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+
+            {/* Nombre + Apellido paterno */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <Field htmlFor="fe-nombre" label="Nombre" required textFaint={tk.textFaint}>
+                <input id="fe-nombre" type="text" value={form.nombre}
+                  onChange={e => set("nombre", e.target.value)}
+                  placeholder="Ej. Juan" style={inp} onFocus={onFocus} onBlur={onBlur} />
+              </Field>
+              <Field htmlFor="fe-apPat" label="Apellido paterno" required textFaint={tk.textFaint}>
+                <input id="fe-apPat" type="text" value={form.ap_paterno}
+                  onChange={e => set("ap_paterno", e.target.value)}
+                  placeholder="Ej. García" style={inp} onFocus={onFocus} onBlur={onBlur} />
+              </Field>
+            </div>
+
+            {/* Apellido materno + Num empleado */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <Field htmlFor="fe-apMat" label="Apellido materno" textFaint={tk.textFaint}>
+                <input id="fe-apMat" type="text" value={form.ap_materno}
+                  onChange={e => set("ap_materno", e.target.value)}
+                  placeholder="Ej. López" style={inp} onFocus={onFocus} onBlur={onBlur} />
+              </Field>
+              <Field htmlFor="fe-num" label="N.º empleado" textFaint={tk.textFaint}>
+                <input id="fe-num" type="text" value={form.num_empleado}
+                  onChange={e => set("num_empleado", e.target.value)}
+                  placeholder="Ej. EMP-001" style={inp} onFocus={onFocus} onBlur={onBlur} />
+              </Field>
+            </div>
+
+            {/* Correo */}
+            <Field htmlFor="fe-email" label="Correo electrónico" required textFaint={tk.textFaint}>
+              <input id="fe-email" type="email" value={form.email}
+                onChange={e => set("email", e.target.value)}
+                placeholder="correo@empresa.com" style={inp} onFocus={onFocus} onBlur={onBlur} />
+            </Field>
+
+            {/* Contraseña */}
+            <Field htmlFor="fe-pass" label={isEdit ? "Nueva contraseña (opcional)" : "Contraseña"} required={!isEdit} textFaint={tk.textFaint}>
+              <input id="fe-pass" type="password" value={form.password_nueva}
+                onChange={e => set("password_nueva", e.target.value)}
+                placeholder={isEdit ? "Dejar vacío para no cambiar" : "Mín. 8 chars, mayúscula, número y símbolo"}
+                style={inp} onFocus={onFocus} onBlur={onBlur} />
+              {form.password_nueva && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                  <div style={{ flex: 1, height: 3, borderRadius: 99, background: isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${(strength / 5) * 100}%`, background: strColors[strength - 1] || "#dc2626", borderRadius: 99, transition: "width 0.2s" }} />
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: strColors[strength - 1] || "#dc2626", flexShrink: 0 }}>{strLabels[strength]}</span>
+                </div>
+              )}
+            </Field>
+
+            <div style={{ height: "1px", background: tk.border }} />
+
+            {/* Rol + Área */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <Field htmlFor="fe-rol" label="Rol" required textFaint={tk.textFaint}>
+                <select id="fe-rol" value={form.id_rol} onChange={e => set("id_rol", e.target.value)}
+                  style={{ ...inp, cursor: "pointer" }} onFocus={onFocus} onBlur={onBlur}>
+                  <option value="">Seleccionar…</option>
+                  {roles.map(r => <option key={r.id_rol} value={r.id_rol}>{r.nombre_rol}</option>)}
+                </select>
+              </Field>
+              <Field htmlFor="fe-depto" label="Área" required textFaint={tk.textFaint}>
+                <select id="fe-depto" value={form.id_departamento} onChange={e => set("id_departamento", e.target.value)}
+                  style={{ ...inp, cursor: "pointer" }} onFocus={onFocus} onBlur={onBlur}>
+                  <option value="">Seleccionar…</option>
+                  {departamentos.map(d => <option key={d.id_departamento} value={d.id_departamento}>{d.nombre_departamento}</option>)}
+                </select>
+              </Field>
+            </div>
+
+            {/* Sucursal + Estatus */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <Field htmlFor="fe-suc" label="Sucursal" textFaint={tk.textFaint}>
+                <select id="fe-suc" value={form.id_sucursal} onChange={e => set("id_sucursal", e.target.value)}
+                  style={{ ...inp, cursor: "pointer" }} onFocus={onFocus} onBlur={onBlur}>
+                  <option value="">Sin asignar</option>
+                  {sucursales.map(s => <option key={s.id_sucursal} value={s.id_sucursal}>{s.nombre_sucursal}</option>)}
+                </select>
+              </Field>
+              {isEdit && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textFaint }}>Estatus</span>
+                  <div style={{ display: "flex", borderRadius: "6px", overflow: "hidden", border: `1px solid ${tk.border}`, height: "34px" }}>
+                    {[
+                      { val: "Activo",   color: "#16a34a", bg: "rgba(22,163,74,0.12)",  border: "rgba(22,163,74,0.35)",  dot: "#22c55e",  label: "Activo"   },
+                      { val: "Inactivo", color: "#94a3b8", bg: "rgba(148,163,184,0.10)", border: "rgba(148,163,184,0.30)", dot: "#94a3b8", label: "Inactivo" },
+                    ].map((opt, i) => {
+                      const sel = form.estatus === opt.val;
+                      return (
+                        <button
+                          key={opt.val}
+                          type="button"
+                          onClick={() => set("estatus", opt.val)}
+                          style={{
+                            flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                            fontSize: "12px", fontWeight: sel ? 700 : 500, cursor: "pointer",
+                            background: sel ? opt.bg : (isDark ? "rgba(255,255,255,0.03)" : "#f8fafc"),
+                            color: sel ? opt.color : tk.textMuted,
+                            border: "none",
+                            borderRight: i === 0 ? `1px solid ${tk.border}` : "none",
+                            outline: sel ? `1.5px solid ${opt.border}` : "none",
+                            outlineOffset: "-1.5px",
+                            transition: "all 0.15s",
+                          }}
+                        >
+                          <span style={{
+                            width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
+                            background: sel ? opt.dot : tk.textFaint,
+                            boxShadow: sel && opt.val === "Activo" ? "0 0 0 2.5px rgba(34,197,94,0.25)" : "none",
+                            transition: "background 0.15s",
+                          }} />
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <p role="alert" style={{ margin: 0, padding: "8px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: 500, color: "#dc2626", background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2", border: `1px solid ${isDark ? "rgba(220,38,38,0.25)" : "#fecaca"}` }}>
+                {error}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: "10px 18px", borderTop: `1px solid ${tk.border}`, background: tk.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
+          <button type="button" onClick={onCerrar} disabled={saving}
+            style={{ padding: "6px 16px", borderRadius: "6px", fontSize: "12px", fontWeight: 600, background: "transparent", border: `1px solid ${tk.border}`, color: tk.textMuted, cursor: "pointer", transition: "all 0.12s", opacity: saving ? 0.5 : 1 }}
+            onMouseEnter={e => { if (!saving) { e.currentTarget.style.borderColor = tk.textMuted; e.currentTarget.style.color = tk.textMain; }}}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = tk.border; e.currentTarget.style.color = tk.textMuted; }}>
+            Cancelar
+          </button>
+          <button type="button" onClick={guardar} disabled={saving}
+            style={{ padding: "6px 18px", borderRadius: "6px", fontSize: "12px", fontWeight: 700, background: saving ? `${ORANGE}99` : ORANGE, border: "none", color: "#fff", cursor: saving ? "not-allowed" : "pointer", transition: "opacity 0.12s" }}
+            onMouseEnter={e => { if (!saving) e.currentTarget.style.opacity = "0.88"; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}>
+            {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear empleado"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 // ── Modal Historial ───────────────────────────────────────────────
 function ModalHistorial({ T, isDark, empleado, onCerrar }) {
+  const ORANGE = "#F47920";
   const hoy = new Date();
   const isoHoy   = hoy.toISOString().slice(0, 10);
   const isoLunes = (() => { const d = new Date(hoy); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })();
@@ -287,6 +381,18 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
       .finally(() => setLoading(false));
   }, [empleado.id_empleado]);
 
+  useEffect(() => {
+    const fn = (e) => { if (e.key === "Escape") onCerrar(); };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, [onCerrar]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   const fmt = iso => !iso ? "-" : new Date(iso).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
 
   const duracion = (entrada, salida) => {
@@ -296,9 +402,9 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
   };
 
   const aplicarAtajo = (a) => {
-    if (a === "hoy")    { setDesde(isoHoy);  setHasta(isoHoy);  }
-    if (a === "semana") { setDesde(isoLunes); setHasta(isoHoy);  }
-    if (a === "mes")    { setDesde(isoMes);   setHasta(isoHoy);  }
+    if (a === "hoy")    { setDesde(isoHoy);   setHasta(isoHoy);  }
+    if (a === "semana") { setDesde(isoLunes);  setHasta(isoHoy);  }
+    if (a === "mes")    { setDesde(isoMes);    setHasta(isoHoy);  }
     if (a === "todo")   { setDesde("");        setHasta("");       }
   };
 
@@ -320,103 +426,215 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
     el.click(); URL.revokeObjectURL(url);
   };
 
-  const inpDate = { background: isDark ? "rgba(255,255,255,0.05)" : "#f8fafc", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}`, color: T.text, borderRadius: "6px", padding: "6px 10px", fontSize: "12px", outline: "none", colorScheme: isDark ? "dark" : "light" };
+  const exportarPDF = () => {
+    const token = localStorage.getItem("_tk") ?? "";
+    const params = new URLSearchParams({ token });
+    if (desde) params.set("desde", desde);
+    if (hasta)  params.set("hasta",  hasta);
+    window.open(`/print/historial/${empleado.id_empleado}?${params}`, "_blank");
+  };
+  const tk = {
+    surface:    isDark ? "#161B22" : "#ffffff",
+    surfaceAlt: isDark ? "#1a2030" : "#f8fafc",
+    border:     isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0",
+    textMain:   T?.text     ?? (isDark ? "#e2e8f0" : "#1a202c"),
+    textMuted:  T?.textMuted ?? (isDark ? "#8b949e" : "#64748b"),
+    textFaint:  T?.textFaint ?? (isDark ? "rgba(255,255,255,0.30)" : "#a0aec0"),
+  };
+
+  const inpDate = {
+    background: isDark ? "rgba(255,255,255,0.05)" : "#f8fafc",
+    border: `1px solid ${tk.border}`,
+    color: tk.textMain, borderRadius: "6px", padding: "6px 10px",
+    fontSize: "12px", outline: "none", colorScheme: isDark ? "dark" : "light",
+  };
 
   return (
-    <Modal
-      T={T}
-      title="Historial de Accesos"
-      subtitle={nombre}
-      icon={<Clock size={13} aria-hidden="true" />}
-      onClose={onCerrar}
-      maxWidth="580px"
-      noBodyPadding
+    <div
+      role="presentation"
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.40)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "16px",
+        animation: "miF 0.15s ease",
+      }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onCerrar(); }}
     >
-      {/* Filtros */}
-      <div style={{ padding: "12px 18px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}`, display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>Período</span>
-          {[{ id:"todo", lbl:"Todo" }, { id:"hoy", lbl:"Hoy" }, { id:"semana", lbl:"Semana" }, { id:"mes", lbl:"Mes" }].map(a => {
-            const activo = a.id === "todo" ? (!desde && !hasta) : a.id === "hoy" ? (desde===isoHoy&&hasta===isoHoy) : a.id === "semana" ? (desde===isoLunes&&hasta===isoHoy) : (desde===isoMes&&hasta===isoHoy);
+      <style>{`
+        @keyframes miF { from{opacity:0} to{opacity:1} }
+        @keyframes miS { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
+      `}</style>
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        style={{
+          width: "95%", maxWidth: "580px",
+          background: tk.surface,
+          border: `1px solid ${tk.border}`,
+          borderRadius: "10px",
+          display: "flex", flexDirection: "column",
+          maxHeight: "92vh", overflow: "hidden",
+          boxShadow: isDark
+            ? "0 16px 40px rgba(0,0,0,0.50), 0 1px 0 rgba(255,255,255,0.04) inset"
+            : "0 16px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
+          animation: "miS 0.18s ease",
+        }}
+      >
+        {/* Línea acento */}
+        <div style={{ height: "2px", flexShrink: 0, background: ORANGE, borderRadius: "10px 10px 0 0" }} />
+
+        {/* Header */}
+        <div style={{
+          padding: "14px 18px 12px",
+          borderBottom: `1px solid ${tk.border}`,
+          display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+          gap: "12px", flexShrink: 0,
+        }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>
+              Empleado
+            </p>
+            <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: tk.textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+              Historial de Accesos
+            </h2>
+            <p style={{ margin: "3px 0 0", fontSize: "12px", color: tk.textMuted }}>{nombre}</p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
+            <img
+              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
+              alt="Precision Trucks"
+              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
+            />
+            <button
+              onClick={onCerrar}
+              aria-label="Cerrar"
+              style={{
+                width: "26px", height: "26px",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "transparent", border: `1px solid ${tk.border}`,
+                borderRadius: "6px", cursor: "pointer", color: tk.textFaint,
+                transition: "all 0.12s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = tk.textMuted; e.currentTarget.style.color = tk.textMain; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = tk.border; e.currentTarget.style.color = tk.textFaint; }}
+            >
+              <X size={12} strokeWidth={2} />
+            </button>
+          </div>
+        </div>
+        {/* Filtros */}
+        <div style={{ padding: "12px 18px", borderBottom: `1px solid ${tk.border}`, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textFaint }}>Período</span>
+            {[{ id:"todo", lbl:"Todo" }, { id:"hoy", lbl:"Hoy" }, { id:"semana", lbl:"Semana" }, { id:"mes", lbl:"Mes" }].map(a => {
+              const activo = a.id === "todo" ? (!desde && !hasta) : a.id === "hoy" ? (desde===isoHoy&&hasta===isoHoy) : a.id === "semana" ? (desde===isoLunes&&hasta===isoHoy) : (desde===isoMes&&hasta===isoHoy);
+              return (
+                <button key={a.id} onClick={() => aplicarAtajo(a.id)}
+                  style={{ padding: "3px 10px", borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: "pointer", background: activo ? "rgba(244,121,32,0.12)" : (isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"), color: activo ? ORANGE : tk.textMuted, border: `1px solid ${activo ? "rgba(244,121,32,0.35)" : tk.border}` }}>
+                  {a.lbl}
+                </button>
+              );
+            })}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <input type="date" style={inpDate} value={desde} onChange={e => setDesde(e.target.value)} />
+              <span style={{ fontSize: 11, color: tk.textFaint }}>–</span>
+              <input type="date" style={inpDate} value={hasta} onChange={e => setHasta(e.target.value)} />
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textFaint }}>Tipo</span>
+            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: `1px solid ${tk.border}` }}>
+              {[{ id:"todos", lbl:"Todos" }, { id:"activos", lbl:"Activos" }, { id:"cerrados", lbl:"Cerrados" }].map((t, i) => (
+                <button key={t.id} onClick={() => setTipoFiltro(t.id)}
+                  style={{ padding: "4px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: tipoFiltro === t.id ? ORANGE : (isDark ? "rgba(255,255,255,0.03)" : "#f8fafc"), color: tipoFiltro === t.id ? "#fff" : tk.textMuted, border: "none", borderRight: i < 2 ? `1px solid ${tk.border}` : "none" }}>
+                  {t.lbl}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Lista */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "12px 18px", display: "flex", flexDirection: "column", gap: 6 }}>
+          {loading ? (
+            <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
+              <svg className="animate-spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            </div>
+          ) : filtrados.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", gap: 8 }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={tk.textFaint} strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <p style={{ fontSize: 13, fontWeight: 600, color: tk.textMuted, margin: 0 }}>Sin registros</p>
+              <p style={{ fontSize: 11, color: tk.textFaint, margin: 0 }}>Ajusta el rango o los filtros</p>
+            </div>
+          ) : filtrados.map((a, i) => {
+            const dur = duracion(a.fecha_entrada, a.fecha_salida);
             return (
-              <button key={a.id} onClick={() => aplicarAtajo(a.id)}
-                style={{ padding: "3px 10px", borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: "pointer", background: activo ? "rgba(247,148,30,0.12)" : (isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"), color: activo ? "#F7941E" : T.textMuted, border: `1px solid ${activo ? "rgba(247,148,30,0.35)" : (isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0")}` }}>
-                {a.lbl}
-              </button>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: `1px solid ${tk.border}` }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: a.fecha_salida ? "#94a3b8" : "#22c55e", boxShadow: a.fecha_salida ? "none" : "0 0 0 3px rgba(34,197,94,0.2)" }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: tk.textMain }}>{fmt(a.fecha_entrada)}</span>
+                    {!a.fecha_salida && <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", padding: "1px 6px", borderRadius: 9999, background: "rgba(34,197,94,0.1)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.2)" }}>En sesión</span>}
+                  </div>
+                  {a.fecha_salida && <p style={{ fontSize: 11, color: tk.textFaint, margin: 0 }}>Salida: {fmt(a.fecha_salida)}</p>}
+                </div>
+                {dur && <span style={{ fontSize: 11, fontWeight: 600, flexShrink: 0, padding: "2px 8px", borderRadius: 5, background: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9", color: tk.textMuted }}>{dur}</span>}
+              </div>
             );
           })}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: "10px 18px", borderTop: `1px solid ${tk.border}`, background: tk.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+          <span style={{ fontSize: 11, color: tk.textFaint }}>{filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}</span>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <input type="date" style={inpDate} value={desde} onChange={e => setDesde(e.target.value)} />
-            <span style={{ fontSize: 11, color: T.textFaint }}>–</span>
-            <input type="date" style={inpDate} value={hasta} onChange={e => setHasta(e.target.value)} />
+            <button onClick={exportarCSV} disabled={filtrados.length === 0}
+              style={{ padding: "5px 12px", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, opacity: filtrados.length === 0 ? 0.4 : 1, background: "transparent", border: `1px solid ${tk.border}`, borderRadius: 6, cursor: filtrados.length === 0 ? "not-allowed" : "pointer", color: tk.textMuted, transition: "all 0.12s" }}
+              onMouseEnter={e => { if (filtrados.length > 0) { e.currentTarget.style.borderColor = tk.textMuted; e.currentTarget.style.color = tk.textMain; }}}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = tk.border; e.currentTarget.style.color = tk.textMuted; }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Exportar CSV
+            </button>
+            <button onClick={exportarPDF} disabled={filtrados.length === 0}
+              style={{ padding: "5px 12px", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 5, opacity: filtrados.length === 0 ? 0.4 : 1, background: filtrados.length === 0 ? `${ORANGE}60` : ORANGE, border: "none", borderRadius: 6, cursor: filtrados.length === 0 ? "not-allowed" : "pointer", color: "#fff", transition: "opacity 0.12s" }}
+              onMouseEnter={e => { if (filtrados.length > 0) e.currentTarget.style.opacity = "0.88"; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              Exportar PDF
+            </button>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>Tipo</span>
-          <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}` }}>
-            {[{ id:"todos", lbl:"Todos" }, { id:"activos", lbl:"Activos" }, { id:"cerrados", lbl:"Cerrados" }].map((t, i) => (
-              <button key={t.id} onClick={() => setTipoFiltro(t.id)}
-                style={{ padding: "4px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: tipoFiltro === t.id ? "#F7941E" : (isDark ? "rgba(255,255,255,0.03)" : "#f8fafc"), color: tipoFiltro === t.id ? "#fff" : T.textMuted, border: "none", borderRight: i < 2 ? `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}` : "none" }}>
-                {t.lbl}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
-
-      {/* Lista */}
-      <div style={{ maxHeight: "340px", overflowY: "auto", padding: "12px 18px", display: "flex", flexDirection: "column", gap: 6 }}>
-        {loading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
-            <svg className="animate-spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F7941E" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-          </div>
-        ) : filtrados.length === 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", gap: 8 }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={T.textFaint} strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <p style={{ fontSize: 13, fontWeight: 600, color: T.textMuted, margin: 0 }}>Sin registros</p>
-            <p style={{ fontSize: 11, color: T.textFaint, margin: 0 }}>Ajusta el rango o los filtros</p>
-          </div>
-        ) : filtrados.map((a, i) => {
-          const dur = duracion(a.fecha_entrada, a.fecha_salida);
-          return (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#e5e7eb"}` }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: a.fecha_salida ? "#94a3b8" : "#22c55e", boxShadow: a.fecha_salida ? "none" : "0 0 0 3px rgba(34,197,94,0.2)" }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{fmt(a.fecha_entrada)}</span>
-                  {!a.fecha_salida && <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", padding: "1px 6px", borderRadius: 9999, background: "rgba(34,197,94,0.1)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.2)" }}>En sesión</span>}
-                </div>
-                {a.fecha_salida && <p style={{ fontSize: 11, color: T.textFaint, margin: 0 }}>Salida: {fmt(a.fecha_salida)}</p>}
-              </div>
-              {dur && <span style={{ fontSize: 11, fontWeight: 600, flexShrink: 0, padding: "2px 8px", borderRadius: 5, background: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9", color: T.textMuted }}>{dur}</span>}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Footer de acciones */}
-      <div style={{ padding: "10px 18px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 11, color: T.textFaint }}>{filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}</span>
-        <button onClick={exportarCSV} disabled={filtrados.length === 0}
-          className="btn-ghost"
-          style={{ padding: "5px 12px", fontSize: 11, display: "flex", alignItems: "center", gap: 5, opacity: filtrados.length === 0 ? 0.4 : 1 }}>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar CSV
-        </button>
-      </div>
-    </Modal>
+    </div>
   );
 }
-
 // ── Acciones Dropdown ─────────────────────────────────────────────
-function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial, onToggleEstatus }) {
+function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial }) {
   const [open, setOpen] = useState(false);
-  const activo = emp.estatus === "Activo";
+  const [pos, setPos]   = useState({ top: 0, right: 0, openUp: false });
+  const btnRef = React.useRef(null);
+
+  const handleOpen = () => {
+    if (open) { setOpen(false); return; }
+    const rect = btnRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const menuH = 80; // altura aprox del menú
+    const openUp = spaceBelow < menuH + 8;
+    setPos({
+      top:   openUp ? rect.top - menuH - 4 : rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+      openUp,
+    });
+    setOpen(true);
+  };
 
   return (
     <div style={{ position: "relative", display: "inline-block" }}>
       <button
-        onClick={() => setOpen(o => !o)}
+        ref={btnRef}
+        onClick={handleOpen}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         style={{
           width: 30, height: 30, borderRadius: 6, cursor: "pointer",
@@ -431,7 +649,7 @@ function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial, onToggleEstat
       </button>
       {open && (
         <div style={{
-          position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 30,
+          position: "fixed", top: pos.top, right: pos.right, zIndex: 9999,
           minWidth: 162, borderRadius: 8, padding: "4px 0",
           background: isDark ? "#1e2330" : "#ffffff",
           border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}`,
@@ -440,27 +658,17 @@ function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial, onToggleEstat
           {[
             {
               label: "Editar",
-              color: T.text,
               icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
               action: () => { onEditar(emp); setOpen(false); },
             },
             {
               label: "Historial",
-              color: T.text,
               icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
               action: () => { onHistorial(emp); setOpen(false); },
             },
-            {
-              label: activo ? "Desactivar" : "Activar",
-              color: activo ? "#dc2626" : "#16a34a",
-              icon: activo
-                ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
-              action: () => { onToggleEstatus(emp); setOpen(false); },
-            },
           ].map(item => (
             <button key={item.label} onMouseDown={item.action}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "8px 14px", fontSize: 12, fontWeight: 500, color: item.color, background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "8px 14px", fontSize: 12, fontWeight: 500, color: T.text, background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
               onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "#f8fafc"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
               {item.icon}{item.label}
@@ -471,7 +679,6 @@ function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial, onToggleEstat
     </div>
   );
 }
-
 // ── Ícono de orden ────────────────────────────────────────────────
 function SortIcon({ dir }) {
   return (
@@ -482,19 +689,84 @@ function SortIcon({ dir }) {
 }
 
 // ── Lightbox Foto ─────────────────────────────────────────────────
-function LightboxFoto({ src, nombre, onCerrar }) {
+function LightboxFoto({ src, nombre, onCerrar, isDark }) {
+  useEffect(() => {
+    const fn = (e) => { if (e.key === "Escape") onCerrar(); };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, [onCerrar]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  const border = isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0";
+
   return (
     <div
-      onClick={onCerrar}
-      style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.82)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div onClick={e => e.stopPropagation()} style={{ position: "relative", maxWidth: 480, width: "100%" }}>
-        <img src={src} alt={nombre}
-          style={{ width: "100%", maxHeight: "80vh", objectFit: "contain", borderRadius: 12, boxShadow: "0 24px 80px rgba(0,0,0,0.7)" }} />
-        <button onClick={onCerrar}
-          style={{ position: "absolute", top: -14, right: -14, width: 32, height: 32, borderRadius: "50%", background: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-        {nombre && <p style={{ textAlign: "center", marginTop: 10, fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>{nombre}</p>}
+      role="presentation"
+      style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: isDark ? "rgba(0,0,0,0.80)" : "rgba(15,23,42,0.75)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "24px",
+        animation: "lbFade 0.15s ease",
+      }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onCerrar(); }}
+    >
+      <style>{`@keyframes lbFade{from{opacity:0}to{opacity:1}} @keyframes lbSlide{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <div
+        role="dialog"
+        aria-modal="true"
+        style={{
+          position: "relative", maxWidth: 520, width: "100%",
+          background: isDark ? "#161B22" : "#ffffff",
+          border: `1px solid ${border}`,
+          borderRadius: "10px", overflow: "hidden",
+          boxShadow: isDark
+            ? "0 16px 40px rgba(0,0,0,0.60), 0 1px 0 rgba(255,255,255,0.04) inset"
+            : "0 16px 40px rgba(15,23,42,0.18)",
+          animation: "lbSlide 0.18s ease",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Banda acento */}
+        <div style={{ height: "2px", background: ORANGE, borderRadius: "10px 10px 0 0" }} />
+        {/* Header */}
+        <div style={{
+          padding: "12px 16px",
+          borderBottom: `1px solid ${border}`,
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
+        }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>Empleado</p>
+            {nombre && <p style={{ margin: "2px 0 0", fontSize: "13px", fontWeight: 700, color: isDark ? "#e2e8f0" : "#1a202c", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</p>}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+            <img
+              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
+              alt="Precision Trucks"
+              style={{ height: "26px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
+            />
+            <button
+              onClick={onCerrar}
+              style={{ width: "26px", height: "26px", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${border}`, borderRadius: "6px", cursor: "pointer", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0", transition: "all 0.12s" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = isDark ? "#8b949e" : "#64748b"; e.currentTarget.style.color = isDark ? "#e2e8f0" : "#1a202c"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = isDark ? "rgba(255,255,255,0.30)" : "#a0aec0"; }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+        {/* Imagen */}
+        <div style={{ padding: "16px", background: isDark ? "#0d1117" : "#f8fafc" }}>
+          <img
+            src={src} alt={nombre}
+            style={{ width: "100%", maxHeight: "70vh", objectFit: "contain", borderRadius: "6px", display: "block" }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -521,13 +793,13 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
   });
 
   const COLS = [
-    { key: "nombre",    label: "Empleado",  sortable: true  },
-    { key: "id",        label: "ID",        sortable: true  },
-    { key: "depto",     label: "Área",      sortable: true  },
-    { key: "sucursal",  label: "Sucursal",  sortable: true  },
-    { key: "rol",       label: "Rol",       sortable: true  },
-    { key: "email",     label: "Correo",    sortable: false },
-    { key: "acciones",  label: "",          sortable: false },
+    { key: "nombre",   label: "Empleado",  sortable: true  },
+    { key: "id",       label: "ID",        sortable: true  },
+    { key: "depto",    label: "Área",      sortable: true  },
+    { key: "sucursal", label: "Sucursal",  sortable: true  },
+    { key: "rol",      label: "Rol",       sortable: true  },
+    { key: "email",    label: "Correo",    sortable: false },
+    { key: "acciones", label: "",          sortable: false },
   ];
 
   const thS = {
@@ -551,7 +823,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
   return (
     <div style={{ borderRadius: 10, overflow: "hidden", background: T.surface, border: `1px solid ${T.border}`, boxShadow: isDark ? "0 1px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.05)" }}>
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
           <thead>
             <tr>
               {COLS.map(col => (
@@ -571,7 +843,6 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
               const nombre = `${emp.nombre} ${emp.ap_paterno} ${emp.ap_materno || ""}`.trim();
               const activo = emp.estatus === "Activo";
               const rowBg  = i % 2 === 0 ? (isDark ? "transparent" : T.surface) : (isDark ? "rgba(255,255,255,0.015)" : T.surfaceAlt);
-
               const fotoSrc = emp.foto
                 ? (emp.foto.startsWith("http") ? emp.foto : `${API_URL}${(emp.foto.startsWith("/storage/") ? emp.foto : `/storage/${emp.foto}`).split("/").map(encodeURIComponent).join("/")}`)
                 : null;
@@ -590,13 +861,8 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
                         style={{ cursor: fotoSrc ? "zoom-in" : "default", flexShrink: 0 }}>
                         <Avatar nombre={nombre} foto={emp.foto} size={30} isDark={isDark} />
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, cursor: "default" }}>
-                        {/* Dot indicator de estado */}
-                        <span style={{
-                          width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
-                          background: activo ? "#22c55e" : "#94a3b8",
-                          boxShadow: activo ? "0 0 0 2.5px rgba(34,197,94,0.2)" : "none",
-                        }} />
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: activo ? "#22c55e" : "#94a3b8", boxShadow: activo ? "0 0 0 2.5px rgba(34,197,94,0.2)" : "none" }} />
                         <span style={{ fontSize: 13, fontWeight: 600, color: T.text, whiteSpace: "nowrap" }}>{nombre}</span>
                       </div>
                     </div>
@@ -610,14 +876,10 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
                   </td>
 
                   {/* Área */}
-                  <td style={{ ...tdS, color: T.textMuted }}>
-                    {emp.nombre_departamento || "—"}
-                  </td>
+                  <td style={{ ...tdS, color: T.textMuted }}>{emp.nombre_departamento || "—"}</td>
 
                   {/* Sucursal */}
-                  <td style={{ ...tdS, color: T.textMuted }}>
-                    {emp.nombre_sucursal || "—"}
-                  </td>
+                  <td style={{ ...tdS, color: T.textMuted }}>{emp.nombre_sucursal || "—"}</td>
 
                   {/* Rol */}
                   <td style={tdS}>
@@ -635,7 +897,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
                     </span>
                   </td>
 
-                  {/* Acciones ⋯ */}
+                  {/* Acciones */}
                   <td style={{ ...tdS, textAlign: "right", width: 52 }}>
                     <AccionesDropdown
                       emp={emp} T={T} isDark={isDark}
@@ -651,26 +913,25 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
         </table>
       </div>
 
-      {/* Footer de tabla */}
+      {/* Footer tabla */}
       <div style={{ padding: "8px 16px", borderTop: `1px solid ${T.border}`, background: isDark ? "rgba(255,255,255,0.02)" : T.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
         <span style={{ fontSize: 11, color: T.textFaint }}>{empleados.length} empleado{empleados.length !== 1 ? "s" : ""}</span>
       </div>
-      {lightbox && <LightboxFoto src={lightbox.src} nombre={lightbox.nombre} onCerrar={() => setLightbox(null)} />}
+      {lightbox && <LightboxFoto src={lightbox.src} nombre={lightbox.nombre} onCerrar={() => setLightbox(null)} isDark={isDark} />}
     </div>
   );
 }
-
 // ── Personal (página principal) ───────────────────────────────────
 export default function Personal({ T }) {
   const isDark = T.isDark;
 
-  const [empleados,     setEmpleados]     = useState([]);
-  const [departamentos, setDepartamentos] = useState([]);
-  const [roles,         setRoles]         = useState([]);
-  const [sucursales,    setSucursales]    = useState([]);
-  const [loading,       setLoading]       = useState(true);
-  const [filtros,       setFiltros]       = useState({ busqueda: "", departamento: "Todos", estatus: "Todos" });
-  const [modal,         setModal]         = useState(null);
+  const [empleados,      setEmpleados]      = useState([]);
+  const [departamentos,  setDepartamentos]  = useState([]);
+  const [roles,          setRoles]          = useState([]);
+  const [sucursales,     setSucursales]     = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [filtros,        setFiltros]        = useState({ busqueda: "", departamento: "Todos", sucursal: "Todos", estatus: "Todos" });
+  const [modal,          setModal]          = useState(null);
   const [modalHistorial, setModalHistorial] = useState(null);
 
   const cargar = useCallback((mostrarLoading = true) => {
@@ -695,15 +956,17 @@ export default function Personal({ T }) {
   const filtrados = empleados.filter(e => {
     const nombre = `${e.nombre} ${e.ap_paterno} ${e.ap_materno || ""}`.toLowerCase();
     if (filtros.busqueda && !nombre.includes(filtros.busqueda.toLowerCase()) && !e.email?.toLowerCase().includes(filtros.busqueda.toLowerCase())) return false;
-    if (filtros.departamento !== "Todos" && e.nombre_departamento !== filtros.departamento) return false;
+    if (filtros.departamento !== "Todos" && String(e.id_departamento) !== filtros.departamento) return false;
+    if (filtros.sucursal !== "Todos" && String(e.id_sucursal) !== filtros.sucursal) return false;
     if (filtros.estatus !== "Todos" && e.estatus !== filtros.estatus) return false;
     return true;
   });
 
   const camposFiltro = [
     { key: "busqueda",     label: "Búsqueda Rápida", type: "search", placeholder: "Nombre o correo..." },
-    { key: "departamento", label: "Área",             type: "select", opts: ["Todos", ...departamentos.map(d => d.nombre_departamento)] },
-    { key: "estatus",      label: "Estatus",          type: "select", opts: ["Todos", "Activo", "Inactivo"] },
+    { key: "departamento", label: "Área",      type: "select", opts: [{ value: "Todos", label: "Todos" }, ...departamentos.map(d => ({ value: String(d.id_departamento), label: d.nombre_departamento }))] },
+    { key: "sucursal",     label: "Sucursal",  type: "select", minWidth: "130px", opts: [{ value: "Todos", label: "Todas" }, ...sucursales.map(s => ({ value: String(s.id_sucursal), label: s.nombre_sucursal }))] },
+    { key: "estatus",      label: "Estatus",   type: "select", opts: ["Todos", "Activo", "Inactivo"] },
   ];
 
   const activos   = empleados.filter(e => e.estatus === "Activo").length;
@@ -713,12 +976,13 @@ export default function Personal({ T }) {
     const esEditar = modo === "editar";
     const url  = esEditar ? `/api/auth/empleados/${empleadoId}` : `/api/auth/empleados`;
     const pass = form.password_nueva.trim();
+    const numEmp = form.num_empleado.trim();
     const body = esEditar
-      ? { num_empleado: form.num_empleado, nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento), id_sucursal: form.id_sucursal ? Number(form.id_sucursal) : null, estatus: form.estatus, password_nueva: pass || undefined }
-      : { num_empleado: form.num_empleado.trim(), nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), password: pass, id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento), id_sucursal: form.id_sucursal ? Number(form.id_sucursal) : null };
+      ? { ...(numEmp ? { num_empleado: numEmp } : {}), nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento), id_sucursal: form.id_sucursal !== "" ? Number(form.id_sucursal) : null, estatus: form.estatus, ...(pass ? { password_nueva: pass } : {}) }
+      : { num_empleado: numEmp, nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), password: pass, id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento), id_sucursal: form.id_sucursal ? Number(form.id_sucursal) : null };
     const res  = await apiFetch(url, { method: esEditar ? "PUT" : "POST", body });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Error al guardar");
+    if (!res.ok) throw new Error((data.errores?.[0]?.mensaje) || data.error || "Error al guardar");
     cargar();
     setTimeout(() => setModal(null), 1200);
   };
@@ -732,16 +996,12 @@ export default function Personal({ T }) {
     } catch (err) { console.error("Error estatus:", err.message); }
   };
 
-  const { card } = useCardStyles(T);
-
   return (
     <div style={{ background: T.bg, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-
       <div style={{ maxWidth: 1400, width: "100%", margin: "0 auto", padding: "16px 16px 0", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
 
         {/* KPI Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 14 }}
-          className="grid-cols-2 sm:grid-cols-4">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginBottom: 14 }}>
           {[
             { label: "Total empleados", val: empleados.length,     color: "#3b82f6", bgL: "#eff6ff", bgD: "#0f1f3d" },
             { label: "Activos",         val: activos,              color: "#16a34a", bgL: "#f0fdf4", bgD: "#071a0e" },
@@ -756,10 +1016,15 @@ export default function Personal({ T }) {
         </div>
 
         {/* Toolbar */}
-        <FiltrosToolbar campos={camposFiltro} valores={filtros} onChange={(k, v) => setFiltros(p => ({ ...p, [k]: v }))} onLimpiar={() => setFiltros({ busqueda: "", departamento: "Todos", estatus: "Todos" })} T={T}>
+        <FiltrosToolbar
+          campos={camposFiltro}
+          valores={filtros}
+          onChange={(k, v) => setFiltros(p => ({ ...p, [k]: v }))}
+          onLimpiar={() => setFiltros({ busqueda: "", departamento: "Todos", sucursal: "Todos", estatus: "Todos" })}
+          T={T}>
           <button
             onClick={() => setModal({ modo: "crear" })}
-            style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, background: "#F7941E", color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, background: ORANGE, color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
             onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.08)"}
             onMouseLeave={e => e.currentTarget.style.filter = "none"}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -771,7 +1036,7 @@ export default function Personal({ T }) {
         <div style={{ marginTop: 10, flex: 1, minHeight: 0, overflowY: "auto", paddingBottom: 24 }}>
           {loading ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "80px 0" }}>
-              <svg className="animate-spin" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F7941E" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              <svg className="animate-spin" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
             </div>
           ) : filtrados.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 0", gap: 8 }}>
@@ -796,8 +1061,18 @@ export default function Personal({ T }) {
         <ModalHistorial T={T} isDark={isDark} empleado={modalHistorial} onCerrar={() => setModalHistorial(null)} />
       )}
       {modal && (
-        <ModalEmpleado T={T} isDark={isDark} modo={modal.modo} empleado={modal.empleado} departamentos={departamentos} roles={roles} sucursales={sucursales} onGuardar={(form) => guardarEmpleado(form, modal.modo, modal.empleado?.id_empleado)} onCerrar={() => setModal(null)} />
+        <ModalEmpleado
+          T={T} isDark={isDark}
+          modo={modal.modo}
+          empleado={modal.empleado}
+          departamentos={departamentos}
+          roles={roles}
+          sucursales={sucursales}
+          onGuardar={(form) => guardarEmpleado(form, modal.modo, modal.empleado?.id_empleado)}
+          onCerrar={() => setModal(null)}
+        />
       )}
     </div>
   );
 }
+

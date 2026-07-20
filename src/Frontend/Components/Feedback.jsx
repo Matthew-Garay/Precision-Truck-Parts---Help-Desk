@@ -39,15 +39,16 @@ function tk(T) {
   const d = T?.isDark;
   return {
     bg:         d ? "#161B22"               : "#FFFFFF",
-    bgHeader:   d ? "#0D1117"               : "#0F172A",
-    bgFooter:   d ? "#1C2230"               : "#F8FAFC",
-    headerText: "#FFFFFF",
-    border:     d ? "rgba(255,255,255,0.08)" : "#E2E8F0",
+    bgFooter:   d ? "#1a2030"               : "#F8FAFC",
+    border:     d ? "rgba(255,255,255,0.07)" : "#e8ecf0",
     borderBtn:  d ? "rgba(255,255,255,0.14)" : "#CBD5E1",
-    text:       d ? "#E6EDF3"               : "#334155",
+    text:       T?.text     ?? (d ? "#E6EDF3" : "#334155"),
+    textMain:   T?.text     ?? (d ? "#e2e8f0" : "#1a202c"),
+    textMuted:  T?.textMuted ?? (d ? "#8b949e" : "#64748b"),
+    textFaint:  T?.textFaint ?? (d ? "rgba(255,255,255,0.30)" : "#a0aec0"),
     textSub:    d ? "#8B949E"               : "#475569",
     ghostHover: d ? "rgba(255,255,255,0.06)" : "#F1F5F9",
-    overlay:    d ? "rgba(0,0,0,0.60)"       : "rgba(15,23,42,0.50)",
+    overlay:    d ? "rgba(0,0,0,0.55)"       : "rgba(15,23,42,0.40)",
   };
 }
 
@@ -139,6 +140,8 @@ export function Modal({
     onClose();
   };
 
+  const isDark = T?.isDark ?? false;
+
   return (
     <div
       className="_fb_overlay"
@@ -160,54 +163,64 @@ export function Modal({
           width: "95%", maxWidth: maxW,
           background: s.bg,
           border: `1px solid ${s.border}`,
-          borderRadius: "4px",
+          borderRadius: "10px",
           display: "flex", flexDirection: "column",
-          maxHeight: "88vh", overflow: "hidden",
-          boxShadow: "0 4px 24px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.08)",
+          maxHeight: "90vh", overflow: "hidden",
+          boxShadow: isDark
+            ? "0 16px 40px rgba(0,0,0,0.50), 0 1px 0 rgba(255,255,255,0.04) inset"
+            : "0 16px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
         }}
       >
-        {/* Barra acento */}
+        {/* Banda acento */}
         <div style={{
-          height: "3px", flexShrink: 0,
-          background: danger
-            ? "linear-gradient(90deg,#DC2626,#ef4444)"
-            : `linear-gradient(90deg,${ORANGE},#FF9A4D,${ORANGE})`,
+          height: "2px", flexShrink: 0,
+          background: danger ? "#DC2626" : ORANGE,
+          borderRadius: "10px 10px 0 0",
         }} />
 
-        {/* Header navy */}
+        {/* Header */}
         <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "0 20px", height: "46px",
-          background: s.bgHeader, flexShrink: 0,
+          padding: "14px 18px 12px",
+          borderBottom: `1px solid ${s.border}`,
+          display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+          gap: "12px", flexShrink: 0,
         }}>
-          <h2 id="_fb_modal_title" style={{
-            margin: 0, fontSize: "13px", fontWeight: 600,
-            color: s.headerText, letterSpacing: "-0.01em",
-          }}>
-            {title}
-          </h2>
-          <button
-            onClick={attemptClose}
-            aria-label="Cerrar"
-            style={{
-              width: "32px", height: "32px",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              background: "transparent", border: "none",
-              cursor: "pointer", borderRadius: "4px",
-              color: "rgba(255,255,255,0.45)",
-              transition: "background 0.15s, color 0.15s",
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#fff"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,0.45)"; }}
-          >
-            <X size={14} strokeWidth={2} />
-          </button>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: danger ? "#DC2626" : ORANGE }}>
+              {danger ? "Acción requerida" : "Aviso"}
+            </p>
+            <h2 id="_fb_modal_title" style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: s.textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+              {title}
+            </h2>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
+            <img
+              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
+              alt="Precision Trucks"
+              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
+            />
+            <button
+              onClick={attemptClose}
+              aria-label="Cerrar"
+              style={{
+                width: "26px", height: "26px",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "transparent", border: `1px solid ${s.border}`,
+                borderRadius: "6px", cursor: "pointer", color: s.textFaint,
+                transition: "all 0.12s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = s.textMuted; e.currentTarget.style.color = s.textMain; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = s.border; e.currentTarget.style.color = s.textFaint; }}
+            >
+              <X size={12} strokeWidth={2} />
+            </button>
+          </div>
         </div>
 
         {/* Body */}
         <div style={{
-          padding: "20px", overflowY: "auto", flex: 1,
-          fontSize: "14px", lineHeight: "1.55", color: s.text,
+          padding: "16px 18px", overflowY: "auto", flex: 1,
+          fontSize: "13px", lineHeight: "1.55", color: s.text,
         }}>
           {children}
         </div>
@@ -216,7 +229,7 @@ export function Modal({
         {!hideFooter && (
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "flex-end",
-            gap: "8px", padding: "0 20px", height: "52px",
+            gap: "8px", padding: "10px 18px",
             borderTop: `1px solid ${s.border}`,
             background: s.bgFooter, flexShrink: 0,
           }}>
@@ -246,26 +259,26 @@ export function Modal({
           <div className="_fb_dialog" style={{
             width: "95%", maxWidth: "340px",
             background: s.bg, border: `1px solid ${s.border}`,
-            borderRadius: "4px",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.20)",
+            borderRadius: "10px",
+            boxShadow: "0 16px 40px rgba(0,0,0,0.30)",
           }}>
+            <div style={{ height: "2px", background: ORANGE, borderRadius: "10px 10px 0 0" }} />
             <div style={{
-              display: "flex", alignItems: "center", gap: "8px",
-              padding: "0 16px", height: "44px",
-              borderBottom: `1px solid ${s.border}`,
-              background: s.bgHeader,
+              display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+              padding: "14px 18px 12px", borderBottom: `1px solid ${s.border}`, gap: "12px",
             }}>
-              <AlertCircle size={14} style={{ color: ORANGE, flexShrink: 0 }} />
-              <span style={{ fontSize: "13px", fontWeight: 600, color: s.headerText }}>
-                Cambios sin guardar
-              </span>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>Aviso</p>
+                <h3 style={{ margin: "3px 0 0", fontSize: "15px", fontWeight: 700, color: s.textMain, lineHeight: 1.2 }}>Cambios sin guardar</h3>
+              </div>
+              <img src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"} alt="" style={{ height: "24px", width: "auto", opacity: 0.6, flexShrink: 0, marginTop: "2px" }} />
             </div>
-            <div style={{ padding: "16px", fontSize: "13px", color: s.textSub, lineHeight: 1.5 }}>
+            <div style={{ padding: "14px 18px", fontSize: "13px", color: s.textSub, lineHeight: 1.5 }}>
               Si cierras ahora se perderán los cambios realizados.
             </div>
             <div style={{
               display: "flex", justifyContent: "flex-end", gap: "8px",
-              padding: "0 16px", height: "48px", alignItems: "center",
+              padding: "10px 18px", alignItems: "center",
               borderTop: `1px solid ${s.border}`, background: s.bgFooter,
             }}>
               <Btn T={T} label="Seguir editando" onClick={() => setWarnDirty(false)} variant="ghost" />

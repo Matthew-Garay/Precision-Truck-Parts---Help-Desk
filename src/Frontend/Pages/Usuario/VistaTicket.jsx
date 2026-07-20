@@ -821,6 +821,35 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
         .ticket-desc hr { border: none; border-top: 1px solid #e5e7eb; margin: 0.6em 0; }
         .ticket-desc [style*="text-align: center"] { text-align: center; }
         .ticket-desc [style*="text-align: right"]  { text-align: right; }
+
+        /* ── Responsividad tablet ≤768px ── */
+        @media (max-width: 768px) {
+          .vt-title     { font-size: 12px !important; }
+          .vt-body      { font-size: 11px !important; }
+          .vt-lbl       { font-size: 9px  !important; }
+          .vt-val       { font-size: 11px !important; }
+          .vt-pill      { font-size: 9px  !important; padding: 3px 8px !important; }
+          .vt-btn       { font-size: 9px  !important; padding: 4px 9px !important; }
+          .vt-folio     { font-size: 9px  !important; padding: 4px 9px !important; }
+          .vt-shdr      { font-size: 9px  !important; }
+          .vt-info-grid { grid-template-columns: 1fr 1fr !important; gap: 8px 6px !important; }
+          .vt-logo      { height: 42px !important; }
+          .ticket-desc  { font-size: 11px !important; }
+        }
+        /* ── Responsividad móvil ≤480px ── */
+        @media (max-width: 480px) {
+          .vt-title     { font-size: 11px !important; }
+          .vt-body      { font-size: 10px !important; }
+          .vt-lbl       { font-size: 8px  !important; }
+          .vt-val       { font-size: 10px !important; }
+          .vt-pill      { font-size: 8px  !important; padding: 2px 7px !important; }
+          .vt-btn       { font-size: 8px  !important; padding: 3px 7px !important; }
+          .vt-folio     { font-size: 8px  !important; padding: 3px 7px !important; }
+          .vt-shdr      { font-size: 8px  !important; }
+          .vt-info-grid { grid-template-columns: 1fr !important; }
+          .vt-logo      { height: 30px !important; }
+          .ticket-desc  { font-size: 10px !important; }
+        }
       `}</style>
       {confirmCancel && (
         <Modal
@@ -844,6 +873,24 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               {errorCancel}
             </p>
           )}
+        </Modal>
+      )}
+      {confirmCierre && (
+        <Modal
+          T={T}
+          title="¿Confirmar cierre?"
+          onClose={() => setConfirmCierre(false)}
+          onConfirm={() => guardarCambios("Resuelto")}
+          confirmLabel={guardando ? "Cerrando..." : "Sí, cerrar"}
+          cancelLabel="Cancelar"
+          loading={guardando}
+          maxWidth="360px"
+          variant="success"
+          closeOnOverlay={false}
+        >
+          <p className="text-xs leading-relaxed" style={{ color: T.isDark ? "rgba(255,255,255,0.75)" : T.text }}>
+            Marcará el ticket como <strong style={{ color: T.isDark ? "#fff" : T.text }}>Resuelto</strong> y guardará los comentarios.
+          </p>
         </Modal>
       )}
       {modalEditar && (
@@ -879,27 +926,27 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               {/* Izquierda: acciones */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button onClick={onVolver}
-                  className="flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-full transition-all hover:brightness-95 active:scale-95"
+                  className="vt-btn flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-full transition-all hover:brightness-95 active:scale-95"
                   style={{ fontSize:12, background: isDark?"rgba(255,255,255,0.06)":"#f1f5f9", color:T.textMuted, border:`1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)"}` }}>
                   <ArrowLeft size={11}/> Volver
                 </button>
                 {estatus === "En proceso" && (
                   <button onClick={() => setModalEditar(true)}
-                    className="flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-full transition-all active:scale-95"
+                    className="vt-btn flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-full transition-all active:scale-95"
                     style={{ fontSize:12, background: isDark?"rgba(244,121,32,0.1)":"rgba(244,121,32,0.08)", color:T.orange, border:`1px solid rgba(244,121,32,0.25)` }}>
                     <Pencil size={11}/> Editar
                   </button>
                 )}
                 {!esAdmin && estatus === "En proceso" && (
                   <button onClick={() => setConfirmCancel(true)}
-                    className="flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-full transition-all active:scale-95"
+                    className="vt-btn flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-full transition-all active:scale-95"
                     style={{ fontSize:12, background: isDark?"rgba(220,38,38,0.1)":"rgba(220,38,38,0.07)", color:"#dc2626", border:"1px solid rgba(220,38,38,0.25)" }}>
                     <XCircle size={11}/> Cancelar ticket
                   </button>
                 )}
                 {/* Folio alineado junto a los botones */}
                 <span
-                  className="font-mono font-bold px-3 py-1.5 rounded-full"
+                  className="vt-folio font-mono font-bold px-3 py-1.5 rounded-full"
                   style={{ fontSize:12, color: T.orange, background: isDark?"rgba(249,115,22,0.1)":"#fff7ed", border:"1px solid rgba(249,115,22,0.2)" }}>
                   {ticketLocal.folio_ticket}
                 </span>
@@ -908,20 +955,21 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               <img
                 src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
                 alt="Logo corporativo"
+                className="vt-logo"
                 style={{ height: "64px", objectFit: "contain", opacity: 0.9, flexShrink: 0 }}
               />
             </div>
 
             {/* Título */}
             <div className="mb-3">
-              <p className="font-semibold uppercase tracking-[0.12em] mb-1" style={{ fontSize:10, color:"#94a3b8" }}>Asunto</p>
-              <h1 className="font-semibold leading-snug" style={{ fontSize:13, color:T.text }}>{ticketLocal.titulo}</h1>
+              <p className="vt-lbl font-semibold uppercase tracking-[0.12em] mb-1" style={{ fontSize:10, color:"#94a3b8" }}>Asunto</p>
+              <h1 className="vt-title font-semibold leading-snug" style={{ fontSize:13, color:T.text }}>{ticketLocal.titulo}</h1>
             </div>
 
             {/* pills */}
             <div className="flex flex-wrap gap-1.5 pt-3" style={{ borderTop:`1px solid ${isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.05)"}` }}>
               {/* Prioridad */}
-              <span className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold"
+              <span className="vt-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold"
                 style={{
                   background: ticket.prioridad === "Alta"
                     ? (isDark ? "rgba(249,115,22,0.15)" : "#fff7ed")
@@ -933,7 +981,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               </span>
 
               {/* Estatus */}
-              <span className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold"
+              <span className="vt-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold"
                 style={{
                   background: estatus==="Resuelto"?(isDark?"rgba(22,163,74,0.15)":"#f0fdf4"):estatus==="No Resuelto"||estatus==="Cancelado"?(isDark?"rgba(220,38,38,0.15)":"#fef2f2"):(isDark?"rgba(244,121,32,0.15)":"rgba(244,121,32,0.08)"),
                   color: estatus==="Resuelto"?"#16a34a":estatus==="No Resuelto"||estatus==="Cancelado"?"#dc2626":T.orange,
@@ -945,13 +993,13 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               </span>
 
               {ticket.nombre_categoria && (
-                <span className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-medium"
+                <span className="vt-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-medium"
                   style={{ background: isDark?"rgba(255,255,255,0.05)":"#f1f5f9", color:T.textMuted, border:`1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)"}` }}>
                   <Tag size={10}/>{ticket.nombre_categoria}
                 </span>
               )}
               {tiempoResolucion && (
-                <span className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold"
+                <span className="vt-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold"
                   style={{ background: isDark?"rgba(22,163,74,0.12)":"#f0fdf4", color:"#16a34a", border:"1px solid rgba(22,163,74,0.2)" }}>
                   <CheckCircle2 size={10}/> Resuelto en {tiempoResolucion}
                 </span>
@@ -1013,12 +1061,12 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-4 py-3 flex items-center gap-2.5" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: T.orange }} />
-              <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Descripción del problema</p>
+              <p className="vt-shdr font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Descripción del problema</p>
               </div>
               <div className="px-4 py-3">
                 {ticketLocal.descripcion ? (
                   <div
-                    className="leading-relaxed break-words ticket-desc"
+                    className="vt-body leading-relaxed break-words ticket-desc"
                     style={{ fontSize:13, color: T.text, lineHeight: "1.7" }}
                     dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(ticketLocal.descripcion, { ALLOWED_TAGS: ["p","br","strong","b","em","i","u","s","ul","ol","li","hr","div","span"], ALLOWED_ATTR: ["style"] }) }}
                   />
@@ -1035,22 +1083,23 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-6 py-4 flex items-center gap-2.5" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: T.orange }} />
-                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Información del reporte</p>
+                <p className="vt-shdr font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Información del reporte</p>
               </div>
-              <div className="px-4 sm:px-8 py-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-x-8 sm:gap-y-4">
+              <div className="vt-info-grid px-4 sm:px-8 py-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-x-8 sm:gap-y-4">
                 {[
                   { icon: User,         label: "Solicitante",       val: ticket.nombre_empleado     || "-" },
                   { icon: Tag,          label: "Departamento",       val: ticket.nombre_departamento || "-" },
+                  { icon: Tag,          label: "Sucursal",           val: ticket.nombre_sucursal     || "-" },
                   { icon: Calendar,     label: "Fecha de alta",      val: `${fechaAlta} · ${horaAlta}` },
                   { icon: CheckCircle2, label: "Fecha resolución",   val: fechaResuelto ? `${fechaResuelto} · ${horaResuelto}` : "Pendiente" },
                   { icon: User,         label: "Resuelto por",       val: resueltoporState || "Pendiente" },
                 ].map(({ icon: Icon, label, val }) => (
                   <div key={label} className="flex flex-col gap-1">
-                    <p className="font-semibold uppercase tracking-[0.12em] flex items-center gap-1" style={{ fontSize:11, color: T.textFaint }}>
+                    <p className="vt-lbl font-semibold uppercase tracking-[0.12em] flex items-center gap-1" style={{ fontSize:11, color: T.textFaint }}>
                       <Icon size={9} style={{ color: T.orange, flexShrink: 0 }} />
                       {label}
                     </p>
-                    <p className="font-medium truncate" style={{ fontSize:13, color: T.text }}>{val}</p>
+                    <p className="vt-val font-medium truncate" style={{ fontSize:13, color: T.text }}>{val}</p>
                   </div>
                 ))}
               </div>
@@ -1452,30 +1501,11 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                         onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 14px rgba(249,115,22,0.35)"; e.currentTarget.style.transform = "none"; }}>
                         <MessageSquare size={14}/> {guardando ? "Guardando..." : "Guardar comentario"}
                       </button>
-                      {!confirmCierre ? (
-                        <button onClick={() => setConfirmCierre(true)}
-                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-95"
-                  style={{ background: "linear-gradient(135deg,#16a34a,#15803d)", color: "#fff", boxShadow: "0 3px 12px rgba(22,163,74,0.3)", minHeight: "48px" }}>
-                          <CheckCircle2 size={14}/> Cerrar ticket
-                        </button>
-                      ) : (
-                        <Modal
-                          T={T}
-                          title="¿Confirmar cierre?"
-                          onClose={() => setConfirmCierre(false)}
-                          onConfirm={() => guardarCambios("Resuelto")}
-                          confirmLabel={guardando ? "Cerrando..." : "Sí, cerrar"}
-                          cancelLabel="Cancelar"
-                          loading={guardando}
-                          maxWidth="360px"
-                          variant="success"
-                          closeOnOverlay={false}
-                        >
-                          <p className="text-xs leading-relaxed" style={{ color: T.isDark ? "rgba(255,255,255,0.75)" : T.text }}>
-                            Marcará el ticket como <strong style={{ color: T.isDark ? "#fff" : T.text }}>Resuelto</strong> y guardará los comentarios.
-                          </p>
-                        </Modal>
-                      )}
+                      <button onClick={() => setConfirmCierre(true)}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-95"
+                        style={{ background: "linear-gradient(135deg,#16a34a,#15803d)", color: "#fff", boxShadow: "0 3px 12px rgba(22,163,74,0.3)", minHeight: "48px" }}>
+                        <CheckCircle2 size={14}/> Cerrar ticket
+                      </button>
                     </>
                   ) : (
                     <div className="flex flex-col items-center gap-2 py-3">

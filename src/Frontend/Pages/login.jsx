@@ -84,138 +84,254 @@ function ModalRecuperar({ onCerrar }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3"
-      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(2px)" }}>
+    <div
+      role="presentation"
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "rgba(0,0,0,0.55)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "16px",
+        animation: "dmFade 0.15s ease",
+      }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onCerrar(); }}
+    >
+      <style>{`
+        @keyframes dmFade  { from{opacity:0} to{opacity:1} }
+        @keyframes dmSlide { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
+      `}</style>
 
-      <div className="w-full rounded-2xl overflow-hidden"
-        style={{ maxWidth: "320px", background: COLORS.whiteCard, boxShadow: "0 24px 60px rgba(0,0,0,0.45)", borderTop: `3px solid ${COLORS.orange}` }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        style={{
+          width: "95%", maxWidth: "460px",
+          background: "#ffffff",
+          border: "1px solid #e8ecf0",
+          borderRadius: "10px",
+          display: "flex", flexDirection: "column",
+          maxHeight: "90vh", overflow: "hidden",
+          boxShadow: "0 16px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
+          animation: "dmSlide 0.18s ease",
+        }}
+      >
+        {/* Línea acento naranja */}
+        <div style={{ height: "2px", flexShrink: 0, background: "#F47920", borderRadius: "10px 10px 0 0" }} />
 
         {/* Header */}
-        <div className="px-4 py-3 flex items-center justify-between"
-          style={{ borderBottom: `1px solid ${COLORS.silverLight}`, background: "linear-gradient(180deg,rgba(244,121,32,0.05),transparent)" }}>
-          <div className="flex items-center gap-2">
-            <span className="w-1 h-4 rounded-full" style={{ background: `linear-gradient(180deg,${COLORS.orange},${COLORS.orangeDark})` }} />
-            <p className="font-black text-xs" style={{ color: COLORS.dark }}>Recuperar contraseña</p>
+        <div style={{
+          padding: "14px 18px 12px",
+          background: "#ffffff",
+          borderBottom: "1px solid #e8ecf0",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: "12px", flexShrink: 0,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: "#F47920" }}>
+              Recuperar contraseña
+            </p>
           </div>
-          <button onClick={onCerrar} aria-label="Cerrar modal" className="w-6 h-6 rounded-lg flex items-center justify-center"
-            style={{ background: COLORS.silverLight, color: COLORS.label }}>
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+            <img src="/assets/img/logo negro.png" alt="Precision Trucks"
+              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: 0.70 }} />
+            <button
+              onClick={onCerrar}
+              aria-label="Cerrar"
+              style={{
+                width: "26px", height: "26px",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "transparent", border: "1px solid #e8ecf0",
+                borderRadius: "6px", cursor: "pointer", color: "#a0aec0", transition: "all 0.12s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "#64748b"; e.currentTarget.style.color = "#1a202c"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "#e8ecf0"; e.currentTarget.style.color = "#a0aec0"; }}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            </button>
+          </div>
         </div>
 
-        {/* Pasos */}
+        {/* Indicador de pasos */}
         {!exito && (
-          <div className="flex items-center justify-center px-4 pt-3">
-            {[1,2,3].map((n) => (
-              <div key={n} className="flex items-center flex-1">
-                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black flex-shrink-0"
-                  style={{ background: paso >= n ? COLORS.orange : COLORS.silverLight, color: paso >= n ? "#fff" : COLORS.label }}>
-                  {n}
-                </div>
-                {n < 3 && <div className="flex-1 h-px mx-1" style={{ background: paso > n ? COLORS.orange : COLORS.silverLight }} />}
+          <div style={{ padding: "12px 18px 0", display: "flex", alignItems: "center" }}>
+            {[1,2,3].map(n => (
+              <div key={n} style={{ display: "flex", alignItems: "center", flex: 1 }}>
+                <div style={{
+                  width: "20px", height: "20px", borderRadius: "50%",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "9px", fontWeight: 900, flexShrink: 0,
+                  background: paso >= n ? "#F47920" : "#f1f5f9",
+                  color: paso >= n ? "#fff" : "#a0aec0",
+                }}>{n}</div>
+                {n < 3 && <div style={{ flex: 1, height: "1px", margin: "0 4px", background: paso > n ? "#F47920" : "#e8ecf0" }} />}
               </div>
             ))}
           </div>
         )}
 
-        <div className="px-4 py-4">
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px" }}>
           {exito ? (
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "#dcfce7" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", padding: "8px 0" }}>
+              <div style={{ width: "44px", height: "44px", borderRadius: "50%", background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                   <path d="M5 13l4 4L19 7" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
-              <p className="font-black text-sm text-center" style={{ color: COLORS.dark }}>¡Contraseña actualizada!</p>
-              <p className="text-xs text-center" style={{ color: COLORS.textMuted }}>Ya puedes iniciar sesión.</p>
-              <button onClick={onCerrar} className="w-full font-bold text-white text-xs py-2 rounded-lg transition-all hover:brightness-110"
-                style={{ background: `linear-gradient(135deg,${COLORS.orange},${COLORS.orangeDark})` }}>
-                Ir al inicio de sesión
-              </button>
+              <p style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#1a202c", textAlign: "center" }}>¡Contraseña actualizada!</p>
+              <p style={{ margin: 0, fontSize: "0.9rem", color: "#64748b", textAlign: "center" }}>Ya puedes iniciar sesión.</p>
             </div>
           ) : paso === 1 ? (
-            <form onSubmit={handleEmail} className="flex flex-col gap-3">
-              <p className="text-[11px]" style={{ color: COLORS.textMuted }}>Ingresa tu correo y te enviaremos un código.</p>
-              <div>
-                <label htmlFor="rec-email" className="block text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: COLORS.label }}>Correo electrónico</label>
-                <input id="rec-email" type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="usuario@dominio.com" style={inp} onFocus={INPUT_FOCUS} onBlur={INPUT_BLUR}
-                  aria-label="Correo electrónico para recuperación" />
+            <form onSubmit={handleEmail} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              <p style={{ margin: "0 0 10px", fontSize: "0.9rem", color: "#64748b" }}>Ingresa tu correo y te enviaremos un código.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "14px 100px 1fr", alignItems: "center", gap: "10px", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ marginTop: "1px" }}>
+                  <rect x="1" y="3" width="14" height="10" rx="2" stroke="#c0c9d6" strokeWidth="1.5"/>
+                  <path d="M1 5.5l7 4.5 7-4.5" stroke="#c0c9d6" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#a0aec0" }}>Correo</span>
+                <input type="email" required value={email} onChange={e => { setEmail(e.target.value); setError(""); }}
+                  placeholder="usuario@dominio.com"
+                  style={{ ...inp, fontSize: "14px" }}
+                  onFocus={e => e.target.style.borderColor = "#F47920"}
+                  onBlur={e => e.target.style.borderColor = COLORS.silver} />
               </div>
-              {error && <p role="alert" className="text-[11px] font-semibold px-2 py-1.5 rounded-lg" style={{ background: "#fee2e2", color: "#dc2626" }}>{error}</p>}
-              <button type="submit" disabled={loading} className="w-full font-bold text-white text-xs py-2 rounded-lg transition-all hover:brightness-110 disabled:opacity-60"
-                style={{ background: `linear-gradient(135deg,${COLORS.orange},${COLORS.orangeDark})` }}>
-                {loading ? "Enviando..." : "Enviar código"}
-              </button>
+              {error && (
+                <div role="alert" style={{ marginTop: "10px", padding: "7px 10px", borderRadius: "7px", fontSize: "11px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", background: "#fee2e2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.3)" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  {error}
+                </div>
+              )}
             </form>
           ) : paso === 2 ? (
-            <form onSubmit={handleCodigo} className="flex flex-col gap-3">
-              <p className="text-[11px]" style={{ color: COLORS.textMuted }}>
-                Revisa <strong style={{ color: COLORS.dark }}>{email}</strong> e ingresa el código de 6 dígitos.
+            <form onSubmit={handleCodigo} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              <p style={{ margin: "0 0 10px", fontSize: "0.9rem", color: "#64748b" }}>
+                Revisa <strong style={{ color: "#1a202c" }}>{email}</strong> e ingresa el código de 6 dígitos.
               </p>
-              <input type="text" required inputMode="numeric" maxLength={6} value={codigo}
-                onChange={e => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                onPaste={e => {
-                  e.preventDefault();
-                  const limpio = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-                  setCodigo(limpio);
-                }}
-                placeholder="000000"
-                aria-label="Código de 6 dígitos"
-                style={{ ...inp, fontSize: "22px", fontWeight: 900, letterSpacing: "0.3em", textAlign: "center", padding: "14px" }}
-                onFocus={INPUT_FOCUS} onBlur={INPUT_BLUR} />
-              {error && <p role="alert" className="text-[11px] font-semibold px-2 py-1.5 rounded-lg" style={{ background: "#fee2e2", color: "#dc2626" }}>{error}</p>}
-              <button type="submit" disabled={loading || codigo.length !== 6}
-                className="w-full font-bold text-white text-xs py-2 rounded-lg transition-all hover:brightness-110 disabled:opacity-60"
-                style={{ background: `linear-gradient(135deg,${COLORS.orange},${COLORS.orangeDark})` }}>
-                Verificar código
-              </button>
-              <button type="button" onClick={() => { setPaso(1); setError(""); setCodigo(""); }}
-                className="text-[11px] font-semibold text-center w-full" style={{ color: COLORS.label }}>
-                Cambiar correo
-              </button>
+              <div style={{ display: "grid", gridTemplateColumns: "14px 120px 1fr", alignItems: "baseline", gap: "10px", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c0c9d6" strokeWidth="2" style={{ marginTop: "1px" }}>
+                  <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#a0aec0" }}>Código</span>
+                <input type="text" required inputMode="numeric" maxLength={6} value={codigo}
+                  onChange={e => { setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
+                  onPaste={e => { e.preventDefault(); setCodigo(e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6)); }}
+                  placeholder="000000"
+                  aria-label="Código de 6 dígitos"
+                  style={{ ...inp, fontSize: "20px", fontWeight: 900, letterSpacing: "0.3em", textAlign: "center" }}
+                  onFocus={e => e.target.style.borderColor = "#F47920"}
+                  onBlur={e => e.target.style.borderColor = COLORS.silver} />
+              </div>
+              {error && (
+                <div role="alert" style={{ marginTop: "10px", padding: "7px 10px", borderRadius: "7px", fontSize: "11px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", background: "#fee2e2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.3)" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  {error}
+                </div>
+              )}
             </form>
           ) : (
-            <form onSubmit={handleReset} className="flex flex-col gap-3">
-              <p className="text-[11px]" style={{ color: COLORS.textMuted }}>Elige una nueva contraseña.</p>
-              {[
-                { id: "rec-p1", label: "Nueva contraseña",    val: pass1, set: setPass1, show: showP1, toggle: () => setShowP1(v => !v) },
-                { id: "rec-p2", label: "Confirmar contraseña", val: pass2, set: setPass2, show: showP2, toggle: () => setShowP2(v => !v) },
-              ].map(({ id, label, val, set, show, toggle }) => (
-                <div key={id}>
-                  <label htmlFor={id} className="block text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: COLORS.label }}>{label}</label>
-                  <div className="relative">
-                    <input id={id} type={show ? "text" : "password"} required value={val} onChange={e => set(e.target.value)}
-                      placeholder="Mínimo 8 caracteres" style={{ ...inp, paddingRight: "34px" }}
-                      onFocus={INPUT_FOCUS} onBlur={INPUT_BLUR}
-                      className="[&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden"
-                      aria-describedby={id === "rec-p1" ? "fuerza-pass" : undefined} />
-                    <button type="button" tabIndex={-1} onClick={e => { e.stopPropagation(); toggle(); }}
-                      aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: COLORS.silver }}>
-                      {show ? <EyeIcon /> : <EyeOffIcon />}
-                    </button>
-                  </div>
-                  {/* Barra de fortaleza solo en campo nueva contraseña */}
-                  {id === "rec-p1" && pass1.length > 0 && (
-                    <div id="fuerza-pass" className="mt-1.5 flex flex-col gap-1">
-                      <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: COLORS.silverLight }}>
-                        <div className="h-full rounded-full transition-all duration-300" style={{ width: fuerza?.w ?? "0%", background: fuerza?.color ?? "transparent" }} />
-                      </div>
-                      {fuerza && <p className="text-[10px] font-bold text-right" style={{ color: fuerza.color }}>{fuerza.label}</p>}
-                    </div>
-                  )}
+            <form onSubmit={handleReset} style={{ display: "flex", flexDirection: "column", gap: "0" }}>
+              <p style={{ color: COLORS.textMuted, fontSize: "11px", marginBottom: "10px" }}>Elige una nueva contraseña.</p>
+
+              {/* Nueva contraseña */}
+              <div style={{ display: "grid", gridTemplateColumns: "14px 110px 1fr", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c0c9d6" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span style={{ fontSize: "0.82rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#a0aec0" }}>Nueva</span>
+                <div style={{ position: "relative" }}>
+                  <input id="rec-p1" type={showP1 ? "text" : "password"} required value={pass1}
+                    onChange={e => setPass1(e.target.value)}
+                    placeholder="Mínimo 8 caracteres"
+                    aria-describedby="fuerza-pass"
+                    className="[&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
+                    style={{ ...inp, paddingRight: "34px" }}
+                    onFocus={INPUT_FOCUS} onBlur={INPUT_BLUR} />
+                  <button type="button" tabIndex={-1} onClick={e => { e.stopPropagation(); setShowP1(v => !v); }}
+                    aria-label={showP1 ? "Ocultar" : "Mostrar"}
+                    style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: COLORS.silver, padding: 0 }}>
+                    {showP1 ? <EyeIcon /> : <EyeOffIcon />}
+                  </button>
                 </div>
-              ))}
-              {error && <p role="alert" className="text-[11px] font-semibold px-2 py-1.5 rounded-lg" style={{ background: "#fee2e2", color: "#dc2626" }}>{error}</p>}
-              <button type="submit" disabled={loading}
-                className="w-full font-bold text-white text-xs py-2 rounded-lg transition-all hover:brightness-110 disabled:opacity-60"
-                style={{ background: `linear-gradient(135deg,${COLORS.orange},${COLORS.orangeDark})` }}>
-                {loading ? "Guardando..." : "Guardar contraseña"}
-              </button>
+              </div>
+
+              {/* Barra de fortaleza */}
+              {pass1.length > 0 && (
+                <div id="fuerza-pass" style={{ padding: "6px 0 4px", borderBottom: "1px solid #f1f5f9" }}>
+                  <div style={{ width: "100%", height: "4px", borderRadius: "99px", overflow: "hidden", background: COLORS.silverLight }}>
+                    <div style={{ height: "100%", borderRadius: "99px", transition: "all 0.3s", width: fuerza?.w ?? "0%", background: fuerza?.color ?? "transparent" }} />
+                  </div>
+                  {fuerza && <p style={{ fontSize: "10px", fontWeight: 700, textAlign: "right", marginTop: "3px", color: fuerza.color }}>{fuerza.label}</p>}
+                </div>
+              )}
+
+              {/* Confirmar contraseña */}
+              <div style={{ display: "grid", gridTemplateColumns: "14px 110px 1fr", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c0c9d6" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span style={{ fontSize: "0.82rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#a0aec0" }}>Confirmar</span>
+                <div style={{ position: "relative" }}>
+                  <input id="rec-p2" type={showP2 ? "text" : "password"} required value={pass2}
+                    onChange={e => setPass2(e.target.value)}
+                    placeholder="Mínimo 8 caracteres"
+                    className="[&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
+                    style={{ ...inp, paddingRight: "34px" }}
+                    onFocus={INPUT_FOCUS} onBlur={INPUT_BLUR} />
+                  <button type="button" tabIndex={-1} onClick={e => { e.stopPropagation(); setShowP2(v => !v); }}
+                    aria-label={showP2 ? "Ocultar" : "Mostrar"}
+                    style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: COLORS.silver, padding: 0 }}>
+                    {showP2 ? <EyeIcon /> : <EyeOffIcon />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div role="alert" style={{ marginTop: "10px", padding: "7px 10px", borderRadius: "7px", fontSize: "11px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", background: "#fee2e2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.3)" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  {error}
+                </div>
+              )}
             </form>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: "10px 18px",
+          borderTop: "1px solid #e8ecf0",
+          background: "#f8fafc",
+          display: "flex",
+          justifyContent: exito ? "center" : paso === 2 ? "space-between" : "flex-end",
+          alignItems: "center",
+          gap: "8px",
+          flexShrink: 0,
+        }}>
+          {exito ? (
+            <button
+              onClick={onCerrar}
+              style={{ padding: "6px 18px", borderRadius: "6px", fontSize: "1rem", fontWeight: 600, background: `linear-gradient(135deg,${COLORS.orange},${COLORS.orangeDark})`, border: "none", color: "#fff", cursor: "pointer", boxShadow: "0 2px 10px rgba(244,121,32,0.35)" }}
+              onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.1)"}
+              onMouseLeave={e => e.currentTarget.style.filter = ""}>
+              Ir al inicio de sesión
+            </button>
+          ) : (
+            <>
+              {paso === 2 && (
+                <button type="button" onClick={() => { setPaso(1); setError(""); setCodigo(""); }}
+                  style={{ padding: "6px 14px", borderRadius: "6px", fontSize: "0.9rem", fontWeight: 600, background: "transparent", border: "1px solid #e8ecf0", color: "#64748b", cursor: "pointer", transition: "all 0.12s" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#64748b"; e.currentTarget.style.color = "#1a202c"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#e8ecf0"; e.currentTarget.style.color = "#64748b"; }}>
+                  Cambiar correo
+                </button>
+              )}
+              <button
+                onClick={paso === 1 ? handleEmail : paso === 2 ? handleCodigo : handleReset}
+                disabled={loading || (paso === 2 && codigo.length !== 6)}
+                style={{ padding: "6px 18px", borderRadius: "6px", fontSize: "1rem", fontWeight: 600, background: `linear-gradient(135deg,${COLORS.orange},${COLORS.orangeDark})`, border: "none", color: "#fff", cursor: (loading || (paso === 2 && codigo.length !== 6)) ? "not-allowed" : "pointer", opacity: (loading || (paso === 2 && codigo.length !== 6)) ? 0.6 : 1, boxShadow: "0 2px 10px rgba(244,121,32,0.35)", transition: "all 0.12s" }}
+                onMouseEnter={e => { if (!loading) e.currentTarget.style.filter = "brightness(1.1)"; }}
+                onMouseLeave={e => e.currentTarget.style.filter = ""}>
+                {loading ? "Cargando..."
+                  : paso === 1 ? "Enviar código"
+                  : paso === 2 ? "Verificar código"
+                  : "Guardar contraseña"}
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -362,6 +478,7 @@ export default function Login({ onLogin }) {
       }
       setEntrando(true);
       setIntentos(0);
+      sessionStorage.setItem("_pwd", password);
       if (navigator.vibrate) navigator.vibrate(50);
       setTimeout(() => { setEntrando(false); onLogin(data.usuario, data.id_acceso, data.token); }, 1500);
     } catch { setError("No se pudo conectar con el servidor"); triggerShake(); }

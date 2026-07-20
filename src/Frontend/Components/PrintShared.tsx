@@ -56,8 +56,8 @@ export function Stars({ n, size = 13 }: { n: number; size?: number }) {
     <span className="pr-stars">
       {[1,2,3,4,5].map(i => (
         <svg key={i} width={size} height={size} viewBox="0 0 24 24"
-          fill={i <= n ? "#F59E0B" : "none"}
-          stroke={i <= n ? "#D97706" : "#CBD5E1"}
+          fill={i <= n ? "#000000" : "none"}
+          stroke={i <= n ? "#000000" : "#aaaaaa"}
           strokeWidth="1.5">
           <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
         </svg>
@@ -79,8 +79,8 @@ export function PageHeader({ titulo, subtitulo, dept, metaRows }: {
         <img src="/assets/img/log.png" alt="Precision Truck Parts" className="pr-logo-img" />
       </div>
       <div className="pr-header-center">
-        <span className="pr-header-company">PRECISION TRUCK PARTS &amp; ACCESSORIES</span>
         {titulo    && <span className="pr-header-doc">{titulo}</span>}
+        <span className="pr-header-company">Precision Truck Parts and Accessories</span>
         {(subtitulo || dept) && (
           <span className="pr-header-dept">{subtitulo ?? dept}</span>
         )}
@@ -104,25 +104,22 @@ export function PageHeader({ titulo, subtitulo, dept, metaRows }: {
 export function PageFooter({ right }: { right: string }) {
   return (
     <footer className="pr-page-footer">
-      <div className="pr-footer-logo-wrap">
-        <img src="/assets/img/log.png" alt="" className="pr-footer-logo" />
-      </div>
       <span className="pr-footer-center-text">
-        Precision Truck Parts &amp; Accessories — Sistema de Soporte Técnico HelpDesk
+        Precision Truck Parts and Accessories
       </span>
-      <span className="pr-footer-right-text">{right}</span>
+      <span className="pr-footer-side pr-footer-right-text">{right}</span>
     </footer>
   );
 }
 
 /* ── Section ────────────────────────────────────────────────────── */
-export function Section({ title, children }: { title: string; children: React.ReactNode }) {
+export function Section({ title, children, noPad }: { title: string; children: React.ReactNode; noPad?: boolean }) {
   return (
     <section className="pr-section">
       <div className="pr-section-hdr">
         <span className="pr-section-title">{title}</span>
       </div>
-      <div className="pr-section-body">{children}</div>
+      <div className={noPad ? undefined : "pr-section-body"}>{children}</div>
     </section>
   );
 }
@@ -158,20 +155,26 @@ export function KpiStrip({ items }: { items: { label: string; value: string | nu
 }
 
 /* ── ReporteTable ───────────────────────────────────────────────── */
-export function ReporteTable({ headers, rows }: { headers: string[]; rows: React.ReactNode[][] }) {
+export function ReporteTable({ headers, rows, colWidths }: {
+  headers: string[];
+  rows: React.ReactNode[][];
+  colWidths?: string[];
+}) {
   return (
-    <div className="pr-section" style={{ marginBottom: 8 }}>
-      <div className="pr-section-hdr">
-        <span className="pr-section-title">Detalle</span>
-      </div>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+    <div className="pr-reporte-table-wrap" style={{ flex: 1, display: "flex", flexDirection: "column", marginBottom: 0 }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "auto" }}>
+        {colWidths && (
+          <colgroup>
+            {colWidths.map((w, i) => <col key={i} style={{ width: w }} />)}
+          </colgroup>
+        )}
         <thead>
-          <tr style={{ background: "var(--pr-surface)" }}>
+          <tr style={{ background: "var(--pr-navy)" }}>
             {headers.map(h => (
               <th key={h} style={{
-                padding: "5px 8px", textAlign: "left", fontSize: "5.5pt", fontWeight: 900,
-                textTransform: "uppercase", letterSpacing: "0.15em", color: "var(--pr-faint)",
-                borderBottom: "1px solid var(--pr-border)", whiteSpace: "nowrap",
+                padding: "4px 6px", textAlign: "left", fontSize: "5pt", fontWeight: 900,
+                textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.85)",
+                whiteSpace: "nowrap",
               }}>{h}</th>
             ))}
           </tr>
@@ -179,14 +182,14 @@ export function ReporteTable({ headers, rows }: { headers: string[]; rows: React
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={headers.length} style={{ padding: 16, textAlign: "center", color: "var(--pr-faint)", fontSize: "8pt", fontStyle: "italic" }}>
+              <td colSpan={headers.length} style={{ padding: 12, textAlign: "center", color: "var(--pr-faint)", fontSize: "7pt", fontStyle: "italic" }}>
                 Sin registros en el período seleccionado.
               </td>
             </tr>
           ) : rows.map((cells, i) => (
             <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "var(--pr-surface)", borderBottom: "1px solid var(--pr-border)" }}>
               {cells.map((cell, j) => (
-                <td key={j} style={{ padding: "5px 8px", verticalAlign: "middle" }}>{cell}</td>
+                <td key={j} style={{ padding: "3px 6px", verticalAlign: "top", fontSize: "6.5pt", wordBreak: "break-word", overflowWrap: "break-word" }}>{cell}</td>
               ))}
             </tr>
           ))}
@@ -204,7 +207,7 @@ export function Firma({ nombre, rol }: { nombre: string; rol: string }) {
       <div className="pr-signature-line" />
       <span className="pr-signature-name">{nombre}</span>
       <span className="pr-signature-role">{rol}</span>
-      <span className="pr-signature-role">Precision Truck Parts &amp; Accessories</span>
+      <span className="pr-signature-role">Precision Truck Parts and Accessories</span>
     </div>
   );
 }

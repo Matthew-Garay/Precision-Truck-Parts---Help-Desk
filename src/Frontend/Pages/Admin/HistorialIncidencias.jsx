@@ -32,15 +32,14 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
   const [admins,       setAdmins]       = useState([]);
   const [generando,    setGenerando]    = useState(false);
   const [cargando,     setCargando]     = useState(false);
-  const [statsGlobal,  setStatsGlobal]  = useState({ resueltos:0, activos:0, noRes:0, califs:[] });
+  const [statsData,    setStatsData]    = useState({ lista:[] });
   const isDark = T.isDark;
 
   const filtrosRef = useRef(filtros);
   filtrosRef.current = filtros;
 
-  const cargar = useCallback((f, p = 1, l = 25) => {
-    setCargando(true);
-    const qs = new URLSearchParams({ limit: l, page: p });
+  const buildQs = (f) => {
+    const qs = new URLSearchParams();
     if (f.busqueda)                             qs.set("q",         f.busqueda);
     if (f.estatus   && f.estatus   !== "Todos") qs.set("estatus",   f.estatus);
     if (f.prioridad && f.prioridad !== "Todos") qs.set("prioridad", f.prioridad);
@@ -48,10 +47,16 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
     if (f.usuario   && f.usuario   !== "Todos") qs.set("usuario",   f.usuario);
     if (f.area      && f.area      !== "Todos") qs.set("area",      f.area);
     if (f.sucursal  && f.sucursal  !== "Todos") qs.set("sucursal",  f.sucursal);
+    return qs;
+  };
+
+  const cargar = useCallback((f, p = 1, l = 25) => {
+    setCargando(true);
+    const qs = buildQs(f);
+    qs.set("limit", l); qs.set("page", p);
     apiFetch(`/api/tickets?${qs}`)
       .then(r => r.json())
       .then(d => {
-        // Soporta respuestas: Array (no paginado) o { data: [], total, page, pages }
         const lista = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
         setTickets(prev => JSON.stringify(prev) === JSON.stringify(lista) ? prev : lista);
         if (!Array.isArray(d) && typeof d.total === 'number') {
@@ -66,20 +71,35 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
       .finally(() => setCargando(false));
   }, []); // eslint-disable-line
 
+  const cargarStats = useCallback((f) => {
+    const qs = buildQs(f);
+    qs.set("limit", 2000); qs.set("page", 1);
+    apiFetch(`/api/tickets?${qs}`)
+      .then(r => r.json())
+      .then(d => {
+        const lista = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
+        setStatsData({ lista });
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line
+
   const filtrosStr = JSON.stringify(filtros);
-  useEffect(() => { cargar(filtros, page, limit); }, [filtrosStr, page, limit]); // eslint-disable-line
+  useEffect(() => {
+    cargar(filtros, page, limit);
+    if (page === 1) cargarStats(filtros);
+  }, [filtrosStr, page, limit]); // eslint-disable-line
 
   useEffect(() => {
-    if (onRecargarRef) onRecargarRef.current = () => cargar(filtrosRef.current, page, limit);
-  }, [onRecargarRef, cargar, page, limit]);
+    if (onRecargarRef) onRecargarRef.current = () => { cargar(filtrosRef.current, page, limit); cargarStats(filtrosRef.current); };
+  }, [onRecargarRef, cargar, cargarStats, page, limit]);
 
-  useAutoRefresh(() => cargar(filtrosRef.current, page, limit), 30000, [page, limit]);
+  useAutoRefresh(() => { cargar(filtrosRef.current, page, limit); cargarStats(filtrosRef.current); }, 30000, [page, limit]);
 
   useEffect(() => {
     apiFetch("/api/tickets/admins").then(r => r.json()).then(d => { if (Array.isArray(d)) setAdmins(d); }).catch(() => {});
   }, []);
 
-  // Carga sin filtros para poblar opciones y stats globales — una sola vez al montar
+  // Carga sin filtros una sola vez — solo para poblar opciones de los selects
   useEffect(() => {
     apiFetch(`/api/tickets?limit=2000&page=1`)
       .then(r => r.json())
@@ -92,21 +112,16 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           areas:      uniq(lista.map(t => t.nombre_departamento)),
           sucursales: uniq(lista.map(t => t.nombre_sucursal)),
         });
-        setStatsGlobal({
-          resueltos: lista.filter(t => t.estatus === "Resuelto").length,
-          activos:   lista.filter(t => t.estatus === "En proceso").length,
-          noRes:     lista.filter(t => t.estatus === "No Resuelto").length,
-          califs:    lista.filter(t => t.calificacion > 0),
-        });
       })
       .catch(() => {});
   }, []);
 
-  const total     = totalCount;
-  const resueltos = statsGlobal.resueltos;
-  const activos   = statsGlobal.activos;
-  const noRes     = statsGlobal.noRes;
-  const califs    = statsGlobal.califs;
+  const sl        = statsData.lista;
+  const total     = sl.length;
+  const resueltos = sl.filter(t => t.estatus === "Resuelto").length;
+  const activos   = sl.filter(t => t.estatus === "En proceso").length;
+  const noRes     = sl.filter(t => t.estatus === "No Resuelto").length;
+  const califs    = sl.filter(t => t.calificacion > 0);
   const pctSat    = califs.length > 0
     ? Math.round((califs.reduce((a,t) => a + t.calificacion, 0) / (califs.length * 5)) * 100) : 0;
 
@@ -156,13 +171,14 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
   return (
     <>
     <div className="flex flex-col h-full" style={{ background:T.bg, overflow:"hidden" }}>
-        <div className="w-full p-1.5 flex flex-col gap-1.5 flex-1 min-h-0" style={{ overflowY:"auto", overflowX:"hidden" }}>
+        <div className="w-full p-1.5 flex flex-col gap-1.5 flex-1 min-h-0"
+          style={{ overflowY:"auto", overflowX:"hidden", WebkitOverflowScrolling:"touch" }}>
 
         {/* -- ESTADÍSTICOS -- */}
-        <div className="grid grid-cols-12 gap-1.5" style={{ flexShrink:0 }}>
+        <div className="grid grid-cols-12 gap-1.5" style={{ flexShrink:0, minHeight:0 }}>
 
           {/* Satisfacción */}
-          <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden relative" style={card}>
+          <div className="col-span-6 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden relative" style={card}>
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
               style={{ background:`radial-gradient(circle at 80% 20%, ${satColor}, transparent 60%)` }}/>
             <div className="h-0.5" style={{ background:`linear-gradient(90deg,${satColor},${satColor}33)` }}/>
@@ -204,7 +220,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           </div>
 
           {/* KPIs numéricos */}
-          <div className="col-span-12 sm:col-span-6 lg:col-span-3 grid grid-cols-2 gap-1.5">
+          <div className="col-span-6 sm:col-span-6 lg:col-span-3 grid grid-cols-2 gap-1.5">
             {[
               { label:"Total",       val:total,    color:T.orange,  sub:`${activos} activos`,    subColor:"#ea580c" },
               { label:"En Proceso",  val:activos,  color:"#ea580c", sub:`${Math.round(activos/Math.max(total,1)*100)}% del total`, subColor:T.textFaint },
@@ -227,6 +243,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
 
           {/* Tiempo de respuesta */}
           <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden relative" style={card}>
+
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
               style={{ background:`radial-gradient(circle at 20% 80%, #3b82f6, transparent 60%)` }}/>
             <div className="h-0.5" style={{ background:"linear-gradient(90deg,#3b82f6,#3b82f633)" }}/>
@@ -236,7 +253,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                 <p className="text-[10px] font-black uppercase tracking-widest" style={{ color:T.textMuted }}>Tiempo de Respuesta</p>
               </div>
               {(() => {
-                const resueltosCon = tickets.filter(t => t.estatus==="Resuelto" && t.fecha_subido && t.fecha_resuelto);
+                const resueltosCon = sl.filter(t => t.estatus==="Resuelto" && t.fecha_subido && t.fecha_resuelto);
                 const horas = resueltosCon.map(t => (new Date(t.fecha_resuelto)-new Date(t.fecha_subido))/36e5);
                 const avg   = horas.length>0 ? horas.reduce((a,b)=>a+b,0)/horas.length : 0;
                 const min   = horas.length>0 ? Math.min(...horas) : 0;
@@ -245,7 +262,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                 const slaOk = horas.filter(h=>h<=48).length;
                 const slaPct= horas.length>0?Math.round(slaOk/horas.length*100):0;
                 const slaColor = slaPct>=80?"#16a34a":slaPct>=50?"#ca8a04":"#dc2626";
-                const vencidos = tickets.filter(t => t.estatus==="En proceso" && t.fecha_subido && ((Date.now()-new Date(t.fecha_subido))/36e5)>48).length;
+                const vencidos = sl.filter(t => t.estatus==="En proceso" && t.fecha_subido && ((Date.now()-new Date(t.fecha_subido))/36e5)>48).length;
                 return (
                   <>
                     <div className="flex items-end gap-1">
@@ -289,13 +306,14 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
 
           {/* Prioridad + Top Áreas */}
           <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden flex flex-col" style={card}>
+
             <div className="px-2 py-1 flex items-center gap-1" style={hdr}>
               <div className="w-1 h-2.5 rounded-full" style={{ background:T.orange }}/>
               <p className="text-[10px] font-black uppercase tracking-widest" style={{ color:T.textMuted }}>Por Prioridad</p>
             </div>
             <div className="px-2 pt-1 pb-1 flex flex-col gap-0.5">
               {[{l:"Urgente",c:"#dc2626"},{l:"Alta",c:"#ea580c"},{l:"Media",c:"#ca8a04"},{l:"Baja",c:"#16a34a"}].map(({l,c}) => {
-                const n = tickets.filter(t=>t.prioridad===l).length;
+                const n = sl.filter(t=>t.prioridad===l).length;
                 const pct = total>0?Math.round(n/total*100):0;
                 return (
                   <div key={l} className="flex items-center gap-2">
@@ -318,7 +336,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
             <div className="px-2 pb-1 flex flex-col gap-0.5">
               {(() => {
                 const conteo = {};
-                tickets.forEach(t => { if(t.nombre_departamento) conteo[t.nombre_departamento]=(conteo[t.nombre_departamento]||0)+1; });
+                sl.forEach(t => { if (t.nombre_departamento) conteo[t.nombre_departamento] = (conteo[t.nombre_departamento]||0)+1; });
                 const top = Object.entries(conteo).sort((a,b)=>b[1]-a[1]).slice(0,3);
                 const maxN = top[0]?.[1]||1;
                 const rankColors = [T.orange,"#3b82f6","#8b5cf6"];
@@ -342,6 +360,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
         </div>
 
         {/* -- FILTROS -- */}
+        <div style={{ flexShrink:0 }}>
         <FiltrosToolbar
           campos={camposFiltro}
           valores={filtros}
@@ -359,9 +378,10 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
             <FileDown size={10} strokeWidth={2.5}/> Generar Reporte
           </button>
         </FiltrosToolbar>
+        </div>
 
           {/* -- TABLA -- */}
-          <div className="rounded-xl overflow-hidden flex flex-col" style={{ ...card, flex:"1 1 0", minHeight:0 }}>
+          <div className="rounded-xl overflow-hidden flex flex-col" style={{ ...card, flex:"1 1 0", minHeight:"320px" }}>
           <div className="flex items-center justify-between px-3 py-2 flex-shrink-0" style={hdr}>
             <div className="flex items-center gap-1.5">
               <div className="w-0.5 h-3.5 rounded-full" style={{ background:T.orange }} />
@@ -378,9 +398,9 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
             </div>
           </div>
 
-          <div className="overflow-y-auto overflow-x-auto" style={{ flex:"1 1 0", minHeight:0 }}>
-            {/* Vista tarjetas móvil */}
-            <div className="flex flex-col gap-2 p-3 sm:hidden">
+          <div className="overflow-y-auto overflow-x-auto" style={{ flex:"1 1 0", minHeight:0, WebkitOverflowScrolling:"touch" }}>
+            {/* Vista tarjetas móvil (<640px) */}
+            <div className="flex flex-col gap-2 p-2 sm:hidden">
               {tickets.length === 0
                 ? <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <Inbox size={20} style={{ color:T.textFaint }}/>
@@ -408,13 +428,83 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                           </span>
                           <span className="text-[11px]" style={{ color:T.textFaint }}>{t.nombre_empleado?.split(" ").slice(0,2).join(" ")||"-"}</span>
                         </div>
+                        <div className="flex items-center justify-between pt-1" style={{ borderTop:`1px solid ${T.border}` }}>
+                          <span className="text-[10px]" style={{ color:T.textFaint }}>{fmt(t.fecha_subido)}</span>
+                          {t.calificacion>0 && <Estrellas n={parseInt(t.calificacion)} isDark={isDark}/>}
+                        </div>
                       </div>
                     );
                   })
               }
             </div>
-            {/* Vista tabla desktop */}
-            <div className="hidden sm:block">
+
+            {/* Vista tabla tablet (640–1023px): columnas reducidas */}
+            <div className="hidden sm:block lg:hidden">
+              <table className="w-full border-collapse" style={{ minWidth:"560px" }}>
+                <thead className="sticky top-0 z-10">
+                  <tr style={{ background:isDark?"#1c2030":T.surfaceAlt }}>
+                    {["Folio","Título / Prioridad","Estatus","Usuario","Fecha",""].map((col,i) => (
+                      <th key={i} className="text-left px-2 py-1.5 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
+                        style={{ color:T.textMuted, borderBottom:`1px solid ${T.border}` }}>
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tickets.length === 0 ? (
+                    <tr><td colSpan={6}>
+                      <div className="flex flex-col items-center justify-center py-10 gap-2">
+                        <Inbox size={20} style={{ color:T.textFaint }}/>
+                        <p className="text-xs font-bold" style={{ color:T.textMuted }}>
+                          {hayFiltros?"Sin resultados":"No hay incidencias registradas"}
+                        </p>
+                      </div>
+                    </td></tr>
+                  ) : tickets.map((t,i) => {
+                    const bgRow  = i%2===0?(isDark?"#141720":T.surface):(isDark?"#1c2030":T.surfaceAlt);
+                    const esCrit = t.prioridad==="Urgente"||t.prioridad==="Alta";
+                    const eBg    = t.estatus==="Resuelto"?(isDark?"rgba(22,163,74,0.15)":"#dcfce7"):t.estatus==="No Resuelto"?(isDark?"rgba(220,38,38,0.15)":"#fee2e2"):(isDark?"rgba(234,88,12,0.15)":"#ffedd5");
+                    const eColor = t.estatus==="Resuelto"?"#16a34a":t.estatus==="No Resuelto"?"#dc2626":"#ea580c";
+                    return (
+                      <tr key={t.id_ticket}
+                        style={{ background:bgRow, borderBottom:`1px solid ${T.border}` }}
+                        onMouseEnter={e => e.currentTarget.style.background=isDark?"rgba(244,121,32,0.05)":"rgba(244,121,32,0.03)"}
+                        onMouseLeave={e => e.currentTarget.style.background=bgRow}>
+                        <td className="px-2 py-1.5">
+                          <span className="font-mono text-[10px] font-black" style={{ color:T.orange }}>{t.folio_ticket}</span>
+                        </td>
+                        <td className="px-2 py-1.5" style={{ maxWidth:"160px" }}>
+                          <span className="block truncate text-[11px] font-semibold" style={{ color:esCrit?PCOLOR[t.prioridad]:T.text }}>{t.titulo}</span>
+                          <span className="flex items-center gap-1 mt-0.5">
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background:PCOLOR[t.prioridad]||"#94a3b8" }}/>
+                            <span className="text-[10px] font-bold" style={{ color:PCOLOR[t.prioridad]||T.textMuted }}>{t.prioridad}</span>
+                          </span>
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap" style={{ background:eBg, color:eColor }}>{t.estatus}</span>
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <span className="block text-[11px] font-semibold truncate" style={{ color:T.text, maxWidth:"110px" }}>{t.nombre_empleado||"-"}</span>
+                          <span className="block text-[10px] truncate" style={{ color:T.textMuted, maxWidth:"110px" }}>{t.nombre_departamento||"-"}</span>
+                        </td>
+                        <td className="px-2 py-1.5 text-[10px] whitespace-nowrap" style={{ color:T.textMuted }}>{fmt(t.fecha_subido)}</td>
+                        <td className="px-2 py-1.5">
+                          <button onClick={() => onVerTicket(t)}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all hover:brightness-110 active:scale-95"
+                            style={{ background:"rgba(244,121,32,0.08)", color:T.orange, border:"1px solid rgba(244,121,32,0.2)" }}>
+                            Ver
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Vista tabla desktop (≥1024px): todas las columnas */}
+            <div className="hidden lg:block">
             <table className="w-full border-collapse" style={{ minWidth:"960px" }}>
               <thead className="sticky top-0 z-10">
                 <tr style={{ background:isDark?"#1c2030":T.surfaceAlt }}>
@@ -502,22 +592,22 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           </div>
           </div>
           {/* Paginación */}
-          <div className="flex items-center justify-between px-3 py-2 pt-2" style={{ borderTop:`1px solid ${T.border}`, background:T.bg, flexShrink:0 }}>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2" style={{ borderTop:`1px solid ${T.border}`, background:T.bg, flexShrink:0 }}>
+            <div className="flex items-center gap-1.5">
               <button disabled={page<=1 || cargando} onClick={() => setPage(p => Math.max(1, p-1))}
-                className="px-2 py-1 rounded border" style={{ borderColor:T.border, background:T.surfaceAlt }}>
-                Anterior
+                className="px-2 py-1 rounded border text-[11px]" style={{ borderColor:T.border, background:T.surfaceAlt, color:T.text }}>
+                ‹ Ant
               </button>
+              <span className="text-[11px] px-1" style={{ color:T.textMuted }}>{page} / {pages}</span>
               <button disabled={page>=pages || cargando} onClick={() => setPage(p => Math.min(pages, p+1))}
-                className="px-2 py-1 rounded border" style={{ borderColor:T.border, background:T.surfaceAlt }}>
-                Siguiente
+                className="px-2 py-1 rounded border text-[11px]" style={{ borderColor:T.border, background:T.surfaceAlt, color:T.text }}>
+                Sig ›
               </button>
-              <span className="text-[11px] ml-2" style={{ color:T.textMuted }}>{`Página ${page} de ${pages}`}</span>
             </div>
             <div className="flex items-center gap-2">
-              <label style={{ color:T.textMuted, fontSize:10 }}>Mostrar</label>
+              <label className="text-[10px]" style={{ color:T.textMuted }}>Mostrar</label>
               <select value={limit} onChange={e => { setLimit(parseInt(e.target.value,10)); setPage(1); }}
-                style={{ padding:"4px", borderRadius:6, border:`1px solid ${T.border}`, background:T.surface }}>
+                className="text-[11px]" style={{ padding:"3px 6px", borderRadius:6, border:`1px solid ${T.border}`, background:T.surface, color:T.text }}>
                 {[10,25,50,100].map(n => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>

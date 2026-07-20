@@ -136,18 +136,17 @@ export function useTicketNotification({ usuario, onNavegar }) {
     if (esAdmin  && !EVENTOS_ADMIN.has(tipo)) return;
     if (!esAdmin && !EVENTOS_USUARIO.has(tipo)) return;
 
-    // Si el admin es quien originó la acción, no notificarle de su propio cambio
-    const actorId = data?.id_actor ?? data?.id_empleado;
-    if (esAdmin && actorId && actorId === idEmpleado) {
-      const EVENTOS_PROPIOS = new Set(["ticket:en_atencion", "ticket:actualizado"]);
-      if (EVENTOS_PROPIOS.has(tipo)) return;
-    }
+    // Solo suprimir si el admin es explícitamente el actor (id_actor presente)
+    // Nunca suprimir ticket:nuevo, solicitud:nueva, insumo:stock_critico, etc.
+    const EVENTOS_PROPIOS = new Set(["ticket:en_atencion", "ticket:actualizado"]);
+    if (esAdmin && EVENTOS_PROPIOS.has(tipo) && data?.id_actor && Number(data.id_actor) === Number(idEmpleado)) return;
 
     // entityId solo se usa para deduplicación — no bloquea eventos sin id
     const entityId =
       data?.id_ticket ?? data?.id_solicitud ??
+      data?.id_insumo ?? // stock_critico: cada insumo tiene su propia clave
       data?.folio_ticket ?? data?.folio_solicitud ??
-      tipo; // fallback: usar el tipo como clave para eventos sin entidad (tickets:vencidos, insumo:stock_critico)
+      `${tipo}_${Date.now()}`; // fallback único para eventos sin entidad (tickets:vencidos)
 
     const dedupeKey = `${tipo}_${entityId}_${data?.estatus ?? ""}`;
     if (procesandoRef.current.has(dedupeKey)) return;
@@ -168,7 +167,9 @@ export function useTicketNotification({ usuario, onNavegar }) {
 
     playNotificationSound(tipo);
 
-    const duracion = 0;
+    // SLA warnings y vencidos son permanentes; el resto auto-cierra en 6s
+    const PERMANENTES = new Set(["ticket:sla_warning", "tickets:vencidos", "insumo:stock_critico"]);
+    const duracion = PERMANENTES.has(tipo) ? 0 : 6000;
     toastRef.current[notif.toastTipo](notif.mensaje, {
       title: notif.titulo,
       duration: duracion,

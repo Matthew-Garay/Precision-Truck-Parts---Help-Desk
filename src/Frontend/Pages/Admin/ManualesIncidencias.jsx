@@ -1,7 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import PdfViewer from "../../Components/PdfViewer";
 import {
-  Upload, X, Check, FileText,
+  Upload, X, FileText,
   Trash2, Pencil, Download, MoreVertical, Eye, Tag, Clock,
   LayoutGrid, List, ChevronUp, ChevronDown,
 } from "lucide-react";
@@ -9,40 +9,118 @@ import { apiFetch, API_ROUTES } from "../../Config/api";
 import API from "../../Config/api";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import { usePdfCover } from "../../Components/hooks/usePdfCover";
-import Modal from "../../Components/Modal";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
 import {
-  FONT, RADIUS, NEUTRAL, SLATE, SEMANTIC,
-  BTN_PRIMARY, BTN_GHOST, BTN_DANGER, MODAL,
-  INPUT_BASE, INPUT_FOCUS, INPUT_BLUR, FORM_FIELD,
+  RADIUS, NEUTRAL, SLATE, SEMANTIC,
 } from "../../Config/DesignSystem";
 
-const ORANGE      = "#F47920";
-const ORANGE_DARK = "#d97400";
-const OL          = "rgba(244,121,32,0.10)";
-const OB          = "rgba(244,121,32,0.22)";
+const ORANGE = "#F47920";
+const OL     = "rgba(244,121,32,0.10)";
+const OB     = "rgba(244,121,32,0.22)";
 
-// ── Helpers formulario ────────────────────────────────────────────
-const field = (label, children, error) => (
-  <div style={FORM_FIELD.wrapper}>
-    <label style={{ ...FORM_FIELD.label, color: SLATE[600] }}>{label}</label>
-    {children}
-    {error && <span style={FORM_FIELD.error}>{error}</span>}
-  </div>
-);
-const inputSt = (T, err) => ({
-  ...INPUT_BASE, background: T.surfaceAlt, color: T.text,
-  ...(err ? { borderColor: SEMANTIC.danger, boxShadow: "0 0 0 3px rgba(220,38,38,0.10)" } : {}),
-});
-const textareaSt = (T) => ({
-  ...INPUT_BASE, height: "auto", minHeight: "72px",
-  padding: "10px 12px", resize: "vertical", fontFamily: "inherit",
-  background: T.surfaceAlt, color: T.text,
-});
+const CAT_MAP = {
+  hardware: { color: "#ea580c", bg: "rgba(234,88,12,0.08)",  border: "rgba(234,88,12,0.18)" },
+  redes:    { color: "#2563eb", bg: "rgba(37,99,235,0.08)",  border: "rgba(37,99,235,0.18)" },
+  software: { color: "#16a34a", bg: "rgba(22,163,74,0.08)",  border: "rgba(22,163,74,0.18)" },
+  sistema:  { color: "#7c3aed", bg: "rgba(124,58,237,0.08)", border: "rgba(124,58,237,0.18)" },
+  default:  { color: ORANGE,    bg: OL,                      border: OB },
+};
+function getCatKey(nombre = "") {
+  const n = nombre.toLowerCase();
+  if (n.includes("hardware") || n.includes("pc") || n.includes("equipo")) return "hardware";
+  if (n.includes("red")  || n.includes("wifi") || n.includes("internet"))  return "redes";
+  if (n.includes("software") || n.includes("aplicac"))                     return "software";
+  if (n.includes("sistema")  || n.includes("os"))                          return "sistema";
+  return "default";
+}
+
+// ── Tokens compartidos para modales ─────────────────────────────
+function modalTokens(T) {
+  const isDark = T.isDark;
+  return {
+    isDark,
+    surface:    isDark ? "#161B22" : "#ffffff",
+    surfaceAlt: isDark ? "#1a2030" : "#f8fafc",
+    border:     isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0",
+    textMain:   T.text     ?? (isDark ? "#e2e8f0" : "#1a202c"),
+    textMuted:  T.textMuted ?? (isDark ? "#8b949e" : "#64748b"),
+    textFaint:  T.textFaint ?? (isDark ? "rgba(255,255,255,0.30)" : "#a0aec0"),
+    inputBg:    isDark ? "rgba(255,255,255,0.04)" : "#f8fafc",
+  };
+}
+
+function ModalShell({ T, title, subtitle, onClose, onConfirm, confirmLabel, confirmDanger, loading, children, maxWidth = "480px" }) {
+  const { isDark, surface, surfaceAlt, border, textMain, textMuted, textFaint } = modalTokens(T);
+  const accentColor = confirmDanger ? "#DC2626" : ORANGE;
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+  useEffect(() => {
+    const fn = (e) => { if (e.key === "Escape" && !loading) onClose(); };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, [onClose, loading]);
+
+  return (
+    <div
+      role="presentation"
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.40)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", animation: "msFade 0.15s ease" }}
+      onMouseDown={e => { if (e.target === e.currentTarget && !loading) onClose(); }}
+    >
+      <style>{`@keyframes msFade{from{opacity:0}to{opacity:1}} @keyframes msSlide{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <div role="dialog" aria-modal="true" style={{ width: "95%", maxWidth, background: surface, border: `1px solid ${border}`, borderRadius: "10px", display: "flex", flexDirection: "column", maxHeight: "90vh", overflow: "hidden", boxShadow: isDark ? "0 16px 40px rgba(0,0,0,0.50), 0 1px 0 rgba(255,255,255,0.04) inset" : "0 16px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)", animation: "msSlide 0.18s ease" }}>
+        {/* Banda acento */}
+        <div style={{ height: "2px", flexShrink: 0, background: accentColor, borderRadius: "10px 10px 0 0" }} />
+        {/* Header */}
+        <div style={{ padding: "14px 18px 12px", borderBottom: `1px solid ${border}`, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", flexShrink: 0 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: accentColor }}>{subtitle}</p>
+            <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>{title}</h2>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
+            <img src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"} alt="Precision Trucks" style={{ height: "28px", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }} />
+            {!loading && (
+              <button onClick={onClose} style={{ width: "26px", height: "26px", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${border}`, borderRadius: "6px", cursor: "pointer", color: textFaint, transition: "all 0.12s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = textMuted; e.currentTarget.style.color = textMain; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = textFaint; }}>
+                <X size={12} strokeWidth={2} />
+              </button>
+            )}
+          </div>
+        </div>
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px", fontSize: "13px", color: textMain }}>
+          {children}
+        </div>
+        {/* Footer */}
+        <div style={{ padding: "10px 18px", borderTop: `1px solid ${border}`, background: surfaceAlt, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
+          <button onClick={onClose} disabled={loading}
+            style={{ padding: "6px 16px", borderRadius: "6px", fontSize: "12px", fontWeight: 600, background: "transparent", border: `1px solid ${border}`, color: textMuted, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.5 : 1, transition: "all 0.12s" }}
+            onMouseEnter={e => { if (!loading) { e.currentTarget.style.borderColor = textMuted; e.currentTarget.style.color = textMain; } }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = textMuted; }}>
+            Cancelar
+          </button>
+          {onConfirm && (
+            <button onClick={onConfirm} disabled={loading}
+              style={{ padding: "6px 18px", borderRadius: "6px", fontSize: "12px", fontWeight: 700, background: loading ? `${accentColor}99` : accentColor, border: "none", color: "#fff", cursor: loading ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: "6px", transition: "opacity 0.12s" }}
+              onMouseEnter={e => { if (!loading) e.currentTarget.style.opacity = "0.88"; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}>
+              {loading ? (<><span style={{ display: "inline-block", width: 13, height: 13, border: "2px solid rgba(255,255,255,0.30)", borderTopColor: "#fff", borderRadius: "50%", animation: "_modal_spin 0.65s linear infinite" }} />Procesando…</>) : confirmLabel}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Modal subir / editar ──────────────────────────────────────────
 function ModalForm({ T, categorias, manual, archivo, onClose, onGuardado }) {
   const esEdicion = !!manual;
+  const { isDark, border, textMain, textMuted, textFaint, inputBg } = modalTokens(T);
   const [form, setForm] = useState({
     nombre:       manual?.nombre       ?? (archivo?.name?.replace(/\.pdf$/i, "") ?? ""),
     descripcion:  manual?.descripcion  ?? "",
@@ -50,35 +128,27 @@ function ModalForm({ T, categorias, manual, archivo, onClose, onGuardado }) {
   });
   const [errores, setErrores] = useState({});
   const [loading, setLoading] = useState(false);
-  const [preview, setPreview] = useState(false);
-  const previewUrl = archivo ? URL.createObjectURL(archivo) : null;
-  const isDark = T.isDark;
 
   const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); setErrores(p => ({ ...p, [k]: "" })); };
-  const validar = () => {
-    const e = {};
-    if (!form.nombre.trim())  e.nombre       = "El nombre es obligatorio";
-    if (!form.id_categoria)   e.id_categoria = "La categoría es obligatoria";
-    return e;
-  };
+
+  const inp = { background: inputBg, border: `1px solid ${border}`, borderRadius: "6px", padding: "0 10px", height: "34px", fontSize: "13px", color: textMain, outline: "none", width: "100%", boxSizing: "border-box", transition: "border-color 0.12s, box-shadow 0.12s" };
+  const onFocus = e => { e.target.style.borderColor = "#2563eb"; e.target.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.10)"; e.target.style.background = isDark ? "rgba(255,255,255,0.07)" : "#fff"; };
+  const onBlur  = e => { e.target.style.borderColor = border; e.target.style.boxShadow = "none"; e.target.style.background = inputBg; };
 
   const handleSubmit = async () => {
-    const e2 = validar();
+    const e2 = {};
+    if (!form.nombre.trim())  e2.nombre       = "El nombre es obligatorio";
+    if (!form.id_categoria)   e2.id_categoria = "La categoría es obligatoria";
     if (Object.keys(e2).length) { setErrores(e2); return; }
     setLoading(true);
     try {
       let r;
       if (esEdicion) {
-        r = await apiFetch(`/api/manuales/${manual.id_manual}`, {
-          method: "PUT",
-          body: { nombre: form.nombre.trim(), descripcion: form.descripcion.trim(), id_categoria: parseInt(form.id_categoria) },
-        });
+        r = await apiFetch(`/api/manuales/${manual.id_manual}`, { method: "PUT", body: { nombre: form.nombre.trim(), descripcion: form.descripcion.trim(), id_categoria: parseInt(form.id_categoria) } });
       } else {
         const fd = new FormData();
-        fd.append("archivo",      archivo);
-        fd.append("nombre",       form.nombre.trim());
-        fd.append("descripcion",  form.descripcion.trim());
-        fd.append("id_categoria", form.id_categoria);
+        fd.append("archivo", archivo); fd.append("nombre", form.nombre.trim());
+        fd.append("descripcion", form.descripcion.trim()); fd.append("id_categoria", form.id_categoria);
         r = await apiFetch("/api/manuales", { method: "POST", body: fd });
       }
       const data = await r.json();
@@ -91,124 +161,81 @@ function ModalForm({ T, categorias, manual, archivo, onClose, onGuardado }) {
     }
   };
 
-  const previewBtn = !esEdicion && archivo ? (
-    <button
-      type="button"
-      onClick={() => setPreview(p => !p)}
-      style={{
-        background: preview ? "rgba(244,121,32,0.25)" : "rgba(255,255,255,0.10)",
-        border: "1px solid rgba(255,255,255,0.20)",
-        color: "#fff", cursor: "pointer", borderRadius: RADIUS.sm,
-        padding: "4px 10px", fontSize: "11px", fontWeight: 600,
-        display: "flex", alignItems: "center", gap: 4,
-      }}
-    >
-      {preview ? "Ocultar" : "Ver PDF"}
-    </button>
-  ) : null;
+  const LabelField = ({ label, required, children, error }) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      <label style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: textFaint }}>
+        {label}{required && <span style={{ color: ORANGE, marginLeft: "2px" }}>*</span>}
+      </label>
+      {children}
+      {error && <span style={{ fontSize: "11px", color: "#dc2626" }}>{error}</span>}
+    </div>
+  );
 
   return (
-    <Modal
-      T={T}
-      title={esEdicion ? "Editar manual" : "Subir manual"}
-      icon={<FileText size={13} />}
-      onClose={onClose}
-      onConfirm={handleSubmit}
-      confirmLabel={loading ? (esEdicion ? "Guardando..." : "Subiendo...") : (esEdicion ? "Guardar cambios" : "Subir manual")}
-      loading={loading}
-      maxWidth={preview ? "860px" : "480px"}
-      noBodyPadding
-      closeOnOverlay={false}
-    >
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <div style={{ display: "flex", flexDirection: "column", flex: preview ? "0 0 340px" : "1", padding: "20px", gap: 16 }}>
-          {/* Botón Ver PDF dentro del body */}
-          {previewBtn && (
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>{previewBtn}</div>
-          )}
-          {!esEdicion && (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: RADIUS.sm, background: isDark ? "rgba(255,255,255,0.04)" : NEUTRAL.slate50, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : SLATE[200]}` }}>
-              <div style={{ width: 36, height: 42, borderRadius: RADIUS.sm, flexShrink: 0, background: "rgba(220,38,38,0.08)", border: "1.5px solid rgba(220,38,38,0.18)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                <FileText size={16} style={{ color: "#dc2626" }} />
-                <span style={{ fontSize: "7px", fontWeight: 700, color: "#dc2626" }}>PDF</span>
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ ...FONT.body, color: T.text, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{archivo.name}</p>
-                <p style={{ ...FONT.small, color: SLATE[400] }}>
-                  {archivo.size < 1024 * 1024 ? `${(archivo.size / 1024).toFixed(0)} KB` : `${(archivo.size / 1024 / 1024).toFixed(1)} MB`}
-                </p>
-              </div>
+    <ModalShell T={T} title={esEdicion ? manual?.nombre ?? "Editar manual" : "Subir manual"} subtitle={esEdicion ? "Editar manual" : "Nuevo manual"} onClose={onClose} onConfirm={handleSubmit} confirmLabel={loading ? (esEdicion ? "Guardando…" : "Subiendo…") : (esEdicion ? "Guardar cambios" : "Subir manual")} loading={loading}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        {!esEdicion && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: "6px", background: isDark ? "rgba(255,255,255,0.04)" : "#f8fafc", border: `1px solid ${border}` }}>
+            <div style={{ width: 36, height: 42, borderRadius: "4px", flexShrink: 0, background: "rgba(220,38,38,0.08)", border: "1.5px solid rgba(220,38,38,0.18)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              <FileText size={16} style={{ color: "#dc2626" }} />
+              <span style={{ fontSize: "7px", fontWeight: 700, color: "#dc2626" }}>PDF</span>
             </div>
-          )}
-          {field("Nombre *", (
-            <input style={inputSt(T, errores.nombre)} value={form.nombre} onChange={e => set("nombre", e.target.value)} onFocus={INPUT_FOCUS} onBlur={INPUT_BLUR} placeholder="Ej. Manual de procedimientos red" autoFocus />
-          ), errores.nombre)}
-          {field("Descripción", (
-            <textarea style={textareaSt(T)} value={form.descripcion} onChange={e => set("descripcion", e.target.value)} placeholder="Breve descripción del contenido..." rows={3} />
-          ))}
-          {field("Categoría *", (
-            <select style={{ ...inputSt(T, errores.id_categoria), cursor: "pointer" }} value={form.id_categoria} onChange={e => set("id_categoria", e.target.value)}>
-              <option value="">Selecciona una categoría...</option>
-              {categorias.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.nombre_categoria}</option>)}
-            </select>
-          ), errores.id_categoria)}
-          {errores.global && (
-            <div style={{ padding: "10px 14px", borderRadius: RADIUS.sm, background: SEMANTIC.dangerBg, border: `1px solid ${SEMANTIC.dangerBdr}`, color: SEMANTIC.danger, fontSize: 13, fontWeight: 500 }}>
-              {errores.global}
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: textMain, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{archivo.name}</p>
+              <p style={{ fontSize: 11, color: textMuted, margin: 0 }}>{archivo.size < 1024*1024 ? `${(archivo.size/1024).toFixed(0)} KB` : `${(archivo.size/1024/1024).toFixed(1)} MB`}</p>
             </div>
-          )}
-        </div>
-
-        {preview && previewUrl && (
-          <div style={{ flex: 1, borderLeft: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : SLATE[200]}`, display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "8px 14px", background: isDark ? "#0d1117" : NEUTRAL.slate50, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : SLATE[200]}`, fontSize: 11, fontWeight: 600, color: T.textMuted }}>
-              Vista previa
-            </div>
-            <iframe src={`${previewUrl}#toolbar=1&navpanes=0`} title="preview-pdf" style={{ flex: 1, border: "none", minHeight: 400, width: "100%", display: "block" }} />
           </div>
         )}
+        <LabelField label="Nombre" required error={errores.nombre}>
+          <input style={{ ...inp, ...(errores.nombre ? { borderColor: "#dc2626" } : {}) }} value={form.nombre} onChange={e => set("nombre", e.target.value)} onFocus={onFocus} onBlur={onBlur} placeholder="Ej. Manual de procedimientos red" autoFocus />
+        </LabelField>
+        <LabelField label="Descripción">
+          <textarea style={{ ...inp, height: "auto", padding: "8px 10px", resize: "none", lineHeight: "1.5" }} value={form.descripcion} onChange={e => set("descripcion", e.target.value)} onFocus={onFocus} onBlur={onBlur} placeholder="Breve descripción del contenido..." rows={3} />
+        </LabelField>
+        <LabelField label="Categoría" required error={errores.id_categoria}>
+          <select style={{ ...inp, cursor: "pointer", ...(errores.id_categoria ? { borderColor: "#dc2626" } : {}) }} value={form.id_categoria} onChange={e => set("id_categoria", e.target.value)} onFocus={onFocus} onBlur={onBlur}>
+            <option value="">Selecciona una categoría...</option>
+            {categorias.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.nombre_categoria}</option>)}
+          </select>
+        </LabelField>
+        {errores.global && (
+          <p style={{ margin: 0, padding: "8px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: 500, color: "#dc2626", background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2", border: `1px solid ${isDark ? "rgba(220,38,38,0.25)" : "#fecaca"}` }}>
+            {errores.global}
+          </p>
+        )}
       </div>
-    </Modal>
+    </ModalShell>
   );
 }
 
 // ── Modal eliminar ────────────────────────────────────────────────
 function ModalEliminar({ T, manual, onConfirm, onClose, loading }) {
+  const { border, textMain, textMuted } = modalTokens(T);
   return (
-    <Modal
-      T={T}
-      title="Eliminar manual"
-      icon={<Trash2 size={13} />}
-      onClose={onClose}
-      onConfirm={onConfirm}
-      confirmLabel={loading ? "Eliminando..." : "Eliminar"}
-      cancelLabel="Cancelar"
-      loading={loading}
-      variant="danger"
-      maxWidth="400px"
-    >
-      <p style={{ ...FONT.body, color: T.text, margin: 0 }}>
+    <ModalShell T={T} title="Eliminar manual" subtitle="Confirmar eliminación" onClose={onClose} onConfirm={onConfirm} confirmLabel={loading ? "Eliminando…" : "Eliminar"} confirmDanger loading={loading} maxWidth="400px">
+      <p style={{ margin: 0, fontSize: 13, color: textMain }}>
         ¿Eliminar <strong>{manual.nombre}</strong>? Esta acción no se puede deshacer.
       </p>
-    </Modal>
+    </ModalShell>
   );
 }
 
 // ── Drawer visor PDF ──────────────────────────────────────────────
 function DrawerVisor({ url, nombre, T, onClose }) {
   const isDark = T.isDark;
+  const mobile = window.innerWidth < 640;
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.50)" }} />
-      <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 301, width: "min(960px,96vw)", display: "flex", flexDirection: "column", background: isDark ? "#0f1117" : "#f8fafc", boxShadow: "-4px 0 32px rgba(0,0,0,0.18)", animation: "slideIn .2s cubic-bezier(.16,1,.3,1)" }}>
+      <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 301, width: mobile ? "100vw" : "min(960px,96vw)", display: "flex", flexDirection: "column", background: isDark ? "#0f1117" : "#f8fafc", boxShadow: "-4px 0 32px rgba(0,0,0,0.18)", animation: "slideIn .2s cubic-bezier(.16,1,.3,1)" }}>
         <style>{`@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
-        <div style={{ height: 54, padding: "0 20px", flexShrink: 0, display: "flex", alignItems: "center", gap: 12, background: "#1e293b", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <FileText size={15} color="rgba(255,255,255,0.6)" />
-          <span style={{ flex: 1, color: "#fff", fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</span>
-          <a href={url} download={nombre} style={{ height: 30, padding: "0 12px", borderRadius: RADIUS.sm, display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 500, textDecoration: "none" }}>
-            <Download size={12} /> Descargar
+        <div style={{ height: 54, padding: "0 12px", flexShrink: 0, display: "flex", alignItems: "center", gap: 8, background: "#1e293b", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <FileText size={15} color="rgba(255,255,255,0.6)" style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1, minWidth: 0, color: "#fff", fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</span>
+          <a href={url} download={nombre} style={{ flexShrink: 0, height: 30, padding: mobile ? "0 8px" : "0 12px", borderRadius: RADIUS.sm, display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 500, textDecoration: "none" }}>
+            <Download size={12} />{!mobile && " Descargar"}
           </a>
-          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: RADIUS.sm, background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.5)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <button onClick={onClose} style={{ flexShrink: 0, width: 30, height: 30, borderRadius: RADIUS.sm, background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.5)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <X size={14} />
           </button>
         </div>
@@ -608,7 +635,7 @@ export default function ManualesAdmin({ T }) {
 
   return (
     <div
-      style={{ overflowY: "auto", background: T.bg, minHeight: "100%", fontFamily: "'Inter','Segoe UI',sans-serif" }}
+      style={{ background: T.bg, minHeight: "100%", fontFamily: "'Inter','Segoe UI',sans-serif" }}
       onDragOver={e => { e.preventDefault(); setDragging(true); }}
       onDragEnter={e => { e.preventDefault(); setDragging(true); }}
       onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
