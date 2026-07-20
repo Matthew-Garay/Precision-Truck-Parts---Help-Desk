@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, Minus, Trash2, Package, AlertCircle, CheckCircle2, Search, Tag, Ticket, ChevronDown, Clock, Loader2, XCircle, Eye, Inbox, History } from "lucide-react";
+import { Plus, Minus, Trash2, Package, AlertCircle, CheckCircle2, Search, Tag, Ticket, ChevronDown, Clock, Loader2, XCircle, Eye, Inbox, History, X } from "lucide-react";
 import { apiFetch, API_ROUTES } from "../../Config/api";
 import StockBar from "../../Components/StockBar";
 import VistaSolicitud from "./VistaSolicitud";
@@ -195,6 +195,195 @@ function BadgeEstatus({ estatus }) {
   );
 }
 
+function ModalResultado({ resultModal, cartEntries, T, onClose }) {
+  const isDark = T?.isDark ?? false;
+  const surface    = isDark ? "#161B22" : "#ffffff";
+  const surfaceAlt = isDark ? "#1a2030" : "#f8fafc";
+  const border     = isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0";
+
+  useEffect(() => {
+    const fn = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, [onClose]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  return (
+    <div
+      role="presentation"
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.40)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "16px",
+        animation: "dmFade 0.15s ease",
+      }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <style>{`
+        @keyframes dmFade  { from{opacity:0} to{opacity:1} }
+        @keyframes dmSlide { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
+      `}</style>
+      <div
+        role="dialog"
+        aria-modal="true"
+        style={{
+          width: "95%", maxWidth: "440px",
+          background: surface,
+          border: `1px solid ${border}`,
+          borderRadius: "10px",
+          display: "flex", flexDirection: "column",
+          maxHeight: "90vh", overflow: "hidden",
+          boxShadow: isDark
+            ? "0 16px 40px rgba(0,0,0,0.50), 0 1px 0 rgba(255,255,255,0.04) inset"
+            : "0 16px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
+          animation: "dmSlide 0.18s ease",
+        }}
+      >
+        {/* Banda acento */}
+        <div style={{ height: "2px", flexShrink: 0, background: resultModal.success ? "#16a34a" : "#dc2626", borderRadius: "10px 10px 0 0" }} />
+
+        {/* Header */}
+        <div style={{
+          padding: "14px 18px 12px",
+          borderBottom: `1px solid ${border}`,
+          display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+          gap: "12px", flexShrink: 0,
+        }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: resultModal.success ? "#16a34a" : "#dc2626" }}>
+              {resultModal.success ? "Solicitud" : "Error"}
+            </p>
+            <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: T.text, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+              {resultModal.success ? "Solicitud creada" : "Error al crear"}
+            </h2>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
+            <img
+              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
+              alt="Precision Trucks"
+              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
+            />
+            <button
+              onClick={onClose}
+              style={{ width: "26px", height: "26px", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${border}`, borderRadius: "6px", cursor: "pointer", color: T.textFaint, transition: "all 0.12s" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = T.textMuted; e.currentTarget.style.color = T.text; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = T.textFaint; }}
+            >
+              <X size={12} strokeWidth={2} />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px", display: "flex", flexDirection: "column", gap: "14px" }}>
+          {resultModal.success ? (
+            <>
+              {/* Folio + mensaje */}
+              <div className="flex items-center gap-3 p-3 rounded-xl"
+                style={{ background: isDark ? "rgba(22,163,74,0.10)" : "#f0fdf4", border: "1px solid rgba(22,163,74,0.25)" }}>
+                <CheckCircle2 size={20} style={{ color: "#16a34a", flexShrink: 0 }} />
+                <div>
+                  <p style={{ margin: 0, fontSize: "11px", fontWeight: 700, color: "#16a34a" }}>Registrada correctamente</p>
+                  <p style={{ margin: "2px 0 0", fontSize: "13px", fontWeight: 800, fontFamily: "monospace", color: T.orange }}>#{resultModal.folio}</p>
+                </div>
+              </div>
+
+              {/* Detalle de insumos */}
+              {cartEntries.length > 0 && (
+                <div>
+                  <p style={{ margin: "0 0 8px", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted }}>
+                    Insumos solicitados ({cartEntries.length})
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {cartEntries.map(({ supply, quantity, id }) => (
+                      <div key={id} className="flex items-center gap-3 px-3 py-2 rounded-lg"
+                        style={{ background: surfaceAlt, border: `1px solid ${border}` }}>
+                        {/* Imagen o icono */}
+                        <div style={{
+                          width: "36px", height: "36px", borderRadius: "8px", flexShrink: 0,
+                          background: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9",
+                          border: `1px solid ${border}`,
+                          overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          {supply.imagen_url
+                            ? <img src={supply.imagen_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            : <Package size={14} style={{ color: T.textFaint }} />
+                          }
+                        </div>
+                        {/* Info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {supply.nombre}
+                          </p>
+                          {(supply.marca || supply.modelo) && (
+                            <p style={{ margin: "1px 0 0", fontSize: "10px", color: T.textFaint }}>
+                              {[supply.marca, supply.modelo].filter(Boolean).join(" · ")}
+                            </p>
+                          )}
+                        </div>
+                        {/* Cantidad */}
+                        <span style={{
+                          flexShrink: 0, fontSize: "12px", fontWeight: 800,
+                          padding: "2px 10px", borderRadius: "99px",
+                          background: isDark ? "rgba(37,99,235,0.15)" : "#eff6ff",
+                          color: "#3b82f6", border: "1px solid rgba(59,130,246,0.25)",
+                        }}>
+                          ×{quantity}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <p style={{ margin: 0, fontSize: "11px", color: T.textFaint, lineHeight: 1.5 }}>
+                El equipo revisará tu solicitud y te notificará cuando sea atendida.
+              </p>
+            </>
+          ) : (
+            <div className="flex items-start gap-3 p-3 rounded-xl"
+              style={{ background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2", border: "1px solid rgba(220,38,38,0.25)" }}>
+              <AlertCircle size={16} style={{ color: "#dc2626", flexShrink: 0, marginTop: "1px" }} />
+              <p style={{ margin: 0, fontSize: "13px", color: T.text, lineHeight: 1.5 }}>{resultModal.message}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: "10px 18px",
+          borderTop: `1px solid ${border}`,
+          background: surfaceAlt,
+          display: "flex", justifyContent: "flex-end",
+          flexShrink: 0,
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: "6px 20px", borderRadius: "6px",
+              fontSize: "12px", fontWeight: 700,
+              background: resultModal.success ? "#2563eb" : "transparent",
+              border: resultModal.success ? "none" : `1px solid ${border}`,
+              color: resultModal.success ? "#fff" : T.textMuted,
+              cursor: "pointer", transition: "all 0.12s",
+            }}
+            onMouseEnter={e => { if (!resultModal.success) { e.currentTarget.style.borderColor = T.textMuted; e.currentTarget.style.color = T.text; } else { e.currentTarget.style.opacity = "0.88"; } }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = "1"; if (!resultModal.success) { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = T.textMuted; } }}
+          >
+            {resultModal.success ? "Ver solicitud" : "Cerrar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   const [supplies,        setSupplies]        = useState([]);
   const [requestCart,     setRequestCart]     = useState({});
@@ -207,6 +396,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   const [resultModal,     setResultModal]     = useState(null);
   const [animatingId,     setAnimatingId]     = useState(null);
   const [tab,             setTab]             = useState(initialTab || "nueva");
+  const [drawerOpen,      setDrawerOpen]      = useState(false);
   // eslint-disable-next-line no-unused-vars
   const [solicitudes,     setSolicitudes]     = useState([]);
   const [loadingSols,     setLoadingSols]     = useState(false);
@@ -345,7 +535,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
         setResultModal({ success: false, message: errorMsg });
         return;
       }
-      setResultModal({ success: true, folio: data.folio_solicitud, id_solicitud: data.id_solicitud });
+      setResultModal({ success: true, folio: data.folio_solicitud, id_solicitud: data.id_solicitud, _cartSnapshot: cartEntries.map(e => ({ ...e })) });
       setRequestCart({});
       setPriority("");
       setJustification("");
@@ -364,8 +554,8 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   );
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: T.bg, overflow: "hidden" }}>
-      <div style={{ maxWidth: "1400px", width: "100%", margin: "0 auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "10px", flex: 1, minHeight: 0, overflowY: "auto" }}>
+    <div style={{ background: T.bg }}>
+      <div style={{ maxWidth: "1400px", width: "100%", margin: "0 auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "10px" }}>
 
         {/* Pestañas */}
         <div className="flex gap-1 rounded-xl p-1 w-fit"
@@ -385,10 +575,11 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
           ))}
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-3 items-start" style={{ flex: 1, minHeight: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px", flex: 1, minHeight: 0 }}
+          className="lg:flex-row lg:items-start">
 
           {/* Columna izquierda */}
-          <div className="w-full lg:w-3/4" style={{ display: "flex", flexDirection: "column", gap: "12px", flex: 1, minHeight: 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, minWidth: 0, paddingBottom: tab === "nueva" ? 80 : 0 }}>
 
             {/* Historial */}
             {tab === "historial" && (
@@ -538,52 +729,109 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
 
             {/* Tab nueva */}
             {tab === "nueva" && (<>
-              {/* Barra búsqueda y filtros */}
-              <div className="rounded-xl px-4 py-3 flex flex-wrap gap-3 items-center"
-                style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-                <div className="relative flex-1" style={{ minWidth: "200px" }}>
-                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: T.textFaint }} />
+              {/* Barra búsqueda + categorías */}
+              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+                {/* Búsqueda */}
+                <div style={{ position: "relative" }}>
+                  <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: T.textFaint, pointerEvents: "none" }} />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Buscar insumo por nombre o marca…"
-                    className="w-full pl-8 pr-3 h-9 rounded-lg text-[12px] outline-none transition-colors"
-                    style={{ background: T.surfaceAlt, border: `1px solid ${T.border}`, color: T.text }}
+                    style={{ width: "100%", paddingLeft: 32, paddingRight: 12, height: 36, borderRadius: 8, fontSize: 12, outline: "none", background: T.surfaceAlt, border: `1px solid ${T.border}`, color: T.text, boxSizing: "border-box" }}
                     onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.background = T.surface; }}
                     onBlur={e  => { e.target.style.borderColor = T.border;  e.target.style.background = T.surfaceAlt; }}
                   />
                 </div>
-
-                <div className="flex flex-wrap gap-1.5">
+                {/* Categorías + contador */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                   {categories.map(cat => (
                     <button key={cat} onClick={() => setCategoryFilter(cat)}
-                      className="px-2.5 py-1 rounded text-[11px] font-semibold transition-colors"
                       style={{
-                        background:   categoryFilter === cat ? "#2563eb"    : T.surfaceAlt,
-                        color:        categoryFilter === cat ? "#fff"        : T.textMuted,
-                        border:       categoryFilter === cat ? "1px solid #2563eb" : `1px solid ${T.border}`,
+                        padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                        background: categoryFilter === cat ? "#2563eb" : T.surfaceAlt,
+                        color:      categoryFilter === cat ? "#fff"    : T.textMuted,
+                        border:     categoryFilter === cat ? "1px solid #2563eb" : `1px solid ${T.border}`,
+                        cursor: "pointer", whiteSpace: "nowrap",
                       }}>
                       {cat}
                     </button>
                   ))}
+                  <span style={{ fontSize: 11, fontFamily: "monospace", color: T.textFaint, marginLeft: "auto", whiteSpace: "nowrap" }}>
+                    {filteredSupplies.length} resultado{filteredSupplies.length !== 1 ? "s" : ""}
+                  </span>
                 </div>
-
-                <span className="text-[11px] font-mono ml-auto" style={{ color: T.textFaint }}>
-                  {filteredSupplies.length} resultado{filteredSupplies.length !== 1 ? "s" : ""}
-                </span>
               </div>
 
-              {/* Tabla */}
-              <div className="rounded-xl overflow-hidden"
-                style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", maxHeight: "clamp(300px, 60vh, calc(100vh - 280px))" }}>
+              {/* Vista móvil — cards (< sm) */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }} className="sm:hidden">
+                {isLoading ? (
+                  <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
+                    <svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.orange} strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                  </div>
+                ) : filteredSupplies.length === 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 0", gap: 8, color: T.textFaint }}>
+                    <Package size={26} />
+                    <span style={{ fontSize: 12, fontWeight: 600 }}>Sin resultados</span>
+                  </div>
+                ) : filteredSupplies.map(supply => {
+                  const isAdded = !!requestCart[supply.id_insumo];
+                  const atMax   = (requestCart[supply.id_insumo] || 0) >= supply.stock;
+                  const badge   = STATUS_BADGE[supply.stock === 0 ? "Agotado" : supply.stock < 5 ? "Bajo" : "Disponible"];
+                  return (
+                    <div key={supply.id_insumo}
+                      style={{
+                        background: T.surface,
+                        border: `1px solid ${isAdded ? "rgba(37,99,235,0.4)" : T.border}`,
+                        borderRadius: 10, padding: 12,
+                        display: "flex", flexDirection: "column", gap: 8,
+                      }}>
+                      {/* Fila superior: nombre + badge */}
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+                          <button onClick={() => setInsumoDetalle(supply)}
+                            style={{ fontSize: 12, fontWeight: 700, textAlign: "left", color: T.text, background: "none", border: "none", padding: 0, cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {supply.nombre}
+                          </button>
+                          {(supply.marca || supply.modelo) && (
+                            <span style={{ fontSize: 10, color: T.textFaint }}>{[supply.marca, supply.modelo].filter(Boolean).join(" · ")}</span>
+                          )}
+                        </div>
+                        <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}>
+                          {badge.label}
+                        </span>
+                      </div>
+                      {/* Fila inferior: stock + acción */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <div style={{ flex: 1 }}><StockBar stock={supply.stock} maxStock={100} /></div>
+                        {supply.stock === 0 ? (
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 6, background: T.surfaceAlt, color: T.textFaint, border: `1px solid ${T.border}`, flexShrink: 0 }}>Agotado</span>
+                        ) : isAdded ? (
+                          <button onClick={() => !atMax && handleAddSupply(supply.id_insumo)} disabled={atMax}
+                            style={{ fontSize: 10, fontWeight: 700, padding: "4px 10px", borderRadius: 6, flexShrink: 0, background: T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.3)", cursor: atMax ? "not-allowed" : "pointer", opacity: atMax ? 0.4 : 1 }}>
+                            {atMax ? `Máx (${supply.stock})` : "+ Otro"}
+                          </button>
+                        ) : (
+                          <button onClick={() => handleAddSupply(supply.id_insumo)}
+                            style={{ fontSize: 10, fontWeight: 700, padding: "4px 10px", borderRadius: 6, flexShrink: 0, background: "#2563eb", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                            <Plus size={10} /> Agregar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Vista desktop — tabla (>= sm) */}
+              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, overflow: "hidden", flexDirection: "column", maxHeight: "clamp(300px, 60vh, calc(100vh - 280px))" }} className="hidden sm:flex">
                 <div style={{ overflowX: "auto", overflowY: "auto", flex: 1 }}>
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full text-left border-collapse" style={{ minWidth: "520px" }}>
                     <thead>
-                      <tr style={{ background: T.isDark ? T.surfaceAlt : T.surfaceAlt, position: "sticky", top: 0, zIndex: 10 }}>
+                      <tr style={{ background: T.surfaceAlt, position: "sticky", top: 0, zIndex: 10 }}>
                         {["ID / Nombre", "Categoría", "Stock Actual", "Estado", "Acción"].map(col => (
-                          <th key={col} className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap"
-                            style={{ color: T.textMuted }}>
+                          <th key={col} style={{ padding: "8px 12px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap", color: T.textMuted, borderBottom: `1px solid ${T.border}` }}>
                             {col}
                           </th>
                         ))}
@@ -591,18 +839,18 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     </thead>
                     <tbody>
                       {isLoading ? (
-                        <tr><td colSpan={5} className="py-16 text-center">
-                          <div className="flex flex-col items-center gap-2" style={{ color: T.textFaint }}>
-                            <svg className="animate-spin w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-                            <span className="text-[12px]">Cargando insumos…</span>
+                        <tr><td colSpan={5} style={{ padding: "64px 0", textAlign: "center" }}>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: T.textFaint }}>
+                            <svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                            <span style={{ fontSize: 12 }}>Cargando insumos…</span>
                           </div>
                         </td></tr>
                       ) : filteredSupplies.length === 0 ? (
-                        <tr><td colSpan={5} className="py-16 text-center">
-                          <div className="flex flex-col items-center gap-2" style={{ color: T.textFaint }}>
+                        <tr><td colSpan={5} style={{ padding: "64px 0", textAlign: "center" }}>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: T.textFaint }}>
                             <Package size={28} />
-                            <span className="text-[13px] font-semibold">Sin resultados</span>
-                            <span className="text-[11px]">Intenta con otro filtro o búsqueda</span>
+                            <span style={{ fontSize: 13, fontWeight: 600 }}>Sin resultados</span>
+                            <span style={{ fontSize: 11 }}>Intenta con otro filtro o búsqueda</span>
                           </div>
                         </td></tr>
                       ) : (
@@ -626,8 +874,8 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
             </>)}
           </div>
 
-          {/* Columna derecha — panel */}
-          <div className="w-full lg:w-1/4 lg:sticky lg:top-4 flex flex-col gap-3">
+          {/* Columna derecha — panel (solo desktop) */}
+          <div className="hidden lg:block lg:sticky lg:top-4" style={{ width: "300px", flexShrink: 0 }}>
             <div className="rounded-xl overflow-hidden"
               style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
 
@@ -775,27 +1023,204 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
         </div>
       </div>
 
+      {/* ── Drawer móvil — panel solicitud ─────────────────────── */}
+      {tab === "nueva" && (
+        <div className="lg:hidden">
+          {/* Barra flotante inferior */}
+          <div
+            onClick={() => setDrawerOpen(true)}
+            style={{
+              position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50,
+              background: T.isDark ? "#1e3a5f" : "#1e3a5f",
+              borderTop: "2px solid rgba(96,165,250,0.3)",
+              padding: "10px 16px",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              cursor: "pointer",
+              boxShadow: "0 -4px 20px rgba(0,0,0,0.25)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Ticket size={16} style={{ color: "#60a5fa" }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Solicitud en Proceso</span>
+              {totalItemCount > 0 && (
+                <span style={{ fontSize: 11, fontWeight: 800, padding: "1px 8px", borderRadius: 99, background: "#2563eb", color: "#fff" }}>
+                  {totalItemCount}
+                </span>
+              )}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {cartEntries.length > 0 && (
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>
+                  {cartEntries.length} insumo{cartEntries.length !== 1 ? "s" : ""}
+                </span>
+              )}
+              <ChevronDown size={16} style={{ color: "rgba(255,255,255,0.6)", transform: drawerOpen ? "rotate(0deg)" : "rotate(180deg)", transition: "transform 0.2s" }} />
+            </div>
+          </div>
+
+          {/* Overlay + Drawer */}
+          {drawerOpen && (
+            <>
+              <div
+                onClick={() => setDrawerOpen(false)}
+                style={{ position: "fixed", inset: 0, zIndex: 51, background: "rgba(0,0,0,0.45)" }}
+              />
+              <div style={{
+                position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 52,
+                background: T.surface,
+                borderRadius: "16px 16px 0 0",
+                border: `1px solid ${T.border}`,
+                boxShadow: "0 -8px 32px rgba(0,0,0,0.3)",
+                maxHeight: "85vh",
+                display: "flex", flexDirection: "column",
+                overflow: "hidden",
+              }}>
+                {/* Handle */}
+                <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
+                  <div style={{ width: 36, height: 4, borderRadius: 99, background: T.isDark ? "rgba(255,255,255,0.15)" : "#cbd5e1" }} />
+                </div>
+
+                {/* Header drawer */}
+                <div style={{
+                  padding: "8px 16px 12px",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  borderBottom: `1px solid ${T.border}`,
+                  flexShrink: 0,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Ticket size={14} style={{ color: "#60a5fa" }} />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Solicitud en Proceso</span>
+                    {totalItemCount > 0 && (
+                      <span style={{ fontSize: 10, fontWeight: 800, padding: "1px 8px", borderRadius: 99, background: "#2563eb", color: "#fff" }}>
+                        {totalItemCount}
+                      </span>
+                    )}
+                  </div>
+                  <button onClick={() => setDrawerOpen(false)}
+                    style={{ width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: T.surfaceAlt, border: `1px solid ${T.border}`, cursor: "pointer", color: T.textMuted }}>
+                    <X size={13} />
+                  </button>
+                </div>
+
+                {/* Contenido scrollable */}
+                <div style={{ overflowY: "auto", flex: 1 }}>
+                  {/* Solicitante */}
+                  <div style={{ padding: "12px 16px", background: T.isDark ? T.surfaceAlt : "#f0f4f8", borderBottom: `1px solid ${T.border}` }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint, marginBottom: 8 }}>Solicitante</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {[
+                        { label: "Nombre",   value: requesterName },
+                        { label: "Área",     value: usuario.departamento || "—" },
+                        { label: "Sucursal", value: usuario.sucursal || "—" },
+                      ].map(({ label, value }) => (
+                        <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                          <span style={{ fontSize: 10, color: T.textFaint }}>{label}</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: T.text, textAlign: "right" }}>{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Carrito */}
+                  <div style={{ minHeight: 60 }}>
+                    {cartEntries.length === 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", gap: 8, color: T.textFaint }}>
+                        <Package size={22} />
+                        <span style={{ fontSize: 12 }}>Agrega insumos desde el catálogo</span>
+                      </div>
+                    ) : (
+                      cartEntries.map(({ supply, quantity, id }) => (
+                        <RequestItem key={id} supply={supply} quantity={quantity} onRemove={handleRemoveSupply} onChangeQty={handleChangeQty} T={T} />
+                      ))
+                    )}
+                  </div>
+
+                  {/* Prioridad + justificación + botón */}
+                  <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12, borderTop: `1px solid ${T.border}` }}>
+                    <div>
+                      <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textMuted, display: "block", marginBottom: 6 }}>Prioridad</label>
+                      <div style={{ position: "relative" }}>
+                        <select
+                          value={priority}
+                          onChange={e => setPriority(e.target.value)}
+                          style={{
+                            width: "100%", height: 40, paddingLeft: 12, paddingRight: 32,
+                            borderRadius: 8, fontSize: 13, fontWeight: 600,
+                            border: `1px solid ${activePriority ? activePriority.border : T.border}`,
+                            background: activePriority ? activePriority.bg : T.surfaceAlt,
+                            color: activePriority ? activePriority.color : T.textFaint,
+                            outline: "none", appearance: "none", cursor: "pointer",
+                          }}
+                        >
+                          <option value="" disabled>Seleccionar prioridad…</option>
+                          {PRIORITY_OPTIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                        </select>
+                        <ChevronDown size={13} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: activePriority ? activePriority.color : T.textFaint }} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textMuted, display: "block", marginBottom: 6 }}>
+                        Justificación <span style={{ color: "#ef4444" }}>*</span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={justification}
+                        onChange={e => setJustification(e.target.value)}
+                        placeholder="Describe el motivo de esta solicitud…"
+                        style={{
+                          width: "100%", padding: "8px 12px", borderRadius: 8, fontSize: 13,
+                          border: `1px solid ${justification.trim() ? T.border : "rgba(239,68,68,0.4)"}`,
+                          background: justification.trim() ? T.surfaceAlt : (T.isDark ? "rgba(239,68,68,0.08)" : "#fff5f5"),
+                          color: T.text, outline: "none", resize: "none", boxSizing: "border-box",
+                        }}
+                      />
+                    </div>
+
+                    {!isTicketValid && (
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 6, padding: "8px 10px", borderRadius: 8, background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
+                        <AlertCircle size={11} style={{ color: T.textFaint, marginTop: 1, flexShrink: 0 }} />
+                        <span style={{ fontSize: 10, color: T.textFaint, lineHeight: 1.4 }}>
+                          {cartEntries.length === 0 ? "Agrega al menos un insumo" : "Escribe la justificación"}
+                        </span>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleSubmitTicket}
+                      disabled={!isTicketValid || isSubmitting}
+                      style={{
+                        width: "100%", height: 44, borderRadius: 10, fontSize: 14, fontWeight: 700,
+                        background: isTicketValid ? "#2563eb" : T.surfaceAlt,
+                        color: isTicketValid ? "#fff" : T.textFaint,
+                        border: "none", cursor: isTicketValid ? "pointer" : "not-allowed",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                        boxShadow: isTicketValid ? "0 4px 14px rgba(37,99,235,0.30)" : "none",
+                        opacity: (!isTicketValid || isSubmitting) ? 0.5 : 1,
+                        marginBottom: 8,
+                      }}
+                    >
+                      {isSubmitting
+                        ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>Creando…</>
+                        : <><Ticket size={15} />Crear Solicitud de Insumo</>
+                      }
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Modal resultado */}
       {resultModal && (
-        <Modal
-          title={resultModal.success ? "Solicitud creada" : "Error al crear"}
+        <ModalResultado
+          resultModal={resultModal}
+          cartEntries={resultModal.success ? resultModal._cartSnapshot : []}
           T={T}
           onClose={() => { if (resultModal.success && resultModal.id_solicitud) setSolicitudVer({ id_solicitud: resultModal.id_solicitud }); setResultModal(null); }}
-          onConfirm={() => { if (resultModal.success && resultModal.id_solicitud) setSolicitudVer({ id_solicitud: resultModal.id_solicitud }); setResultModal(null); }}
-          confirmLabel={resultModal.success ? "Ver solicitud" : "Cerrar"}
-          cancelLabel={null}
-          maxWidth="360px"
-          danger={!resultModal.success}
-        >
-          {resultModal.success ? (
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-mono font-bold" style={{ color: T.orange }}>#{resultModal.folio}</span>
-              <p className="text-xs" style={{ color: T.textMuted }}>Solicitud registrada correctamente. El equipo la atenderá a la brevedad.</p>
-            </div>
-          ) : (
-            <p className="text-sm" style={{ color: T.text }}>{resultModal.message}</p>
-          )}
-        </Modal>
+        />
       )}
 
       {insumoDetalle && (

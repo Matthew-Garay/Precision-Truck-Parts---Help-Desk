@@ -149,6 +149,7 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
   const btnRef    = useRef(null);  // botón de la campana
   const panelRef  = useRef(null);  // panel flotante
   const prevLen   = useRef(notificaciones.length);
+  const [panelOffset, setPanelOffset] = useState(0);
   // Flag para que el handler de cierre-fuera ignore el evento que originó
   // un clic en un botón interno (evita cerrar antes de que onClick se ejecute)
   const accionRef = useRef(false);
@@ -163,6 +164,14 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
     }
     prevLen.current = notificaciones.length;
   }, [notificaciones]);
+
+  // Ajustar posición horizontal para no desbordar el viewport en móvil
+  useEffect(() => {
+    if (!abierto || !panelRef.current) return;
+    const rect = panelRef.current.getBoundingClientRect();
+    if (rect.left < 8) setPanelOffset(-(rect.left - 8));
+    else setPanelOffset(0);
+  }, [abierto]);
 
   // Cerrar al hacer clic fuera del botón y del panel
   // Usa mousedown sin capture para no interceptar clicks internos antes de
@@ -250,6 +259,7 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
             top: "calc(100% + 8px)",
             right: 0,
             width: "clamp(280px, 88vw, 420px)",
+            transform: panelOffset ? `translateX(${panelOffset}px)` : undefined,
             fontFamily: "var(--font-sans, 'Inter','Segoe UI',sans-serif)",
             background: isDark ? "#141720" : T.surface,
             border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : T.border}`,

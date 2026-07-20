@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Package, Hash, Layers, Truck, Tag, BarChart2, AlignLeft } from "lucide-react";
+import { X, Package, Hash, Layers, Truck, Tag, AlignLeft, BarChart2 } from "lucide-react";
 
 const ORANGE = "#F47920";
 
@@ -30,7 +30,7 @@ function Badge({ value, map }) {
   );
 }
 
-function DataRow({ icon: Icon, label, value, T, multiline = false }) {
+function DataRow({ icon: Icon, label, value, T, multiline = false, highlight }) {
   if (!value && value !== 0) return null;
   const isDark = T?.isDark;
   return (
@@ -44,7 +44,7 @@ function DataRow({ icon: Icon, label, value, T, multiline = false }) {
       <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0", paddingTop: multiline ? "1px" : 0 }}>
         {label}
       </span>
-      <span style={{ fontSize: "13px", color: T?.text ?? "#1a202c", fontWeight: 500, lineHeight: multiline ? "1.55" : "inherit" }}>
+      <span style={{ fontSize: "13px", color: highlight ?? (T?.text ?? "#1a202c"), fontWeight: highlight ? 700 : 500, lineHeight: multiline ? "1.55" : "inherit" }}>
         {value}
       </span>
     </div>
@@ -70,8 +70,6 @@ export default function ModalDetalleInsumo({ insumo, onClose, T }) {
   if (!insumo) return null;
 
   const imgSrc     = insumo.imagen_url && !imgError ? insumo.imagen_url : null;
-  const stockColor = (insumo.stock ?? 0) === 0 ? "#dc2626" : (insumo.stock ?? 0) <= 3 ? "#d97706" : "#16a34a";
-  const stockPct   = Math.min(100, Math.round(((insumo.stock ?? 0) / 20) * 100));
 
   const surface    = isDark ? "#161B22" : "#ffffff";
   const surfaceAlt = isDark ? "#1a2030" : "#f8fafc";
@@ -125,7 +123,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T }) {
           gap: "12px", flexShrink: 0,
         }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>
+            <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>
               Insumo
             </p>
             <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
@@ -208,7 +206,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T }) {
                 {insumo.nombre_categoria && (
                   <span style={{
                     display: "inline-flex", alignItems: "center", gap: "4px",
-                    padding: "2px 9px", borderRadius: "99px", fontSize: "11px", fontWeight: 600,
+                    padding: "2px 9px", borderRadius: "99px", fontSize: "0.95rem", fontWeight: 600,
                     background: isDark ? "rgba(244,121,32,0.10)" : "rgba(244,121,32,0.08)",
                     color: ORANGE, border: `1px solid rgba(244,121,32,0.22)`,
                   }}>
@@ -217,17 +215,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T }) {
                 )}
               </div>
 
-              {/* Stock */}
-              <div style={{ display: "flex", alignItems: "center", gap: "7px", flexShrink: 0 }}>
-                <BarChart2 size={12} style={{ color: stockColor }} />
-                <span style={{ fontSize: "13px", fontWeight: 700, color: stockColor, fontFamily: "monospace" }}>
-                  {insumo.stock ?? 0}
-                </span>
-                <span style={{ fontSize: "11px", color: textFaint }}>uds.</span>
-                <div style={{ width: "32px", height: "3px", borderRadius: "99px", background: isDark ? "rgba(255,255,255,0.08)" : "#e8ecf0", overflow: "hidden" }}>
-                  <div style={{ width: `${stockPct}%`, height: "100%", background: stockColor, borderRadius: "99px" }} />
-                </div>
-              </div>
+
             </div>
 
             {/* Datos */}
@@ -236,6 +224,17 @@ export default function ModalDetalleInsumo({ insumo, onClose, T }) {
             <DataRow icon={Layers}    label="Modelo"       value={insumo.modelo}                 T={T} />
             <DataRow icon={Hash}      label="N.º de serie" value={insumo.num_serie}               T={T} />
             <DataRow icon={Truck}     label="Proveedor"    value={insumo.proveedor}               T={T} />
+            <DataRow
+              icon={BarChart2}
+              label="Stock"
+              value={insumo.stock != null ? `${insumo.stock} unidad${insumo.stock !== 1 ? "es" : ""}` : null}
+              T={T}
+              highlight={
+                insumo.stock === 0 ? "#dc2626"
+                : insumo.stock < 5 ? "#d97706"
+                : "#16a34a"
+              }
+            />
             <DataRow icon={AlignLeft} label="Descripción"  value={insumo.descripcion?.trim() || null} T={T} multiline />
           </div>
         </div>

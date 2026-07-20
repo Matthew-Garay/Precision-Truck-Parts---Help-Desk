@@ -13,6 +13,7 @@ interface TicketPrint {
   prioridad: "Urgente" | "Alta" | "Media" | "Baja";
   nombre_empleado: string;
   nombre_departamento: string;
+  nombre_sucursal: string | null;
   nombre_categoria: string;
   fecha_subido: string;
   fecha_resuelto: string | null;

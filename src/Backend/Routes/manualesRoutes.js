@@ -28,7 +28,8 @@ router.get("/", async (_req, res) => {
     const result = await Promise.all(rows.map(async m => {
       let tamaño = null;
       try {
-        const stat = await fs.promises.stat(m.ruta_pdf);
+        const absPath = path.join(MANUALES_DIR, path.basename(m.ruta_pdf));
+        const stat = await fs.promises.stat(absPath);
         const kb = stat.size / 1024;
         tamaño = kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
       } catch { /* archivo no encontrado */ }
@@ -49,7 +50,8 @@ async function procesarArchivo(file, nombre, descripcion, idCat) {
     catch { break; }
   }
   await fs.promises.rename(file.path, rutaFinal);
-  const id = await Manual.crear({ nombre: nombre.trim().slice(0, 150), descripcion: descripcion?.trim() || null, ruta_pdf: rutaFinal, id_categoria: idCat });
+  const rutaRelativa = `/storage/Manuales/${path.basename(rutaFinal)}`;
+  const id = await Manual.crear({ nombre: nombre.trim().slice(0, 150), descripcion: descripcion?.trim() || null, ruta_pdf: rutaRelativa, id_categoria: idCat });
   return { id, rutaFinal };
 }
 
@@ -146,7 +148,7 @@ router.post("/:id/reemplazar", requireAdmin, (req, res) => {
       const nombreBase = path.basename(rutaAnterior);
       const rutaFinal  = safeResolvePath(MANUALES_DIR, nombreBase);
       // Eliminar el anterior y mover el nuevo
-      await fs.promises.unlink(rutaAnterior).catch(() => {});
+      await fs.promises.unlink(safeResolvePath(MANUALES_DIR, nombreBase)).catch(() => {});
       await fs.promises.rename(req.file.path, rutaFinal);
       // Actualizar fecha_cambio usando actualizar con los mismos metadatos
       await Manual.actualizarFechaCambio(id);
@@ -167,7 +169,7 @@ router.delete("/:id", requireAdmin, async (req, res) => {
     if (!ruta) return res.status(404).json({ error: "Manual no encontrado" });
     const ok = await Manual.eliminar(id);
     if (!ok) return res.status(404).json({ error: "Manual no encontrado" });
-    try { await fs.promises.unlink(safeResolvePath(MANUALES_DIR, path.basename(ruta))); } catch { /* ya no existe */ }
+    try { await fs.promises.unlink(safeResolvePath(MANUALES_DIR, path.basename(ruta))); } catch { /* ya no existe o ya era relativa */ }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

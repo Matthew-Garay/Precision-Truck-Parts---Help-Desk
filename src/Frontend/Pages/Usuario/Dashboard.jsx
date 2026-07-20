@@ -343,7 +343,7 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
           </div>
         </header>
 
-        <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: T.bg }}>
+        <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: T.bg, scrollBehavior: "smooth", overscrollBehavior: "contain" }}>
           {ticketVer ? (
             <VistaTicket T={T} ticket={ticketVer} onVolver={volverDeTicket} usuario={usuario} />
           ) : solicitudVer ? (

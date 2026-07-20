@@ -264,7 +264,7 @@ export const updateEmpleadoAdmin = async (req, res) => {
       email:           email           || undefined,
       id_rol:          id_rol          ? parseInt(id_rol, 10)          : undefined,
       id_departamento: id_departamento ? parseInt(id_departamento, 10) : undefined,
-      id_sucursal:     id_sucursal     ? parseInt(id_sucursal, 10)     : null,
+      id_sucursal:     Object.prototype.hasOwnProperty.call(req.body, "id_sucursal") ? (id_sucursal || null) : undefined,
       estatus:         estatus         || undefined,
       password:        passwordHash,
     });

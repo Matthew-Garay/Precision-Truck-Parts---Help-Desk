@@ -5,9 +5,9 @@ import {
   Inbox, Plus, Pencil, RefreshCw, Layers, Eye,
   CheckCircle2, Activity, Download, FileSpreadsheet, FileText,
 } from "lucide-react";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+
 import { apiFetch }      from "../../Config/api";
 import FiltrosToolbar    from "../../Components/FiltrosToolbar";
 import { useToast }      from "../../Components/Feedback";
@@ -249,121 +249,256 @@ function DataTable({ rows, onEdit, onDetail }) {
 const PAGE_SIZES = [10, 15, 25, 50];
 const PAGE_SIZE  = 15;
 
-// ── Exportar ─────────────────────────────────────────────────────
-function exportarExcel(datos) {
-  const filas = datos.map(i => ({
-    "Nombre":         i.nombre ?? "",
-    "Marca":          i.marca ?? "",
-    "Modelo":         i.modelo ?? "",
-    "N° Serie":       i.num_serie ?? "",
-    "Categoría":      i.nombre_categoria ?? "",
-    "Estado":         i.estado ?? "",
-    "Disponibilidad": i.disponibilidad ?? "",
-    "Stock":          i.stock ?? 0,
-    "Descripción":    i.descripcion ?? "",
-  }));
-  const ws = XLSX.utils.json_to_sheet(filas);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Inventario");
-  XLSX.writeFile(wb, `Inventario_${new Date().toISOString().slice(0,10)}.xlsx`);
+// ── Helpers ───────────────────────────────────────────────────────
+async function urlToBase64(url) {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+
+async function toJpegBase64(dataUrl) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth || 80;
+      canvas.height = img.naturalHeight || 80;
+      canvas.getContext("2d").drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+// ── Helpers imagen con fondo blanco (para PNG con transparencia) ──
+async function toPngBase64White(dataUrl, w, h) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width  = w || img.naturalWidth  || 200;
+      canvas.height = h || img.naturalHeight || 200;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // escalar manteniendo aspecto
+      const scale = Math.min(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+      const dx = (canvas.width  - img.naturalWidth  * scale) / 2;
+      const dy = (canvas.height - img.naturalHeight * scale) / 2;
+      ctx.drawImage(img, dx, dy, img.naturalWidth * scale, img.naturalHeight * scale);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+// ── Exportar Excel ────────────────────────────────────────────────
+async function exportarExcel(datos) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "PrecisionTrucks HelpDesk";
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet("Inventario", { views: [{ state: "frozen", ySplit: 5 }] });
+
+  const NAVY   = "FF0F172A";
+  const TEAL_X = "FF0D9488";
+  const WHITE  = "FFFFFFFF";
+  const GRAY50 = "FFF8FAFC";
+  const GRAY100= "FFF1F5F9";
+  const GRAY600= "FF475569";
+  const BORDER_COLOR = { argb: "FFE2E8F0" };
+  const bThin  = { style: "thin",   color: BORDER_COLOR };
+  const bMed   = { style: "medium", color: { argb: NAVY } };
+  const borderAll  = { top: bThin, bottom: bThin, left: bThin, right: bThin };
+  const borderTop  = { top: bMed,  bottom: bThin, left: bThin, right: bThin };
+
+  const fecha = new Date().toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
+  const ahora = new Date();
+  const ts    = `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,"0")}-${String(ahora.getDate()).padStart(2,"0")}_${String(ahora.getHours()).padStart(2,"0")}-${String(ahora.getMinutes()).padStart(2,"0")}`;
+
+  // ── Anchos de columna ─────────────────────────────────────────
+  ws.columns = [
+    { width: 12 }, // A: Imagen
+    { width: 32 }, // B: Nombre
+    { width: 16 }, // C: Marca
+    { width: 16 }, // D: Modelo
+    { width: 18 }, // E: N° Serie
+    { width: 20 }, // F: Categoría
+    { width: 14 }, // G: Estado
+    { width: 16 }, // H: Disponibilidad
+    { width: 10 }, // I: Stock
+    { width: 42 }, // J: Descripción
+  ];
+
+  // ── Fila 1: barra de color corporativo ───────────────────────
+  ws.getRow(1).height = 6;
+  ws.mergeCells("A1:J1");
+  ws.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL_X } };
+
+  // ── Fila 2: logo + título ─────────────────────────────────────
+  ws.getRow(2).height = 56;
+  ws.mergeCells("A2:F2");
+  const titleCell = ws.getCell("A2");
+  titleCell.value = "Inventario de Insumos";
+  titleCell.font  = { name: "Calibri", size: 22, bold: true, color: { argb: NAVY } };
+  titleCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+  titleCell.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: WHITE } };
+
+  ws.mergeCells("G2:J2");
+  ws.getCell("G2").fill = { type: "pattern", pattern: "solid", fgColor: { argb: WHITE } };
+  try {
+    const logoRaw = await urlToBase64("/assets/img/log.png");
+    if (logoRaw) {
+      const logoPng = await toPngBase64White(logoRaw, 220, 52);
+      if (logoPng) {
+        const logoId = wb.addImage({ base64: logoPng.split(",")[1], extension: "png" });
+        ws.addImage(logoId, { tl: { col: 6.1, row: 1.1 }, br: { col: 9.9, row: 1.95 }, editAs: "oneCell" });
+      }
+    }
+  } catch { /* logo no disponible */ }
+
+  // ── Fila 3: empresa + fecha ───────────────────────────────────
+  ws.getRow(3).height = 14;
+  ws.mergeCells("A3:F3");
+  const empCell = ws.getCell("A3");
+  empCell.value = "Precision Truck Parts & Accessories  ·  Departamento de Soporte Técnico";
+  empCell.font  = { name: "Calibri", size: 9, italic: true, color: { argb: GRAY600 } };
+  empCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+  empCell.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: WHITE } };
+
+  // Folio en G3
+  const folioDoc = `INV-${ahora.getFullYear()}${String(ahora.getMonth()+1).padStart(2,"0")}-${String(ahora.getDate()).padStart(2,"0")}`;
+  ws.mergeCells("G3:J3");
+  const fechaCell = ws.getCell("G3");
+  fechaCell.value = `Folio: ${folioDoc}   ·   Generado: ${fecha}`;
+  fechaCell.font  = { name: "Calibri", size: 8, color: { argb: GRAY600 } };
+  fechaCell.alignment = { vertical: "middle", horizontal: "right" };
+  fechaCell.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: WHITE } };
+
+  // ── Fila 4: línea divisoria navy ──────────────────────────────
+  ws.getRow(4).height = 4;
+  ws.mergeCells("A4:J4");
+  ws.getCell("A4").fill = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL_X } };
+
+  // ── Fila 5: encabezados ───────────────────────────────────────
+  const headers = ["Imagen", "Nombre", "Marca", "Modelo", "N° Serie", "Categoría", "Estado", "Disponibilidad", "Stock", "Descripción"];
+  const headerRow = ws.addRow(headers); // fila 5
+  headerRow.height = 22;
+  headerRow.eachCell((cell, colNum) => {
+    cell.font      = { name: "Calibri", size: 9, bold: true, color: { argb: WHITE } };
+    cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E293B" } };
+    cell.alignment = { vertical: "middle", horizontal: colNum === 1 ? "center" : colNum === 10 ? "left" : "center", wrapText: false };
+    cell.border    = { top: bThin, bottom: { style: "medium", color: { argb: TEAL_X } }, left: bThin, right: bThin };
+  });
+
+  // ── Filas de datos ────────────────────────────────────────────
+  const IMG_ROW_H = 52;
+  const IMG_SIZE  = 38;
+
+  const ESTADO_COLORS = { Excelente: "FF15803D", Bueno: "FF2563EB", Regular: "FFA16207", Malo: "FFB91C1C" };
+
+  for (let idx = 0; idx < datos.length; idx++) {
+    const i      = datos[idx];
+    const rowNum = idx + 6; // filas 1-5 ya usadas
+    const isAlt  = idx % 2 === 1;
+    const bgArgb = isAlt ? GRAY50 : WHITE;
+
+    const row = ws.addRow([
+      "",                          // A: imagen (vacío, se pone como imagen)
+      i.nombre || "",              // B
+      i.marca || "",               // C
+      i.modelo || "",              // D
+      i.num_serie || "",           // E
+      i.nombre_categoria || "",    // F
+      i.estado || "",              // G
+      i.disponibilidad || "",      // H
+      i.stock ?? 0,                // I
+      i.descripcion || "",         // J
+    ]);
+    row.height = IMG_ROW_H;
+
+    row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: bgArgb } };
+      cell.font      = { name: "Calibri", size: 10, color: { argb: NAVY } };
+      cell.alignment = { vertical: "middle", horizontal: colNum === 10 ? "left" : "center", wrapText: colNum === 10 };
+      cell.border    = borderAll;
+    });
+
+    // Stock: negrita + color según nivel
+    const stockVal = i.stock ?? 0;
+    const stockArgb = stockVal === 0 ? "FFB91C1C" : stockVal <= 5 ? "FFD97706" : "FF15803D";
+    const stockCell = row.getCell(9);
+    stockCell.font = { name: "Calibri", size: 11, bold: true, color: { argb: stockArgb } };
+
+    // Estado: color según valor
+    const estadoCell = row.getCell(7);
+    const estadoArgb = ESTADO_COLORS[i.estado] ?? GRAY600;
+    estadoCell.font = { name: "Calibri", size: 10, bold: true, color: { argb: estadoArgb } };
+
+    // Imagen del insumo
+    if (i.imagen_url) {
+      try {
+        const raw = await urlToBase64(i.imagen_url);
+        if (raw) {
+          const jpeg = await toJpegBase64(raw);
+          if (jpeg) {
+            const imgId = wb.addImage({ base64: jpeg.split(",")[1], extension: "jpeg" });
+            ws.addImage(imgId, {
+              tl: { col: 0, row: rowNum - 1, nativeColOff: 90720, nativeRowOff: 90720 },
+              ext: { width: IMG_SIZE, height: IMG_SIZE },
+              editAs: "oneCell",
+            });
+          }
+        }
+      } catch { /* imagen no disponible */ }
+    }
+  }
+
+  // ── Fila de totales ───────────────────────────────────────────
+  const totalStock = datos.reduce((s, i) => s + (i.stock ?? 0), 0);
+  const totalRow = ws.addRow([
+    "", `Total: ${datos.length} registros`, "", "", "", "", "", "", totalStock, "",
+  ]);
+  totalRow.height = 20;
+  totalRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+    cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: GRAY100 } };
+    cell.font      = { name: "Calibri", size: 9, bold: true, color: { argb: "FF374151" } };
+    cell.alignment = { vertical: "middle", horizontal: colNum === 10 ? "left" : "center" };
+    cell.border    = borderTop;
+  });
+  totalRow.getCell(9).font = { name: "Calibri", size: 10, bold: true, color: { argb: TEAL_X } };
+
+  // ── AutoFilter ────────────────────────────────────────────────
+  ws.autoFilter = { from: "A5", to: `J${5 + datos.length}` };
+
+  const buf = await wb.xlsx.writeBuffer();
+  saveAs(
+    new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+    `Inventario_${ts}.xlsx`
+  );
 }
 
 function exportarPDF(datos) {
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-  const fecha = new Date().toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
-
-  // Encabezado
-  doc.setFillColor(15, 23, 42);
-  doc.rect(0, 0, 297, 18, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(11); doc.setFont("helvetica", "bold");
-  doc.text("Inventario de Insumos", 14, 7);
-  doc.setFontSize(7); doc.setFont("helvetica", "normal");
-  doc.text("Precision Truck Parts & Accessories", 14, 12);
-  doc.setFontSize(7);
-  doc.text(`Generado: ${fecha}  |  Total: ${datos.length} registros`, 297 - 14, 12, { align: "right" });
-
-  // Línea naranja
-  doc.setDrawColor(244, 121, 32);
-  doc.setLineWidth(0.8);
-  doc.line(0, 18, 297, 18);
-
-  autoTable(doc, {
-    startY: 22,
-    margin: { left: 10, right: 10 },
-    tableWidth: "auto",
-    styles: {
-      fontSize: 7.5,
-      cellPadding: { top: 3, bottom: 3, left: 4, right: 4 },
-      overflow: "linebreak",
-      valign: "middle",
-      lineColor: [226, 232, 240],
-      lineWidth: 0.2,
-    },
-    headStyles: {
-      fillColor: [15, 23, 42],
-      textColor: [255, 255, 255],
-      fontStyle: "bold",
-      fontSize: 7,
-      halign: "left",
-    },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
-    columnStyles: {
-      0: { cellWidth: 55, fontStyle: "bold" },  // Nombre
-      1: { cellWidth: 22 },                      // Marca
-      2: { cellWidth: 22 },                      // Modelo
-      3: { cellWidth: 25 },                      // N° Serie
-      4: { cellWidth: 30 },                      // Categoría
-      5: { cellWidth: 20, halign: "center" },    // Estado
-      6: { cellWidth: 22, halign: "center" },    // Disponibilidad
-      7: { cellWidth: 12, halign: "center" },    // Stock
-      8: { cellWidth: "auto" },                  // Descripción
-    },
-    head: [["Nombre", "Marca", "Modelo", "N° Serie", "Categoría", "Estado", "Disponibilidad", "Stock", "Descripción"]],
-    body: datos.map(i => [
-      i.nombre ?? "",
-      i.marca ?? "",
-      i.modelo ?? "",
-      i.num_serie ?? "",
-      i.nombre_categoria ?? "",
-      i.estado ?? "",
-      i.disponibilidad ?? "",
-      i.stock ?? 0,
-      i.descripcion ?? "",
-    ]),
-    didParseCell(data) {
-      // Colorear celda de estado
-      if (data.section === "body" && data.column.index === 5) {
-        const v = data.cell.raw;
-        const c = { Excelente: [22,163,74], Bueno: [37,99,235], Regular: [217,119,6], Malo: [220,38,38] }[v];
-        if (c) { data.cell.styles.textColor = c; data.cell.styles.fontStyle = "bold"; }
-      }
-      // Colorear celda de disponibilidad
-      if (data.section === "body" && data.column.index === 6) {
-        const v = data.cell.raw;
-        const c = { "Disponible": [22,163,74], "Stock bajo": [217,119,6], "Sin stock": [220,38,38] }[v];
-        if (c) { data.cell.styles.textColor = c; data.cell.styles.fontStyle = "bold"; }
-      }
-      // Colorear stock
-      if (data.section === "body" && data.column.index === 7) {
-        const v = Number(data.cell.raw);
-        const c = v === 0 ? [220,38,38] : v <= 3 ? [217,119,6] : [22,163,74];
-        data.cell.styles.textColor = c;
-        data.cell.styles.fontStyle = "bold";
-      }
-    },
-    didDrawPage(data) {
-      // Pie de página
-      const pageCount = doc.internal.getNumberOfPages();
-      doc.setFontSize(6.5); doc.setTextColor(148, 163, 184);
-      doc.text(
-        `Página ${data.pageNumber} de ${pageCount}  —  Precision Truck Parts & Accessories`,
-        297 / 2, 205, { align: "center" }
-      );
-    },
-  });
-
-  doc.save(`Inventario_${new Date().toISOString().slice(0,10)}.pdf`);
+  sessionStorage.setItem("print_inventario_datos", JSON.stringify(datos));
+  const win = window.open("/print/inventario", "_blank", "width=1200,height=800");
+  if (!win) {
+    const aviso = document.createElement("div");
+    aviso.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#1D1D1B;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;border-left:4px solid #0d9488;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
+    aviso.textContent = "El navegador bloqueó la ventana emergente. Permite las ventanas emergentes e intenta de nuevo.";
+    document.body.appendChild(aviso);
+    setTimeout(() => aviso.remove(), 5000);
+  }
 }
 
 function BtnExportar({ datos, T }) {
@@ -397,7 +532,7 @@ function BtnExportar({ datos, T }) {
           borderRadius: "6px",
           boxShadow: "0 4px 16px rgba(0,0,0,0.14)", minWidth: "148px", overflow: "hidden",
         }}>
-          {[{ label: "Excel (.xlsx)", icon: FileSpreadsheet, color: "#16a34a", fn: () => { exportarExcel(datos); setOpen(false); } },
+          {[{ label: "Excel (.xlsx)", icon: FileSpreadsheet, color: "#16a34a", fn: () => { exportarExcel(datos).catch(console.error); setOpen(false); } },
             { label: "PDF (.pdf)",   icon: FileText,        color: "#dc2626", fn: () => { exportarPDF(datos);   setOpen(false); } },
           ].map(({ label, icon: Icon, color, fn }) => (
             <button key={label} onClick={fn}

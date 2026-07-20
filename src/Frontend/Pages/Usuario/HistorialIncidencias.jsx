@@ -5,6 +5,7 @@ import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
 import { useCardStyles } from "../../Components/Card";
 import Modal from "../../Components/Modal";
+import { abrirReporteLista } from "../PrintReportePage";
 
 const PCOLOR = { Urgente:"#dc2626", Alta:"#ea580c", Media:"#ca8a04", Baja:"#16a34a" };
 
@@ -145,74 +146,25 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
       if (periodo === "anual")   return f.getFullYear()===ahoraDate.getFullYear();
       return true;
     });
-    const ahora    = ahoraDate.toLocaleDateString("es-MX",{day:"2-digit",month:"long",year:"numeric"});
     const fmtDate  = d => new Date(d+"T00:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"long",year:"numeric"});
     const periodo2 = fecha_inicio && fecha_fin ? `${fmtDate(fecha_inicio)} – ${fmtDate(fecha_fin)}` : labelPeriodo();
-    const ESTATUS_COLOR = { "Resuelto":"#16a34a","En proceso":"#ea580c","No Resuelto":"#dc2626" };
-    const ESTATUS_BG    = { "Resuelto":"#dcfce7","En proceso":"#ffedd5","No Resuelto":"#fee2e2" };
-    const filas = datos.map((t,i) => `
-      <tr style="background:${i%2===0?"#ffffff":"#f9fafb"}">
-        <td style="padding:7px 10px;font-family:monospace;font-weight:700;color:#F47920;font-size:11px;border-bottom:1px solid #e5e7eb">${t.folio_ticket}</td>
-        <td style="padding:7px 10px;font-size:11px;border-bottom:1px solid #e5e7eb">
-          <div style="font-weight:600;color:#1D1D1B">${t.titulo}</div>
-          <div style="font-size:10px;color:${PCOLOR[t.prioridad]||"#94a3b8"};font-weight:700;margin-top:2px">● ${t.prioridad}</div>
-        </td>
-        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb">
-          <span style="background:${ESTATUS_BG[t.estatus]||"#f3f4f6"};color:${ESTATUS_COLOR[t.estatus]||"#374151"};padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">${t.estatus}</span>
-        </td>
-        <td style="padding:7px 10px;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb">${t.nombre_categoria||"-"}</td>
-        <td style="padding:7px 10px;font-size:11px;color:#6b7280;white-space:nowrap;border-bottom:1px solid #e5e7eb">${fmt(t.fecha_subido)}</td>
-        <td style="padding:7px 10px;font-size:11px;color:${t.fecha_resuelto?"#16a34a":"#9ca3af"};white-space:nowrap;border-bottom:1px solid #e5e7eb">${fmt(t.fecha_resuelto)}</td>
-      </tr>`).join("");
-    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Mis Incidencias</title>
-    <style>@page{size:A4;margin:18mm 15mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1D1D1B}
-    .header{display:flex;align-items:center;justify-content:space-between;border:2px solid #F47920;border-radius:10px;padding:14px 20px;margin-bottom:14px}
-    .header-logo{height:48px;object-fit:contain}
-    .header-title{font-size:16px;font-weight:900;color:#1D1D1B}.header-sub{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.1em}
-    .header-badge{display:inline-block;margin-top:4px;background:linear-gradient(135deg,#F47920,#d97400);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px}
-    .table-wrap{border:1.5px solid #e5e7eb;border-radius:10px;overflow:hidden}table{width:100%;border-collapse:collapse}thead tr{background:#f9fafb}
-    th{padding:8px 10px;text-align:left;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;color:#9ca3af;border-bottom:2px solid #e5e7eb;white-space:nowrap}
-    td{vertical-align:middle}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
-    <div class="header">
-      <div style="display:flex;align-items:center;gap:16px">
-        <img src="/assets/img/logo negro.png" class="header-logo" alt="PTP"/>
-        <div style="width:2px;height:44px;background:linear-gradient(180deg,#F47920,#ffb347);border-radius:2px"></div>
-        <div><div class="header-title">Mis Incidencias</div><div class="header-sub">Precision Truck Parts · HelpDesk</div></div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:11px;color:#6b7280">Generado el ${ahora}</div>
-        <div style="font-size:11px;font-weight:700;color:#F47920;margin-top:4px">${periodo2}</div>
-        <span class="header-badge">${datos.length} registro${datos.length!==1?"s":""}</span>
-      </div>
-    </div>
-    <div class="table-wrap"><table><thead><tr><th>Folio</th><th>Título / Prioridad</th><th>Estatus</th><th>Categoría</th><th>Inicio</th><th>Cierre</th></tr></thead><tbody>${filas}</tbody></table></div>
-    </body></html>`;
+    const nombreEmpleado = [usuario?.nombre, usuario?.ap_paterno, usuario?.ap_materno].filter(Boolean).join(" ") || null;
     setModalReporte(false);
-    const win = window.open("","_blank","width=900,height=700");
-    if (!win) {
-      const aviso = document.createElement("div");
-      aviso.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#1D1D1B;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;border-left:4px solid #F47920;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
-      aviso.textContent = "Permite ventanas emergentes para generar el reporte.";
-      document.body.appendChild(aviso);
-      setTimeout(() => aviso.remove(), 5000);
-      return;
-    }
-    win.document.write(html); win.document.close();
-    setTimeout(() => { win.focus(); win.print(); }, 600);
+    abrirReporteLista({ tipo: "incidencias", periodo: periodo2, datos, ...(nombreEmpleado ? { nombreEmpleado } : {}) });
   };
 
   const { card, hdr } = useCardStyles(T);
 
   return (
     <>
-    <div className="flex flex-col h-full" style={{ background:T.bg, overflow:"hidden" }}>
-      <div className="w-full p-2 sm:p-3 flex flex-col gap-2 sm:gap-3 flex-1 min-h-0" style={{ overflow:"hidden" }}>
+    <div className="flex flex-col h-full" style={{ background:T.bg, overflowY:"auto", overflowX:"hidden" }}>
+      <div className="w-full p-2 sm:p-3 flex flex-col gap-2 sm:gap-3">
 
         {/* ── KPIs ── */}
         <div className="grid grid-cols-12 gap-3">
 
           {/* Satisfacción */}
-          <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden relative" style={card}>
+          <div className="col-span-12 sm:col-span-6 xl:col-span-3 rounded-xl overflow-hidden relative" style={card}>
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
               style={{ background:`radial-gradient(circle at 80% 20%, ${satColor}, transparent 60%)` }}/>
             <div className="h-0.5" style={{ background:`linear-gradient(90deg,${satColor},${satColor}33)` }}/>
@@ -254,7 +206,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           </div>
 
           {/* KPIs numéricos */}
-          <div className="col-span-12 sm:col-span-6 lg:col-span-3 grid grid-cols-2 gap-2">
+          <div className="col-span-12 sm:col-span-6 xl:col-span-3 grid grid-cols-2 gap-2">
             {[
               { label:"Total",       val:total,    color:T.orange,  sub:`${activos} activos`,    subColor:"#ea580c" },
               { label:"En Proceso",  val:activos,  color:"#ea580c", sub:`${Math.round(activos/Math.max(total,1)*100)}% del total`, subColor:T.textFaint },
@@ -275,7 +227,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           </div>
 
           {/* Por Prioridad */}
-          <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden" style={card}>
+          <div className="col-span-12 sm:col-span-6 xl:col-span-3 rounded-xl overflow-hidden" style={card}>
             <div className="px-3 py-2 flex items-center gap-1.5" style={hdr}>
               <div className="w-1 h-3 rounded-full" style={{ background:T.orange }}/>
               <p className="text-[10px] font-black uppercase tracking-widest" style={{ color:T.textMuted }}>Por Prioridad</p>
@@ -300,7 +252,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           </div>
 
           {/* Top Categorías */}
-          <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden" style={card}>
+          <div className="col-span-12 sm:col-span-6 xl:col-span-3 rounded-xl overflow-hidden" style={card}>
             <div className="px-3 py-2 flex items-center gap-1.5" style={hdr}>
               <div className="w-1 h-3 rounded-full" style={{ background:T.orange }}/>
               <p className="text-[10px] font-black uppercase tracking-widest" style={{ color:T.textMuted }}>Top Categorías</p>
@@ -343,7 +295,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           </button>
         </FiltrosToolbar>
 
-        <div className="rounded-xl overflow-hidden flex flex-col" style={{ ...card, flex:"1 1 0", minHeight:0 }}>
+        <div className="rounded-xl overflow-hidden flex flex-col" style={{ ...card }}>
           <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={hdr}>
             <div className="flex items-center gap-1.5">
               <div className="w-0.5 h-3.5 rounded-full" style={{ background:T.orange }}/>
@@ -360,8 +312,8 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
             </div>
           </div>
 
-          {/* Móvil */}
-          <div className="flex flex-col gap-2 p-3 sm:hidden" style={{ overflowY:"auto" }}>
+          {/* Móvil y Tablet */}
+          <div className="flex flex-col gap-2 p-3 xl:hidden">
             {tickets.length === 0
               ? <div className="flex flex-col items-center justify-center py-8 gap-2">
                   <Inbox size={20} style={{ color:T.textFaint }}/>
@@ -395,7 +347,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           </div>
 
           {/* Desktop */}
-          <div className="hidden sm:block overflow-y-auto overflow-x-auto" style={{ flex:"1 1 0", minHeight:0 }}>
+          <div className="hidden xl:block overflow-x-auto">
             <table className="w-full border-collapse" style={{ minWidth:"760px" }}>
               <thead className="sticky top-0 z-10">
                 <tr style={{ background:isDark?"rgba(255,255,255,0.03)":T.surfaceAlt }}>
@@ -463,7 +415,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
             </table>
           </div>
           {/* ── Paginación ── */}
-          <div className="flex items-center justify-between px-3 py-2 flex-shrink-0" style={{ borderTop:`1px solid ${T.border}`, background:T.bg }}>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2" style={{ borderTop:`1px solid ${T.border}`, background:T.bg }}>
             <div className="flex items-center gap-2">
               <button disabled={page<=1 || cargando} onClick={() => setPage(p => Math.max(1, p-1))}
                 className="px-2 py-1 rounded border" style={{ borderColor:T.border, background:T.surfaceAlt, color:T.text }}>

@@ -326,7 +326,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           ) : activo === 1 ? (
             <HistorialIncidencias T={T} usuario={usuario} onVerTicket={setTicketVer} onRecargarRef={recargarHistorialRef} />
           ) : activo === 2 ? (
-            <HistorialInsumos T={T} />
+            <div className="h-full overflow-hidden"><HistorialInsumos T={T} /></div>
           ) : activo === 3 ? (
             <div className="h-full overflow-y-auto"><Inventario T={T} /></div>
           ) : activo === 4 ? (
@@ -334,7 +334,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           ) : activo === 5 ? (
             <div className="h-full overflow-y-auto"><Personal T={T} /></div>
           ) : activo === 6 ? (
-            <div className="h-full overflow-y-auto"><ManualesIncidencias T={T} /></div>
+            <div className="h-full overflow-y-auto" style={{ scrollBehavior: "smooth", overscrollBehavior: "contain" }}><ManualesIncidencias T={T} /></div>
           ) : activo === 7 ? (
             <div className="h-full overflow-y-auto"><ConfiguracionPerfil T={T} usuario={usuario} onUsuarioActualizado={onUsuarioActualizado} /></div>
           ) : (

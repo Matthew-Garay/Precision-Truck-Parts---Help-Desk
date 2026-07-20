@@ -40,7 +40,9 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
   const [apPaterno,  setApPaterno]  = useState(usuario.ap_paterno || "");
   const [apMaterno,  setApMaterno]  = useState(usuario.ap_materno || "");
   const [email,      setEmail]      = useState(usuario.email      || "");
-  const [passActual, setPassActual] = useState("");
+  const [passActual, setPassActual] = useState(() => {
+    try { return sessionStorage.getItem("_pwd") || ""; } catch { return ""; }
+  });
   const [passNueva,  setPassNueva]  = useState("");
   const [passConf,   setPassConf]   = useState("");
   const [showNueva, setShowNueva] = useState(false);
@@ -144,7 +146,8 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
       setMsg({ tipo: "ok", texto: "Datos actualizados correctamente" });
       setEmailEditado(false);
       if (passNueva) {
-        setPassActual("");
+        sessionStorage.setItem("_pwd", passNueva);
+        setPassActual(passNueva);
       }
       setPassNueva(""); setPassConf("");
       setTimeout(() => setMsg(null), 4000);
@@ -235,72 +238,118 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
           </div>
         </div>
 
-        {/* -- DATOS PERSONALES + CONTRASEÑA + GUARDAR -- */}
-        <div className="rounded-xl overflow-hidden" style={card}>
-          <div className="px-5 py-3 flex items-center gap-2" style={hdr}>
-            <div className="w-1 h-3.5 rounded-full" style={{ background: T.orange }} />
-            <p className="text-xs font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Cambiar Contraseña</p>
+        {/* -- CAMBIAR CONTRASEÑA -- */}
+        <div style={{
+          borderRadius: "10px", overflow: "hidden",
+          background: isDark ? "#161B22" : "#ffffff",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0"}`,
+          boxShadow: isDark ? "0 16px 40px rgba(0,0,0,0.50), 0 1px 0 rgba(255,255,255,0.04) inset" : "0 16px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
+        }}>
+          {/* Línea acento naranja */}
+          <div style={{ height: "2px", background: "#F47920", borderRadius: "10px 10px 0 0" }} />
+
+          {/* Header */}
+          <div style={{
+            padding: "14px 18px 12px",
+            background: isDark ? "#161B22" : "#ffffff",
+            borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0"}`,
+            display: "flex", alignItems: "center", gap: "10px",
+          }}>
+            <div style={{ width: "4px", height: "16px", borderRadius: "99px", background: "#F47920", flexShrink: 0 }} />
+            <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: "#F47920" }}>
+              Cambiar Contraseña
+            </p>
           </div>
-          <div className="px-5 pt-4 pb-5 flex flex-col gap-3">
-            {/* Contraseña Actual — texto plano visible */}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Contraseña Actual</span>
+
+          {/* Body */}
+          <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: "14px" }}>
+
+            {/* Contraseña Actual */}
+            <div style={{ display: "grid", gridTemplateColumns: "14px 140px 1fr", alignItems: "baseline", gap: "10px", padding: "8px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}` }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isDark ? "rgba(255,255,255,0.22)" : "#c0c9d6"} strokeWidth="2" style={{ marginTop: "1px" }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0" }}>Contraseña Actual</span>
               <input
-                style={{ ...inp, fontSize: "14px", lineHeight: "1.35", color: T.text, WebkitTextFillColor: T.text, caretColor: T.text, opacity: 1 }}
-                type="text"
-                value={passActual || ""}
-                disabled
-                readOnly
-                autoComplete="off"
-                inputMode="text"
-                spellCheck={false}
-                name="password_actual"
-                placeholder="Contraseña actual"
-                onFocus={e => e.target.style.borderColor = T.orange}
-                onBlur={e => e.target.style.borderColor = T.border}
+                style={{ ...inp, fontSize: "14px", color: T.text, WebkitTextFillColor: T.text, caretColor: T.text, opacity: 1 }}
+                type="text" value={passActual || ""} disabled readOnly
+                autoComplete="off" spellCheck={false} placeholder="Contraseña actual"
               />
             </div>
 
-            {/* Nueva y Confirmación — con botón ojo */}
-            {[
-              { label: "Nueva Contraseña",           k: "nueva", val: passNueva, set: setPassNueva, show: showNueva, setShow: setShowNueva },
-              { label: "Confirmar Nueva Contraseña", k: "conf",  val: passConf,  set: setPassConf,  show: showConf,  setShow: setShowConf  },
-            ].map(({ label, k, val, set, show, setShow }) => (
-              <div key={k} className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</span>
-                <div className="relative">
-                  <input className="[&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden"
-                    style={{ ...inp, paddingRight: "36px", color: T.text, WebkitTextFillColor: T.text, caretColor: T.text }}
-                    type={show ? "text" : "password"} value={val} onChange={e => set(e.target.value)}
-                    autoComplete="new-password" placeholder="••••••••"
-                    onFocus={e => e.target.style.borderColor = T.orange}
-                    onBlur={e => e.target.style.borderColor = T.border} />
-                  <EyeBtn show={show} onToggle={() => setShow(s => !s)} textFaint={T.textFaint} />
-                </div>
+            {/* Nueva Contraseña */}
+            <div style={{ display: "grid", gridTemplateColumns: "14px 140px 1fr", alignItems: "baseline", gap: "10px", padding: "8px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}` }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isDark ? "rgba(255,255,255,0.22)" : "#c0c9d6"} strokeWidth="2" style={{ marginTop: "1px" }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0" }}>Nueva Contraseña</span>
+              <div style={{ position: "relative" }}>
+                <input
+                  style={{ ...inp, paddingRight: "36px", fontSize: "14px", color: T.text, WebkitTextFillColor: T.text, caretColor: T.text }}
+                  type={showNueva ? "text" : "password"} value={passNueva} onChange={e => setPassNueva(e.target.value)}
+                  autoComplete="new-password" placeholder="••••••••"
+                  onFocus={e => e.target.style.borderColor = "#F47920"}
+                  onBlur={e => e.target.style.borderColor = T.border}
+                />
+                <EyeBtn show={showNueva} onToggle={() => setShowNueva(s => !s)} textFaint={T.textFaint} />
               </div>
-            ))}
-
-            {/* Mensaje + Botón en misma fila */}
-            <div className="flex items-center justify-between gap-3 pt-1">
-              <div className="flex-1">
-                {msg && (
-                  <div className="px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5"
-                    style={{ background: msg.tipo === "ok" ? (isDark ? "rgba(22,163,74,0.15)" : "#dcfce7") : (isDark ? "rgba(220,38,38,0.15)" : "#fee2e2"), color: msg.tipo === "ok" ? "#16a34a" : "#dc2626", border: `1px solid ${msg.tipo === "ok" ? "rgba(22,163,74,0.3)" : "rgba(220,38,38,0.3)"}` }}>
-                    {msg.tipo === "ok"
-                      ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                      : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
-                    {msg.texto}
-                  </div>
-                )}
-              </div>
-              <button onClick={guardar} disabled={loading}
-                className="flex-shrink-0 px-5 py-2 rounded-lg text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95 flex items-center gap-1.5"
-                style={{ background: `linear-gradient(135deg, ${T.orange}, #d97400)`, boxShadow: "0 2px 10px rgba(244,121,32,0.35)", opacity: loading ? 0.7 : 1 }}>
-                {loading
-                  ? <><svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Guardando...</>
-                  : "Guardar Cambios"}
-              </button>
             </div>
+
+            {/* Confirmar Contraseña */}
+            <div style={{ display: "grid", gridTemplateColumns: "14px 140px 1fr", alignItems: "baseline", gap: "10px", padding: "8px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}` }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isDark ? "rgba(255,255,255,0.22)" : "#c0c9d6"} strokeWidth="2" style={{ marginTop: "1px" }}><polyline points="20 6 9 17 4 12"/></svg>
+              <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0" }}>Confirmar</span>
+              <div style={{ position: "relative" }}>
+                <input
+                  style={{ ...inp, paddingRight: "36px", fontSize: "14px", color: T.text, WebkitTextFillColor: T.text, caretColor: T.text }}
+                  type={showConf ? "text" : "password"} value={passConf} onChange={e => setPassConf(e.target.value)}
+                  autoComplete="new-password" placeholder="••••••••"
+                  onFocus={e => e.target.style.borderColor = "#F47920"}
+                  onBlur={e => e.target.style.borderColor = T.border}
+                />
+                <EyeBtn show={showConf} onToggle={() => setShowConf(s => !s)} textFaint={T.textFaint} />
+              </div>
+            </div>
+
+            {/* Mensaje feedback */}
+            {msg && (
+              <div style={{
+                padding: "8px 12px", borderRadius: "7px", fontSize: "0.85rem", fontWeight: 600,
+                display: "flex", alignItems: "center", gap: "6px",
+                background: msg.tipo === "ok" ? (isDark ? "rgba(22,163,74,0.15)" : "#dcfce7") : (isDark ? "rgba(220,38,38,0.15)" : "#fee2e2"),
+                color: msg.tipo === "ok" ? "#16a34a" : "#dc2626",
+                border: `1px solid ${msg.tipo === "ok" ? "rgba(22,163,74,0.3)" : "rgba(220,38,38,0.3)"}`,
+              }}>
+                {msg.tipo === "ok"
+                  ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
+                {msg.texto}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={{
+            padding: "10px 18px",
+            borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0"}`,
+            background: isDark ? "#1a2030" : "#f8fafc",
+            display: "flex", justifyContent: "flex-end",
+          }}>
+            <button
+              onClick={guardar} disabled={loading}
+              style={{
+                padding: "6px 18px", borderRadius: "6px",
+                fontSize: "1rem", fontWeight: 600,
+                background: `linear-gradient(135deg, #F47920, #d97400)`,
+                border: "none", color: "#fff", cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.7 : 1,
+                boxShadow: "0 2px 10px rgba(244,121,32,0.35)",
+                display: "flex", alignItems: "center", gap: "6px",
+                transition: "all 0.12s",
+              }}
+              onMouseEnter={e => { if (!loading) e.currentTarget.style.filter = "brightness(1.1)"; }}
+              onMouseLeave={e => { e.currentTarget.style.filter = ""; }}
+            >
+              {loading
+                ? <><svg style={{ animation: "spin 1s linear infinite" }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Guardando...</>
+                : "Guardar Cambios"}
+            </button>
           </div>
         </div>
 
@@ -311,31 +360,11 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             <p className="text-xs font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Historial de Accesos</p>
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
               style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted }}>
-              {esAdmin ? `${accesosFiltrados.length} de ${accesos.length}` : `Últimos ${accesos.length}`}
+              {`Últimos ${accesos.length}`}
             </span>
-            <div className="ml-auto flex flex-wrap items-center gap-2">
-              {esAdmin && (
-                <>
-                  {[{ val: anioFiltro, set: v => { setAnioFiltro(v); setMesFiltro("Todos"); }, opts: aniosDisponibles, placeholder: "Todos los años" },
-                    { val: mesFiltro,  set: setMesFiltro, opts: mesesDisponibles, placeholder: "Todos los meses" }]
-                    .map(({ val, set, opts, placeholder }, i) => (
-                      <select key={i} value={val} onChange={e => set(e.target.value)}
-                        className="text-[11px] font-semibold rounded-lg px-2 py-1 outline-none cursor-pointer"
-                        style={{ background: val !== "Todos" ? (isDark ? "rgba(244,121,32,0.12)" : "rgba(244,121,32,0.08)") : (isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt), border: `1px solid ${val !== "Todos" ? T.orange : T.border}`, color: val !== "Todos" ? T.orange : T.text, colorScheme: isDark ? "dark" : "light" }}>
-                        {opts.map(o => <option key={o} value={o}>{o === "Todos" ? placeholder : o}</option>)}
-                      </select>
-                    ))}
-                  {(mesFiltro !== "Todos" || anioFiltro !== "Todos") && (
-                    <button onClick={() => { setMesFiltro("Todos"); setAnioFiltro("Todos"); }}
-                      className="text-[10px] font-bold px-2 py-1 rounded-lg"
-                      style={{ background: "rgba(244,121,32,0.08)", color: T.orange, border: "1px solid rgba(244,121,32,0.2)" }}>
-                      Limpiar
-                    </button>
-                  )}
-                </>
-              )}
+            <div className="ml-auto">
               <button onClick={() => setModalReporte(true)}
-                disabled={(esAdmin ? accesosFiltrados : accesos).length === 0}
+                disabled={accesos.length === 0}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background: `linear-gradient(135deg,${T.orange},#d97400)`, color: "#fff", boxShadow: "0 2px 8px rgba(244,121,32,0.3)" }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/></svg>
@@ -371,11 +400,9 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
                 </tr>
               </thead>
               <tbody>
-                {accesosFiltrados.length === 0 ? (
-                  <tr><td colSpan={4} className="px-5 py-6 text-center text-xs" style={{ color: T.textFaint }}>
-                    {accesos.length === 0 ? "Sin registros" : "Sin resultados para el filtro seleccionado"}
-                  </td></tr>
-                ) : accesosFiltrados.slice(0, 10).map((a, i) => {
+                {accesos.length === 0 ? (
+                  <tr><td colSpan={4} className="px-5 py-6 text-center text-xs" style={{ color: T.textFaint }}>Sin registros</td></tr>
+                ) : accesos.slice(0, 10).map((a, i) => {
                   const entrada = a.fecha_entrada ? new Date(a.fecha_entrada) : null;
                   const salida  = a.fecha_salida  ? new Date(a.fecha_salida)  : null;
                   const durMin  = entrada && salida ? Math.round((salida - entrada) / 60000) : null;
@@ -394,9 +421,9 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
                 })}
               </tbody>
             </table>
-            {accesosFiltrados.length > 10 && (
+            {accesos.length > 10 && (
               <p className="text-center text-[10px] py-2.5 font-semibold" style={{ color: T.textFaint, borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : T.border}` }}>
-                Mostrando los últimos 10 de {accesosFiltrados.length} registros — exporta el PDF para ver el historial completo.
+                Mostrando los últimos 10 de {accesos.length} registros — exporta el PDF para ver el historial completo.
               </p>
             )}
           </div>
@@ -407,52 +434,155 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
     </div>
 
     {modalReporte && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center"
-        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-        onClick={e => { if (e.target === e.currentTarget) setModalReporte(false); }}>
-        <div className="rounded-2xl overflow-hidden w-full"
-          style={{ maxWidth: "340px", background: isDark ? "#141720" : "#fff", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : T.border}`, boxShadow: "0 24px 60px rgba(0,0,0,0.4)" }}>
-          <div className="px-5 py-4 flex items-center justify-between"
-            style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`, background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}>
-            <div className="flex items-center gap-2">
-              <div className="w-1 h-4 rounded-full" style={{ background: T.orange }} />
-              <p className="text-xs font-black uppercase tracking-widest" style={{ color: T.text }}>Generar Reporte</p>
+      <div
+        style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.40)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "16px",
+        }}
+        onMouseDown={e => { if (e.target === e.currentTarget) { setModalReporte(false); setRptDesde(""); setRptHasta(""); setMesFiltro("Todos"); setAnioFiltro("Todos"); } }}
+      >
+        <div style={{
+          width: "95%", maxWidth: "400px",
+          background: isDark ? "#161B22" : "#ffffff",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`,
+          borderRadius: "10px",
+          display: "flex", flexDirection: "column",
+          maxHeight: "92vh", overflow: "hidden",
+          boxShadow: isDark
+            ? "0 16px 40px rgba(0,0,0,0.50), 0 1px 0 rgba(255,255,255,0.04) inset"
+            : "0 16px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
+        }}>
+          {/* Línea acento */}
+          <div style={{ height: "2px", flexShrink: 0, background: T.orange, borderRadius: "10px 10px 0 0" }} />
+
+          {/* Header */}
+          <div style={{
+            padding: "14px 18px 12px",
+            borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`,
+            display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+            gap: "12px", flexShrink: 0,
+          }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: T.orange }}>
+                Historial de Accesos
+              </p>
+              <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: T.text, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+                Generar Reporte
+              </h2>
+              <p style={{ margin: "3px 0 0", fontSize: "12px", color: T.textMuted }}>
+                Filtra por período y exporta como PDF
+              </p>
             </div>
-            <button onClick={() => setModalReporte(false)}
-              className="w-6 h-6 rounded-lg flex items-center justify-center"
-              style={{ background: isDark ? "rgba(255,255,255,0.07)" : T.surfaceAlt, color: T.textMuted }}>
-              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-            </button>
-          </div>
-          <div className="px-5 py-5 flex flex-col gap-4">
-            <p className="text-[11px]" style={{ color: T.textMuted }}>Selecciona el rango de fechas. Si no seleccionas ninguna se incluyen todos los registros.</p>
-            {[
-              { label: "Desde", val: rptDesde, set: setRptDesde },
-              { label: "Hasta", val: rptHasta, set: setRptHasta },
-            ].map(({ label, val, set }) => (
-              <div key={label} className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</span>
-                <input type="date" value={val} onChange={e => set(e.target.value)}
-                  style={{ ...inp, colorScheme: isDark ? "dark" : "light" }}
-                  onFocus={e => e.target.style.borderColor = T.orange}
-                  onBlur={e => e.target.style.borderColor = T.border} />
-              </div>
-            ))}
-            <div className="flex gap-3 pt-1">
-              <button onClick={() => { setModalReporte(false); setRptDesde(""); setRptHasta(""); }}
-                className="flex-1 py-2 rounded-xl text-xs font-bold"
-                style={{ background: isDark ? "rgba(255,255,255,0.07)" : T.surfaceAlt, color: T.textMuted }}>
-                Cancelar
-              </button>
-              <button onClick={() => {
-                  generarPDFAccesos({ accesos: esAdmin ? accesosFiltrados : accesos, usuario, fechaInicio: rptDesde || undefined, fechaFin: rptHasta || undefined });
-                  setModalReporte(false); setRptDesde(""); setRptHasta("");
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
+              <img
+                src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
+                alt="Precision Trucks"
+                style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
+              />
+              <button
+                onClick={() => { setModalReporte(false); setRptDesde(""); setRptHasta(""); setMesFiltro("Todos"); setAnioFiltro("Todos"); }}
+                style={{
+                  width: "26px", height: "26px",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "transparent", border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`,
+                  borderRadius: "6px", cursor: "pointer", color: T.textFaint,
+                  transition: "all 0.12s",
                 }}
-                className="flex-1 py-2 rounded-xl text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95"
-                style={{ background: `linear-gradient(135deg,${T.orange},#d97400)`, boxShadow: "0 2px 10px rgba(244,121,32,0.35)" }}>
-                Generar PDF
+                onMouseEnter={e => { e.currentTarget.style.borderColor = T.textMuted; e.currentTarget.style.color = T.text; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.07)" : T.border; e.currentTarget.style.color = T.textFaint; }}
+              >
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
               </button>
             </div>
+          </div>
+
+          {/* Body */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px", display: "flex", flexDirection: "column", gap: "14px" }}>
+            <p style={{ margin: 0, fontSize: "11px", color: T.textMuted }}>
+              Selecciona el rango de fechas. Si no seleccionas ninguna se incluyen todos los registros.
+            </p>
+
+            {esAdmin && (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  {[{ label: "Año", val: anioFiltro, set: v => { setAnioFiltro(v); setMesFiltro("Todos"); }, opts: aniosDisponibles, placeholder: "Todos los años" },
+                    { label: "Mes",  val: mesFiltro,  set: setMesFiltro, opts: mesesDisponibles, placeholder: "Todos los meses" }]
+                    .map(({ label, val, set, opts, placeholder }) => (
+                      <div key={label} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>{label}</span>
+                        <select value={val} onChange={e => set(e.target.value)}
+                          style={{ ...inp, cursor: "pointer", colorScheme: isDark ? "dark" : "light",
+                            borderColor: val !== "Todos" ? T.orange : T.border,
+                            color: val !== "Todos" ? T.orange : T.text }}
+                          onFocus={e => e.target.style.borderColor = T.orange}
+                          onBlur={e => e.target.style.borderColor = val !== "Todos" ? T.orange : T.border}>
+                          {opts.map(o => <option key={o} value={o}>{o === "Todos" ? placeholder : o}</option>)}
+                        </select>
+                      </div>
+                    ))}
+                </div>
+                <div style={{ height: "1px", background: isDark ? "rgba(255,255,255,0.06)" : T.border }} />
+              </>
+            )}
+
+            {[{ label: "Desde", val: rptDesde, set: setRptDesde }, { label: "Hasta", val: rptHasta, set: setRptHasta }]
+              .map(({ label, val, set }) => (
+                <div key={label} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>{label}</span>
+                  <input type="date" value={val} onChange={e => set(e.target.value)}
+                    style={{ ...inp, colorScheme: isDark ? "dark" : "light" }}
+                    onFocus={e => e.target.style.borderColor = T.orange}
+                    onBlur={e => e.target.style.borderColor = T.border} />
+                </div>
+              ))}
+          </div>
+
+          {/* Footer */}
+          <div style={{
+            padding: "10px 18px",
+            borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`,
+            background: isDark ? "#1a2030" : "#f8fafc",
+            display: "flex", alignItems: "center", justifyContent: "flex-end",
+            gap: "8px", flexShrink: 0,
+          }}>
+            <button
+              onClick={() => { setModalReporte(false); setRptDesde(""); setRptHasta(""); setMesFiltro("Todos"); setAnioFiltro("Todos"); }}
+              style={{
+                padding: "6px 16px", borderRadius: "6px",
+                fontSize: "12px", fontWeight: 600,
+                background: "transparent", border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`,
+                color: T.textMuted, cursor: "pointer", transition: "all 0.12s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = T.textMuted; e.currentTarget.style.color = T.text; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.07)" : T.border; e.currentTarget.style.color = T.textMuted; }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => {
+                const accesosFiltrados = accesos.filter(a => {
+                  if (!a.fecha_entrada) return true;
+                  const d = new Date(a.fecha_entrada);
+                  if (anioFiltro !== "Todos" && d.getFullYear().toString() !== anioFiltro) return false;
+                  if (mesFiltro  !== "Todos" && MESES_NOMBRE[d.getMonth()] !== mesFiltro)  return false;
+                  return true;
+                });
+                generarPDFAccesos({ usuario, fechaInicio: rptDesde || undefined, fechaFin: rptHasta || undefined });
+                setModalReporte(false); setRptDesde(""); setRptHasta(""); setMesFiltro("Todos"); setAnioFiltro("Todos");
+              }}
+              style={{
+                padding: "6px 18px", borderRadius: "6px",
+                fontSize: "12px", fontWeight: 700,
+                background: T.orange, border: "none", color: "#fff",
+                cursor: "pointer", transition: "opacity 0.12s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+            >
+              Generar PDF
+            </button>
           </div>
         </div>
       </div>

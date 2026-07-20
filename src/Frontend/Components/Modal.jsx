@@ -32,7 +32,7 @@ const ACCENT_COLORS = {
 
 const CSS = `
 @keyframes _modal_overlay_in { from { opacity:0 } to { opacity:1 } }
-@keyframes _modal_in { from { opacity:0; transform:scale(0.96) translateY(8px) } to { opacity:1; transform:scale(1) translateY(0) } }
+@keyframes _modal_in { from { opacity:0; transform:translateY(-5px) } to { opacity:1; transform:translateY(0) } }
 @keyframes _modal_spin { to { transform:rotate(360deg) } }
 ._modal_overlay { animation: _modal_overlay_in 0.15s ease forwards }
 ._modal_dialog  { animation: _modal_in 0.18s ease forwards }
@@ -110,98 +110,83 @@ export default function Modal({
   const showFooter    = hasConfirmBtn || hasCancelBtn;
 
   // ── Tokens de color ──────────────────────────────────────────
-  const overlayBg   = "rgba(0,0,0,0.55)";
-  const containerBg = isDark ? "#141720" : "#ffffff";
-  const containerBd = isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0";
-  const containerSh = isDark
-    ? "0 24px 60px rgba(0,0,0,0.70)"
-    : "0 24px 60px rgba(0,0,0,0.18)";
-  const headerBg    = isDark ? "rgba(255,255,255,0.03)" : "#f8fafc";
-  const headerBd    = isDark ? "rgba(255,255,255,0.07)" : "#e2e8f0";
-  const titleColor  = isDark ? "#e6edf3" : "#1e293b";
-  const subtitleColor = "#94a3b8";
-  const closeBg     = isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9";
-  const closeBd     = isDark ? "rgba(255,255,255,0.10)" : "#e2e8f0";
-  const closeColor  = isDark ? "#94a3b8" : "#64748b";
-  const bodyBg      = isDark ? "#141720" : "#ffffff";
-  const bodyColor   = isDark ? "#e6edf3" : "#334155";
-  const footerBg    = isDark ? "rgba(255,255,255,0.02)" : "#f8fafc";
-  const footerBd    = isDark ? "rgba(255,255,255,0.07)" : "#e2e8f0";
-  const cancelBg    = isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9";
-  const cancelBd    = isDark ? "rgba(255,255,255,0.10)" : "#e2e8f0";
-  const cancelColor = isDark ? "#94a3b8" : "#64748b";
+  const surface    = isDark ? "#161B22" : "#ffffff";
+  const surfaceAlt = isDark ? "#1a2030" : "#f8fafc";
+  const border     = isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0";
+  const textMain   = T?.text     ?? (isDark ? "#e2e8f0" : "#1a202c");
+  const textMuted  = T?.textMuted ?? (isDark ? "#8b949e" : "#64748b");
+  const textFaint  = T?.textFaint ?? (isDark ? "rgba(255,255,255,0.30)" : "#a0aec0");
+  const bodyColor  = T?.text     ?? (isDark ? "#e6edf3" : "#334155");
+  const overlayBg  = isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.40)";
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="_modal_title"
+      role="presentation"
       className="_modal_overlay"
       style={{
         position: "fixed", inset: 0, zIndex: 1000,
         background: overlayBg,
-        backdropFilter: "blur(4px)",
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: "16px",
       }}
-      onClick={(e) => { if (e.target === e.currentTarget && !loading && closeOnOverlay) onClose(); }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget && !loading && closeOnOverlay) onClose(); }}
     >
       <div
         ref={dialogRef}
         tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="_modal_title"
         className="_modal_dialog"
         style={{
-          width: "100%", maxWidth, outline: "none",
-          background: containerBg,
-          border: `1px solid ${containerBd}`,
-          borderRadius: "14px",
-          boxShadow: containerSh,
+          width: "95%", maxWidth, outline: "none",
+          background: surface,
+          border: `1px solid ${border}`,
+          borderRadius: "10px",
+          boxShadow: isDark
+            ? "0 16px 40px rgba(0,0,0,0.50), 0 1px 0 rgba(255,255,255,0.04) inset"
+            : "0 16px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
           overflow: "hidden",
           display: "flex", flexDirection: "column",
           maxHeight: "90vh",
         }}
       >
-        {/* Barra de acento */}
+        {/* Banda acento */}
         <div aria-hidden="true" style={{
-          height: "3px", flexShrink: 0,
-          background: `linear-gradient(90deg, ${accentColor}, ${accentColor}55)`,
+          height: "2px", flexShrink: 0,
+          background: accentColor,
+          borderRadius: "10px 10px 0 0",
         }} />
 
         {/* Header */}
         <div style={{
-          padding: "14px 16px 12px",
-          background: headerBg,
-          borderBottom: `1px solid ${headerBd}`,
+          padding: "14px 18px 12px",
+          borderBottom: `1px solid ${border}`,
           display: "flex", alignItems: "flex-start",
-          justifyContent: "space-between", gap: "10px",
+          justifyContent: "space-between", gap: "12px",
           flexShrink: 0,
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1 }}>
-            {icon && (
-              <div aria-hidden="true" style={{
-                width: "34px", height: "34px", borderRadius: "8px", flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: `${accentColor}18`,
-                border: `1px solid ${accentColor}35`,
-                color: accentColor,
-              }}>
-                {icon}
-              </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            {subtitle && (
+              <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: accentColor }}>
+                {subtitle}
+              </p>
             )}
-            <div style={{ minWidth: 0 }}>
-              {subtitle && (
-                <p style={{
-                  margin: 0, fontSize: "10px", fontWeight: 700,
-                  textTransform: "uppercase", letterSpacing: "0.07em",
-                  color: subtitleColor,
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: subtitle ? "3px" : 0 }}>
+              {icon && (
+                <div aria-hidden="true" style={{
+                  width: "28px", height: "28px", borderRadius: "6px", flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: `${accentColor}18`, border: `1px solid ${accentColor}35`,
+                  color: accentColor,
                 }}>
-                  {subtitle}
-                </p>
+                  {icon}
+                </div>
               )}
               <p id="_modal_title" style={{
-                margin: subtitle ? "2px 0 0" : 0,
-                fontSize: "13px", fontWeight: 700,
-                color: titleColor, lineHeight: "1.3",
+                margin: 0, fontSize: "16px", fontWeight: 700,
+                color: textMain, lineHeight: "1.2",
+                letterSpacing: "-0.02em",
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>
                 {title}
@@ -209,43 +194,41 @@ export default function Modal({
             </div>
           </div>
 
-          {!loading && (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Cerrar modal"
-              style={{
-                width: "28px", height: "28px", borderRadius: "6px", flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: closeBg,
-                border: `1px solid ${closeBd}`,
-                cursor: "pointer", color: closeColor,
-                transition: "background 0.15s",
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.12)" : "#e2e8f0";
-                e.currentTarget.style.color = isDark ? "#e6edf3" : "#334155";
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = closeBg;
-                e.currentTarget.style.color = closeColor;
-              }}
-            >
-              <X size={14} strokeWidth={2} />
-            </button>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
+            <img
+              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
+              alt="Precision Trucks"
+              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
+            />
+            {!loading && (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Cerrar modal"
+                style={{
+                  width: "26px", height: "26px", borderRadius: "6px", flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "transparent",
+                  border: `1px solid ${border}`,
+                  cursor: "pointer", color: textFaint,
+                  transition: "all 0.12s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = textMuted; e.currentTarget.style.color = textMain; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = textFaint; }}
+              >
+                <X size={12} strokeWidth={2} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Body */}
         <div
-          role="region"
-          aria-label="Contenido del modal"
           style={{
-            padding: noBodyPadding ? 0 : "16px",
+            padding: noBodyPadding ? 0 : "16px 18px",
             overflowY: "auto", flex: 1,
             fontSize: "13px", lineHeight: "1.55",
             color: bodyColor,
-            background: bodyBg,
           }}
         >
           {children}
@@ -255,9 +238,9 @@ export default function Modal({
         {showFooter && (
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "flex-end",
-            gap: "8px", padding: "12px 16px",
-            borderTop: `1px solid ${footerBd}`,
-            background: footerBg, flexShrink: 0,
+            gap: "8px", padding: "10px 18px",
+            borderTop: `1px solid ${border}`,
+            background: surfaceAlt, flexShrink: 0,
           }}>
             {hasCancelBtn && (
               <button
@@ -265,19 +248,19 @@ export default function Modal({
                 onClick={onClose}
                 disabled={loading}
                 style={{
-                  height: "36px", padding: "0 16px",
-                  border: `1px solid ${cancelBd}`,
-                  color: cancelColor,
-                  background: cancelBg,
-                  borderRadius: "8px",
-                  fontSize: "12px", fontWeight: 700,
+                  padding: "6px 16px",
+                  border: `1px solid ${border}`,
+                  color: textMuted,
+                  background: "transparent",
+                  borderRadius: "6px",
+                  fontSize: "12px", fontWeight: 600,
                   cursor: loading ? "not-allowed" : "pointer",
                   opacity: loading ? 0.5 : 1,
-                  transition: "background 0.15s",
+                  transition: "all 0.12s",
                   whiteSpace: "nowrap",
                 }}
-                onMouseEnter={e => { if (!loading) e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.10)" : "#e2e8f0"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = cancelBg; }}
+                onMouseEnter={e => { if (!loading) { e.currentTarget.style.borderColor = textMuted; e.currentTarget.style.color = textMain; } }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = textMuted; }}
               >
                 {cancelLabel}
               </button>
@@ -287,21 +270,19 @@ export default function Modal({
                 type="button"
                 onClick={onConfirm}
                 disabled={loading}
-                aria-label={loading ? "Procesando" : confirmLabel}
                 style={{
-                  height: "36px", padding: "0 18px",
-                  borderRadius: "8px", border: "none",
-                  background: accentColor,
+                  padding: "6px 18px",
+                  borderRadius: "6px", border: "none",
+                  background: loading ? `${accentColor}99` : accentColor,
                   color: "#ffffff",
                   fontSize: "12px", fontWeight: 700,
                   cursor: loading ? "not-allowed" : "pointer",
-                  opacity: loading ? 0.55 : 1,
                   display: "inline-flex", alignItems: "center", gap: "6px",
                   whiteSpace: "nowrap",
-                  transition: "filter 0.15s",
+                  transition: "opacity 0.12s",
                 }}
-                onMouseEnter={e => { if (!loading) e.currentTarget.style.filter = "brightness(1.08)"; }}
-                onMouseLeave={e => { e.currentTarget.style.filter = "none"; }}
+                onMouseEnter={e => { if (!loading) e.currentTarget.style.opacity = "0.88"; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
               >
                 {loading ? (
                   <>

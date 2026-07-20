@@ -251,7 +251,7 @@ export default function ManualesIncidencias({ T }) {
 
   return (
     <div
-      style={{ overflowY: "auto", background: T.bg, minHeight: "100%", fontFamily: "'Inter','Segoe UI',sans-serif" }}
+      style={{ background: T.bg, minHeight: "100%", fontFamily: "'Inter','Segoe UI',sans-serif" }}
       onDragOver={e => { e.preventDefault(); setDragging(true); }}
       onDragEnter={e => { e.preventDefault(); setDragging(true); }}
       onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
