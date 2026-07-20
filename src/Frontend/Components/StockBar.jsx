@@ -32,7 +32,7 @@ export default function StockBar({ stock, maxStock = 20, isDark = false }) {
       <div style={{ flex: 1, height: "3px", borderRadius: "99px", background: trackBg, overflow: "hidden" }}>
         <div style={{ width: `${pct}%`, height: "100%", borderRadius: "99px", backgroundColor: barColor, transition: "width 0.4s ease" }} />
       </div>
-      <span style={{ fontSize: "10px", fontFamily: "monospace", fontWeight: 700, color: barColor, minWidth: "16px", textAlign: "right", lineHeight: 1 }}>
+      <span style={{ fontSize: "0.9rem", fontFamily: "monospace", fontWeight: 700, color: barColor, minWidth: "16px", textAlign: "right", lineHeight: 1 }}>
         {stock}
       </span>
     </div>

@@ -45,9 +45,11 @@ import UsuarioDashboard from './Frontend/Pages/Usuario/Dashboard'
 import API_BASE, { setToken, clearSession, apiFetch } from './Frontend/Config/api'
 import ErrorBoundary   from './Frontend/Components/ErrorBoundary'
 import PantallaSalida  from './Frontend/Components/PantallaSalida'
-import PrintTicketPage    from './Frontend/Pages/PrintTicketPage'
-import PrintSolicitudPage from './Frontend/Pages/PrintSolicitudPage'
-import PrintReportePage   from './Frontend/Pages/PrintReportePage'
+import PrintTicketPage      from './Frontend/Pages/PrintTicketPage'
+import PrintSolicitudPage   from './Frontend/Pages/PrintSolicitudPage'
+import PrintReportePage     from './Frontend/Pages/PrintReportePage'
+import PrintInventarioPage  from './Frontend/Pages/PrintInventarioPage'
+import PrintHistorialPage   from './Frontend/Pages/PrintHistorialPage'
 import { ToastProvider } from './Frontend/Components/Feedback.jsx'
 import { ThemeProvider } from './Frontend/Config/ThemeContext.jsx'
 import { useTheme } from './Frontend/Config/themeContext.js'
@@ -170,6 +172,8 @@ function App() {
       <Route path="/print/ticket/:folio"    element={getUsuario() ? <PrintTicketPage />    : <Navigate to="/login" replace />} />
       <Route path="/print/solicitud/:folio" element={getUsuario() ? <PrintSolicitudPage /> : <Navigate to="/login" replace />} />
       <Route path="/print/reporte"           element={getUsuario() ? <PrintReportePage />   : <Navigate to="/login" replace />} />
+      <Route path="/print/inventario"         element={getUsuario() ? <PrintInventarioPage /> : <Navigate to="/login" replace />} />
+      <Route path="/print/historial/:id"       element={getUsuario() ? <PrintHistorialPage />  : <Navigate to="/login" replace />} />
 
       {/* Raíz → redirige según sesión */}
       <Route path="/" element={<Navigate to={(() => {

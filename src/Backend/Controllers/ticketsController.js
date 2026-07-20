@@ -18,11 +18,13 @@ export const getTicketByFolio = async (req, res) => {
               CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
               d.nombre_departamento,
               c.nombre_categoria,
+              s.nombre_sucursal,
               TRIM(CONCAT(tec.nombre,' ',tec.ap_paterno,IF(tec.ap_materno IS NOT NULL AND tec.ap_materno != '',CONCAT(' ',tec.ap_materno),''))) AS resuelto_por
        FROM ticket t
        JOIN empleado e      ON t.id_empleado    = e.id_empleado
        JOIN departamento d  ON e.id_departamento = d.id_departamento
        JOIN categoria c     ON t.id_categoria   = c.id_categoria
+       LEFT JOIN sucursal s  ON e.id_sucursal    = s.id_sucursal
        LEFT JOIN empleado tec ON tec.id_empleado = t.id_tecnico
        WHERE t.folio_ticket = ? LIMIT 1`,
       [folio]
@@ -190,7 +192,7 @@ export const actualizarTicket = async (req, res) => {
 
     let updated;
     try {
-      updated = await Ticket.actualizar(id_ticket, { comentarios, estatus, id_resuelto_por }, req.usuario?.id_empleado ?? null);
+      updated = await Ticket.actualizar(id_ticket, { comentarios, estatus, id_resuelto_por });
     } catch (err) {
       if (err.status === 409) return res.status(409).json({ error: err.message });
       throw err;
@@ -442,18 +444,6 @@ export const getMetricas = async (req, res) => {
   } catch (err) {
     console.error("[getMetricas]", err.message);
     res.status(500).json({ error: "Error al obtener métricas" });
-  }
-};
-
-export const getHistorialTicket = async (req, res) => {
-  try {
-    const id_ticket = parseInt(req.params.id_ticket);
-    if (isNaN(id_ticket)) return res.status(400).json({ error: "ID inválido" });
-    const rows = await Ticket.getHistorial(id_ticket);
-    res.json(rows);
-  } catch (err) {
-    console.error("[getHistorialTicket]", err.message);
-    res.status(500).json({ error: "Error al obtener historial" });
   }
 };
 

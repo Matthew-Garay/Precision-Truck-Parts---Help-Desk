@@ -530,8 +530,9 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
     .filter(t => t.estatus === 'En proceso' || t.estatus === 'En Proceso')
     .forEach(t => { if (grupos[t.prioridad]) grupos[t.prioridad].push({ ...t, _tipo: 'ticket' }); });
 
+  const ESTATUS_CERRADOS = new Set(['Resuelto', 'No Resuelto', 'Rechazado', 'Cerrado', 'cerrado', 'Aceptado', 'aceptado']);
   solicitudes
-    .filter(s => s.estatus !== 'Resuelto' && s.estatus !== 'No Resuelto' && s.estatus !== 'Rechazado')
+    .filter(s => !ESTATUS_CERRADOS.has(s.estatus))
     .forEach(s => { if (grupos[s.prioridad]) grupos[s.prioridad].push({ ...s, _tipo: 'insumo' }); });
 
   const columnas = PRIORIDADES.map(prioridad => {

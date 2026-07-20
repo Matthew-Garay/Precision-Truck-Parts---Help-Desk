@@ -153,13 +153,13 @@ const Ticket = {
     return { rows, total };
   },
 
-  actualizar: async (id_ticket, { comentarios, estatus, id_resuelto_por }, id_actor = null) => {
+  actualizar: async (id_ticket, { comentarios, estatus, id_resuelto_por }) => {
     const ESTATUS_PERMITIDOS = new Set(["En proceso", "Resuelto", "No Resuelto", "Cancelado"]);
     if (!ESTATUS_PERMITIDOS.has(estatus)) throw new Error("Estatus no válido");
 
     // Obtener estado actual para validar transiciones y registrar historial
     const [[anterior]] = await pool.query(
-      "SELECT estatus, comentarios FROM ticket WHERE id_ticket = ? LIMIT 1", [id_ticket]
+      "SELECT estatus FROM ticket WHERE id_ticket = ? LIMIT 1", [id_ticket]
     );
     if (!anterior) return null;
 
@@ -187,21 +187,6 @@ const Ticket = {
     const [result] = await pool.query(sql, params);
     if (result.affectedRows === 0) return null;
 
-    // Registrar cambios en historial si hay actor
-    if (anterior && id_actor) {
-      const cambios = [];
-      if (anterior.estatus !== estatus)
-        cambios.push({ campo: "estatus",      anterior: anterior.estatus,      nuevo: estatus });
-      if ((anterior.comentarios ?? "") !== (comentarios ?? ""))
-        cambios.push({ campo: "comentarios",  anterior: anterior.comentarios,   nuevo: comentarios });
-      for (const c of cambios) {
-        await pool.query(
-          `INSERT INTO ticket_historial (id_ticket, id_empleado, campo_cambiado, valor_anterior, valor_nuevo)
-           VALUES (?, ?, ?, ?, ?)`,
-          [id_ticket, id_actor, c.campo, c.anterior ?? null, c.nuevo ?? null]
-        ).catch(() => { /* historial no crítico */ });
-      }
-    }
     const [rows] = await pool.query(
       `SELECT t.estatus, t.fecha_resuelto,
               TRIM(CONCAT(e.nombre,' ',e.ap_paterno,IF(e.ap_materno IS NOT NULL AND e.ap_materno != '',CONCAT(' ',e.ap_materno),''))) AS resuelto_por
@@ -246,22 +231,6 @@ const Ticket = {
       [calificacion, id_ticket]
     );
     return result.affectedRows > 0;
-  },
-
-  // Historial de cambios de un ticket (solo admin)
-  getHistorial: async (id_ticket) => {
-    const [rows] = await pool.query(
-      `SELECT th.id_historial, th.campo_cambiado, th.valor_anterior, th.valor_nuevo, th.fecha_cambio,
-              TRIM(CONCAT(e.nombre,' ',e.ap_paterno,
-                IF(e.ap_materno IS NOT NULL AND e.ap_materno!='',CONCAT(' ',e.ap_materno),'')
-              )) AS nombre_empleado
-       FROM ticket_historial th
-       JOIN empleado e ON th.id_empleado = e.id_empleado
-       WHERE th.id_ticket = ?
-       ORDER BY th.fecha_cambio ASC`,
-      [id_ticket]
-    );
-    return rows;
   },
 
   cerrarVencidos: async () => {

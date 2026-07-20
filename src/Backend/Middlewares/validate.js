@@ -128,6 +128,7 @@ export const schemaUpdateEmpleadoAdmin = z.object({
   email:           z.string().trim().email().optional(),
   id_rol:          z.number({ coerce: true }).int().positive().optional(),
   id_departamento: z.number({ coerce: true }).int().positive().optional(),
+  id_sucursal:     z.union([z.number({ coerce: true }).int().positive(), z.literal(""), z.null()]).transform(v => (v === "" || v === null) ? null : Number(v)).optional(),
   estatus:         z.enum(["Activo", "Inactivo"]).optional(),
   password_nueva:  passwordPolicy.optional(),
 });

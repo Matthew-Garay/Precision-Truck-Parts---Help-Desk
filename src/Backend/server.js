@@ -85,17 +85,24 @@ const app        = express();
 const httpServer = createServer(app);
 const PORT       = process.env.PORT || 3001;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
-const CORS_ORIGINS = [...new Set([
-  CORS_ORIGIN,
-  process.env.CORS_ORIGIN_LOCAL,
-  process.env.APP_URL,
-  "http://localhost:5173",
-  "http://localhost:3001",
-].filter(Boolean))];
+const CORS_ORIGINS = (origin, callback) => {
+  // Permitir sin origen (Postman, curl, mismo servidor)
+  if (!origin) return callback(null, true);
+  // Siempre permitir localhost
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
+  // Permitir cualquier IP privada (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+  if (/^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(origin)) return callback(null, true);
+  // Permitir origen configurado en .env
+  const allowed = [CORS_ORIGIN, process.env.CORS_ORIGIN_LOCAL, process.env.APP_URL].filter(Boolean);
+  if (allowed.includes(origin)) return callback(null, true);
+  callback(new Error(`CORS bloqueado: ${origin}`));
+};
 
 // -- Socket.io ------------------------------------------------
 const io = new Server(httpServer, {
   cors: { origin: CORS_ORIGINS, methods: ["GET", "POST"] },
+  // Permitir conexiones desde cualquier IP de red local
+  allowEIO3: true,
 });
 setIO(io);
 
@@ -124,14 +131,11 @@ process.on("unhandledRejection", (err) => console.error("[unhandledRejection]", 
 // Cierra conexiones activas y el pool MySQL antes de salir.
 // Timeout de 10s para evitar colgarse indefinidamente.
 const shutdown = (signal) => {
-  console.log(`\n[Shutdown] ${signal} recibido. Cerrando...`);
   httpServer.close(async () => {
-    console.log("[Shutdown] Servidor HTTP cerrado.");
-    try { await pool.end(); console.log("[Shutdown] Pool MySQL cerrado."); }
-    catch (err) { console.error("[Shutdown] Error cerrando pool:", err.message); }
+    try { await pool.end(); } catch {}
     process.exit(0);
   });
-  setTimeout(() => { console.error("[Shutdown] Timeout forzado."); process.exit(1); }, 10_000).unref();
+  setTimeout(() => process.exit(1), 10_000).unref();
 };
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT",  () => shutdown("SIGINT"));
@@ -155,21 +159,16 @@ app.use(helmet({
       styleSrc:    ["'self'", "'unsafe-inline'"],
       imgSrc:      ["'self'", "data:", "blob:"],
       fontSrc:     ["'self'", "data:"],
-      connectSrc:  (() => {
-                    const origins = new Set(["'self'"]);
-                    const addOrigin = (url) => {
-                      if (!url) return;
-                      origins.add(url);
-                      origins.add(url.replace(/^https/, "wss").replace(/^http/, "ws"));
-                    };
-                    addOrigin(CORS_ORIGIN);
-                    addOrigin(process.env.APP_URL);
-                    // localhost siempre permitido para dev
-                    origins.add(`http://localhost:${PORT}`);
-                    origins.add(`ws://localhost:${PORT}`);
-                    origins.add(`wss://localhost:${PORT}`);
-                    return [...origins];
-                  })(),
+      connectSrc:  [
+                    "'self'",
+                    "http://localhost:3001", "ws://localhost:3001",
+                    "http://localhost:5173", "ws://localhost:5173",
+                    // ws: y http: cubren cualquier origen (red local, móvil, etc.)
+                    // Los rangos CIDR no son válidos en CSP — se usa wildcard de esquema
+                    "ws:", "http:",
+                    ...(CORS_ORIGIN ? [CORS_ORIGIN, CORS_ORIGIN.replace(/^http/, "ws")] : []),
+                    ...(process.env.APP_URL ? [process.env.APP_URL, process.env.APP_URL.replace(/^http/, "ws")] : []),
+                  ],
       objectSrc:   ["'self'"],
       frameSrc:    ["'self'", "blob:"],
       frameAncestors: ["'self'", CORS_ORIGIN],
@@ -180,7 +179,7 @@ app.use(helmet({
   xContentTypeOptions: true,
   xFrameOptions: false,
 }));
-app.use(cors({ origin: CORS_ORIGINS }));
+app.use(cors({ origin: CORS_ORIGINS, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
 // Excluir archivos sensibles del servidor estático
 app.use("/storage", (req, res, next) => {
@@ -250,7 +249,7 @@ app.use((err, req, res, _next) => {
 });
 
 // -- Arranque -------------------------------------------------
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   iniciarWorkers(io);
 });

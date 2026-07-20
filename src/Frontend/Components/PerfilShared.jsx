@@ -217,129 +217,20 @@ export function procesarYSubirFoto(src, crop, idEmpleado, onSuccess) {
 }
 
 // -- Generador de PDF de accesos -------------------------------
-export function generarPDFAccesos({ accesos, usuario, fechaInicio, fechaFin }) {
-  // Filtrar por rango de fechas si se proporcionan
-  if (fechaInicio || fechaFin) {
-    const desde = fechaInicio ? new Date(fechaInicio + "T00:00:00") : null;
-    const hasta = fechaFin    ? new Date(fechaFin    + "T23:59:59") : null;
-    accesos = accesos.filter(a => {
-      if (!a.fecha_entrada) return true;
-      const d = new Date(a.fecha_entrada);
-      if (desde && d < desde) return false;
-      if (hasta && d > hasta) return false;
-      return true;
-    });
-  }
-  const mesFiltro = "Todos", anioFiltro = "Todos";
-  const origin = window.location.origin;
-  const nombreCompleto = [usuario.nombre, usuario.ap_paterno, usuario.ap_materno].filter(Boolean).join(" ");
+export function generarPDFAccesos({ usuario, fechaInicio, fechaFin }) {
+  const token = sessionStorage.getItem("_tk");
+  const params = new URLSearchParams();
+  if (token)      params.set("token", token);
+  if (fechaInicio) params.set("desde", fechaInicio);
+  if (fechaFin)    params.set("hasta", fechaFin);
 
-  const fmtDT = d => d
-    ? `${new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" })} ${new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`
-    : "-";
-  const fmtMin = m => m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${m % 60}m`;
-
-  const duraciones = accesos
-    .filter(a => a.fecha_entrada && a.fecha_salida)
-    .map(a => Math.round((new Date(a.fecha_salida) - new Date(a.fecha_entrada)) / 60000));
-  const durPromedio = duraciones.length > 0 ? Math.round(duraciones.reduce((s, d) => s + d, 0) / duraciones.length) : 0;
-  const durMax      = duraciones.length > 0 ? Math.max(...duraciones) : 0;
-
-  const periodoLabel = fechaInicio || fechaFin
-    ? [fechaInicio ? new Date(fechaInicio + "T00:00:00").toLocaleDateString("es-MX", { day:"2-digit", month:"long", year:"numeric" }) : "Inicio",
-       fechaFin    ? new Date(fechaFin    + "T00:00:00").toLocaleDateString("es-MX", { day:"2-digit", month:"long", year:"numeric" }) : "Hoy"].join(" — ")
-    : "Todos los registros";
-
-  const filas = accesos.map((a, i) => {
-    const entrada = a.fecha_entrada ? new Date(a.fecha_entrada) : null;
-    const salida  = a.fecha_salida  ? new Date(a.fecha_salida)  : null;
-    const durMin  = entrada && salida ? Math.round((salida - entrada) / 60000) : null;
-    const dur     = durMin === null ? "-" : fmtMin(durMin);
-    return `
-      <tr style="background:${i % 2 === 0 ? "#ffffff" : "#f9fafb"}">
-        <td style="padding:6px 12px;font-family:monospace;font-weight:700;color:#F47920;font-size:10px">${a.id_acceso}</td>
-        <td style="padding:6px 12px;font-size:10px;color:#1D1D1B">${fmtDT(entrada)}</td>
-        <td style="padding:6px 12px;font-size:10px;color:${salida ? "#16a34a" : "#ea580c"}">${salida ? fmtDT(salida) : "<span style='font-size:9px;font-weight:700;background:#fff7ed;color:#ea580c;padding:1px 6px;border-radius:10px;border:1px solid #fed7aa'>Activo</span>"}</td>
-        <td style="padding:6px 12px;font-size:10px;color:#6b7280;font-weight:600">${dur}</td>
-      </tr>`;
-  }).join("");
-
-  const html = `<!DOCTYPE html>
-<html lang="es"><head><meta charset="UTF-8"/>
-<title>Historial de Accesos - ${nombreCompleto}</title>
-<style>
-  @page{size:letter portrait;margin:10mm 12mm}
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1D1D1B;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:3px solid #F47920;margin-bottom:12px}
-  .hdr-logo{height:48px;object-fit:contain}
-  .hdr-center{flex:1;text-align:center}
-  .hdr-sub{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:#9ca3af}
-  .hdr-title{font-size:14px;font-weight:900;color:#1D1D1B;margin-top:2px}
-  .hdr-date{font-size:7.5px;color:#9ca3af}
-  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-  .kpi{background:#f8fafc;border:1.5px solid #e5e7eb;border-radius:7px;padding:8px 12px}
-  .kpi-lbl{font-size:7px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;color:#9ca3af;margin-bottom:3px}
-  .kpi-val{font-size:20px;font-weight:900;line-height:1}
-  .info-box{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-  .info-item{background:#f8fafc;border:1.5px solid #e5e7eb;border-radius:7px;padding:8px 12px}
-  .info-lbl{font-size:7px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;color:#9ca3af;margin-bottom:3px}
-  .info-val{font-size:13px;font-weight:800;color:#1D1D1B}
-  table{width:100%;border-collapse:collapse;border:1.5px solid #e5e7eb;border-radius:8px;overflow:hidden}
-  thead tr{background:#f8fafc}
-  th{text-align:left;padding:8px 12px;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;border-bottom:1.5px solid #e5e7eb}
-  tbody tr{border-bottom:1px solid #f1f5f9}
-  .ftr{background:#1D1D1B;border-radius:8px;margin-top:14px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .ftr-brand{font-size:10px;font-weight:900;color:#F47920}
-  .ftr-sub{font-size:7px;color:rgba(255,255,255,0.4);margin-top:2px}
-  .ftr-logo{height:22px;object-fit:contain;filter:brightness(0) invert(1);opacity:.5}
-  .ftr-date{font-size:7.5px;color:rgba(255,255,255,0.4);text-align:right}
-</style></head><body>
-<div class="hdr">
-  <img src="${origin}/assets/img/logo negro.png" class="hdr-logo" alt="PTP"/>
-  <div class="hdr-center">
-    <div class="hdr-sub">Precision Truck Parts and Accessories</div>
-    <div class="hdr-title">Historial de Accesos al Sistema</div>
-  </div>
-  <div style="text-align:right">
-    <div class="hdr-date">Generado: ${new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}</div>
-    <div class="hdr-date">${new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}</div>
-  </div>
-</div>
-<div class="info-box">
-  <div class="info-item"><div class="info-lbl">Empleado</div><div class="info-val">${nombreCompleto || "-"}</div></div>
-  <div class="info-item"><div class="info-lbl">N° Empleado</div><div class="info-val">${usuario.num_empleado || "-"}</div></div>
-  <div class="info-item"><div class="info-lbl">Departamento</div><div class="info-val">${usuario.departamento || "-"}</div></div>
-  <div class="info-item"><div class="info-lbl">Período</div><div class="info-val" style="color:#F47920">${periodoLabel}</div></div>
-</div>
-<div class="kpis">
-  <div class="kpi"><div class="kpi-lbl">Total sesiones</div><div class="kpi-val" style="color:#F47920">${accesos.length}</div></div>
-  <div class="kpi"><div class="kpi-lbl">Sesiones cerradas</div><div class="kpi-val" style="color:#16a34a">${accesos.filter(a => a.fecha_salida).length}</div></div>
-  <div class="kpi"><div class="kpi-lbl">Duración promedio</div><div class="kpi-val" style="color:#3b82f6;font-size:14px">${fmtMin(durPromedio)}</div></div>
-  <div class="kpi"><div class="kpi-lbl">Sesión más larga</div><div class="kpi-val" style="color:#8b5cf6;font-size:14px">${fmtMin(durMax)}</div></div>
-</div>
-<table>
-  <thead><tr><th>#</th><th>Entrada</th><th>Salida</th><th>Duración</th></tr></thead>
-  <tbody>${filas || "<tr><td colspan='4' style='padding:20px;text-align:center;color:#9ca3af;font-size:11px'>Sin registros</td></tr>"}</tbody>
-</table>
-<div class="ftr">
-  <div><div class="ftr-brand">Precision Truck Parts and Accessories</div><div class="ftr-sub">Sistema HelpDesk · Documento de uso interno</div></div>
-  <img src="${origin}/assets/img/logo blanco.png" class="ftr-logo" alt="PTP"/>
-  <div class="ftr-date">${new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}<br/>${new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}</div>
-</div>
-<script>window.onload=function(){window.print();}<\/script>
-</body></html>`;
-
-  const win = window.open("", "_blank", "width=900,height=700");
+  const url = `/print/historial/${usuario.id_empleado}?${params.toString()}`;
+  const win = window.open(url, "_blank", "width=1200,height=800");
   if (!win) {
     const aviso = document.createElement("div");
     aviso.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#1D1D1B;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;border-left:4px solid #F47920;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
-    aviso.textContent = "Permite ventanas emergentes para generar el reporte.";
+    aviso.textContent = "El navegador bloqueó la ventana emergente. Permite las ventanas emergentes e intenta de nuevo.";
     document.body.appendChild(aviso);
     setTimeout(() => aviso.remove(), 5000);
-    return;
   }
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
 }

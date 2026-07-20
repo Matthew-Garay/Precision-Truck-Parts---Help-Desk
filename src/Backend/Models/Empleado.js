@@ -214,36 +214,46 @@ const Empleado = {
     return rows;
   },
 
-  updateAdmin: async (id, { nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password, foto }) => {
-    // SQL estático - sin construcción dinámica de nombres de columna
-    // num_empleado excluido intencionalmente: no se permite modificar
-    await pool.query(
-      `UPDATE empleado
-       SET nombre          = COALESCE(?, nombre),
-           ap_paterno      = COALESCE(?, ap_paterno),
-           ap_materno      = COALESCE(?, ap_materno),
-           email           = COALESCE(?, email),
-           id_rol          = COALESCE(?, id_rol),
-           id_departamento = COALESCE(?, id_departamento),
-           id_sucursal     = ?,
-           estatus         = COALESCE(?, estatus),
-           password        = COALESCE(?, password),
-           foto            = COALESCE(?, foto)
-       WHERE id_empleado = ?`,
-      [
-        nombre          ?? null,
-        ap_paterno      ?? null,
-        ap_materno      ?? null,
-        email           ?? null,
-        id_rol          ?? null,
-        id_departamento ?? null,
-        id_sucursal     ?? null,
-        estatus         ?? null,
-        password        ?? null,
-        foto            ?? null,
-        id,
-      ]
-    );
+  updateAdmin: async (id, campos) => {
+    const { nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password, foto } = campos;
+    // id_sucursal puede ser null (quitar sucursal) o un número, pero si no viene en campos no se toca
+    const sucursalEnviada = Object.prototype.hasOwnProperty.call(campos, "id_sucursal");
+    if (sucursalEnviada) {
+      await pool.query(
+        `UPDATE empleado
+         SET nombre          = COALESCE(?, nombre),
+             ap_paterno      = COALESCE(?, ap_paterno),
+             ap_materno      = COALESCE(?, ap_materno),
+             email           = COALESCE(?, email),
+             id_rol          = COALESCE(?, id_rol),
+             id_departamento = COALESCE(?, id_departamento),
+             id_sucursal     = ?,
+             estatus         = COALESCE(?, estatus),
+             password        = COALESCE(?, password),
+             foto            = COALESCE(?, foto)
+         WHERE id_empleado = ?`,
+        [nombre ?? null, ap_paterno ?? null, ap_materno ?? null, email ?? null,
+         id_rol ?? null, id_departamento ?? null, id_sucursal ?? null,
+         estatus ?? null, password ?? null, foto ?? null, id]
+      );
+    } else {
+      await pool.query(
+        `UPDATE empleado
+         SET nombre          = COALESCE(?, nombre),
+             ap_paterno      = COALESCE(?, ap_paterno),
+             ap_materno      = COALESCE(?, ap_materno),
+             email           = COALESCE(?, email),
+             id_rol          = COALESCE(?, id_rol),
+             id_departamento = COALESCE(?, id_departamento),
+             estatus         = COALESCE(?, estatus),
+             password        = COALESCE(?, password),
+             foto            = COALESCE(?, foto)
+         WHERE id_empleado = ?`,
+        [nombre ?? null, ap_paterno ?? null, ap_materno ?? null, email ?? null,
+         id_rol ?? null, id_departamento ?? null,
+         estatus ?? null, password ?? null, foto ?? null, id]
+      );
+    }
   },
 
   crear: async ({ num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento, id_sucursal }) => {
