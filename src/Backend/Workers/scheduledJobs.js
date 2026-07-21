@@ -43,16 +43,19 @@
  */
 import pool   from "../Config/db.js";
 import Ticket from "../Models/Ticket.js";
-import Insumo from "../Models/Insumo.js";
 import { crearSetsPersistentes } from "./alertState.js";
 import { limpiarTokensRevocados } from "../Middlewares/authMiddleware.js";
 
+// stockEnviadoHoy se inicializa al llamar iniciarWorkers()
+let _stockEnviadoHoy = null;
+export function getStockEnviadoHoy() { return _stockEnviadoHoy; }
+
 export function iniciarWorkers(io) {
-  // Sets persistentes en disco — sobreviven reinicios del servidor
-  const { slaAlertados, sinAtenderAlertados, stockAlertados } = crearSetsPersistentes();
+  const { slaAlertados, sinAtenderAlertados, stockAlertados, stockEnviadoHoy } = crearSetsPersistentes();
+  _stockEnviadoHoy = stockEnviadoHoy;
 
   // Guard de solapamiento: evita que una ejecución lenta se superponga con la siguiente
-  let corriendo = { sla: false, vencidos: false, sesiones: false, stock: false, sinAtender: false };
+  let corriendo = { sla: false, vencidos: false, sesiones: false, sinAtender: false };
 
   // -- Alertas SLA: tickets próximos a vencer (~46.5h) ------------
   const ivSLA = setInterval(async () => {
@@ -169,35 +172,30 @@ export function iniciarWorkers(io) {
   }, 60 * 60 * 1000);
   ivSesiones.unref();
 
-  // -- Alerta de stock crítico (≤ 5 unidades) -----------------
+  // -- Alertas de stock crítico: 1 vez al día a todos los admins ----
+  // Resetea el set cada ciclo para que los insumos vuelvan a alertarse al día siguiente.
   const ivStock = setInterval(async () => {
-    if (corriendo.stock) return;
-    corriendo.stock = true;
     try {
-      const criticos = await Insumo.getStockBajo(5);
-      const criticosIds = new Set(criticos.map(i => i.id_insumo));
-      for (const id of stockAlertados) {
-        if (!criticosIds.has(id)) stockAlertados.delete(id);
-      }
-      const nuevos = criticos.filter(i => !stockAlertados.has(i.id_insumo));
-      if (nuevos.length === 0) return;
-      nuevos.forEach(ins => {
+      stockAlertados.clear(); // nuevo día → permitir re-emisión
+      const [criticos] = await pool.query(
+        `SELECT id_insumo, nombre, stock, imagen_url
+         FROM insumo WHERE stock <= 5 ORDER BY stock ASC, nombre ASC LIMIT 50`
+      );
+      if (criticos.length === 0) return;
+      criticos.forEach(ins => {
         io.to("admins").emit("insumo:stock_critico", {
           id_insumo:  ins.id_insumo,
           nombre:     ins.nombre,
           stock:      ins.stock,
-          nivel:      ins.nivel_alerta,
+          nivel:      ins.stock === 0 ? "agotado" : "bajo",
           imagen_url: ins.imagen_url || null,
         });
         stockAlertados.add(ins.id_insumo);
       });
-
     } catch (err) {
-      console.error("Error verificando stock crítico:", err.message);
-    } finally {
-      corriendo.stock = false;
+      console.error("[stock crítico]", err.message);
     }
-  }, 60 * 60 * 1000);
+  }, 24 * 60 * 60 * 1000); // cada 24 horas
   ivStock.unref();
 
   // -- Tickets sin atender en 24h: recordatorio al admin -------

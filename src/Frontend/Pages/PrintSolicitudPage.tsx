@@ -16,6 +16,7 @@ interface DetalleItem {
   stock: number;
   descripcion?: string | null;
   aprobado?: number | null;
+  imagen_url?: string | null;
 }
 
 interface Solicitud {
@@ -62,6 +63,7 @@ export default function PrintSolicitudPage() {
 
   useEffect(() => {
     if (!solicitud) return;
+    document.title = `${solicitud.folio_solicitud}.pdf`;
     waitForImages().then(() => setReady(true));
   }, [solicitud]);
 

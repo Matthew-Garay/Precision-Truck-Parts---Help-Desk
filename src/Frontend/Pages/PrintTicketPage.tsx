@@ -57,6 +57,7 @@ export default function PrintTicketPage() {
 
   useEffect(() => {
     if (!ticket) return;
+    document.title = `${ticket.folio_ticket}.pdf`;
     waitForImages().then(() => setReady(true));
   }, [ticket]);
 
