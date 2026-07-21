@@ -56,6 +56,7 @@
  */
 import express           from "express";
 import { createServer }  from "http";
+import { networkInterfaces } from "os";
 import { Server }        from "socket.io";
 import cors              from "cors";
 import compression       from "compression";
@@ -66,7 +67,7 @@ import { fileURLToPath } from "url";
 import pool              from "./Config/db.js";
 import { requireAuth }   from "./Middlewares/authMiddleware.js";
 import { setIO }         from "./Config/socketInstance.js";
-import { iniciarWorkers } from "./Workers/scheduledJobs.js";
+import { iniciarWorkers, getStockEnviadoHoy } from "./Workers/scheduledJobs.js";
 import categoriasRoutes  from "./Routes/categoriasRoutes.js";
 import authRoutes        from "./Routes/authRoutes.js";
 import ticketsRoutes     from "./Routes/ticketsRoutes.js";
@@ -117,10 +118,36 @@ io.use((socket, next) => {
   }
 });
 
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
   const { id_empleado, id_rol } = socket.data.usuario;
   socket.join(`empleado_${id_empleado}`);
-  if (id_rol === 1) socket.join("admins");
+  if (id_rol !== 1) return;
+  socket.join("admins");
+
+  // Al conectarse un admin, emitirle los insumos con stock bajo (≤ 2) — solo 1 vez por día
+  try {
+    const stockEnviadoHoy = getStockEnviadoHoy();
+    if (!stockEnviadoHoy) return; // workers aún no iniciados
+    const hoy = new Date().toISOString().slice(0, 10);
+    if (stockEnviadoHoy.get(id_empleado) === hoy) return; // ya se envió hoy
+
+    const [criticos] = await pool.query(
+      `SELECT id_insumo, nombre, stock, imagen_url
+       FROM insumo WHERE stock <= 2 ORDER BY stock ASC, nombre ASC LIMIT 50`
+    );
+    if (criticos.length === 0) return;
+
+    criticos.forEach(ins => {
+      socket.emit("insumo:stock_critico", {
+        id_insumo:  ins.id_insumo,
+        nombre:     ins.nombre,
+        stock:      ins.stock,
+        nivel:      ins.stock === 0 ? "agotado" : "bajo",
+        imagen_url: ins.imagen_url || null,
+      });
+    });
+    stockEnviadoHoy.set(id_empleado, hoy);
+  } catch { /* no bloquear la conexión si falla */ }
 });
 
 // -- Handlers de proceso no controlado -----------------------
@@ -249,7 +276,46 @@ app.use((err, req, res, _next) => {
 });
 
 // -- Arranque -------------------------------------------------
-httpServer.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+httpServer.listen(PORT, "0.0.0.0", async () => {
+  const line = "─".repeat(52);
+  const ok   = "✅";
+  const fail = "❌";
+
+  console.log(`\n${line}`);
+  console.log(`  Precision Trucks Parts — HelpDesk`);
+  console.log(line);
+
+  // URLs de acceso
+  console.log(`  Backend  →  http://localhost:${PORT}`);
+  console.log(`  Frontend →  http://localhost:5173`);
+  const nets = networkInterfaces();
+  for (const iface of Object.values(nets))
+    for (const addr of iface)
+      if (addr.family === "IPv4" && !addr.internal)
+        console.log(`  Red      →  http://${addr.address}:${PORT}  (LAN)`);
+
+  // Base de datos
+  try {
+    const conn = await pool.getConnection();
+    conn.release();
+    console.log(`  DB       →  ${ok} MySQL`);
+  } catch {
+    console.log(`  DB       →  ${fail} MySQL sin conexión`);
+  }
+
+  // Socket.io — verificar que el servidor está escuchando
+  console.log(`  Socket   →  ${httpServer.listening ? ok : fail} WebSockets`);
+
+  // Workers
+  console.log(`  Workers  →  ${ok} Iniciando jobs programados`);
+
+  // SMTP
+  console.log(`  SMTP     →  ${process.env.SMTP_USER ? ok : "⚠️ "} ${process.env.SMTP_USER ? "Correos activos" : "No configurado — correos desactivados"}`);
+
+  // JWT
+  console.log(`  JWT      →  ${process.env.JWT_SECRET ? ok : fail} ${process.env.JWT_SECRET ? "Configurado" : "JWT_SECRET faltante"}`);
+
+  console.log(line + "\n");
+
   iniciarWorkers(io);
 });

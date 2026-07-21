@@ -58,7 +58,9 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
   const [error,     setError]     = useState("");
   const [updating,  setUpdating]  = useState(false);
   const [guardado,  setGuardado]  = useState(false);
-  const [aprobados,    setAprobados]    = useState({});
+  const [aprobados,      setAprobados]      = useState({});
+  const [cantidades,     setCantidades]     = useState({});
+  const [cantidadesMax,  setCantidadesMax]  = useState({});
   const [guardandoItems, setGuardandoItems] = useState(false);
   const [itemsGuardados, setItemsGuardados] = useState(false);
   const [errorAccion, setErrorAccion] = useState("");
@@ -74,12 +76,19 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
         if (d?.error) { setError(d.error); return; }
         if (!d?.id_solicitud) { setError("Solicitud no encontrada"); return; }
         setSolicitud(d);
-        // Inicializar mapa de aprobados: null/undefined => true (aprobado por defecto)
+        // null = sin revisar → false (el admin debe marcar explícitamente)
+        // 1 = aprobado, 0 = rechazado explícito
         const mapa = {};
+        const mapaCant = {};
+        const mapaMax = {};
         (d.detalle || []).forEach(item => {
-          mapa[item.id_solicitud_insumo] = item.aprobado == null ? true : Boolean(item.aprobado);
+          mapa[item.id_solicitud_insumo] = item.aprobado === 1;
+          mapaCant[item.id_solicitud_insumo] = item.cantidad;
+          mapaMax[item.id_solicitud_insumo] = item.cantidad;
         });
         setAprobados(mapa);
+        setCantidades(mapaCant);
+        setCantidadesMax(mapaMax);
       })
       .catch(() => setError("No se pudo conectar con el servidor"))
       .finally(() => setLoading(false));
@@ -91,11 +100,16 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
     setUpdating(true);
     setErrorAccion("");
     try {
+      // Capturar snapshot del estado aprobados en este momento
+      const snapshotAprobados = { ...aprobados };
       const body = { estatus: nuevoEstatus };
-      if (solicitud?.detalle?.length > 0) {
+      if (nuevoEstatus === "Aceptado" && solicitud?.detalle?.length > 0) {
         body.items = solicitud.detalle.map(d => ({
           id_solicitud_insumo: d.id_solicitud_insumo,
-          aprobado: aprobados[d.id_solicitud_insumo] ? 1 : 0,
+          aprobado: snapshotAprobados[d.id_solicitud_insumo] === true ? 1 : 0,
+          cantidad: snapshotAprobados[d.id_solicitud_insumo] === true
+            ? (cantidades[d.id_solicitud_insumo] ?? d.cantidad)
+            : d.cantidad,
         }));
       }
       const r = await apiFetch(API_ROUTES.SOLICITUD_ESTATUS(solicitud.id_solicitud), {
@@ -134,7 +148,10 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
     try {
       const items = (solicitud.detalle || []).map(d => ({
         id_solicitud_insumo: d.id_solicitud_insumo,
-        aprobado: aprobados[d.id_solicitud_insumo] ? 1 : 0,
+        aprobado: aprobados[d.id_solicitud_insumo] === true ? 1 : 0,
+        cantidad: aprobados[d.id_solicitud_insumo] === true
+          ? (cantidades[d.id_solicitud_insumo] ?? d.cantidad)
+          : d.cantidad,
       }));
       const r = await apiFetch(API_ROUTES.SOLICITUD_ITEMS(solicitud.id_solicitud), {
         method: "PATCH",
@@ -368,7 +385,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                   </p>
                   <button
                     onClick={() => {
-                      const todosAprobados = (solicitud.detalle || []).every(d => aprobados[d.id_solicitud_insumo] !== false);
+                      const todosAprobados = (solicitud.detalle || []).every(d => aprobados[d.id_solicitud_insumo] === true);
                       const nuevoVal = !todosAprobados;
                       const nuevo = {};
                       (solicitud.detalle || []).forEach(d => { nuevo[d.id_solicitud_insumo] = nuevoVal; });
@@ -376,7 +393,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                     }}
                     className="text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0 transition-all hover:brightness-110"
                     style={{ background: isDark ? "rgba(255,255,255,0.06)" : T?.surfaceAlt, color: T?.textMuted, border: `1px solid ${T?.border}` }}>
-                    {(solicitud.detalle || []).every(d => aprobados[d.id_solicitud_insumo] !== false) ? "Desmarcar todos" : "Aprobar todos"}
+                    {(solicitud.detalle || []).every(d => aprobados[d.id_solicitud_insumo] === true) ? "Desmarcar todos" : "Aprobar todos"}
                   </button>
                 </div>
               )}
@@ -385,11 +402,16 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                 {!solicitud.detalle?.length ? (
                   <p className="px-4 py-8 text-center text-xs" style={labelStyle}>Sin insumos registrados</p>
                 ) : solicitud.detalle.map((d, i) => {
-                  const aprobado = aprobados[d.id_solicitud_insumo] !== false;
+                  const aprobado = aprobados[d.id_solicitud_insumo] === true;
+                  // Para usuario: en solicitud cerrada, d.aprobado viene de BD (1=sí, 0=no, null=sin revisar)
+                  const itemAprobadoBD = d.aprobado === 1 || d.aprobado === true;
+                  const itemRechazadoBD = cerrado && d.aprobado === 0;
+                  // Opacidad: admin abierta → atenúa no marcados; usuario cerrada → atenúa rechazados
+                  const opacidad = (esAdmin && !cerrado && !aprobado) || (!esAdmin && cerrado && itemRechazadoBD) ? 0.45 : 1;
                   return (
                     <div key={d.id_solicitud_insumo ?? i}
                       className="px-4 py-3 flex items-center gap-3 transition-all"
-                      style={{ opacity: esAdmin && !cerrado && !aprobado ? 0.45 : 1 }}>
+                      style={{ opacity: opacidad }}>
 
                       {/* Checkbox admin solicitud abierta */}
                       {esAdmin && !cerrado && (
@@ -405,11 +427,11 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                         </button>
                       )}
 
-                      {/* Indicador estado en solicitud cerrada */}
+                      {/* Indicador estado en solicitud cerrada (admin y usuario) */}
                       {cerrado && d.aprobado != null && (
                         <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
-                          style={{ background: d.aprobado ? "rgba(22,163,74,0.15)" : "rgba(220,38,38,0.15)" }}>
-                          {d.aprobado
+                          style={{ background: itemAprobadoBD ? "rgba(22,163,74,0.15)" : "rgba(220,38,38,0.15)" }}>
+                          {itemAprobadoBD
                             ? <Check size={10} style={{ color: "#16a34a" }} strokeWidth={3} />
                             : <XIcon size={10} style={{ color: "#dc2626" }} strokeWidth={3} />}
                         </div>
@@ -436,9 +458,42 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                           {[d.marca, d.modelo].filter(Boolean).join(" · ") || "Sin especificaciones"}
                           {d.num_serie ? ` · S/N: ${d.num_serie}` : ""}
                         </p>
+                        {/* Etiqueta de entrega — visible para usuario en solicitud cerrada */}
+                        {!esAdmin && cerrado && d.aprobado != null && (
+                          <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded"
+                            style={{
+                              background: (d.aprobado === 1 || d.aprobado === true)
+                                ? (isDark ? "rgba(22,163,74,0.15)" : "#dcfce7")
+                                : (isDark ? "rgba(220,38,38,0.12)" : "#fee2e2"),
+                              color: (d.aprobado === 1 || d.aprobado === true) ? "#16a34a" : "#dc2626",
+                            }}>
+                            {(d.aprobado === 1 || d.aprobado === true) ? "✓ Se entregará" : "✕ No se entregará"}
+                          </span>
+                        )}
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="text-[13px] font-bold leading-none" style={{ color: orange }}>×{d.cantidad}</p>
+                        {/* Input cantidad aprobada — solo admin, abierta, ítem aprobado */}
+                        {esAdmin && !cerrado && aprobado && (
+                          <input
+                            type="number"
+                            min={1}
+                            max={cantidadesMax[d.id_solicitud_insumo] ?? d.cantidad}
+                            value={cantidades[d.id_solicitud_insumo] ?? d.cantidad}
+                            onChange={e => {
+                              const max = cantidadesMax[d.id_solicitud_insumo] ?? d.cantidad;
+                              const v = Math.max(1, Math.min(max, parseInt(e.target.value) || 1));
+                              setCantidades(prev => ({ ...prev, [d.id_solicitud_insumo]: v }));
+                            }}
+                            onClick={e => e.stopPropagation()}
+                            className="mt-1 w-14 text-center text-[11px] font-bold rounded-lg px-1 py-0.5 outline-none"
+                            style={{
+                              background: isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9",
+                              border: `1px solid ${orange}60`,
+                              color: orange,
+                            }}
+                          />
+                        )}
                         <p className="text-[10px] font-semibold uppercase tracking-wide mt-0.5"
                           style={{ color: d.stock > 0 ? "#16a34a" : "#dc2626" }}>
                           {d.stock > 0 ? `Stock: ${d.stock}` : "Agotado"}
@@ -546,11 +601,21 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                         style={{ color: solicitud.estatus === "Aceptado" ? "#16a34a" : "#dc2626" }}>
                         {solicitud.estatus === "Aceptado" ? "Solicitud aceptada" : "Solicitud rechazada"}
                       </p>
-                      <p className="text-[10px] mt-0.5" style={{ color: T?.textFaint }}>
-                        {solicitud.estatus === "Aceptado"
-                          ? "Insumos aprobados y stock descontado"
-                          : "La solicitud fue denegada por el administrador"}
-                      </p>
+                      {solicitud.estatus === "Aceptado" ? (() => {
+                        const entregados = (solicitud.detalle || []).filter(d => d.aprobado === 1 || d.aprobado === true).length;
+                        const noEntregados = (solicitud.detalle || []).filter(d => d.aprobado === 0).length;
+                        return (
+                          <p className="text-[10px] mt-0.5" style={{ color: T?.textFaint }}>
+                            {entregados > 0 && noEntregados > 0
+                              ? `${entregados} insumo${entregados !== 1 ? "s" : ""} se entregará${entregados !== 1 ? "n" : ""} · ${noEntregados} no`
+                              : entregados > 0
+                              ? "Todos los insumos aprobados y stock descontado"
+                              : "Ningún insumo fue aprobado"}
+                          </p>
+                        );
+                      })() : (
+                        <p className="text-[10px] mt-0.5" style={{ color: T?.textFaint }}>La solicitud fue denegada por el administrador</p>
+                      )}
                     </div>
                   </div>
                 )}

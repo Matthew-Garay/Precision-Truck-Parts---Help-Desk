@@ -91,11 +91,11 @@ const TIPO_CONFIG = {
   },
   "solicitud:actualizada": {
     icon:   Package,
-    color:  (d) => d.estatus === "Resuelto" ? "#16a34a" : (d.estatus === "No Resuelto" || d.estatus === "Rechazado") ? "#dc2626" : "#F47920",
-    bg:     (d) => d.estatus === "Resuelto" ? "rgba(22,163,74,0.12)" : (d.estatus === "No Resuelto" || d.estatus === "Rechazado") ? "rgba(220,38,38,0.12)" : "rgba(244,121,32,0.12)",
+    color:  (d) => d.estatus === "Aceptado" ? "#16a34a" : (d.estatus === "Rechazado") ? "#dc2626" : "#F47920",
+    bg:     (d) => d.estatus === "Aceptado" ? "rgba(22,163,74,0.12)" : (d.estatus === "Rechazado") ? "rgba(220,38,38,0.12)" : "rgba(244,121,32,0.12)",
     titulo: (d) => `Solicitud de insumo: ${d.estatus}`,
     sub:    (d) => `#${d.folio_solicitud}`,
-    accion: null,
+    accion: "Ver solicitud",
   },
   "ticket:confirmado": {
     icon:   CheckCircle2,
@@ -326,6 +326,7 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
               const tieneAccion = accion && (
                 n.tipo === "ticket:nuevo" ||
                 n.tipo === "solicitud:nueva" ||
+                n.tipo === "solicitud:actualizada" ||
                 n.tipo === "ticket:calificado" ||
                 n.tipo === "ticket:sla_warning" ||
                 n.tipo === "ticket:en_atencion" ||

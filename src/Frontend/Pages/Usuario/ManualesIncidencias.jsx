@@ -425,7 +425,7 @@ export default function ManualesIncidencias({ T }) {
               <Inbox size={24} style={{ color: isDark ? "rgba(255,255,255,0.18)" : SLATE[400] }} />
             </div>
             <p style={{ fontSize: 14, fontWeight: 700, color: isDark ? "rgba(255,255,255,0.42)" : SLATE[600], margin: 0 }}>
-              {filtros.busqueda || filtros.categoria ? "Sin resultados" : "No hay manuales disponibles"}
+              {busqueda || categoria ? "Sin resultados" : "No hay manuales disponibles"}
             </p>
             <p style={{ fontSize: 12, color: isDark ? "rgba(255,255,255,0.22)" : SLATE[400], textAlign: "center", margin: 0 }}>
               {busqueda ? `No se encontraron coincidencias para "${busqueda}"` : "Pronto habrá contenido disponible aquí"}

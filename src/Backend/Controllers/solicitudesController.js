@@ -249,7 +249,11 @@ export const aprobarItemsSolicitud = async (req, res) => {
     if (!sol) return res.status(404).json({ error: "Solicitud no encontrada" });
     if (sol.estatus === "Aceptado" || sol.estatus === "Rechazado")
       return res.status(409).json({ error: "La solicitud ya está cerrada" });
-    await Solicitud.aprobarItems(id, items);
+    await Solicitud.aprobarItems(id, items.map(it => ({
+      id_solicitud_insumo: it.id_solicitud_insumo,
+      aprobado: it.aprobado,
+      cantidad: it.cantidad ?? null,
+    })));
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Error al actualizar items", ...errDetalle(err) });
@@ -257,14 +261,22 @@ export const aprobarItemsSolicitud = async (req, res) => {
 };
 
 export const actualizarEstatusSolicitud = async (req, res) => {
-  const id     = parseInt(req.params.id);
+  const id          = parseInt(req.params.id);
   const { estatus } = req.body;
   if (!estatus) return res.status(400).json({ error: "Estatus requerido" });
+
   try {
     if (estatus === "Aceptado") {
+      // items: [{ id_solicitud_insumo, aprobado: 1|0 }] — siempre mandados por el frontend
+      const itemsBody = Array.isArray(req.body?.items) ? req.body.items : [];
+      if (itemsBody.length === 0)
+        return res.status(400).json({ error: "Debes indicar el estado de aprobación de cada ítem" });
+
       const conn = await pool.getConnection();
       try {
         await conn.beginTransaction();
+
+        // Bloquear la solicitud
         const [[sol]] = await conn.query(
           "SELECT id_solicitud, estatus FROM solicitud WHERE id_solicitud = ? FOR UPDATE", [id]
         );
@@ -273,52 +285,56 @@ export const actualizarEstatusSolicitud = async (req, res) => {
           await conn.rollback();
           return res.status(409).json({ error: "La solicitud ya está cerrada" });
         }
-        let detalle = [];
-        const itemsBody = Array.isArray(req.body?.items) ? req.body.items : null;
-        if (itemsBody && itemsBody.length > 0) {
-          for (const it of itemsBody) {
-            const id_si = parseInt(it.id_solicitud_insumo, 10);
-            const aprobadoVal = it.aprobado ? 1 : 0;
-            await conn.query(
-              "UPDATE solicitud_insumo SET aprobado = ? WHERE id_solicitud_insumo = ? AND id_solicitud = ?",
-              [aprobadoVal, id_si, id]
-            );
-          }
-          const [rows] = await conn.query(
-            "SELECT id_insumo, cantidad FROM solicitud_insumo WHERE id_solicitud = ? AND aprobado = 1",
-            [id]
+
+        // 1. Guardar el estado aprobado/denegado de TODOS los ítems desde el body
+        for (const it of itemsBody) {
+          const cantAprobada = (it.aprobado === 1 && it.cantidad_aprobada != null)
+            ? parseInt(it.cantidad_aprobada, 10) : null;
+          await conn.query(
+            "UPDATE solicitud_insumo SET aprobado = ?, cantidad = COALESCE(?, cantidad) WHERE id_solicitud_insumo = ? AND id_solicitud = ?",
+            [it.aprobado === 1 ? 1 : 0, cantAprobada, parseInt(it.id_solicitud_insumo, 10), id]
           );
-          detalle = rows;
-        } else {
-          const [rows] = await conn.query(
-            "SELECT id_insumo, cantidad FROM solicitud_insumo WHERE id_solicitud = ? AND (aprobado IS NULL OR aprobado = 1)", [id]
-          );
-          detalle = rows;
         }
-        if (detalle.length > 0) await Insumo.descontarStock(conn, detalle);
-        await conn.query("UPDATE solicitud SET estatus = ? WHERE id_solicitud = ?", [estatus, id]);
+
+        // 2. Descontar stock SOLO de los ítems que el admin marcó como aprobado=1 en este body
+        const aDescontar = itemsBody
+          .filter(it => it.aprobado === 1)
+          .map(it => ({
+            id_solicitud_insumo: parseInt(it.id_solicitud_insumo, 10),
+            aprobado: 1,
+          }));
+
+        if (aDescontar.length > 0) {
+          const ids = aDescontar.map(it => it.id_solicitud_insumo);
+          const [rows] = await conn.query(
+            `SELECT id_insumo, cantidad FROM solicitud_insumo
+             WHERE id_solicitud_insumo IN (?) AND id_solicitud = ?`,
+            [ids, id]
+          );
+          await Insumo.descontarStock(conn, rows);
+        }
+
+        // 3. Cerrar la solicitud
+        await conn.query("UPDATE solicitud SET estatus = 'Aceptado' WHERE id_solicitud = ?", [id]);
         await conn.commit();
-        try {
-          const idsInsumos = detalle.map(d => d.id_insumo);
-          if (idsInsumos.length > 0) {
-            const [criticos] = await pool.query(
-              `SELECT i.id_insumo, i.nombre, i.stock, i.imagen_url FROM insumo i WHERE i.id_insumo IN (?) AND i.stock <= 5`,
-              [idsInsumos]
+
+        // 4. Alertas de stock crítico (fuera de la transacción)
+        if (aDescontar.length > 0) {
+          try {
+            const ids = aDescontar.map(it => it.id_solicitud_insumo);
+            const [rows] = await pool.query(
+              `SELECT i.id_insumo, i.nombre, i.stock, i.imagen_url
+               FROM solicitud_insumo si JOIN insumo i ON si.id_insumo = i.id_insumo
+               WHERE si.id_solicitud_insumo IN (?) AND i.stock <= 2`,
+              [ids]
             );
-            if (criticos.length > 0) {
-              const io = getIO();
-              criticos.forEach(ins => {
-                io.to("admins").emit("insumo:stock_critico", {
-                  id_insumo:  ins.id_insumo,
-                  nombre:     ins.nombre,
-                  stock:      ins.stock,
-                  nivel:      ins.stock === 0 ? "agotado" : "bajo",
-                  imagen_url: ins.imagen_url || null,
-                });
-              });
-            }
-          }
-        } catch {}
+            const io = getIO();
+            rows.forEach(ins => io.to("admins").emit("insumo:stock_critico", {
+              id_insumo: ins.id_insumo, nombre: ins.nombre, stock: ins.stock,
+              nivel: ins.stock === 0 ? "agotado" : "bajo", imagen_url: ins.imagen_url || null,
+            }));
+          } catch {}
+        }
       } catch (err) {
         await conn.rollback();
         throw err;
@@ -332,8 +348,7 @@ export const actualizarEstatusSolicitud = async (req, res) => {
       if (!sol) return res.status(404).json({ error: "Solicitud no encontrada" });
       if (sol.estatus === "Aceptado" || sol.estatus === "Rechazado")
         return res.status(409).json({ error: "La solicitud ya está cerrada" });
-      const ok = await Solicitud.actualizarEstatus(id, estatus);
-      if (!ok) return res.status(404).json({ error: "Solicitud no encontrada" });
+      await Solicitud.actualizarEstatus(id, estatus);
     }
 
     const [[sol]] = await pool.query(

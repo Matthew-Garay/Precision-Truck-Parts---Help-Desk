@@ -157,10 +157,9 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           }
         }
 
-        if (tipo === "solicitud:nueva" && data?.id_solicitud) {
-          const s = solicitudesRef.current.find(s => s.id_solicitud === data.id_solicitud);
-          if (s) { navigate("/admin/dashboard"); setSolicitudVer(s); }
-          else cargarSolicitudesRef.current?.();
+        if ((tipo === "solicitud:nueva" || tipo === "solicitud:actualizada") && data?.id_solicitud) {
+          navigate("/admin/dashboard");
+          setSolicitudVer({ id_solicitud: data.id_solicitud });
         }
       // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [navigate]),

@@ -44,9 +44,9 @@ const pool = mysql.createPool({
 
 // Verificar conexión al iniciar
 pool.getConnection()
-  .then(conn => conn.release())
+  .then(conn => { conn.release(); })
   .catch(err => {
-    console.error("❌ MySQL:", err.message);
+    console.error("\u274c MySQL \u2014 no se pudo conectar:", err.message);
     process.exit(1);
   });
 

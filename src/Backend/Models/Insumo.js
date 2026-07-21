@@ -93,7 +93,7 @@ const Insumo = {
     return r.affectedRows > 0;
   },
 
-  getStockBajo: async (umbral = 5) => {
+  getStockBajo: async (umbral = 2) => {
     const [rows] = await pool.query(
       `SELECT i.id_insumo, i.nombre, i.marca, i.modelo, i.stock, i.imagen_url,
               c.nombre_categoria,

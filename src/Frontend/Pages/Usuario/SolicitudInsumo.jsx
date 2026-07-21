@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, Minus, Trash2, Package, AlertCircle, CheckCircle2, Search, Tag, Ticket, ChevronDown, Clock, Loader2, XCircle, Eye, Inbox, History, X } from "lucide-react";
+import { Plus, Minus, Trash2, Package, AlertCircle, CheckCircle2, Search, Tag, Ticket, ChevronDown, Clock, XCircle, X, History, Inbox, Eye } from "lucide-react";
 import { apiFetch, API_ROUTES } from "../../Config/api";
 import StockBar from "../../Components/StockBar";
-import VistaSolicitud from "./VistaSolicitud";
-import VistaInsumos from "./VistaInsumos";
-import FiltrosToolbar from "../../Components/FiltrosToolbar";
 import { useCardStyles } from "../../Components/Card";
-import Modal from "../../Components/Modal";
 import ModalDetalleInsumo from "../../Components/Inventario/ModalDetalleInsumo";
+import FiltrosToolbar from "../../Components/FiltrosToolbar";
+import VistaSolicitud from "./VistaSolicitud";
+import { useAutoRefresh } from "../../Config/useAutoRefresh";
 
 const PRIORITY_OPTIONS = [
   { value: "Urgente", label: "Urgente", color: "#dc2626", bg: "rgba(220,38,38,0.10)", border: "rgba(220,38,38,0.30)" },
@@ -44,6 +43,15 @@ function SupplyRow({ supply, isAdded, onAdd, animatingId, T, cartQty, onDetail }
       onMouseEnter={e => { if (!isAdded) e.currentTarget.style.background = T.surfaceHover; }}
       onMouseLeave={e => { e.currentTarget.style.background = isAdded ? (T.isDark ? "rgba(37,99,235,0.08)" : "rgba(37,99,235,0.04)") : "transparent"; }}
     >
+      <td className="px-2 py-1.5">
+        <div style={{ width: 32, height: 32, borderRadius: 6, overflow: "hidden",
+            background: T.isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9",
+            border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {supply.imagen_url
+            ? <img src={supply.imagen_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            : <Package size={12} style={{ color: T.textFaint }} />}
+        </div>
+      </td>
       <td className="px-3 py-1.5">
         <div className="flex flex-col gap-0">
           <span className="text-[10px] font-mono select-all" style={{ color: T.textFaint }}>
@@ -133,8 +141,10 @@ function RequestItem({ supply, quantity, onRemove, onChangeQty, T }) {
     <div className="flex items-center gap-2 py-2 px-3 last:border-0 animate-slide-in"
       style={{ borderBottom: `1px solid ${T.border}` }}>
       <div className="w-7 h-7 rounded flex items-center justify-center flex-shrink-0"
-        style={{ background: T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff", border: "1px solid rgba(59,130,246,0.2)" }}>
-        <Package size={12} style={{ color: "#3b82f6" }} />
+        style={{ background: T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff", border: "1px solid rgba(59,130,246,0.2)", overflow: "hidden" }}>
+        {supply.imagen_url
+          ? <img src={supply.imagen_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          : <Package size={12} style={{ color: "#3b82f6" }} />}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-semibold truncate leading-tight" style={{ color: T.text }}>{supply.nombre}</p>
@@ -391,22 +401,35 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   const [justification,   setJustification]   = useState("");
   const [searchQuery,     setSearchQuery]     = useState("");
   const [categoryFilter,  setCategoryFilter]  = useState("Todos");
+  const [estadoFilter,    setEstadoFilter]    = useState("Todos");
+  const [sortBy,          setSortBy]          = useState("nombre");
   const [isLoading,       setIsLoading]       = useState(true);
   const [isSubmitting,    setIsSubmitting]    = useState(false);
   const [resultModal,     setResultModal]     = useState(null);
   const [animatingId,     setAnimatingId]     = useState(null);
-  const [tab,             setTab]             = useState(initialTab || "nueva");
+  const [tab,             setTab]             = useState("nueva");
   const [drawerOpen,      setDrawerOpen]      = useState(false);
-  // eslint-disable-next-line no-unused-vars
-  const [solicitudes,     setSolicitudes]     = useState([]);
-  const [loadingSols,     setLoadingSols]     = useState(false);
-  const [solicitudVer,    setSolicitudVer]    = useState(null);
   const [insumoDetalle,   setInsumoDetalle]   = useState(null);
+  const [solicitudes,     setSolicitudes]     = useState([]);
+  const [solPage,         setSolPage]         = useState(1);
+  const [solPages,        setSolPages]        = useState(1);
+  const [solLimit,        setSolLimit]        = useState(25);
+  const [solTotal,        setSolTotal]        = useState(0);
   const [filtrosSol,      setFiltrosSol]      = useState({ busqueda: "", estatus: "Todos", prioridad: "Todos" });
-  const [paginaSol,       setPaginaSol]       = useState(1);
-  const LIMIT_SOL = 50;
-
-  useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
+  const [cargandoSol,     setCargandoSol]     = useState(false);
+  const [solicitudVer,    setSolicitudVer]    = useState(null);
+  const [statsGlobal, setStatsGlobal] = useState(() => ({
+    total: 0, enProceso: 0, aceptados: 0, rechazados: 0,
+    totalPiezas: 0,
+    prioridades: { Urgente: 0, Alta: 0, Media: 0, Baja: 0 },
+    topInsumos: [],
+    actividadMes: Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(new Date().getFullYear(), new Date().getMonth() - (5 - i), 1);
+      return { mes: d.toLocaleDateString("es-MX", { month: "short" }), count: 0 };
+    }),
+  }));
+  const filtrosSolRef = useRef(filtrosSol);
+  filtrosSolRef.current = filtrosSol;
 
   const requesterName = [usuario.nombre, usuario.ap_paterno, usuario.ap_materno]
     .filter(Boolean).join(" ") || "—";
@@ -419,48 +442,28 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const cargarSolicitudes = useCallback(() => {
-    if (!usuario?.id_empleado) return;
-    setLoadingSols(true);
-    apiFetch(API_ROUTES.SOLICITUDES_EMP(usuario.id_empleado))
-      .then(r => r.json())
-      .then(d => setSolicitudes(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []))
-      .catch(() => {})
-      .finally(() => setLoadingSols(false));
-  }, [usuario?.id_empleado]);
 
-  useEffect(() => { if (tab === "historial") cargarSolicitudes(); }, [tab, cargarSolicitudes]);
-
-  const camposFiltroSol = [
-    { key: "busqueda",  label: "Búsqueda Rápida", type: "search",  placeholder: "Folio..." },
-    { key: "estatus",   label: "Estatus",          type: "select",  opts: ["Todos", "En proceso", "Aceptado", "Rechazado"] },
-    { key: "prioridad", label: "Prioridad",         type: "select",  opts: ["Todos", "Urgente", "Alta", "Media", "Baja"] },
-  ];
-  const limpiarFiltrosSol = () => { setFiltrosSol({ busqueda: "", estatus: "Todos", prioridad: "Todos" }); setPaginaSol(1); };
-  const hayFiltrosSol = filtrosSol.busqueda || filtrosSol.estatus !== "Todos" || filtrosSol.prioridad !== "Todos";
-  const handleFiltroSolChange = (k, v) => { setFiltrosSol(p => ({ ...p, [k]: v })); setPaginaSol(1); };
-
-  const filtradosSol = solicitudes.filter(s => {
-    if (filtrosSol.busqueda && !s.folio_solicitud?.toLowerCase().includes(filtrosSol.busqueda.toLowerCase())) return false;
-    if (filtrosSol.estatus   !== "Todos" && s.estatus   !== filtrosSol.estatus)   return false;
-    if (filtrosSol.prioridad !== "Todos" && s.prioridad !== filtrosSol.prioridad) return false;
-    return true;
-  });
-  const totalPaginasSol = Math.max(1, Math.ceil(filtradosSol.length / LIMIT_SOL));
-  const paginadosSol    = filtradosSol.slice((paginaSol - 1) * LIMIT_SOL, paginaSol * LIMIT_SOL);
-  const irPaginaSol     = p => { if (p >= 1 && p <= totalPaginasSol) setPaginaSol(p); };
-  const fmtSol          = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
 
   const categories = ["Todos", ...Array.from(new Set(
     supplies.map(s => s.nombre_categoria).filter(Boolean)
   ))];
 
-  const filteredSupplies = supplies.filter(s => {
-    if (categoryFilter !== "Todos" && s.nombre_categoria !== categoryFilter) return false;
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return s.nombre?.toLowerCase().includes(q) || s.marca?.toLowerCase().includes(q);
-  });
+  const filteredSupplies = supplies
+    .filter(s => {
+      if (categoryFilter !== "Todos" && s.nombre_categoria !== categoryFilter) return false;
+      if (estadoFilter !== "Todos" && getStockStatus(s.stock) !== estadoFilter) return false;
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return s.nombre?.toLowerCase().includes(q) || s.marca?.toLowerCase().includes(q) || s.modelo?.toLowerCase().includes(q);
+    })
+    .sort((a, b) => {
+      if (sortBy === "nombre")   return a.nombre.localeCompare(b.nombre);
+      if (sortBy === "stock_asc")  return a.stock - b.stock;
+      if (sortBy === "stock_desc") return b.stock - a.stock;
+      return 0;
+    });
+  const hayFiltrosInsumos = searchQuery || categoryFilter !== "Todos" || estadoFilter !== "Todos" || sortBy !== "nombre";
+  const limpiarFiltrosInsumos = () => { setSearchQuery(""); setCategoryFilter("Todos"); setEstadoFilter("Todos"); setSortBy("nombre"); };
 
   const handleAddSupply = useCallback((supplyId) => {
     const supply = supplies.find(s => s.id_insumo === supplyId);
@@ -547,291 +550,489 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   };
 
   const activePriority = PRIORITY_OPTIONS.find(p => p.value === priority);
-  const { card: cardSol, hdr: hdrSol } = useCardStyles(T);
+
+  const PCOLOR_SOL        = { Urgente: "#dc2626", Alta: "#ea580c", Media: "#ca8a04", Baja: "#16a34a" };
+  const ESTATUS_COLOR_SOL = { "En proceso": "#d97706", Aceptado: "#16a34a", Rechazado: "#dc2626" };
+  const ESTATUS_BG_SOL    = { "En proceso": T.isDark ? "rgba(217,119,6,0.13)" : "#fef3c7", Aceptado: T.isDark ? "rgba(22,163,74,0.13)" : "#dcfce7", Rechazado: T.isDark ? "rgba(220,38,38,0.13)" : "#fee2e2" };
+  const fmtSol = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
+  const camposFiltroSol = [
+    { key: "busqueda",  label: "Búsqueda Rápida", type: "search", placeholder: "Folio...", debounce: 300 },
+    { key: "estatus",   label: "Estatus",         type: "select", opts: ["Todos", "En proceso", "Aceptado", "Rechazado"] },
+    { key: "prioridad", label: "Prioridad",        type: "select", opts: ["Todos", "Urgente", "Alta", "Media", "Baja"] },
+  ];
+
+  const cargarSolicitudes = useCallback((f = filtrosSolRef.current, p = 1, l = 25) => {
+    if (!usuario?.id_empleado) return;
+    setCargandoSol(true);
+    const qs = new URLSearchParams({ limit: l, page: p });
+    if (f.busqueda)                             qs.set("busqueda", f.busqueda);
+    if (f.estatus   && f.estatus   !== "Todos") qs.set("estatus",  f.estatus);
+    if (f.prioridad && f.prioridad !== "Todos") qs.set("prioridad",f.prioridad);
+    apiFetch(`/api/solicitudes/empleado/${usuario.id_empleado}?${qs}`)
+      .then(r => r.json())
+      .then(d => {
+        const lista = Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [];
+        setSolicitudes(lista);
+        if (d?.total != null) { setSolTotal(d.total); setSolPages(d.pages || Math.max(1, Math.ceil(d.total / l))); }
+        else { setSolTotal(lista.length); setSolPages(1); }
+      })
+      .catch(() => {})
+      .finally(() => setCargandoSol(false));
+  }, [usuario?.id_empleado]); // eslint-disable-line
+
+  // Stats globales (sin filtro) — carga una vez al abrir el tab
+  useEffect(() => {
+    if (tab !== "historial" || !usuario?.id_empleado) return;
+    apiFetch(`/api/solicitudes/empleado/${usuario.id_empleado}?limit=2000&page=1`)
+      .then(r => r.json())
+      .then(d => {
+        const lista = Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [];
+        // Prioridades
+        const prioridades = { Urgente: 0, Alta: 0, Media: 0, Baja: 0 };
+        lista.forEach(s => { if (prioridades[s.prioridad] !== undefined) prioridades[s.prioridad]++; });
+        // Total piezas
+        const totalPiezas = lista.reduce((sum, s) => sum + (parseInt(s.total_piezas) || 0), 0);
+        // Top insumos (de insumos_nombres concatenados)
+        const conteoInsumos = {};
+        lista.forEach(s => {
+          if (!s.insumos_nombres) return;
+          s.insumos_nombres.split(",").forEach(n => {
+            const nombre = n.trim();
+            if (nombre) conteoInsumos[nombre] = (conteoInsumos[nombre] || 0) + 1;
+          });
+        });
+        const topInsumos = Object.entries(conteoInsumos).sort((a, b) => b[1] - a[1]).slice(0, 4);
+        // Actividad últimos 6 meses
+        const ahora = new Date();
+        const actividadMes = Array.from({ length: 6 }, (_, i) => {
+          const d = new Date(ahora.getFullYear(), ahora.getMonth() - (5 - i), 1);
+          const mes = d.toLocaleDateString("es-MX", { month: "short" });
+          const count = lista.filter(s => {
+            const f = new Date(s.fecha);
+            return f.getMonth() === d.getMonth() && f.getFullYear() === d.getFullYear();
+          }).length;
+          return { mes, count };
+        });
+        setStatsGlobal({
+          total: lista.length, enProceso: lista.filter(s => s.estatus === "En proceso").length,
+          aceptados: lista.filter(s => s.estatus === "Aceptado").length,
+          rechazados: lista.filter(s => s.estatus === "Rechazado").length,
+          totalPiezas, prioridades, topInsumos, actividadMes,
+        });
+      })
+      .catch(() => {});
+  }, [tab, usuario?.id_empleado]); // eslint-disable-line
+
+  const filtrosSolStr = JSON.stringify(filtrosSol);
+  useEffect(() => {
+    if (tab === "historial") cargarSolicitudes(filtrosSol, solPage, solLimit);
+  }, [tab, filtrosSolStr, solPage, solLimit]); // eslint-disable-line
+
+  useAutoRefresh(() => { if (tab === "historial") cargarSolicitudes(filtrosSolRef.current, solPage, solLimit); }, 30000, [solPage, solLimit]);
+
+  const hayFiltrosSol = filtrosSol.busqueda || filtrosSol.estatus !== "Todos" || filtrosSol.prioridad !== "Todos";
+  const { total: totalSol, enProceso: pendientesSol, aceptados: aceptadosSol, rechazados: rechazadosSol, totalPiezas, prioridades, topInsumos, actividadMes } = statsGlobal;
+  const tasaSol      = (aceptadosSol + rechazadosSol) > 0 ? Math.round(aceptadosSol / (aceptadosSol + rechazadosSol) * 100) : 0;
+  const tasaColorSol = tasaSol >= 75 ? "#16a34a" : tasaSol >= 50 ? "#ca8a04" : "#dc2626";
+  const maxActMes    = Math.max(...(actividadMes.map(m => m.count)), 1);
+
+  const { card, hdr } = useCardStyles(T);
 
   if (solicitudVer) return (
-    <VistaSolicitud T={T} id_solicitud={solicitudVer.id_solicitud} onBack={() => setSolicitudVer(null)} />
+    <VistaSolicitud T={T} id_solicitud={solicitudVer.id_solicitud} onBack={() => { setSolicitudVer(null); cargarSolicitudes(filtrosSolRef.current, solPage, solLimit); }} />
   );
 
   return (
-    <div style={{ background: T.bg }}>
-      <div style={{ maxWidth: "1400px", width: "100%", margin: "0 auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "10px" }}>
+    <div style={{ background: T.bg, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "12px 16px", gap: "10px", maxWidth: "1400px", width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
 
-        {/* Pestañas */}
-        <div className="flex gap-1 rounded-xl p-1 w-fit"
+        {/* Pesta\u00f1as */}
+        <div className="flex gap-1 rounded-xl p-1 w-fit flex-shrink-0"
           style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
           {[
-            { id: "nueva",     label: "Nueva Solicitud",  icon: Plus    },
-            { id: "historial", label: "Mis Solicitudes",   icon: History },
+            { id: "nueva",     label: "Nueva Solicitud", icon: Plus    },
+            { id: "historial", label: "Mis Solicitudes",  icon: History },
           ].map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
-              style={{
-                background: tab === id ? "#2563eb" : "transparent",
-                color:      tab === id ? "#fff"    : T.textMuted,
-              }}>
+              style={{ background: tab === id ? "#2563eb" : "transparent", color: tab === id ? "#fff" : T.textMuted }}>
               <Icon size={13} />{label}
             </button>
           ))}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px", flex: 1, minHeight: 0 }}
-          className="lg:flex-row lg:items-start">
+        {tab === "historial" && (
+          <div className="flex flex-col gap-1.5 flex-1 min-h-0" style={{ overflowY: "auto", overflowX: "hidden" }}>
 
-          {/* Columna izquierda */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, minWidth: 0, paddingBottom: tab === "nueva" ? 80 : 0 }}>
+            {/* ── MÉTRICAS ── */}
+            <div className="grid grid-cols-12 gap-1.5" style={{ flexShrink: 0 }}>
 
-            {/* Historial */}
-            {tab === "historial" && (
-              <div className="flex flex-col gap-2">
-                <FiltrosToolbar campos={camposFiltroSol} valores={filtrosSol} onChange={handleFiltroSolChange} onLimpiar={limpiarFiltrosSol} T={T} />
-
-                <div className="rounded-xl overflow-hidden flex flex-col" style={{ ...cardSol, flex: "1 1 0", minHeight: "300px" }}>
-                  <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={hdrSol}>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-0.5 h-3.5 rounded-full" style={{ background: T.orange }} />
-                      <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Mis Solicitudes</p>
+              {/* Tasa de aceptación — card grande */}
+              <div className="col-span-6 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden relative" style={card}>
+                <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+                  style={{ background: `radial-gradient(circle at 80% 20%, ${tasaColorSol}, transparent 60%)` }} />
+                <div className="h-0.5" style={{ background: `linear-gradient(90deg,${tasaColorSol},${tasaColorSol}33)` }} />
+                <div className="p-2 sm:p-3 flex flex-col gap-1 sm:gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <div className="w-1 h-2.5 rounded-full" style={{ background: tasaColorSol }} />
+                      <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Tasa Aceptación</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {loadingSols && (
-                        <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.orange} strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                      )}
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
-                        style={{ background: T.bg, color: T.textMuted, border: `1px solid ${T.border}` }}>
-                        {filtradosSol.length} resultado{filtradosSol.length !== 1 ? "s" : ""}{totalPaginasSol > 1 ? ` · pág. ${paginaSol}/${totalPaginasSol}` : ""}
-                      </span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{ background: `${tasaColorSol}15`, color: tasaColorSol, border: `1px solid ${tasaColorSol}30` }}>
+                      {tasaSol >= 75 ? "Excelente" : tasaSol >= 50 ? "Regular" : "Bajo"}
+                    </span>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <span className="text-2xl font-black leading-none" style={{ color: tasaColorSol }}>{tasaSol}%</span>
+                    <div className="flex flex-col gap-1 mb-0.5 flex-1">
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: T.border }}>
+                        <div className="h-full rounded-full transition-all duration-1000"
+                          style={{ width: `${tasaSol}%`, background: `linear-gradient(90deg,${tasaColorSol},${tasaColorSol}88)`, boxShadow: `0 0 6px ${tasaColorSol}55` }} />
+                      </div>
                     </div>
                   </div>
-
-                  {/* Móvil */}
-                  <div className="flex flex-col gap-2 p-3 sm:hidden" style={{ overflowY: "auto", flex: "1 1 0", minHeight: 0 }}>
-                    {paginadosSol.length === 0
-                      ? <div className="flex flex-col items-center justify-center py-8 gap-2">
-                          <Inbox size={20} style={{ color: T.textFaint }} />
-                          <p className="text-xs font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "Sin solicitudes"}</p>
-                        </div>
-                      : paginadosSol.map(sol => {
-                          const m = ESTATUS_META[sol.estatus] || ESTATUS_META["Pendiente"];
-                          return (
-                            <div key={sol.id_solicitud}
-                              className="rounded-xl p-3 flex flex-col gap-2 active:scale-[0.98] transition-all cursor-pointer"
-                              style={{ background: T.isDark ? "rgba(255,255,255,0.04)" : T.surfaceAlt, border: `1px solid ${T.border}` }}
-                              onClick={() => setSolicitudVer(sol)}>
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="font-mono text-[11px] font-black" style={{ color: T.orange }}>{sol.folio_solicitud}</span>
-                                <BadgeEstatus estatus={sol.estatus} />
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-bold" style={{ color: ESTATUS_META[sol.prioridad]?.color || T.textMuted }}>{sol.prioridad || "—"}</span>
-                                <span className="text-[11px]" style={{ color: T.textFaint }}>{fmtSol(sol.fecha)}</span>
-                              </div>
-                            </div>
-                          );
-                        })
-                    }
-                  </div>
-
-                  {/* Desktop */}
-                  <div className="hidden sm:block" style={{ overflowX: "auto", overflowY: "auto", flex: "1 1 0", minHeight: 0 }}>
-                    <table className="w-full border-collapse" style={{ minWidth: "500px" }}>
-                      <thead className="sticky top-0 z-10">
-                        <tr style={{ background: T.isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}>
-                          {["Folio", "Prioridad", "Estatus", "Sucursal", "Fecha", ""].map((col, i) => (
-                            <th key={i} className="text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest whitespace-nowrap"
-                              style={{ color: T.textMuted, borderBottom: `1px solid ${T.border}` }}>
-                              {col}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paginadosSol.length === 0
-                          ? <tr><td colSpan={5}>
-                              <div className="flex flex-col items-center justify-center py-12 gap-2">
-                                <Inbox size={22} style={{ color: T.textFaint }} />
-                                <p className="text-xs font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "Sin solicitudes registradas"}</p>
-                              </div>
-                            </td></tr>
-                          : paginadosSol.map((sol, i) => {
-                              const bgRow = i % 2 === 0 ? (T.isDark ? "#141720" : T.surface) : (T.isDark ? "#1c2030" : T.surfaceAlt);
-                              const m = ESTATUS_META[sol.estatus] || ESTATUS_META["Pendiente"];
-                              const PCOLOR = { Urgente: "#dc2626", Alta: "#ea580c", Media: "#ca8a04", Baja: "#16a34a" };
-                              return (
-                                <tr key={sol.id_solicitud} className="cursor-pointer transition-colors"
-                                  style={{ background: bgRow, borderBottom: `1px solid ${T.border}` }}
-                                  onMouseEnter={e => e.currentTarget.style.background = T.isDark ? "rgba(244,121,32,0.05)" : "rgba(244,121,32,0.03)"}
-                                  onMouseLeave={e => e.currentTarget.style.background = bgRow}
-                                  onClick={() => setSolicitudVer(sol)}>
-                                  <td className="px-3 py-2 font-mono text-[10px] font-bold" style={{ color: T.orange }}>{sol.folio_solicitud}</td>
-                                  <td className="px-3 py-2">
-                                    <span className="flex items-center gap-1 text-[11px] font-bold">
-                                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: PCOLOR[sol.prioridad] || "#94a3b8" }} />
-                                      <span style={{ color: PCOLOR[sol.prioridad] || T.textMuted }}>{sol.prioridad || "—"}</span>
-                                    </span>
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <BadgeEstatus estatus={sol.estatus} />
-                                  </td>
-                                  <td className="px-3 py-2 text-[11px] whitespace-nowrap" style={{ color: T.textMuted }}>{sol.nombre_sucursal || "—"}</td>
-                                  <td className="px-3 py-2 text-[11px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmtSol(sol.fecha)}</td>
-                                  <td className="px-3 py-2">
-                                    <button onClick={e => { e.stopPropagation(); setSolicitudVer(sol); }}
-                                      className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-all hover:brightness-110 active:scale-95"
-                                      style={{ color: T.orange, background: "rgba(244,121,32,0.08)", border: "1px solid rgba(244,121,32,0.2)" }}>
-                                      <Eye size={10} /> Ver
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })
-                        }
-                      </tbody>
-                    </table>
+                  <div className="pt-1 flex items-center justify-between" style={{ borderTop: `1px solid ${T.border}` }}>
+                    <span className="text-[10px]" style={{ color: T.textFaint }}>Piezas totales</span>
+                    <span className="text-[10px] font-black" style={{ color: tasaColorSol }}>{totalPiezas} pza.</span>
                   </div>
                 </div>
-
-                {/* Paginación */}
-                {totalPaginasSol > 1 && (
-                  <div className="flex items-center justify-center gap-2 py-2">
-                    <button onClick={() => irPaginaSol(1)} disabled={paginaSol === 1}
-                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
-                      style={{ background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>«</button>
-                    <button onClick={() => irPaginaSol(paginaSol - 1)} disabled={paginaSol === 1}
-                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
-                      style={{ background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>‹ Anterior</button>
-                    {Array.from({ length: Math.min(5, totalPaginasSol) }, (_, i) => {
-                      const start = Math.max(1, Math.min(paginaSol - 2, totalPaginasSol - 4));
-                      const p = start + i;
-                      if (p > totalPaginasSol) return null;
-                      return (
-                        <button key={p} onClick={() => irPaginaSol(p)}
-                          className="w-8 h-8 rounded-lg text-[11px] font-bold transition-all hover:brightness-110"
-                          style={{ background: p === paginaSol ? T.orange : (T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt), color: p === paginaSol ? "#fff" : T.textMuted, border: `1px solid ${p === paginaSol ? T.orange : T.border}` }}>
-                          {p}
-                        </button>
-                      );
-                    })}
-                    <button onClick={() => irPaginaSol(paginaSol + 1)} disabled={paginaSol === totalPaginasSol}
-                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
-                      style={{ background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>Siguiente ›</button>
-                    <button onClick={() => irPaginaSol(totalPaginasSol)} disabled={paginaSol === totalPaginasSol}
-                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-30"
-                      style={{ background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>»</button>
-                  </div>
-                )}
               </div>
-            )}
 
-            {/* Tab catálogo */}
-            {false && (
-              <VistaInsumos T={T} />
-            )}
+              {/* KPIs numéricos */}
+              <div className="col-span-6 sm:col-span-6 lg:col-span-3 grid grid-cols-2 gap-1.5">
+                {[
+                  { label: "Total",      val: totalSol,      color: T.orange,  sub: `${pendientesSol} activas` },
+                  { label: "En Proceso", val: pendientesSol, color: "#d97706", sub: `${Math.round(pendientesSol / Math.max(totalSol,1) * 100)}% del total` },
+                  { label: "Aceptadas",  val: aceptadosSol,  color: "#16a34a", sub: `${tasaSol}% tasa` },
+                  { label: "Rechazadas", val: rechazadosSol, color: "#dc2626", sub: `${Math.round(rechazadosSol / Math.max(totalSol,1) * 100)}% del total` },
+                ].map(({ label, val, color, sub }) => (
+                  <div key={label} className="rounded-lg p-1.5 sm:p-2 flex flex-col gap-0.5 sm:gap-1 relative overflow-hidden" style={card}>
+                    <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg,${color},${color}33)` }} />
+                    <p className="text-[9px] font-black uppercase tracking-wider leading-tight" style={{ color: T.textMuted }}>{label}</p>
+                    <span className="text-xl font-black leading-none" style={{ color }}>{val}</span>
+                    <div className="h-1 rounded-full overflow-hidden" style={{ background: T.border }}>
+                      <div className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${totalSol > 0 ? Math.round(val / totalSol * 100) : 0}%`, background: color, boxShadow: `0 0 4px ${color}44` }} />
+                    </div>
+                    <span className="text-[10px] font-semibold" style={{ color }}>{sub}</span>
+                  </div>
+                ))}
+              </div>
 
-            {/* Tab nueva */}
-            {tab === "nueva" && (<>
-              {/* Barra búsqueda + categorías */}
-              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-                {/* Búsqueda */}
-                <div style={{ position: "relative" }}>
-                  <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: T.textFaint, pointerEvents: "none" }} />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Buscar insumo por nombre o marca…"
-                    style={{ width: "100%", paddingLeft: 32, paddingRight: 12, height: 36, borderRadius: 8, fontSize: 12, outline: "none", background: T.surfaceAlt, border: `1px solid ${T.border}`, color: T.text, boxSizing: "border-box" }}
-                    onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.background = T.surface; }}
-                    onBlur={e  => { e.target.style.borderColor = T.border;  e.target.style.background = T.surfaceAlt; }}
-                  />
+              {/* Por Prioridad */}
+              <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden" style={{ ...card, flexShrink: 0 }}>
+                <div className="px-3 py-2 flex items-center gap-1.5" style={hdr}>
+                  <div className="w-1 h-3 rounded-full" style={{ background: T.orange }} />
+                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Por Prioridad</p>
                 </div>
-                {/* Categorías + contador */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                  {categories.map(cat => (
-                    <button key={cat} onClick={() => setCategoryFilter(cat)}
-                      style={{
-                        padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
-                        background: categoryFilter === cat ? "#2563eb" : T.surfaceAlt,
-                        color:      categoryFilter === cat ? "#fff"    : T.textMuted,
-                        border:     categoryFilter === cat ? "1px solid #2563eb" : `1px solid ${T.border}`,
-                        cursor: "pointer", whiteSpace: "nowrap",
-                      }}>
-                      {cat}
-                    </button>
-                  ))}
-                  <span style={{ fontSize: 11, fontFamily: "monospace", color: T.textFaint, marginLeft: "auto", whiteSpace: "nowrap" }}>
-                    {filteredSupplies.length} resultado{filteredSupplies.length !== 1 ? "s" : ""}
+                <div className="p-3 flex flex-col gap-2">
+                  {[{ l: "Urgente", c: "#dc2626" }, { l: "Alta", c: "#ea580c" }, { l: "Media", c: "#ca8a04" }, { l: "Baja", c: "#16a34a" }].map(({ l, c }) => {
+                    const n   = prioridades[l] || 0;
+                    const pct = totalSol > 0 ? Math.round(n / totalSol * 100) : 0;
+                    return (
+                      <div key={l} className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: c, boxShadow: `0 0 4px ${c}88` }} />
+                        <span className="text-[11px] font-semibold w-14 flex-shrink-0" style={{ color: T.text }}>{l}</span>
+                        <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: T.isDark ? "rgba(255,255,255,0.06)" : `${c}15` }}>
+                          <div className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${pct > 0 ? Math.max(pct, 5) : 0}%`, background: c, boxShadow: `0 0 4px ${c}55` }} />
+                        </div>
+                        <span className="text-[11px] font-black w-5 text-right flex-shrink-0" style={{ color: c }}>{n}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Top insumos + actividad mensual */}
+              <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden" style={{ ...card, flexShrink: 0 }}>
+                <div className="px-3 py-2 flex items-center gap-1.5" style={hdr}>
+                  <div className="w-1 h-3 rounded-full" style={{ background: T.orange }} />
+                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Insumos Frecuentes</p>
+                </div>
+                <div className="p-3 flex flex-col gap-2">
+                  {topInsumos.length === 0
+                    ? <p className="text-[9px]" style={{ color: T.textFaint }}>Sin datos</p>
+                    : topInsumos.map(([nombre, n], idx) => {
+                        const colors = [T.orange, "#3b82f6", "#8b5cf6", "#16a34a"];
+                        const maxN   = topInsumos[0][1];
+                        return (
+                          <div key={nombre} className="flex items-center gap-2">
+                            <span className="text-[10px] font-black w-3 flex-shrink-0 text-center" style={{ color: colors[idx] }}>#{idx + 1}</span>
+                            <span className="text-[11px] font-semibold flex-1 truncate" style={{ color: T.text }} title={nombre}>{nombre}</span>
+                            <div className="w-12 h-2 rounded-full overflow-hidden flex-shrink-0" style={{ background: T.border }}>
+                              <div className="h-full rounded-full transition-all duration-700"
+                                style={{ width: `${Math.round(n / maxN * 100)}%`, background: colors[idx], boxShadow: `0 0 4px ${colors[idx]}55` }} />
+                            </div>
+                            <span className="text-[11px] font-black w-4 text-right flex-shrink-0" style={{ color: colors[idx] }}>{n}</span>
+                          </div>
+                        );
+                      })
+                  }
+                </div>
+                {/* Mini gráfica actividad mensual */}
+                <div className="px-3 pb-3">
+                  <p className="text-[9px] font-black uppercase tracking-widest mb-1.5" style={{ color: T.textFaint }}>Actividad últimos 6 meses</p>
+                  <div className="flex items-end gap-1" style={{ height: 28 }}>
+                    {actividadMes.map(({ mes, count }) => (
+                      <div key={mes} className="flex flex-col items-center gap-0.5 flex-1">
+                        <div className="w-full rounded-sm transition-all duration-700"
+                          style={{ height: `${count > 0 ? Math.max(Math.round(count / maxActMes * 22), 3) : 2}px`, background: count > 0 ? T.orange : T.border }} />
+                        <span className="text-[8px]" style={{ color: T.textFaint }}>{mes}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Filtros */}
+            <div style={{ flexShrink: 0 }}>
+              <FiltrosToolbar
+                campos={camposFiltroSol}
+                valores={filtrosSol}
+                onChange={(k, v) => { setFiltrosSol(p => ({ ...p, [k]: v })); setSolPage(1); }}
+                onLimpiar={() => { setFiltrosSol({ busqueda: "", estatus: "Todos", prioridad: "Todos" }); setSolPage(1); }}
+                T={T}
+              />
+            </div>
+
+            {/* Tabla */}
+            <div className="rounded-xl overflow-hidden flex flex-col" style={{ ...card, flex: "1 1 0", minHeight: "320px" }}>
+              <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={hdr}>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-0.5 h-3.5 rounded-full" style={{ background: T.orange }} />
+                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Mis Solicitudes</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {cargandoSol && (
+                    <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.orange} strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                  )}
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: T.bg, color: T.textMuted, border: `1px solid ${T.border}` }}>
+                    {solTotal} resultado{solTotal !== 1 ? "s" : ""}
                   </span>
                 </div>
               </div>
 
-              {/* Vista móvil — cards (< sm) */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }} className="sm:hidden">
-                {isLoading ? (
-                  <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
-                    <svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.orange} strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-                  </div>
-                ) : filteredSupplies.length === 0 ? (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 0", gap: 8, color: T.textFaint }}>
-                    <Package size={26} />
-                    <span style={{ fontSize: 12, fontWeight: 600 }}>Sin resultados</span>
-                  </div>
-                ) : filteredSupplies.map(supply => {
-                  const isAdded = !!requestCart[supply.id_insumo];
-                  const atMax   = (requestCart[supply.id_insumo] || 0) >= supply.stock;
-                  const badge   = STATUS_BADGE[supply.stock === 0 ? "Agotado" : supply.stock < 5 ? "Bajo" : "Disponible"];
-                  return (
-                    <div key={supply.id_insumo}
-                      style={{
-                        background: T.surface,
-                        border: `1px solid ${isAdded ? "rgba(37,99,235,0.4)" : T.border}`,
-                        borderRadius: 10, padding: 12,
-                        display: "flex", flexDirection: "column", gap: 8,
-                      }}>
-                      {/* Fila superior: nombre + badge */}
-                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
-                          <button onClick={() => setInsumoDetalle(supply)}
-                            style={{ fontSize: 12, fontWeight: 700, textAlign: "left", color: T.text, background: "none", border: "none", padding: 0, cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {supply.nombre}
-                          </button>
-                          {(supply.marca || supply.modelo) && (
-                            <span style={{ fontSize: 10, color: T.textFaint }}>{[supply.marca, supply.modelo].filter(Boolean).join(" · ")}</span>
-                          )}
-                        </div>
-                        <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}>
-                          {badge.label}
+              {/* Cards móvil */}
+              <div className="flex flex-col gap-2 p-2 lg:hidden" style={{ overflowY: "auto", flex: "1 1 0", minHeight: 0 }}>
+                {solicitudes.length === 0
+                  ? <div className="flex flex-col items-center justify-center py-8 gap-2">
+                      <Inbox size={20} style={{ color: T.textFaint }} />
+                      <p className="text-xs font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "No hay solicitudes"}</p>
+                    </div>
+                  : solicitudes.map(s => (
+                    <div key={s.id_solicitud}
+                      className="rounded-xl p-3 flex flex-col gap-2 cursor-pointer active:scale-[0.98] transition-all"
+                      style={{ background: T.isDark ? "rgba(255,255,255,0.04)" : T.surfaceAlt, border: `1px solid ${T.border}` }}
+                      onClick={() => setSolicitudVer(s)}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-[11px] font-black" style={{ color: T.orange }}>{s.folio_solicitud}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                          style={{ background: ESTATUS_BG_SOL[s.estatus], color: ESTATUS_COLOR_SOL[s.estatus] }}>
+                          {s.estatus}
                         </span>
                       </div>
-                      {/* Fila inferior: stock + acción */}
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                        <div style={{ flex: 1 }}><StockBar stock={supply.stock} maxStock={100} /></div>
-                        {supply.stock === 0 ? (
-                          <span style={{ fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 6, background: T.surfaceAlt, color: T.textFaint, border: `1px solid ${T.border}`, flexShrink: 0 }}>Agotado</span>
-                        ) : isAdded ? (
-                          <button onClick={() => !atMax && handleAddSupply(supply.id_insumo)} disabled={atMax}
-                            style={{ fontSize: 10, fontWeight: 700, padding: "4px 10px", borderRadius: 6, flexShrink: 0, background: T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.3)", cursor: atMax ? "not-allowed" : "pointer", opacity: atMax ? 0.4 : 1 }}>
-                            {atMax ? `Máx (${supply.stock})` : "+ Otro"}
-                          </button>
-                        ) : (
-                          <button onClick={() => handleAddSupply(supply.id_insumo)}
-                            style={{ fontSize: 10, fontWeight: 700, padding: "4px 10px", borderRadius: 6, flexShrink: 0, background: "#2563eb", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                            <Plus size={10} /> Agregar
-                          </button>
-                        )}
+                      <p className="text-[11px]" style={{ color: T.textMuted }}>
+                        {s.insumos_nombres ? s.insumos_nombres.split(",").slice(0,2).join(", ") + (s.insumos_nombres.split(",").length > 2 ? "…" : "") : "—"}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1 text-[11px] font-bold">
+                          <span className="w-2 h-2 rounded-full" style={{ background: PCOLOR_SOL[s.prioridad] || "#94a3b8" }} />
+                          <span style={{ color: PCOLOR_SOL[s.prioridad] || T.textMuted }}>{s.prioridad}</span>
+                        </span>
+                        <span className="text-[11px]" style={{ color: T.textFaint }}>{fmtSol(s.fecha)}</span>
                       </div>
                     </div>
-                  );
-                })}
+                  ))
+                }
               </div>
 
-              {/* Vista desktop — tabla (>= sm) */}
-              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, overflow: "hidden", flexDirection: "column", maxHeight: "clamp(300px, 60vh, calc(100vh - 280px))" }} className="hidden sm:flex">
-                <div style={{ overflowX: "auto", overflowY: "auto", flex: 1 }}>
-                  <table className="w-full text-left border-collapse" style={{ minWidth: "520px" }}>
+              {/* Tabla desktop */}
+              <div className="hidden lg:flex lg:flex-col" style={{ overflowY: "auto", flex: "1 1 0", minHeight: 0 }}>
+                <table className="w-full border-collapse" style={{ minWidth: "640px" }}>
+                  <thead className="sticky top-0 z-10">
+                    <tr style={{ background: T.isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}>
+                      {["Folio", "Insumos", "Piezas", "Prioridad", "Estatus", "Fecha", ""].map((col, i) => (
+                        <th key={i} className="text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest whitespace-nowrap"
+                          style={{ color: T.textMuted, borderBottom: `1px solid ${T.border}` }}>
+                          {col}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {solicitudes.length === 0
+                      ? <tr><td colSpan={7}>
+                          <div className="flex flex-col items-center justify-center py-12 gap-2">
+                            <Inbox size={22} style={{ color: T.textFaint }} />
+                            <p className="text-xs font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "No hay solicitudes registradas"}</p>
+                          </div>
+                        </td></tr>
+                      : solicitudes.map((s, i) => {
+                          const bgRow = i % 2 === 0 ? (T.isDark ? "#141720" : T.surface) : (T.isDark ? "#1c2030" : T.surfaceAlt);
+                          return (
+                            <tr key={s.id_solicitud} className="cursor-pointer transition-colors"
+                              style={{ background: bgRow, borderBottom: `1px solid ${T.border}` }}
+                              onMouseEnter={e => e.currentTarget.style.background = T.isDark ? "rgba(244,121,32,0.05)" : "rgba(244,121,32,0.03)"}
+                              onMouseLeave={e => e.currentTarget.style.background = bgRow}
+                              onClick={() => setSolicitudVer(s)}>
+                              <td className="px-3 py-2 font-mono text-[10px] font-bold" style={{ color: T.orange }}>{s.folio_solicitud}</td>
+                              <td className="px-3 py-2 text-[11px]" style={{ maxWidth: 220 }}>
+                                <span className="block truncate" style={{ color: T.text }}>
+                                  {s.insumos_nombres || "—"}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-[11px] font-bold" style={{ color: T.textMuted }}>{s.total_piezas ?? "—"}</td>
+                              <td className="px-3 py-2">
+                                <span className="flex items-center gap-1 text-[11px] font-bold">
+                                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: PCOLOR_SOL[s.prioridad] || "#94a3b8" }} />
+                                  <span style={{ color: PCOLOR_SOL[s.prioridad] || T.textMuted }}>{s.prioridad}</span>
+                                </span>
+                              </td>
+                              <td className="px-3 py-2">
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold"
+                                  style={{ background: ESTATUS_BG_SOL[s.estatus], color: ESTATUS_COLOR_SOL[s.estatus] }}>
+                                  {s.estatus}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-[11px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmtSol(s.fecha)}</td>
+                              <td className="px-3 py-2">
+                                <button onClick={e => { e.stopPropagation(); setSolicitudVer(s); }}
+                                  className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-all hover:brightness-110 active:scale-95"
+                                  style={{ color: T.orange, background: "rgba(244,121,32,0.08)", border: "1px solid rgba(244,121,32,0.2)" }}>
+                                  <Eye size={10} /> Ver
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Paginación */}
+              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2" style={{ borderTop: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
+                <div className="flex items-center gap-2">
+                  <button disabled={solPage <= 1 || cargandoSol} onClick={() => setSolPage(p => Math.max(1, p - 1))}
+                    className="px-2 py-1 rounded border text-xs" style={{ borderColor: T.border, background: T.surfaceAlt, color: T.text }}>Anterior</button>
+                  <button disabled={solPage >= solPages || cargandoSol} onClick={() => setSolPage(p => Math.min(solPages, p + 1))}
+                    className="px-2 py-1 rounded border text-xs" style={{ borderColor: T.border, background: T.surfaceAlt, color: T.text }}>Siguiente</button>
+                  <span className="text-[11px]" style={{ color: T.textMuted }}>Página {solPage} de {solPages}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label style={{ color: T.textMuted, fontSize: 10 }}>Mostrar</label>
+                  <select value={solLimit} onChange={e => { setSolLimit(parseInt(e.target.value, 10)); setSolPage(1); }}
+                    style={{ padding: "4px", borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.text }}>
+                    {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {tab === "nueva" && (
+          <div style={{ display: "flex", gap: 10, flex: 1, minHeight: 0, overflow: "hidden" }}>
+
+          {/* Columna izquierda */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>
+            <>
+              {/* Barra de filtros */}
+              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10,
+                  padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+
+                {/* Fila 1: búsqueda + estado + ordenar + limpiar */}
+                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  {/* Búsqueda */}
+                  <div style={{ position: "relative", flex: "1 1 180px", minWidth: 140 }}>
+                    <Search size={13} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: T.textFaint, pointerEvents: "none" }} />
+                    <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="Buscar por nombre, marca o modelo…"
+                      style={{ width: "100%", paddingLeft: 28, paddingRight: searchQuery ? 28 : 10, height: 32, borderRadius: 7,
+                          fontSize: 12, outline: "none", background: T.surfaceAlt, border: `1px solid ${T.border}`,
+                          color: T.text, boxSizing: "border-box" }}
+                      onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.background = T.surface; }}
+                      onBlur={e  => { e.target.style.borderColor = T.border;  e.target.style.background = T.surfaceAlt; }}
+                    />
+                    {searchQuery && (
+                      <button onClick={() => setSearchQuery("")}
+                        style={{ position: "absolute", right: 7, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: T.textFaint, padding: 0, display: "flex" }}>
+                        <X size={11} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Estado */}
+                  <select value={estadoFilter} onChange={e => setEstadoFilter(e.target.value)}
+                    style={{ height: 32, paddingLeft: 8, paddingRight: 8, borderRadius: 7, fontSize: 11, fontWeight: 600,
+                        border: `1px solid ${estadoFilter !== "Todos" ? "#3b82f6" : T.border}`,
+                        background: estadoFilter !== "Todos" ? (T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff") : T.surfaceAlt,
+                        color: estadoFilter !== "Todos" ? "#3b82f6" : T.textMuted,
+                        outline: "none", cursor: "pointer" }}>
+                    <option value="Todos">Estado: Todos</option>
+                    <option value="Disponible">✓ Disponible</option>
+                    <option value="Bajo">⚠ Stock Bajo</option>
+                    <option value="Agotado">✕ Agotado</option>
+                  </select>
+
+                  {/* Ordenar */}
+                  <select value={sortBy} onChange={e => setSortBy(e.target.value)}
+                    style={{ height: 32, paddingLeft: 8, paddingRight: 8, borderRadius: 7, fontSize: 11, fontWeight: 600,
+                        border: `1px solid ${sortBy !== "nombre" ? "#3b82f6" : T.border}`,
+                        background: sortBy !== "nombre" ? (T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff") : T.surfaceAlt,
+                        color: sortBy !== "nombre" ? "#3b82f6" : T.textMuted,
+                        outline: "none", cursor: "pointer" }}>
+                    <option value="nombre">Ordenar: A–Z</option>
+                    <option value="stock_desc">Stock: Mayor</option>
+                    <option value="stock_asc">Stock: Menor</option>
+                  </select>
+
+                  {/* Limpiar */}
+                  {hayFiltrosInsumos && (
+                    <button onClick={limpiarFiltrosInsumos}
+                      style={{ height: 32, paddingLeft: 10, paddingRight: 10, borderRadius: 7, fontSize: 11, fontWeight: 700,
+                          background: T.isDark ? "rgba(239,68,68,0.12)" : "#fef2f2",
+                          color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)",
+                          cursor: "pointer", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
+                      <X size={10} /> Limpiar
+                    </button>
+                  )}
+
+                  <span style={{ fontSize: 11, fontFamily: "monospace", color: T.textFaint, marginLeft: "auto", whiteSpace: "nowrap" }}>
+                    {filteredSupplies.length} resultado{filteredSupplies.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                {/* Fila 2: chips de categoría */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center" }}>
+                  {categories.map(cat => (
+                    <button key={cat} onClick={() => setCategoryFilter(cat)}
+                      style={{ padding: "2px 9px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                          background: categoryFilter === cat ? "#2563eb" : T.surfaceAlt,
+                          color:      categoryFilter === cat ? "#fff"    : T.textMuted,
+                          border:     categoryFilter === cat ? "1px solid #2563eb" : `1px solid ${T.border}`,
+                          cursor: "pointer", whiteSpace: "nowrap" }}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tabla de insumos */}
+              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, overflow: "hidden", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+                <div style={{ overflowX: "auto", overflowY: "auto", flex: 1, minHeight: 0 }}>
+                  <table className="w-full text-left border-collapse" style={{ minWidth: "420px" }}>
                     <thead>
                       <tr style={{ background: T.surfaceAlt, position: "sticky", top: 0, zIndex: 10 }}>
-                        {["ID / Nombre", "Categoría", "Stock Actual", "Estado", "Acción"].map(col => (
-                          <th key={col} style={{ padding: "8px 12px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap", color: T.textMuted, borderBottom: `1px solid ${T.border}` }}>
+                        {["Img", "Insumo", "Categoría", "Stock", "Estado", "Acción"].map(col => (
+                          <th key={col} style={{ padding: "8px 10px", fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+                              letterSpacing: "0.06em", whiteSpace: "nowrap", color: T.textMuted,
+                              borderBottom: `1px solid ${T.border}` }}>
                             {col}
                           </th>
                         ))}
@@ -850,76 +1051,66 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: T.textFaint }}>
                             <Package size={28} />
                             <span style={{ fontSize: 13, fontWeight: 600 }}>Sin resultados</span>
-                            <span style={{ fontSize: 11 }}>Intenta con otro filtro o búsqueda</span>
                           </div>
                         </td></tr>
                       ) : (
                         filteredSupplies.map(supply => (
-                          <SupplyRow
-                            key={supply.id_insumo}
-                            supply={supply}
+                          <SupplyRow key={supply.id_insumo} supply={supply}
                             isAdded={!!requestCart[supply.id_insumo]}
-                            onAdd={handleAddSupply}
-                            animatingId={animatingId}
+                            onAdd={handleAddSupply} animatingId={animatingId}
                             cartQty={requestCart[supply.id_insumo] || 0}
-                            onDetail={setInsumoDetalle}
-                            T={T}
-                          />
+                            onDetail={setInsumoDetalle} T={T} />
                         ))
                       )}
                     </tbody>
                   </table>
                 </div>
               </div>
-            </>)}
+              </>
           </div>
 
-          {/* Columna derecha — panel (solo desktop) */}
-          <div className="hidden lg:block lg:sticky lg:top-4" style={{ width: "300px", flexShrink: 0 }}>
-            <div className="rounded-xl overflow-hidden"
-              style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+          {/* Columna derecha — panel solicitud, oculto en móvil (<768px) */}
+          <div className="hidden md:flex" style={{ width: 300, flexShrink: 0, alignSelf: "flex-start", flexDirection: "column" }}>
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
               {/* Header panel */}
-              <div className="px-4 py-3 flex items-center justify-between"
-                style={{ background: T.isDark ? T.surfaceAlt : "#1e3a5f" }}>
-                <div className="flex items-center gap-2">
-                  <Ticket size={14} style={{ color: "#60a5fa" }} />
-                  <span className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#fff" }}>
-                    Solicitud en Proceso
-                  </span>
+              <div style={{ padding: "7px 10px", display: "flex", alignItems: "center", justifyContent: "space-between",
+                  background: T.isDark ? T.surfaceAlt : "#1e3a5f" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Ticket size={12} style={{ color: "#60a5fa" }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#fff" }}>Solicitud</span>
                 </div>
                 {totalItemCount > 0 && (
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full"
-                    style={{ background: "#2563eb", color: "#fff" }}>
+                  <span style={{ fontSize: 9, fontWeight: 800, padding: "1px 6px", borderRadius: 99, background: "#2563eb", color: "#fff" }}>
                     {totalItemCount}
                   </span>
                 )}
               </div>
 
               {/* Solicitante */}
-              <div className="px-4 py-3" style={{ background: T.isDark ? T.surfaceAlt : "#f0f4f8", borderBottom: `1px solid ${T.border}` }}>
-                <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: T.textFaint }}>Solicitante</p>
-                <div className="flex flex-col gap-1.5">
+              <div style={{ padding: "6px 10px", background: T.isDark ? T.surfaceAlt : "#f0f4f8", borderBottom: `1px solid ${T.border}` }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   {[
                     { label: "Nombre",   value: requesterName },
                     { label: "Área",     value: usuario.departamento || "—" },
                     { label: "Sucursal", value: usuario.sucursal || "—" },
-                    { label: "Fecha",    value: new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) },
                   ].map(({ label, value }) => (
-                    <div key={label} className="flex items-baseline justify-between gap-2">
-                      <span className="text-[10px] flex-shrink-0" style={{ color: T.textFaint }}>{label}</span>
-                      <span className="text-[11px] font-semibold text-right truncate" style={{ color: T.text }}>{value}</span>
+                    <div key={label} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 4 }}>
+                      <span style={{ fontSize: 9, color: T.textFaint, flexShrink: 0 }}>{label}</span>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: T.text, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "60%" }}>{value}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Carrito */}
-              <div className="flex flex-col" style={{ minHeight: "80px" }}>
+              <div style={{ maxHeight: 380, overflowY: "auto" }}>
                 {cartEntries.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 px-4 gap-2" style={{ color: T.textFaint }}>
-                    <Package size={24} />
-                    <span className="text-[11px] text-center">Agrega insumos desde la tabla</span>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "16px 8px", gap: 6, color: T.textFaint }}>
+                    <Package size={18} />
+                    <span style={{ fontSize: 10, textAlign: "center" }}>Agrega insumos desde la tabla</span>
                   </div>
                 ) : (
                   cartEntries.map(({ supply, quantity, id }) => (
@@ -929,103 +1120,78 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
               </div>
 
               {/* Prioridad + justificación + botón */}
-              <div className="px-4 py-4 flex flex-col gap-3" style={{ borderTop: `1px solid ${T.border}` }}>
+              <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6, flexShrink: 0, borderTop: `1px solid ${T.border}` }}>
 
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: T.textMuted }}>
-                    Prioridad
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={priority}
-                      onChange={e => setPriority(e.target.value)}
-                      className="w-full h-9 pl-3 pr-8 rounded-lg text-[12px] font-semibold border outline-none appearance-none cursor-pointer transition-colors"
-                      style={{
-                        background:  activePriority ? activePriority.bg    : T.surfaceAlt,
-                        color:       activePriority ? activePriority.color  : T.textFaint,
-                        borderColor: activePriority ? activePriority.border : T.border,
-                      }
-                      }>
-                      <option value="" disabled>Seleccionar prioridad…</option>
-                      {PRIORITY_OPTIONS.map(p => (
-                        <option key={p.value} value={p.value}>{p.label}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={13}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                      style={{ color: activePriority ? activePriority.color : T.textFaint }} />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: T.textMuted }}>
-                    Justificación / Motivo <span style={{ color: "#ef4444" }}>*</span>
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={justification}
-                    onChange={e => setJustification(e.target.value)}
-                    placeholder="Describe el motivo de esta solicitud…"
-                    className="w-full px-3 py-2 rounded-lg text-[12px] outline-none resize-none transition-colors"
+                <div style={{ position: "relative" }}>
+                  <select
+                    value={priority}
+                    onChange={e => setPriority(e.target.value)}
                     style={{
-                      background:  justification.trim() ? T.surfaceAlt : (T.isDark ? "rgba(239,68,68,0.08)" : "#fff5f5"),
-                      borderColor: justification.trim() ? T.border      : "rgba(239,68,68,0.4)",
-                      border:      `1px solid ${justification.trim() ? T.border : "rgba(239,68,68,0.4)"}`,
-                      color:       T.text,
-                    }}
-                    onFocus={e  => { e.target.style.borderColor = "#3b82f6"; e.target.style.background = T.surface; }}
-                    onBlur={e   => {
-                      e.target.style.borderColor = justification.trim() ? T.border : "rgba(239,68,68,0.4)";
-                      e.target.style.background  = justification.trim() ? T.surfaceAlt : (T.isDark ? "rgba(239,68,68,0.08)" : "#fff5f5");
-                    }}
-                  />
+                      width: "100%", height: 28, paddingLeft: 8, paddingRight: 22,
+                      borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      border: `1px solid ${activePriority ? activePriority.border : T.border}`,
+                      background: activePriority ? activePriority.bg : T.surfaceAlt,
+                      color: activePriority ? activePriority.color : T.textFaint,
+                      outline: "none", appearance: "none", cursor: "pointer",
+                    }}>
+                    <option value="" disabled>Prioridad…</option>
+                    {PRIORITY_OPTIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                  </select>
+                  <ChevronDown size={11} style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: activePriority ? activePriority.color : T.textFaint }} />
                 </div>
+
+                <textarea
+                  rows={2}
+                  value={justification}
+                  onChange={e => setJustification(e.target.value)}
+                  placeholder="Justificación…"
+                  style={{
+                    width: "100%", padding: "5px 8px", borderRadius: 6, fontSize: 11,
+                    border: `1px solid ${justification.trim() ? T.border : "rgba(239,68,68,0.4)"}`,
+                    background: justification.trim() ? T.surfaceAlt : (T.isDark ? "rgba(239,68,68,0.08)" : "#fff5f5"),
+                    color: T.text, outline: "none", resize: "none", boxSizing: "border-box",
+                  }}
+                  onFocus={e  => { e.target.style.borderColor = "#3b82f6"; e.target.style.background = T.surface; }}
+                  onBlur={e   => {
+                    e.target.style.borderColor = justification.trim() ? T.border : "rgba(239,68,68,0.4)";
+                    e.target.style.background  = justification.trim() ? T.surfaceAlt : (T.isDark ? "rgba(239,68,68,0.08)" : "#fff5f5");
+                  }}
+                />
 
                 {!isTicketValid && (
-                  <div className="flex items-start gap-1.5 px-2.5 py-2 rounded-lg"
-                    style={{ background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
-                    <AlertCircle size={11} className="mt-0.5 flex-shrink-0" style={{ color: T.textFaint }} />
-                    <span className="text-[10px] leading-snug" style={{ color: T.textFaint }}>
-                      {cartEntries.length === 0
-                        ? "Agrega al menos un insumo a la solicitud"
-                        : "Escribe la justificación del reporte"}
-                    </span>
-                  </div>
+                  <p style={{ fontSize: 9, color: T.textFaint, margin: 0, lineHeight: 1.4 }}>
+                    {cartEntries.length === 0 ? "Agrega al menos un insumo" : "Escribe la justificación"}
+                  </p>
                 )}
 
                 <button
                   onClick={handleSubmitTicket}
                   disabled={!isTicketValid || isSubmitting}
-                  className="w-full h-10 rounded-lg text-[13px] font-bold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{
+                    width: "100%", height: 32, borderRadius: 6, fontSize: 11, fontWeight: 700,
                     background: isTicketValid ? "#2563eb" : T.surfaceAlt,
-                    color:      isTicketValid ? "#fff"    : T.textFaint,
-                    boxShadow:  isTicketValid ? "0 4px 14px rgba(37,99,235,0.30)" : "none",
+                    color: isTicketValid ? "#fff" : T.textFaint,
+                    border: "none", cursor: isTicketValid ? "pointer" : "not-allowed",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                    boxShadow: isTicketValid ? "0 2px 8px rgba(37,99,235,0.25)" : "none",
+                    opacity: (!isTicketValid || isSubmitting) ? 0.5 : 1,
+                    transition: "all 0.15s",
                   }}
                 >
-                  {isSubmitting ? (
-                    <>
-                      <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                      </svg>
-                      Creando…
-                    </>
-                  ) : (
-                    <>
-                      <Ticket size={14} />
-                      Crear Solicitud de Insumo
-                    </>
-                  )}
+                  {isSubmitting
+                    ? <><svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>Creando…</>
+                    : <><Ticket size={11} />Crear Solicitud</>
+                  }
                 </button>
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* ── Drawer móvil — panel solicitud ─────────────────────── */}
-      {tab === "nueva" && (
-        <div className="lg:hidden">
+      <div className="lg:hidden">
           {/* Barra flotante inferior */}
           <div
             onClick={() => setDrawerOpen(true)}
@@ -1211,7 +1377,6 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
             </>
           )}
         </div>
-      )}
 
       {/* Modal resultado */}
       {resultModal && (

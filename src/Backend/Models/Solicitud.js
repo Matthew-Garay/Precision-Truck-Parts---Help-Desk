@@ -227,10 +227,16 @@ const Solicitud = {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
-      for (const { id_solicitud_insumo, aprobado } of items) {
+      for (const { id_solicitud_insumo, aprobado, cantidad } of items) {
+        const fields = cantidad != null
+          ? "aprobado = ?, cantidad = ?"
+          : "aprobado = ?";
+        const vals = cantidad != null
+          ? [aprobado ? 1 : 0, cantidad, id_solicitud_insumo, id_solicitud]
+          : [aprobado ? 1 : 0, id_solicitud_insumo, id_solicitud];
         await conn.query(
-          "UPDATE solicitud_insumo SET aprobado = ? WHERE id_solicitud_insumo = ? AND id_solicitud = ?",
-          [aprobado ? 1 : 0, id_solicitud_insumo, id_solicitud]
+          `UPDATE solicitud_insumo SET ${fields} WHERE id_solicitud_insumo = ? AND id_solicitud = ?`,
+          vals
         );
       }
       await conn.commit();
