@@ -26,6 +26,7 @@ const NAV = [
   { icon: Package,         label: "Gestión de Insumos",        path: "/usuario/solicitar"        },
   { icon: BookOpen,        label: "Manuales de Incidencias",  path: "/usuario/manuales"         },
   { icon: Settings,        label: "Configuración",            path: "/usuario/configuracion"    },
+
 ];
 
 // -- SIDEBAR CONTENT ------------------------------------------
@@ -162,6 +163,10 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
               .then(abrir)
               .catch(() => {});
           }
+        }
+        if (tipo === "solicitud:actualizada" && data?.id_solicitud) {
+          navigate("/usuario/dashboard");
+          setSolicitudVer({ id_solicitud: data.id_solicitud });
         }
       // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [navigate]),
@@ -343,7 +348,7 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
           </div>
         </header>
 
-        <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: T.bg, scrollBehavior: "smooth", overscrollBehavior: "contain" }}>
+        <div className="flex-1 min-h-0" style={{ background: T.bg, overflow: activoIdx === 2 && !ticketVer && !solicitudVer ? "hidden" : "auto", scrollBehavior: "smooth", overscrollBehavior: "contain" }}>
           {ticketVer ? (
             <VistaTicket T={T} ticket={ticketVer} onVolver={volverDeTicket} usuario={usuario} />
           ) : solicitudVer ? (
@@ -365,9 +370,13 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
               }}
             />
           ) : activoIdx === 2 ? (
-            <HistorialIncidencias T={T} usuario={usuario} onVerTicket={(t) => { skipResetRef.current = true; setTicketVer(t); }} onRecargarRef={recargarHistorialRef} />
+            <div className="h-full">
+              <HistorialIncidencias T={T} usuario={usuario} onVerTicket={(t) => { skipResetRef.current = true; setTicketVer(t); }} onRecargarRef={recargarHistorialRef} />
+            </div>
           ) : activoIdx === 3 ? (
-            <SolicitudInsumo T={T} usuario={usuario} />
+            <div className="h-full overflow-hidden">
+              <SolicitudInsumo T={T} usuario={usuario} />
+            </div>
           ) : activoIdx === 4 ? (
             <ManualesIncidencias T={T} />
           ) : activoIdx === 5 ? (

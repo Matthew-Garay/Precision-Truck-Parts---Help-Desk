@@ -139,7 +139,6 @@ function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; period
           <span style={{ fontSize: "6.5pt", color: "var(--pr-faint)" }}>{s.detalle_insumos || "—"}</span>
         )}
       </div>,
-      <span style={{ fontSize: "7pt", color: "var(--pr-ink)" }}>{s.total_piezas ?? "—"}</span>,
       <span style={{ fontSize: "7pt", color: "var(--pr-muted)" }}>{fmt.fechaCorta(s.fecha)}</span>,
     ];
   });
@@ -156,7 +155,7 @@ function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; period
         ]}
       />
       <ReporteTable
-        headers={["Folio", "Empleado / Área", "Sucursal", "Prioridad", "Estatus", "Insumos solicitados", "Piezas", "Fecha"]}
+        headers={["Folio", "Empleado / Área", "Sucursal", "Prioridad", "Estatus", "Insumos solicitados", "Fecha"]}
         rows={rows}
       />
       <PageFooter right={`Reporte de Insumos · ${fechaGen}`} />

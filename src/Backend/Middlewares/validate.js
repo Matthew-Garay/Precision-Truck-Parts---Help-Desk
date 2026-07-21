@@ -174,6 +174,10 @@ export const schemaCrearSolicitud = z.object({
 
 export const schemaActualizarEstatusSolicitud = z.object({
   estatus: z.enum(["En proceso", "Aceptado", "Rechazado"]),
+  items: z.array(z.object({
+    id_solicitud_insumo: z.number({ coerce: true }).int().positive(),
+    aprobado: z.union([z.literal(0), z.literal(1)]),
+  })).optional(),
 });
 
 // Schema para filtros de búsqueda en tickets (#16)

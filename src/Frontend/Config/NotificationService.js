@@ -138,11 +138,12 @@ const SOUND_CONFIG = {
   },
   "insumo:stock_critico": {
     notas: [
-      { freq: 380, inicio: 0,    dur: 0.14 },
-      { freq: 300, inicio: 0.18, dur: 0.14 },
-      { freq: 380, inicio: 0.36, dur: 0.14 },
+      { freq: 520, inicio: 0,    dur: 0.12 },
+      { freq: 380, inicio: 0.16, dur: 0.12 },
+      { freq: 520, inicio: 0.32, dur: 0.12 },
+      { freq: 380, inicio: 0.48, dur: 0.14 },
     ],
-    vol: 0.10,
+    vol: 0.13,
     tipo: "sawtooth",
   },
   "ticket:sin_atender": {
@@ -271,11 +272,11 @@ export const NOTIFICATION_DISPLAY = {
     mensaje: (d) => `#${d.folio_ticket} — ${d.titulo ?? ""} fue cancelado`,
   },
   "insumo:stock_critico": {
-    toastTipo: "warning",
-    titulo: () => "Stock critico de insumo",
+    toastTipo: "error",
+    titulo: () => "⚠ Reponer insumo urgente",
     mensaje: (d) => d.stock === 0
-      ? `"${d.nombre}" esta AGOTADO (0 unidades)`
-      : `"${d.nombre}" tiene solo ${d.stock} unidad${d.stock !== 1 ? "es" : ""} restante${d.stock !== 1 ? "s" : ""}`,
+      ? `"${d.nombre}" está AGOTADO — requiere reposición inmediata`
+      : `"${d.nombre}" tiene solo ${d.stock} unidad${d.stock !== 1 ? "es" : ""} — reponer pronto`,
   },
   "ticket:sin_atender": {
     toastTipo: "warning",

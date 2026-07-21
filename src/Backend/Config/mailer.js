@@ -13,12 +13,9 @@ function resolverLogo() {
     path.resolve(__dirname, "../../../public/assets/img/logo.png"),
   ];
   for (const ruta of candidatos) {
-    if (fs.existsSync(ruta)) {
-      console.log(`[mailer] Logo: ${path.basename(ruta)}`);
-      return ruta;
-    }
+    if (fs.existsSync(ruta)) return ruta;
   }
-  console.warn("[mailer] Logo no encontrado");
+  console.warn("[mailer] ⚠️  Logo no encontrado — los correos se enviarán sin imagen");
   return null;
 }
 
@@ -57,11 +54,7 @@ const transporter = nodemailer.createTransport({
   auth:   { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
 });
 
-if (process.env.SMTP_USER) {
-  transporter.verify()
-    .then(() => console.log("✅ SMTP verificado"))
-    .catch(e  => console.error("⚠️  SMTP no disponible:", e.message));
-}
+
 
 // ── Correo: código de recuperación ───────────────────────────
 export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
