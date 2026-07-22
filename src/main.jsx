@@ -33,7 +33,7 @@
  * 5. Favicon:
  *    Se establece dinamicamente dentro de useEffect para evitar errores en entornos SSR.
  */
-import { StrictMode, useState, useEffect } from 'react'
+import { StrictMode, useState, useEffect, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import './Frontend/Styles/login.css'
@@ -45,11 +45,11 @@ import UsuarioDashboard from './Frontend/Pages/Usuario/Dashboard'
 import API_BASE, { setToken, clearSession, apiFetch } from './Frontend/Config/api'
 import ErrorBoundary   from './Frontend/Components/ErrorBoundary'
 import PantallaSalida  from './Frontend/Components/PantallaSalida'
-import PrintTicketPage      from './Frontend/Pages/PrintTicketPage'
-import PrintSolicitudPage   from './Frontend/Pages/PrintSolicitudPage'
-import PrintReportePage     from './Frontend/Pages/PrintReportePage'
-import PrintInventarioPage  from './Frontend/Pages/PrintInventarioPage'
-import PrintHistorialPage   from './Frontend/Pages/PrintHistorialPage'
+const PrintTicketPage     = lazy(() => import('./Frontend/Pages/PrintTicketPage'))
+const PrintSolicitudPage  = lazy(() => import('./Frontend/Pages/PrintSolicitudPage'))
+const PrintReportePage    = lazy(() => import('./Frontend/Pages/PrintReportePage'))
+const PrintInventarioPage = lazy(() => import('./Frontend/Pages/PrintInventarioPage'))
+const PrintHistorialPage  = lazy(() => import('./Frontend/Pages/PrintHistorialPage'))
 import { ToastProvider } from './Frontend/Components/Feedback.jsx'
 import { ThemeProvider } from './Frontend/Config/ThemeContext.jsx'
 import { useTheme } from './Frontend/Config/themeContext.js'
@@ -169,11 +169,11 @@ function App() {
       <Route path="/usuario/*" element={<RutaUsuario onLogout={handleLogout} onUsuarioActualizado={handleUsuarioActualizado} usuarioActual={usuarioActual} />} />
 
       {/* Rutas standalone para impresión — requieren sesión activa */}
-      <Route path="/print/ticket/:folio"    element={getUsuario() ? <PrintTicketPage />    : <Navigate to="/login" replace />} />
-      <Route path="/print/solicitud/:folio" element={getUsuario() ? <PrintSolicitudPage /> : <Navigate to="/login" replace />} />
-      <Route path="/print/reporte"           element={getUsuario() ? <PrintReportePage />   : <Navigate to="/login" replace />} />
-      <Route path="/print/inventario"         element={getUsuario() ? <PrintInventarioPage /> : <Navigate to="/login" replace />} />
-      <Route path="/print/historial/:id"       element={getUsuario() ? <PrintHistorialPage />  : <Navigate to="/login" replace />} />
+      <Route path="/print/ticket/:folio"    element={getUsuario() ? <Suspense fallback={null}><PrintTicketPage /></Suspense>    : <Navigate to="/login" replace />} />
+      <Route path="/print/solicitud/:folio" element={getUsuario() ? <Suspense fallback={null}><PrintSolicitudPage /></Suspense> : <Navigate to="/login" replace />} />
+      <Route path="/print/reporte"           element={getUsuario() ? <Suspense fallback={null}><PrintReportePage /></Suspense>   : <Navigate to="/login" replace />} />
+      <Route path="/print/inventario"         element={getUsuario() ? <Suspense fallback={null}><PrintInventarioPage /></Suspense> : <Navigate to="/login" replace />} />
+      <Route path="/print/historial/:id"       element={getUsuario() ? <Suspense fallback={null}><PrintHistorialPage /></Suspense>  : <Navigate to="/login" replace />} />
 
       {/* Raíz → redirige según sesión */}
       <Route path="/" element={<Navigate to={(() => {

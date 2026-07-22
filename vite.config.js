@@ -27,6 +27,20 @@ export default defineConfig({
   optimizeDeps: {
     include: ['pdfjs-dist'],
   },
+  build: {
+    target: 'es2020',
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react':  ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui':     ['lucide-react'],
+          'vendor-pdf':    ['pdfjs-dist', 'jspdf'],
+          'vendor-socket': ['socket.io-client'],
+        },
+      },
+    },
+  },
   server: {
     host: true,
     port: 5173,
