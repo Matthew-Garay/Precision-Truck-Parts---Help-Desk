@@ -68,6 +68,7 @@ import { generarFolio } from "../utils/helpers.js";
 import { cache } from "../Config/cache.js";
 
 const CACHE_TTL_METRICAS = 2 * 60 * 1000; // 2 minutos
+const CACHE_TTL_ADMINS   = 5 * 60 * 1000; // 5 minutos
 
 const Ticket = {
   crear: async ({ titulo, descripcion, prioridad, id_empleado, id_categoria }) => {
@@ -276,6 +277,8 @@ const Ticket = {
   },
 
   getTecnicos: async () => {
+    const hit = cache.get("ticket:tecnicos");
+    if (hit) return hit;
     const [rows] = await pool.query(
       `SELECT e.id_empleado,
               CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_completo
@@ -283,6 +286,7 @@ const Ticket = {
        WHERE e.id_rol = 1 AND e.estatus = 'Activo'
        ORDER BY e.nombre ASC`
     );
+    cache.set("ticket:tecnicos", rows, CACHE_TTL_ADMINS);
     return rows;
   },
 
@@ -335,6 +339,8 @@ const Ticket = {
   },
 
   getAdmins: async () => {
+    const hit = cache.get("ticket:admins");
+    if (hit) return hit;
     const [rows] = await pool.query(
       `SELECT e.id_empleado,
               CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_completo
@@ -342,6 +348,7 @@ const Ticket = {
        WHERE e.id_rol = 1 AND e.estatus = 'Activo'
        ORDER BY e.nombre ASC`
     );
+    cache.set("ticket:admins", rows, CACHE_TTL_ADMINS);
     return rows;
   },
 
