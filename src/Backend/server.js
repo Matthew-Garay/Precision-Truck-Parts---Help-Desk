@@ -191,6 +191,7 @@ app.use(helmet({
   xFrameOptions: false,
 }));
 app.use(cors({ origin: CORS_ORIGINS, credentials: true }));
+app.use((_req, res, next) => { res.setHeader("ngrok-skip-browser-warning", "1"); next(); });
 app.use(express.json({ limit: "2mb" }));
 // Excluir archivos sensibles del servidor estático
 app.use("/storage", (req, res, next) => {
@@ -200,6 +201,10 @@ app.use("/storage", (req, res, next) => {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "inline");
     res.setHeader("X-Content-Type-Options", "nosniff");
+  }
+  // Cache de 7 días para imágenes y PDFs (son inmutables una vez subidos)
+  if (/\.(jpg|jpeg|png|gif|webp|pdf)$/i.test(req.path)) {
+    res.setHeader("Cache-Control", "public, max-age=604800, immutable");
   }
   next();
 }, express.static(path.resolve(__dirname, "../../storage")));
