@@ -428,9 +428,10 @@ export default function Login({ onLogin }) {
     return restante > 0 ? restante : 0;
   });
   const [shakeCard, setShakeCard]   = useState(false);
+  const [cooldown,  setCooldown]    = useState(0);
 
   const emailOk    = emailValido(email);
-  const canSubmit  = emailOk && password.length >= 8 && !loading && bloqueado === 0;
+  const canSubmit  = emailOk && password.length >= 8 && !loading && bloqueado === 0 && cooldown === 0;
 
   const iniciarBloqueo = useCallback(() => {
     const fin = Date.now() + BLOQUEO_SEG * 1000;
@@ -473,6 +474,10 @@ export default function Login({ onLogin }) {
           setError(`Demasiados intentos. Espera ${BLOQUEO_SEG} segundos.`);
         } else {
           setError(data.error || "Credenciales incorrectas");
+          // Cooldown progresivo: 2s, 4s, 8s...
+          const secs = Math.min(2 ** nuevosIntentos, 16);
+          setCooldown(secs);
+          const iv = setInterval(() => setCooldown(s => { if (s <= 1) { clearInterval(iv); return 0; } return s - 1; }), 1000);
         }
         return;
       }
@@ -481,7 +486,12 @@ export default function Login({ onLogin }) {
       sessionStorage.setItem("_pwd", password);
       if (navigator.vibrate) navigator.vibrate(50);
       setTimeout(() => { setEntrando(false); onLogin(data.usuario, data.id_acceso, data.token); }, 1500);
-    } catch { setError("No se pudo conectar con el servidor"); triggerShake(); }
+    } catch {
+      setError("No se pudo conectar con el servidor"); triggerShake();
+      const secs = Math.min(2 ** (intentos + 1), 16);
+      setCooldown(secs);
+      const iv = setInterval(() => setCooldown(s => { if (s <= 1) { clearInterval(iv); return 0; } return s - 1; }), 1000);
+    }
     finally { setLoading(false); }
   };
 
@@ -741,7 +751,7 @@ export default function Login({ onLogin }) {
                     color: canSubmit ? "#fff" : "#94A3B8",
                     marginTop: "4px",
                   }}>
-                  {loading ? "Verificando credenciales..." : bloqueado > 0 ? `Acceso bloqueado · ${bloqueado}s` : (
+                  {loading ? "Verificando credenciales..." : bloqueado > 0 ? `Acceso bloqueado · ${bloqueado}s` : cooldown > 0 ? `Espera ${cooldown}s antes de reintentar` : (
                     <span className="flex items-center justify-center gap-2">
                       Iniciar sesión
                       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">

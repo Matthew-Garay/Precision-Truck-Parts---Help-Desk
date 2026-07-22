@@ -37,10 +37,9 @@ export default function PdfViewer({ url, isDark }) {
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState(false);
 
-  // Bloquear zoom en móvil/tablet (< 1024px)
-  const [isMobileOrTablet, setIsMobileOrTablet] = useState(() => window.innerWidth < 1024);
+  const [isMobileOrTablet, setIsMobileOrTablet] = useState(() => window.innerWidth < 768);
   useEffect(() => {
-    const check = () => setIsMobileOrTablet(window.innerWidth < 1024);
+    const check = () => setIsMobileOrTablet(window.innerWidth < 768);
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
@@ -66,8 +65,8 @@ export default function PdfViewer({ url, isDark }) {
         if (scrollRef.current) {
           const page1 = await pdf.getPage(1);
           const vp = page1.getViewport({ scale: 1, rotation: 0 });
-          const available = scrollRef.current.clientWidth - 32;
-          if (vp.width > available) setScale(+(available / vp.width).toFixed(2));
+          const available = scrollRef.current.clientWidth - 48;
+          setScale(+(available / vp.width).toFixed(2));
         }
         setLoading(false);
       } catch (e) {
@@ -262,10 +261,9 @@ export default function PdfViewer({ url, isDark }) {
           <canvas
             ref={canvasRef}
             style={{
-              maxWidth: "100%", height: "auto",
+              display: "block",
               boxShadow: "0 4px 24px rgba(0,0,0,0.25)",
               borderRadius: 4,
-              display: "block",
             }}
           />
         )}

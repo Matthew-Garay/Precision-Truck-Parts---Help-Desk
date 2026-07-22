@@ -33,10 +33,12 @@ const pool = mysql.createPool({
   password:           process.env.DB_PASSWORD,
   database:           process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit:    10,
-  queueLimit:         50,   // rechaza nuevas peticiones si hay >50 esperando (evita OOM)
+  connectionLimit:    20,
+  queueLimit:         100,
   connectTimeout:     10000,
   timezone:           "-06:00",
+  namedPlaceholders:  false,
+  decimalNumbers:     true,
   ...(process.env.DB_HOST !== "localhost" && process.env.DB_SSL === "true"
     ? { ssl: { rejectUnauthorized: true } }
     : {}),

@@ -47,4 +47,9 @@ export const cache = {
       if (k.startsWith(prefix)) _store.delete(k);
     }
   },
+
+  /** Invalida todas las entradas cuya clave contenga alguno de los prefijos dados */
+  delMany(keys) {
+    for (const k of keys) _store.delete(k);
+  },
 };

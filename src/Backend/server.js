@@ -54,6 +54,9 @@
  *   CORS_ORIGIN  - origen permitido para CORS (default: http://localhost:5173)
  *   NODE_ENV     - entorno de ejecucion (production activa trust proxy y oculta detalles de error)
  */
+import { resolve, dirname } from "path";
+import { fileURLToPath }   from "url";
+
 import express           from "express";
 import { createServer }  from "http";
 import { networkInterfaces } from "os";
@@ -63,7 +66,6 @@ import compression       from "compression";
 import helmet            from "helmet";
 import jwt               from "jsonwebtoken";
 import path              from "path";
-import { fileURLToPath } from "url";
 import pool              from "./Config/db.js";
 import { requireAuth }   from "./Middlewares/authMiddleware.js";
 import { setIO }         from "./Config/socketInstance.js";
@@ -81,23 +83,12 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
-const __dirname  = path.dirname(fileURLToPath(import.meta.url));
+const __dirname  = dirname(fileURLToPath(import.meta.url));
 const app        = express();
 const httpServer = createServer(app);
 const PORT       = process.env.PORT || 3001;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
-const CORS_ORIGINS = (origin, callback) => {
-  // Permitir sin origen (Postman, curl, mismo servidor)
-  if (!origin) return callback(null, true);
-  // Siempre permitir localhost
-  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
-  // Permitir cualquier IP privada (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
-  if (/^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(origin)) return callback(null, true);
-  // Permitir origen configurado en .env
-  const allowed = [CORS_ORIGIN, process.env.CORS_ORIGIN_LOCAL, process.env.APP_URL].filter(Boolean);
-  if (allowed.includes(origin)) return callback(null, true);
-  callback(new Error(`CORS bloqueado: ${origin}`));
-};
+const CORS_ORIGINS = (origin, callback) => callback(null, true);
 
 // -- Socket.io ------------------------------------------------
 const io = new Server(httpServer, {
@@ -172,34 +163,27 @@ process.on("SIGINT",  () => shutdown("SIGINT"));
 if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
 
 // -- Middlewares globales -------------------------------------
-app.use(compression());
+app.use(compression({ level: 6, threshold: 1024 }));
 app.use(helmet({
-  // CORP relajado globalmente para que pdfjs pueda leer los PDFs del /storage
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  referrerPolicy:            { policy: "strict-origin-when-cross-origin" },
+  crossOriginResourcePolicy:  { policy: "cross-origin" },
+  crossOriginOpenerPolicy:    false,
+  originAgentCluster:         false,
+  referrerPolicy:             { policy: "strict-origin-when-cross-origin" },
   contentSecurityPolicy: {
     directives: {
       defaultSrc:  ["'self'"],
-      scriptSrc:   ["'self'"],
-      // blob: necesario para el worker de pdfjs-dist v6
+      scriptSrc:   ["'self'", "'unsafe-inline'"],
       workerSrc:   ["'self'", "blob:"],
       styleSrc:    ["'self'", "'unsafe-inline'"],
+      styleSrcElem:["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc:    ["'self'", "data:", "https://fonts.gstatic.com"],
       imgSrc:      ["'self'", "data:", "blob:"],
-      fontSrc:     ["'self'", "data:"],
-      connectSrc:  [
-                    "'self'",
-                    "http://localhost:3001", "ws://localhost:3001",
-                    "http://localhost:5173", "ws://localhost:5173",
-                    // ws: y http: cubren cualquier origen (red local, móvil, etc.)
-                    // Los rangos CIDR no son válidos en CSP — se usa wildcard de esquema
-                    "ws:", "http:",
-                    ...(CORS_ORIGIN ? [CORS_ORIGIN, CORS_ORIGIN.replace(/^http/, "ws")] : []),
-                    ...(process.env.APP_URL ? [process.env.APP_URL, process.env.APP_URL.replace(/^http/, "ws")] : []),
-                  ],
-      objectSrc:   ["'self'"],
-      frameSrc:    ["'self'", "blob:"],
-      frameAncestors: ["'self'", CORS_ORIGIN],
-      upgradeInsecureRequests: [],
+
+      connectSrc:  ["'self'", "ws:", "wss:", "http:", "https:"],
+      objectSrc:      ["'none'"],
+      frameSrc:       ["'self'", "blob:"],
+      frameAncestors: ["*"],
+      upgradeInsecureRequests: null,
     },
   },
   permittedCrossDomainPolicies: { permittedPolicies: "none" },
@@ -288,6 +272,7 @@ httpServer.listen(PORT, "0.0.0.0", async () => {
   // URLs de acceso
   console.log(`  Backend  →  http://localhost:${PORT}`);
   console.log(`  Frontend →  http://localhost:5173`);
+  if (process.env.APP_URL) console.log(`  Público  →  ${process.env.APP_URL}`);
   const nets = networkInterfaces();
   for (const iface of Object.values(nets))
     for (const addr of iface)
