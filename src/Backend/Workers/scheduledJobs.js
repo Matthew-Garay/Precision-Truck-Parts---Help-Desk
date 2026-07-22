@@ -144,28 +144,20 @@ export function iniciarWorkers(io) {
     if (corriendo.sesiones) return;
     corriendo.sesiones = true;
     try {
-      const [result] = await pool.query(
+      await pool.query(
         `UPDATE historial_acceso
          SET fecha_salida = NOW()
          WHERE fecha_salida IS NULL
          AND fecha_entrada < DATE_SUB(NOW(), INTERVAL 12 HOUR)`
       );
-    } catch (err) {
-      console.error("[sesiones]", err.message);
-    }
-    try {
-      const [purga] = await pool.query(
+      await pool.query(
         `DELETE FROM historial_acceso
          WHERE fecha_salida IS NOT NULL
          AND fecha_entrada < DATE_SUB(NOW(), INTERVAL 90 DAY)`
       );
-    } catch (err) {
-      console.error("[purga historial]", err.message);
-    }
-    try {
       await limpiarTokensRevocados();
     } catch (err) {
-      console.error("[tokens revocados]", err.message);
+      console.error("[sesiones]", err.message);
     } finally {
       corriendo.sesiones = false;
     }

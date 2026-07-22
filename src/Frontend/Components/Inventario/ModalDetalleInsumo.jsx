@@ -51,7 +51,7 @@ function DataRow({ icon: Icon, label, value, T, multiline = false, highlight }) 
   );
 }
 
-export default function ModalDetalleInsumo({ insumo, onClose, T }) {
+export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = false }) {
   const [imgError, setImgError] = useState(false);
   const isDark = T?.isDark ?? false;
 
@@ -202,7 +202,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T }) {
             }}>
               <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
                 {insumo.estado         && <Badge value={insumo.estado}         map={ESTADO_META} />}
-                {insumo.disponibilidad && <Badge value={insumo.disponibilidad} map={DISP_META}   />}
+                {!ocultarStock && insumo.disponibilidad && <Badge value={insumo.disponibilidad} map={DISP_META}   />}
                 {insumo.nombre_categoria && (
                   <span style={{
                     display: "inline-flex", alignItems: "center", gap: "4px",
@@ -224,17 +224,19 @@ export default function ModalDetalleInsumo({ insumo, onClose, T }) {
             <DataRow icon={Layers}    label="Modelo"       value={insumo.modelo}                 T={T} />
             <DataRow icon={Hash}      label="N.º de serie" value={insumo.num_serie}               T={T} />
             <DataRow icon={Truck}     label="Proveedor"    value={insumo.proveedor}               T={T} />
-            <DataRow
-              icon={BarChart2}
-              label="Stock"
-              value={insumo.stock != null ? `${insumo.stock} unidad${insumo.stock !== 1 ? "es" : ""}` : null}
-              T={T}
-              highlight={
-                insumo.stock === 0 ? "#dc2626"
-                : insumo.stock < 5 ? "#d97706"
-                : "#16a34a"
-              }
-            />
+            {!ocultarStock && (
+              <DataRow
+                icon={BarChart2}
+                label="Stock"
+                value={insumo.stock != null ? `${insumo.stock} unidad${insumo.stock !== 1 ? "es" : ""}` : null}
+                T={T}
+                highlight={
+                  insumo.stock === 0 ? "#dc2626"
+                  : insumo.stock < 5 ? "#d97706"
+                  : "#16a34a"
+                }
+              />
+            )}
             <DataRow icon={AlignLeft} label="Descripción"  value={insumo.descripcion?.trim() || null} T={T} multiline />
           </div>
         </div>

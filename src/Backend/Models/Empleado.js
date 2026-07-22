@@ -70,6 +70,11 @@
  *     Incluye nombre completo, email y departamento de cada empleado.
  */
 import pool from "../Config/db.js";
+import { cache } from "../Config/cache.js";
+
+const TTL_CATALOGO = 10 * 60 * 1000; // 10 minutos — catálogos casi estáticos
+const TTL_NOMBRE   =  5 * 60 * 1000; // 5 minutos
+const TTL_EMPLEADOS = 2 * 60 * 1000; // 2 minutos
 
 const Empleado = {
   findByEmail: async (email) => {
@@ -121,6 +126,7 @@ const Empleado = {
         id,
       ]
     );
+    cache.delMany(["empleados:all", `empleado:nombre:${id}`]);
   },
 
   cerrarSesionesHuerfanas: async (id_empleado) => {
@@ -164,6 +170,8 @@ const Empleado = {
 
   // Nunca incluir password en listados
   getAll: async () => {
+    const hit = cache.get("empleados:all");
+    if (hit) return hit;
     const [rows] = await pool.query(
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
               e.email, e.foto, e.estatus, e.id_rol, e.id_departamento, e.id_sucursal,
@@ -174,11 +182,15 @@ const Empleado = {
        LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal
        ORDER BY e.id_empleado ASC`
     );
+    cache.set("empleados:all", rows, TTL_EMPLEADOS);
     return rows;
   },
 
   getSucursales: async () => {
+    const hit = cache.get("cat:sucursales");
+    if (hit) return hit;
     const [rows] = await pool.query(`SELECT id_sucursal, nombre_sucursal FROM sucursal ORDER BY nombre_sucursal ASC`);
+    cache.set("cat:sucursales", rows, TTL_CATALOGO);
     return rows;
   },
 
@@ -197,20 +209,31 @@ const Empleado = {
 
   // Helper: nombre completo de un empleado por id
   getNombre: async (id_empleado) => {
+    const key = `empleado:nombre:${id_empleado}`;
+    const hit = cache.get(key);
+    if (hit) return hit;
     const [[row]] = await pool.query(
       `SELECT CONCAT(nombre,' ',ap_paterno,IFNULL(CONCAT(' ',ap_materno),'')) AS nombre_completo FROM empleado WHERE id_empleado = ? LIMIT 1`,
       [id_empleado]
     );
-    return row?.nombre_completo ?? "Soporte técnico";
+    const nombre = row?.nombre_completo ?? "Soporte técnico";
+    cache.set(key, nombre, TTL_NOMBRE);
+    return nombre;
   },
 
   getDepartamentos: async () => {
+    const hit = cache.get("cat:departamentos");
+    if (hit) return hit;
     const [rows] = await pool.query(`SELECT id_departamento, nombre_departamento FROM departamento ORDER BY nombre_departamento ASC`);
+    cache.set("cat:departamentos", rows, TTL_CATALOGO);
     return rows;
   },
 
   getRoles: async () => {
+    const hit = cache.get("cat:roles");
+    if (hit) return hit;
     const [rows] = await pool.query(`SELECT id_rol, nombre_rol FROM rol ORDER BY id_rol ASC`);
+    cache.set("cat:roles", rows, TTL_CATALOGO);
     return rows;
   },
 
@@ -254,6 +277,7 @@ const Empleado = {
          estatus ?? null, password ?? null, foto ?? null, id]
       );
     }
+    cache.delMany(["empleados:all", `empleado:nombre:${id}`]);
   },
 
   crear: async ({ num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento, id_sucursal }) => {
@@ -262,6 +286,7 @@ const Empleado = {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Activo')`,
       [num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento, id_sucursal ?? null]
     );
+    cache.del("empleados:all");
     return result.insertId;
   },
 

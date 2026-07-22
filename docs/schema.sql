@@ -166,4 +166,15 @@ CREATE TABLE `ticket` (
   CONSTRAINT `fk_ticket_tecnico` FOREIGN KEY (`id_tecnico`) REFERENCES `empleado` (`id_empleado`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+DROP TABLE IF EXISTS `token_revocado`;
+CREATE TABLE `token_revocado` (
+  `id_revocado` int NOT NULL AUTO_INCREMENT,
+  `jti` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id_empleado` int NOT NULL,
+  `expira_en` timestamp NOT NULL,
+  PRIMARY KEY (`id_revocado`),
+  UNIQUE KEY `uq_jti` (`jti`),
+  KEY `idx_expira_en` (`expira_en`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS=1;

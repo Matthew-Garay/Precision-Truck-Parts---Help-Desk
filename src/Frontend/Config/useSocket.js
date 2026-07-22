@@ -67,7 +67,7 @@ export function useSocket(id_empleado, onEvento) {
 
     const socket = io(SOCKET_URL, {
       auth: { token },
-      transports: ["polling", "websocket"],
+      transports: ["websocket", "polling"],
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,
     });

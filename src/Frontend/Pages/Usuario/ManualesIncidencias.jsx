@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import PdfViewer from "../../Components/PdfViewer";
 import { useNavigate } from "react-router-dom";
 import {
@@ -58,11 +58,10 @@ function DrawerVisor({ manual, T, onClose }) {
 
 // ── Miniatura portada PDF ─────────────────────────────────────────
 function PdfThumb({ url, isDark }) {
-  const { imgSrc, loading, error } = usePdfCover(url);
-  const ck  = "default";
-  const def = CAT_MAP[ck];
+  const ref = useRef(null);
+  const { imgSrc } = usePdfCover(url, ref);
   return (
-    <div style={{
+    <div ref={ref} style={{
       height: 130, background: isDark ? "#0f1117" : "#f1f5f9",
       display: "flex", alignItems: "center", justifyContent: "center",
       flexShrink: 0, position: "relative",
@@ -79,8 +78,8 @@ function PdfThumb({ url, isDark }) {
           boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
         }}>
-          <FileText size={18} style={{ color: error ? "#dc2626" : SLATE[400] }} />
-          {!loading && <span style={{ fontSize: "7px", fontWeight: 700, color: "#dc2626" }}>PDF</span>}
+          <FileText size={18} style={{ color: SLATE[400] }} />
+          <span style={{ fontSize: "7px", fontWeight: 700, color: "#dc2626" }}>PDF</span>
         </div>
       )}
       <span style={{
@@ -220,7 +219,7 @@ export default function ManualesIncidencias({ T }) {
       .finally(() => setLoading(false));
   };
 
-  useAutoRefresh(cargar, 30000);
+  useAutoRefresh(cargar, 60000);
 
   const categorias = [...new Map(
     manuales.filter(m => m.nombre_categoria)
