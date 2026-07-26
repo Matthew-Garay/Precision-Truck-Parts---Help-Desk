@@ -1,18 +1,62 @@
 /**
  * Insumo.js
  *
- * Columnas reales de la tabla `insumo` en precisión_helpdesk:
+ * Modelo que encapsula todas las operaciones sobre la tabla "insumo".
+ * Un insumo es un articulo del inventario fisico de la empresa que los
+ * empleados pueden solicitar a traves del modulo de solicitudes.
+ *
+ * Columnas de la tabla insumo:
  *   id_insumo, num_serie, nombre, descripcion, marca, modelo,
  *   stock, estado, id_categoria, proveedor, imagen_url
  *
- * DISPONIBILIDAD — campo calculado (NO almacenado):
- *   Se deriva del stock con CASE WHEN en cada SELECT:
- *     stock = 0   → "Sin stock"
- *     stock <= 5  → "Stock bajo"
- *     stock > 5   → "Disponible"
+ * Campo calculado "disponibilidad" (no almacenado en BD):
+ *   Se deriva del valor de stock en cada consulta SELECT mediante CASE WHEN:
+ *     stock = 0   -> "Sin stock"
+ *     stock <= 5  -> "Stock bajo"
+ *     stock > 5   -> "Disponible"
+ *
+ * Metodos:
+ *
+ *   getAll()
+ *     Retorna todos los insumos con su categoria y disponibilidad calculada.
+ *     Ordenados alfabeticamente por nombre.
+ *
+ *   getDisponibles()
+ *     Retorna solo los insumos con stock mayor a 0.
+ *     Se usa en el formulario de nueva solicitud para mostrar solo lo que
+ *     el empleado puede pedir.
+ *
+ *   crear(campos)
+ *     Inserta un nuevo insumo en el inventario.
+ *     Retorna el id del registro insertado.
+ *
+ *   actualizar(id, campos)
+ *     Actualiza los datos de un insumo existente.
+ *     Si imagen_url no viene en los campos, no sobreescribe la foto existente.
+ *     Retorna true si se actualizo al menos un registro.
+ *
+ *   getStockBajo(umbral)
+ *     Retorna insumos con stock menor o igual al umbral indicado (default: 2).
+ *     Incluye el nivel de alerta: "agotado" si stock es 0, "bajo" si es mayor.
+ *     Limitado a 50 resultados ordenados por stock ascendente.
+ *
+ *   descontarStock(conn, insumos)
+ *     Descuenta el stock de cada insumo dentro de una transaccion activa.
+ *     Usa FOR UPDATE para bloquear las filas y evitar condiciones de carrera
+ *     cuando dos solicitudes se aprueban al mismo tiempo.
+ *     Lanza un error con statusCode 400 si el stock es insuficiente.
+ *     Parametros:
+ *       conn    - conexion con transaccion activa (beginTransaction ya invocado)
+ *       insumos - arreglo de { id_insumo, cantidad }
+ *
+ *   eliminar(id)
+ *     Elimina un insumo del inventario.
+ *     El controlador verifica antes que no tenga solicitudes activas (409 Conflict).
+ *     Retorna true si se elimino al menos un registro.
  */
 import pool from "../Config/db.js";
 
+// Expresion SQL reutilizable para calcular la disponibilidad de un insumo.
 const DISPONIBILIDAD_EXPR = `CASE
     WHEN i.stock  = 0 THEN 'Sin stock'
     WHEN i.stock <= 5 THEN 'Stock bajo'
@@ -71,7 +115,7 @@ const Insumo = {
   },
 
   actualizar: async (id, { num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, proveedor, imagen_url }) => {
-    // Si imagen_url no viene en el body (undefined), no sobreescribir la foto existente
+    // Si imagen_url no viene en el body (undefined), no sobreescribir la foto existente.
     const imgSql  = imagen_url !== undefined ? ", imagen_url=?" : "";
     const imgVals = imagen_url !== undefined ? [imagen_url || null] : [];
     const [r] = await pool.query(

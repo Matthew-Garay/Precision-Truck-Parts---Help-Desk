@@ -5,16 +5,21 @@
  * Se muestra en la barra de navegacion y permite al usuario ver
  * el historial de notificaciones recibidas durante la sesion.
  *
- * Correcciones aplicadas:
- *   - Panel siempre posicionado como absolute relativo al boton (nunca fixed),
- *     usando clamp() para ancho responsivo. Elimina la logica de window.innerWidth
- *     evaluada solo al montar que causaba posicion incorrecta.
- *   - Cierre-fuera reemplazado: ya no usa capture:true que se disparaba antes
- *     del click del boton de accion. Ahora usa un flag (accionRef) para que el
- *     handler de cierre ignore el evento que origino una accion interna.
- *   - Botones de accion cambiados de onMouseDown+preventDefault a onClick para
- *     que el flujo de evento sea el estandar y no interfiera con el cierre.
- *   - Tipografia unificada via var(--font-sans).
+ * Comportamiento:
+ *   - Muestra un contador de notificaciones no leidas sobre el icono de campana.
+ *   - Al hacer clic abre un panel desplegable con el historial de notificaciones.
+ *   - Cada notificacion muestra icono, titulo, descripcion, hora y un boton de accion.
+ *   - El panel se cierra al hacer clic fuera de el.
+ *   - Incluye un boton para silenciar o activar el sonido de notificaciones.
+ *   - El panel se posiciona siempre como absolute relativo al boton usando
+ *     clamp() para ancho responsivo, evitando desbordamiento en pantallas pequenas.
+ *
+ * Props:
+ *   T              - tokens del tema activo (objeto LIGHT o DARK de themeTokens.js)
+ *   notificaciones - arreglo de notificaciones del historial (de useTicketNotification)
+ *   onDismiss      - funcion para eliminar una notificacion por id
+ *   onDismissAll   - funcion para eliminar todas las notificaciones
+ *   onClickNotif   - funcion que recibe la notificacion al hacer clic en su accion
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Bell, X, CheckCircle2, Package, Ticket, Star, Clock, AlertTriangle, Wrench, VolumeX, Volume2 } from "lucide-react";
@@ -45,7 +50,9 @@ const TIPO_CONFIG = {
     titulo: () => "Ticket calificado",
     sub:    (d) => {
       const LABELS = ["", "Muy malo", "Malo", "Regular", "Bueno", "Excelente"];
-      return `${d.nombre_empleado} · #${d.folio_ticket}\n${"★".repeat(d.calificacion)}${"☆".repeat(5 - d.calificacion)} ${LABELS[d.calificacion] || ""}`;
+      const llenas  = "*".repeat(d.calificacion);
+      const vacias  = "-".repeat(5 - d.calificacion);
+      return `${d.nombre_empleado} · #${d.folio_ticket}\n${llenas}${vacias} ${LABELS[d.calificacion] || ""}`;
     },
     accion: "Ver ticket",
   },

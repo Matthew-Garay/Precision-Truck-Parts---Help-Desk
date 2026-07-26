@@ -1,6 +1,42 @@
 /**
- * usePdfCover.js — con Intersection Observer
- * Solo encola la miniatura cuando la tarjeta entra en el viewport.
+ * usePdfCover.js
+ *
+ * Hook de React que genera una miniatura de la portada de un archivo PDF
+ * usando la libreria pdfjs-dist. Implementa carga diferida mediante
+ * IntersectionObserver para no procesar PDFs que no estan visibles en pantalla.
+ *
+ * Arquitectura interna:
+ *
+ *   Cache en memoria (Map)
+ *     Almacena el resultado de cada URL procesada para no volver a renderizar
+ *     el mismo PDF si el componente se desmonta y vuelve a montar.
+ *
+ *   Cola de concurrencia (maximo 3 en paralelo)
+ *     Limita cuantos PDFs se procesan al mismo tiempo para no saturar el hilo
+ *     principal del navegador. Las peticiones adicionales se encolan y se
+ *     procesan en orden a medida que se liberan los slots.
+ *
+ *   Deduplicacion de peticiones en vuelo
+ *     Si dos componentes solicitan la miniatura del mismo URL al mismo tiempo,
+ *     solo se lanza una peticion real. Ambos componentes reciben el mismo resultado
+ *     cuando la promesa se resuelve.
+ *
+ *   Singleton de pdfjs
+ *     La libreria pdfjs-dist se importa de forma dinamica una sola vez y se
+ *     reutiliza en todas las llamadas posteriores.
+ *
+ * Parametros del hook:
+ *   url          - URL del archivo PDF a procesar
+ *   containerRef - ref del elemento DOM contenedor. Si se proporciona, el hook
+ *                  usa IntersectionObserver para esperar a que el elemento sea
+ *                  visible antes de encolar el procesamiento (lazy load).
+ *                  Si no se proporciona, encola inmediatamente.
+ *
+ * Retorna:
+ *   imgSrc  - string con la imagen en formato data URL (JPEG), o null si aun
+ *             no esta lista o si ocurrio un error
+ *   loading - booleano que indica si la miniatura esta siendo generada
+ *   error   - booleano que indica si el procesamiento fallo
  */
 import { useEffect, useState, useRef } from "react";
 

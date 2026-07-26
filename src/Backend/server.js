@@ -33,14 +33,12 @@
  *    /api/categorias  - catalogo de categorias
  *    /api/tickets     - gestion completa de tickets de soporte
  *    /api/solicitudes - solicitudes de insumos e inventario
- *    /api/manuales    - subida, edicion y eliminacion de manuales PDF (inline en este archivo)
+ *    /api/manuales    - subida, edicion y eliminacion de manuales PDF
  *
  * 7. Inicia los workers de tareas programadas (scheduledJobs) pasandoles la
  *    instancia de io para que puedan emitir eventos de Socket.io.
  *
  * 8. Escucha en el puerto definido en la variable PORT (por defecto 3001).
- *
- * Nota: POST /api/auth/refresh-token esta implementado en authRoutes.js.
  *
  * Variables de entorno requeridas:
  *   JWT_SECRET   - clave secreta para firmar y verificar tokens JWT
@@ -79,7 +77,7 @@ import manualesRoutes    from "./Routes/manualesRoutes.js";
 const REQUIRED_ENV = ["JWT_SECRET", "DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"];
 const missing = REQUIRED_ENV.filter(k => !process.env[k]);
 if (missing.length > 0) {
-  console.error(`❌ Variables de entorno faltantes: ${missing.join(", ")}`);
+  console.error(`[ERROR] Variables de entorno faltantes: ${missing.join(", ")}`);
   process.exit(1);
 }
 
@@ -89,8 +87,8 @@ const httpServer = createServer(app);
 httpServer.keepAliveTimeout = 65000;
 httpServer.headersTimeout   = 70000;
 httpServer.maxConnections   = 500;
-const PORT       = process.env.PORT || 3001;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
+const PORT        = process.env.PORT || 3001;
+const CORS_ORIGIN  = process.env.CORS_ORIGIN || "http://localhost:5173";
 const CORS_ORIGINS = CORS_ORIGIN;
 
 // -- Socket.io ------------------------------------------------
@@ -100,6 +98,8 @@ const io = new Server(httpServer, {
 });
 setIO(io);
 
+// Middleware de autenticacion de Socket.io.
+// Verifica el JWT enviado en socket.handshake.auth.token antes de aceptar la conexion.
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
   if (!token) return next(new Error("No autorizado"));
@@ -111,18 +111,19 @@ io.use((socket, next) => {
   }
 });
 
+// Al conectarse, une al socket a su sala personal y a la sala de admins si corresponde.
+// Tambien emite alertas de stock critico al admin si no se le enviaron hoy.
 io.on("connection", async (socket) => {
   const { id_empleado, id_rol } = socket.data.usuario;
   socket.join(`empleado_${id_empleado}`);
   if (id_rol !== 1) return;
   socket.join("admins");
 
-  // Al conectarse un admin, emitirle los insumos con stock bajo (≤ 2) — solo 1 vez por día
   try {
     const stockEnviadoHoy = getStockEnviadoHoy();
-    if (!stockEnviadoHoy) return; // workers aún no iniciados
+    if (!stockEnviadoHoy) return;
     const hoy = new Date().toISOString().slice(0, 10);
-    if (stockEnviadoHoy.get(id_empleado) === hoy) return; // ya se envió hoy
+    if (stockEnviadoHoy.get(id_empleado) === hoy) return;
 
     const [criticos] = await pool.query(
       `SELECT id_insumo, nombre, stock, imagen_url
@@ -140,16 +141,16 @@ io.on("connection", async (socket) => {
       });
     });
     stockEnviadoHoy.set(id_empleado, hoy);
-  } catch { /* no bloquear la conexión si falla */ }
+  } catch { /* no bloquear la conexion si falla la consulta de stock */ }
 });
 
-// -- Handlers de proceso no controlado -----------------------
+// -- Handlers de errores no capturados -----------------------
 process.on("uncaughtException",  (err) => console.error("[uncaughtException]",  err));
 process.on("unhandledRejection", (err) => console.error("[unhandledRejection]", err));
 
-// -- Graceful shutdown: SIGTERM (PM2/Docker) y SIGINT (Ctrl+C) ----
+// -- Cierre ordenado del servidor ----------------------------
 // Cierra conexiones activas y el pool MySQL antes de salir.
-// Timeout de 10s para evitar colgarse indefinidamente.
+// Timeout de 10 segundos para evitar que el proceso se quede colgado.
 const shutdown = (signal) => {
   httpServer.close(async () => {
     try { await pool.end(); } catch {}
@@ -160,8 +161,8 @@ const shutdown = (signal) => {
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT",  () => shutdown("SIGINT"));
 
-// -- Trust proxy (necesario para rate-limit detrás de Nginx/Apache) ----
-// '1' = confiar en el primer proxy inverso (el inmediato)
+// En produccion se confia en el primer proxy inverso para obtener la IP real del cliente.
+// Necesario para que express-rate-limit funcione correctamente detras de Nginx o Apache.
 if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
 
 // -- Middlewares globales -------------------------------------
@@ -180,7 +181,6 @@ app.use(helmet({
       styleSrcElem:["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc:    ["'self'", "data:", "https://fonts.gstatic.com"],
       imgSrc:      ["'self'", "data:", "blob:"],
-
       connectSrc:  (() => {
         const hosts = new Set([`localhost:${PORT}`]);
         try { if (process.env.APP_URL) hosts.add(new URL(process.env.APP_URL).host); } catch {}
@@ -202,7 +202,10 @@ app.use(helmet({
 app.use(cors({ origin: CORS_ORIGINS, credentials: true }));
 app.use((_req, res, next) => { res.setHeader("ngrok-skip-browser-warning", "1"); next(); });
 app.use(express.json({ limit: "2mb" }));
-// Excluir archivos sensibles del servidor estático
+
+// Servidor de archivos estaticos para /storage.
+// Bloquea el acceso a archivos .json y .env por seguridad.
+// Aplica cabeceras de cache de 7 dias para imagenes y PDFs.
 app.use("/storage", (req, res, next) => {
   const blocked = /(\.json|\.env)$/i;
   if (blocked.test(req.path)) return res.status(403).json({ error: "Acceso no permitido" });
@@ -211,18 +214,19 @@ app.use("/storage", (req, res, next) => {
     res.setHeader("Content-Disposition", "inline");
     res.setHeader("X-Content-Type-Options", "nosniff");
   }
-  // Cache de 7 días para imágenes y PDFs (son inmutables una vez subidos)
   if (/\.(jpg|jpeg|png|gif|webp|pdf)$/i.test(req.path)) {
     res.setHeader("Cache-Control", "public, max-age=604800, immutable");
   }
   next();
 }, express.static(path.resolve(__dirname, "../../storage")));
+
+// Las fotos de perfil requieren JWT valido para ser accedidas.
 app.use("/fotos", requireAuth, express.static(path.resolve(__dirname, "../../storage/Fotos de Perfil")));
 
 // -- Rutas ----------------------------------------------------
-app.get("/api/ping", (_req, res) => res.json({ status: "ok", message: "Servidor HelpDesk activo ✅" }));
+app.get("/api/ping", (_req, res) => res.json({ status: "ok", message: "Servidor HelpDesk activo" }));
 
-// Health endpoint: estado del pool de conexiones
+// Endpoint de salud: retorna estado del pool de conexiones, memoria y uptime.
 app.get("/api/health", requireAuth, (_req, res) => {
   const poolInfo = pool.pool?.pool ?? {};
   res.json({
@@ -238,7 +242,7 @@ app.get("/api/health", requireAuth, (_req, res) => {
   });
 });
 
-// Cache-Control: no-store en rutas sensibles de auth
+// Las rutas de autenticacion no deben ser cacheadas por el navegador ni proxies.
 app.use("/api/auth", (_req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
@@ -250,19 +254,20 @@ app.use("/api/tickets",     ticketsRoutes);
 app.use("/api/solicitudes", solicitudesRoutes);
 app.use("/api/manuales",    manualesRoutes);
 
-// -- 404 en rutas /api/ → siempre JSON, nunca HTML ------------------
+// Cualquier ruta /api/* no registrada retorna JSON con 404, nunca HTML.
 app.use("/api", (req, res) => {
   res.status(404).json({ error: `Ruta no encontrada: ${req.method} ${req.path}` });
 });
 
-// -- Servir frontend en producción ------------------------------------
+// En produccion, Express sirve el build del frontend para cualquier ruta no-API.
 if (process.env.NODE_ENV === "production") {
   const distPath = path.resolve(__dirname, "../../dist");
   app.use(express.static(distPath));
   app.get("/{*path}", (_req, res) => res.sendFile(path.join(distPath, "index.html")));
 }
 
-// -- Middleware global de errores -----------------------------
+// Middleware global de errores. Captura cualquier error no manejado en los controladores.
+// En produccion oculta el detalle del error 500 para no exponer informacion interna.
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, _next) => {
   console.error("[Error no manejado]", err);
@@ -275,44 +280,34 @@ app.use((err, req, res, _next) => {
 
 // -- Arranque -------------------------------------------------
 httpServer.listen(PORT, "0.0.0.0", async () => {
-  const line = "─".repeat(52);
-  const ok   = "✅";
-  const fail = "❌";
+  const line = "-".repeat(52);
 
   console.log(`\n${line}`);
-  console.log(`  Precision Trucks Parts — HelpDesk`);
+  console.log(`  Precision Trucks Parts - HelpDesk`);
   console.log(line);
 
-  // URLs de acceso
-  console.log(`  Backend  →  http://localhost:${PORT}`);
-  console.log(`  Frontend →  http://localhost:5173`);
-  if (process.env.APP_URL) console.log(`  Público  →  ${process.env.APP_URL}`);
+  console.log(`  Backend  ->  http://localhost:${PORT}`);
+  console.log(`  Frontend ->  http://localhost:5173`);
+  if (process.env.APP_URL) console.log(`  Publico  ->  ${process.env.APP_URL}`);
+
   const nets = networkInterfaces();
   for (const iface of Object.values(nets))
     for (const addr of iface)
       if (addr.family === "IPv4" && !addr.internal)
-        console.log(`  Red      →  http://${addr.address}:${PORT}  (LAN)`);
+        console.log(`  Red      ->  http://${addr.address}:${PORT}  (LAN)`);
 
-  // Base de datos
   try {
     const conn = await pool.getConnection();
     conn.release();
-    console.log(`  DB       →  ${ok} MySQL`);
+    console.log(`  DB       ->  ✅ MySQL`);
   } catch {
-    console.log(`  DB       →  ${fail} MySQL sin conexión`);
+    console.log(`  DB       ->  ❌ MySQL sin conexion`);
   }
 
-  // Socket.io — verificar que el servidor está escuchando
-  console.log(`  Socket   →  ${httpServer.listening ? ok : fail} WebSockets`);
-
-  // Workers
-  console.log(`  Workers  →  ${ok} Iniciando jobs programados`);
-
-  // SMTP
-  console.log(`  SMTP     →  ${process.env.SMTP_USER ? ok : "⚠️ "} ${process.env.SMTP_USER ? "Correos activos" : "No configurado — correos desactivados"}`);
-
-  // JWT
-  console.log(`  JWT      →  ${process.env.JWT_SECRET ? ok : fail} ${process.env.JWT_SECRET ? "Configurado" : "JWT_SECRET faltante"}`);
+  console.log(`  Socket   ->  ${httpServer.listening ? "✅" : "❌"} WebSockets`);
+  console.log(`  Workers  ->  ✅ Iniciando jobs programados`);
+  console.log(`  SMTP     ->  ${process.env.SMTP_USER ? "✅ Correos activos" : "⚠️  No configurado - correos desactivados"}`);
+  console.log(`  JWT      ->  ${process.env.JWT_SECRET ? "✅ Configurado" : "❌ JWT_SECRET faltante"}`);
 
   console.log(line + "\n");
 
