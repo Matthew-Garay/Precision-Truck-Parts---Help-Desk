@@ -105,6 +105,12 @@ $RECYCLE.BIN/
 coverage/
 .nyc_output/
 
+# ── Pruebas de estrés (Artillery) ───────────────────
+stress-*.yml
+run-stress.js
+resultado-*.json
+cloudflared*.exe
+
 # ── Misc ──────────────────────────────────────────
 ngrok.exe
 *.local

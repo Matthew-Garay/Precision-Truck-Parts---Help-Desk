@@ -1,13 +1,37 @@
 /**
- * Feedback.jsx — Sistema de retroalimentación visual · Design System PTP
+ * Feedback.jsx
  *
- * Exporta:
- *   Modal         — diálogo modal con header navy, body scrollable y footer
- *   ModalConfirm  — variante simplificada para acciones destructivas
- *   ToastProvider — proveedor de contexto para toasts
- *   useToast      — hook para disparar toasts
- *   Tooltip       — tooltip funcional con 4 posiciones
- *   InlineAlert   — banner de estado inline para formularios
+ * Sistema de retroalimentacion visual del Design System de PrecisionTrucks HelpDesk.
+ * Centraliza todos los componentes de interfaz que comunican estados al usuario.
+ *
+ * Componentes exportados:
+ *
+ *   Modal
+ *     Dialogo modal con banda de acento superior, header con titulo y boton de cierre,
+ *     body con scroll y footer con botones de accion. Soporta modo oscuro via tokens T.
+ *     Acepta la prop dirty para mostrar una advertencia si el usuario intenta cerrar
+ *     con cambios sin guardar. Se cierra con la tecla Escape.
+ *
+ *   ModalConfirm
+ *     Variante simplificada de Modal para confirmar acciones destructivas.
+ *     Muestra un icono de advertencia y un mensaje de confirmacion.
+ *
+ *   ToastProvider
+ *     Proveedor de contexto que gestiona la cola de toasts. Debe envolver el
+ *     arbol de componentes que necesiten mostrar notificaciones. Limita la cola
+ *     a los ultimos 8 toasts para no saturar la pantalla.
+ *
+ *   useToast
+ *     Hook que retorna el objeto { success, error, warning, info, dismiss }
+ *     para disparar toasts desde cualquier componente hijo de ToastProvider.
+ *
+ *   Tooltip
+ *     Tooltip funcional con retraso configurable y 4 posiciones: top, bottom,
+ *     left, right. Se activa con hover y foco para accesibilidad.
+ *
+ *   InlineAlert
+ *     Banner de estado inline para mostrar dentro de formularios o secciones.
+ *     Soporta los mismos tipos que los toasts: success, error, warning, info.
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X, CheckCircle2, AlertTriangle, XCircle, Info, AlertCircle, Loader2 } from "lucide-react";
