@@ -34,7 +34,9 @@
 import multer            from "multer";
 import path              from "path";
 import fs                from "fs";
+import crypto            from "crypto";
 import { fileURLToPath } from "url";
+import { fileTypeFromFile } from "file-type";
 import { safeResolvePath } from "./security.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -55,18 +57,56 @@ function nombreManual(nombreOriginal) {
 
 export { nombreManual };
 
-// Multer guarda con nombre temporal (timestamp); el servidor lo renombra
-// tras leer req.body.nombre que llega en los campos de texto del multipart
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, MANUALES_DIR),
   filename: (_req, _file, cb) => {
-    const nombre = `manual_tmp_${Date.now()}.pdf`;
+    // Nombre temporal con random para evitar colisiones bajo concurrencia
+    const rand  = crypto.randomBytes(8).toString("hex");
+    const nombre = `manual_tmp_${Date.now()}_${rand}.pdf`;
     try { safeResolvePath(MANUALES_DIR, nombre); } catch { return cb(new Error("Ruta no permitida")); }
     cb(null, nombre);
   },
 });
 
-export const uploadManual = multer({
+// Segunda barrera: validar magic bytes reales del archivo PDF
+async function validarMagicBytesPDF(req, res, next) {
+  const archivos = req.files ? req.files : (req.file ? [req.file] : []);
+  if (archivos.length === 0) return next();
+
+  for (const file of archivos) {
+    let tipo;
+    try { tipo = await fileTypeFromFile(file.path); } catch {
+      await fs.promises.unlink(file.path).catch(() => {});
+      return res.status(400).json({ error: "No se pudo verificar el tipo de archivo" });
+    }
+    if (!tipo || tipo.mime !== "application/pdf") {
+      // Limpiar todos los archivos del request
+      await Promise.all(archivos.map(f => fs.promises.unlink(f.path).catch(() => {})));
+      return res.status(400).json({ error: "Archivo rechazado: solo se permiten archivos PDF válidos" });
+    }
+  }
+  next();
+}
+
+const uploadManualRaw = multer({
   storage,
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === "application/pdf") cb(null, true);
+    else cb(Object.assign(new Error("Solo se permiten archivos PDF"), { status: 400 }));
+  },
   limits: { fileSize: 50 * 1024 * 1024 },
 });
+
+// Middleware compuesto: multer + validación de magic bytes
+export const uploadManual = {
+  single: (campo) => (req, res, next) =>
+    uploadManualRaw.single(campo)(req, res, async (err) => {
+      if (err) return res.status(err.status || 400).json({ error: err.message || "Error al subir archivo" });
+      await validarMagicBytesPDF(req, res, next);
+    }),
+  array: (campo, max) => (req, res, next) =>
+    uploadManualRaw.array(campo, max)(req, res, async (err) => {
+      if (err) return res.status(err.status || 400).json({ error: err.message || "Error al subir archivos" });
+      await validarMagicBytesPDF(req, res, next);
+    }),
+};

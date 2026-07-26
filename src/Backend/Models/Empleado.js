@@ -91,15 +91,26 @@ const Empleado = {
     return rows[0] || null;
   },
 
+  // findById SIN password — para uso general (controladores, respuestas API)
   findById: async (id) => {
     const [rows] = await pool.query(
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
-              e.email, e.password, e.foto, e.estatus, e.id_rol, e.id_departamento,
+              e.email, e.foto, e.estatus, e.id_rol, e.id_departamento,
               e.id_sucursal, d.nombre_departamento, s.nombre_sucursal
        FROM empleado e
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
        LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal
        WHERE e.id_empleado = ? LIMIT 1`,
+      [id]
+    );
+    return rows[0] || null;
+  },
+
+  // findByIdConPassword — solo para verificar contraseña actual (cambio de clave)
+  findByIdConPassword: async (id) => {
+    const [rows] = await pool.query(
+      `SELECT e.id_empleado, e.password, e.estatus
+       FROM empleado e WHERE e.id_empleado = ? LIMIT 1`,
       [id]
     );
     return rows[0] || null;

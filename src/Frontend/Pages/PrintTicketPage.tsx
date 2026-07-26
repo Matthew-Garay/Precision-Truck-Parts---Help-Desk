@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { getToken, setToken } from "../Config/api";
 import PrintReportView from "../Components/PrintReportView";
 import { LoadingPrint, ErrorPrint } from "../Components/PrintShared";
@@ -25,17 +25,17 @@ interface TicketPrint {
 }
 
 export default function PrintTicketPage() {
-  const { folio }           = useParams<{ folio: string }>();
-  const [searchParams]      = useSearchParams();
+  const { folio } = useParams<{ folio: string }>();
   const [ticket, setTicket] = useState<TicketPrint | null>(null);
   const [error,  setError]  = useState<string>("");
   const [ready,  setReady]  = useState(false);
 
   useEffect(() => {
     if (!folio) return;
-    const tokenParam = searchParams.get("token");
-    if (tokenParam) setToken(tokenParam);
-    const token = tokenParam ?? getToken();
+    // Leer token desde sessionStorage temporal (nunca desde URL para evitar exposición en logs/historial)
+    const printTk = sessionStorage.getItem("_print_tk");
+    if (printTk) { setToken(printTk); sessionStorage.removeItem("_print_tk"); }
+    const token = printTk ?? getToken();
     if (!token) {
       setError("Sesión no válida. Cierra esta pestaña, inicia sesión y vuelve a exportar el PDF.");
       return;

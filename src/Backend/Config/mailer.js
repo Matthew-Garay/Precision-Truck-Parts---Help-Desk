@@ -8,8 +8,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ── Ruta del logo ─────────────────────────────────────────────
 function resolverLogo() {
   const candidatos = [
-    path.resolve(__dirname, "../../../public/assets/img/log.png"),
-    path.resolve(__dirname, "../../../public/assets/img/logo blanco.png"),
     path.resolve(__dirname, "../../../public/assets/img/logo.png"),
   ];
   for (const ruta of candidatos) {
@@ -169,10 +167,10 @@ export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
     to,
     subject: "=?UTF-8?Q?C=C3=B3digo_de_verificaci=C3=B3n?=",
     html,
-    attachments: [{
+    attachments: LOGO_PATH ? [{
       filename: "logo.png",
-      path:     path.resolve(__dirname, "../../../public/assets/img/logo.png"),
+      path:     LOGO_PATH,
       cid:      "logoptp",
-    }],
+    }] : [],
   });
 }

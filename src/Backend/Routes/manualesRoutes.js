@@ -56,9 +56,9 @@ async function procesarArchivo(file, nombre, descripcion, idCat) {
 }
 
 // POST — subir PDF + metadatos (solo admin)
-router.post("/", requireAdmin, (req, res) => {
+router.post("/", requireAdmin, (req, res, next) => {
   uploadManual.single("archivo")(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: err.message || "Error al subir archivo" });
+    if (err) return res.status(err.status || 400).json({ error: err.message || "Error al subir archivo" });
     if (!req.file) return res.status(400).json({ error: "No se recibió ningún archivo" });
 
     const { nombre, descripcion, id_categoria } = req.body;
@@ -79,7 +79,8 @@ router.post("/", requireAdmin, (req, res) => {
       res.status(201).json({ ok: true, manual: { ...manual, url: `/storage/Manuales/${encodeURIComponent(path.basename(rutaFinal))}` } });
     } catch (e) {
       await fs.promises.unlink(req.file.path).catch(() => {});
-      res.status(500).json({ error: e.message });
+      const isProd = process.env.NODE_ENV === "production";
+      res.status(500).json({ error: isProd ? "Error al procesar el archivo" : e.message });
     }
   });
 });
@@ -87,7 +88,7 @@ router.post("/", requireAdmin, (req, res) => {
 // POST /batch — subir múltiples PDFs con categoría compartida (solo admin)
 router.post("/batch", requireAdmin, (req, res) => {
   uploadManual.array("archivos", 20)(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: err.message || "Error al subir archivos" });
+    if (err) return res.status(err.status || 400).json({ error: err.message || "Error al subir archivos" });
     if (!req.files?.length) return res.status(400).json({ error: "No se recibieron archivos" });
 
     const idCat = parseInt(req.body.id_categoria, 10);
@@ -96,7 +97,6 @@ router.post("/batch", requireAdmin, (req, res) => {
       return res.status(400).json({ error: "La categoría es obligatoria" });
     }
     const descripcion = req.body.descripcion || null;
-    // nombres puede ser JSON array o string único
     let nombres;
     try { nombres = JSON.parse(req.body.nombres); } catch { nombres = req.files.map(f => f.originalname.replace(/\.pdf$/i, "")); }
 
@@ -109,7 +109,8 @@ router.post("/batch", requireAdmin, (req, res) => {
         resultados.push({ ok: true, nombre, id, url: `/storage/Manuales/${encodeURIComponent(path.basename(rutaFinal))}` });
       } catch (e) {
         await fs.promises.unlink(file.path).catch(() => {});
-        resultados.push({ ok: false, nombre, error: e.message });
+        const isProd = process.env.NODE_ENV === "production";
+        resultados.push({ ok: false, nombre, error: isProd ? "Error al procesar" : e.message });
       }
     }
     res.status(207).json({ resultados });
@@ -128,7 +129,10 @@ router.put("/:id", requireAdmin, async (req, res) => {
     const ok = await Manual.actualizar(id, { nombre: nombre.trim().slice(0, 150), descripcion: descripcion?.trim() || null, id_categoria: idCat });
     if (!ok) return res.status(404).json({ error: "Manual no encontrado" });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    const isProd = process.env.NODE_ENV === "production";
+    res.status(500).json({ error: isProd ? "Error interno" : e.message });
+  }
 });
 
 // POST /:id/reemplazar — reemplaza solo el archivo PDF (solo admin)
@@ -136,7 +140,7 @@ router.post("/:id/reemplazar", requireAdmin, (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
   uploadManual.single("archivo")(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: err.message || "Error al subir archivo" });
+    if (err) return res.status(err.status || 400).json({ error: err.message || "Error al subir archivo" });
     if (!req.file) return res.status(400).json({ error: "No se recibió ningún archivo" });
     try {
       const rutaAnterior = await Manual.getRuta(id);
@@ -144,18 +148,16 @@ router.post("/:id/reemplazar", requireAdmin, (req, res) => {
         await fs.promises.unlink(req.file.path).catch(() => {});
         return res.status(404).json({ error: "Manual no encontrado" });
       }
-      // Renombrar al mismo nombre que tenía para mantener la URL
       const nombreBase = path.basename(rutaAnterior);
       const rutaFinal  = safeResolvePath(MANUALES_DIR, nombreBase);
-      // Eliminar el anterior y mover el nuevo
       await fs.promises.unlink(safeResolvePath(MANUALES_DIR, nombreBase)).catch(() => {});
       await fs.promises.rename(req.file.path, rutaFinal);
-      // Actualizar fecha_cambio usando actualizar con los mismos metadatos
       await Manual.actualizarFechaCambio(id);
       res.json({ ok: true, url: `/storage/Manuales/${encodeURIComponent(nombreBase)}` });
     } catch (e) {
       await fs.promises.unlink(req.file.path).catch(() => {});
-      res.status(500).json({ error: e.message });
+      const isProd = process.env.NODE_ENV === "production";
+      res.status(500).json({ error: isProd ? "Error interno" : e.message });
     }
   });
 });
@@ -169,9 +171,12 @@ router.delete("/:id", requireAdmin, async (req, res) => {
     if (!ruta) return res.status(404).json({ error: "Manual no encontrado" });
     const ok = await Manual.eliminar(id);
     if (!ok) return res.status(404).json({ error: "Manual no encontrado" });
-    try { await fs.promises.unlink(safeResolvePath(MANUALES_DIR, path.basename(ruta))); } catch { /* ya no existe o ya era relativa */ }
+    try { await fs.promises.unlink(safeResolvePath(MANUALES_DIR, path.basename(ruta))); } catch { /* ya no existe */ }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    const isProd = process.env.NODE_ENV === "production";
+    res.status(500).json({ error: isProd ? "Error interno" : e.message });
+  }
 });
 
 export default router;

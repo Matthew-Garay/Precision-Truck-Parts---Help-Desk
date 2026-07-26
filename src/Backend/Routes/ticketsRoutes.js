@@ -34,7 +34,7 @@ import pool              from "../Config/db.js";
 import { requireAuth, requireAdmin } from "../Middlewares/authMiddleware.js";
 import { csrfProtection } from "../Middlewares/security.js";
 import { validate, schemaCrearTicket, schemaActualizarTicket, schemaCalificarTicket, schemaEditarTicket, schemaFiltrosTickets } from "../Middlewares/validate.js";
-import { crearTicket, getTicketsByEmpleado, getImagenesTicket, agregarImagenesTicket, eliminarImagenTicket, getAllTickets, actualizarTicket, calificarTicket, editarTicketUsuario, getMetricas, getAdmins, getReporte, getTicketById, getTicketByFolio, cancelarTicket, getRendimientoTecnicos } from "../Controllers/ticketsController.js";
+import { crearTicket, getTicketsByEmpleado, getImagenesTicket, agregarImagenesTicket, eliminarImagenTicket, getAllTickets, actualizarTicket, calificarTicket, editarTicketUsuario, getMetricas, getAdmins, getReporte, getTicketById, getTicketByFolio, cancelarTicket, getRendimientoTecnicos, getHistorialTicket } from "../Controllers/ticketsController.js";
 import { uploadEvidencias } from "../Middlewares/uploadEvidencias.js";
 
 // Middleware: solo el propio empleado o un admin puede acceder (por id_empleado en params)
@@ -67,7 +67,7 @@ router.use(requireAuth);
 // Rate limit para creacion de tickets: max 30 por hora
 const ticketLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 30,
+  max: 2000, // STRESS TEST — restaurar a 30 después
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Limite de tickets alcanzado. Intenta mas tarde." },
@@ -96,6 +96,7 @@ router.post("/", ticketLimiter, ...uploadEvidencias.array("evidencias", 8), vali
 
 // ── Sub-rutas de un ticket — deben ir ANTES de /:id_ticket ───
 router.get("/:id_ticket/imagenes",                        getImagenesTicket);
+router.get("/:id_ticket/historial",                       getHistorialTicket);
 router.post("/:id_ticket/imagenes", ...uploadEvidencias.array("evidencias", 8), agregarImagenesTicket);
 router.delete("/:id_ticket/imagenes/:nombre",              eliminarImagenTicket);
 router.patch("/:id_ticket/calificar", validate(schemaCalificarTicket), calificarTicket);

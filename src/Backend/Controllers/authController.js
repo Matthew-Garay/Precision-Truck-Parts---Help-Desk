@@ -164,20 +164,19 @@ export const logout = async (req, res) => {
     const header = req.headers["authorization"];
     if (header?.startsWith("Bearer ")) {
       try {
-        const payload = jwt.decode(header.slice(7));
+        // Usar verify (no decode) para validar la firma antes de confiar en el payload
+        const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET);
         if (payload?.id_empleado) {
           const [[acceso]] = await pool.query(
             "SELECT id_empleado FROM historial_acceso WHERE id_acceso = ? LIMIT 1",
             [id_acceso]
           );
-          // Si el registro existe y no pertenece al empleado del token, rechazar
           if (acceso && acceso.id_empleado !== payload.id_empleado)
             return res.status(403).json({ error: "No autorizado" });
-          // Revocar el JWT
           if (payload?.jti && payload?.exp)
             await revocarToken(payload.jti, payload.id_empleado, payload.exp);
         }
-      } catch { /* ignorar errores de decode */ }
+      } catch { /* token inválido o expirado — continuar sin revocar */ }
     }
     await Empleado.registrarSalida(id_acceso);
     res.json({ ok: true });
@@ -317,7 +316,9 @@ export const actualizarPerfil = async (req, res) => {
     if (password_nueva) {
       if (!password_actual)
         return res.status(400).json({ error: "La contraseña actual es requerida" });
-      const coincide = await bcrypt.compare(password_actual, empleado.password);
+      // Usar findByIdConPassword solo cuando se necesita verificar el hash
+      const empConPass = await Empleado.findByIdConPassword(idNum);
+      const coincide = empConPass ? await bcrypt.compare(password_actual, empConPass.password) : false;
       if (!coincide)
         return res.status(401).json({ error: "La contraseña actual es incorrecta" });
     }
