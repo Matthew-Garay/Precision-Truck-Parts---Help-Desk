@@ -359,7 +359,7 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
       if (esCierre) {
         let adminId = null;
         try {
-          const s = JSON.parse(sessionStorage.getItem("usuario") || "{}");
+          const s = JSON.parse(localStorage.getItem("usuario") || "{}");
           adminId = s.id_empleado ? parseInt(s.id_empleado, 10) : null;
         } catch {}
         const resCierre = await apiFetch(`/api/tickets/${ticket.id_ticket}`, {
@@ -608,11 +608,11 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
   const prioBg     = isDark ? prio.bgD     : prio.bgL;
   const prioBorder = isDark ? prio.borderD : prio.borderL;
 
-  // Leer id del admin: primero del prop, luego sessionStorage como fallback
+  // Leer id del admin: primero del prop, luego localStorage (donde vive la sesión)
   const getAdminId = () => {
     if (usuario?.id_empleado) return parseInt(usuario.id_empleado, 10);
     try {
-      const s = JSON.parse(sessionStorage.getItem("usuario") || "{}");
+      const s = JSON.parse(localStorage.getItem("usuario") || "{}");
       return s.id_empleado ? parseInt(s.id_empleado, 10) : null;
     } catch { return null; }
   };
@@ -622,7 +622,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
       return partes.join(' ');
     }
     try {
-      const s = JSON.parse(sessionStorage.getItem("usuario") || "{}");
+      const s = JSON.parse(localStorage.getItem("usuario") || "{}");
       const partes = [s.nombre, s.ap_paterno, s.ap_materno].filter(Boolean);
       return partes.length > 0 ? partes.join(' ') : null;
     } catch { return null; }
@@ -664,9 +664,11 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
 
   const generarReporte = () => {
     const folio = ticketLocal.folio_ticket;
-    const token = getToken();
-    const url   = `/print/ticket/${encodeURIComponent(folio)}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
-    const win   = window.open(url, "_blank", "width=1200,height=800");
+    // Pasar token via sessionStorage temporal — nunca en la URL (historial/logs)
+    const tk = getToken();
+    if (tk) sessionStorage.setItem("_print_tk", tk);
+    const url = `/print/ticket/${encodeURIComponent(folio)}`;
+    const win = window.open(url, "_blank", "width=1200,height=800");
     if (!win) {
       const aviso = document.createElement("div");
       aviso.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#1D1D1B;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;border-left:4px solid #F47920;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
@@ -1372,8 +1374,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
             </div>
             )}
 
-            {/* -- EXPORTAR PDF (usuario) -- */}
-            {!esAdmin && (
+            {/* -- EXPORTAR PDF (admin y usuario) -- */}
             <div
               style={card}
               onMouseEnter={e => Object.assign(e.currentTarget.style, cardHover)}
@@ -1413,50 +1414,6 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                 </button>
               </div>
             </div>
-            )}
-
-            {/* -- EXPORTAR PDF (admin) -- */}
-            {esAdmin && (
-            <div
-              style={card}
-              onMouseEnter={e => Object.assign(e.currentTarget.style, cardHover)}
-              onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
-              <div className="px-6 py-4 flex items-center gap-2.5" style={hdr}>
-                <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: "#dc2626" }} />
-                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Exportar reporte</p>
-              </div>
-              <div className="px-5 py-5">
-                <p className="mb-3" style={{ fontSize:12, color: T.textFaint }}>Genera un PDF con toda la información de esta incidencia.</p>
-                <button
-                  onClick={generarReporte}
-                  className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-xs font-bold transition-all active:scale-95"
-                  style={{
-                    background: isDark ? "rgba(220,38,38,0.12)" : "#fef2f2",
-                    color: "#dc2626",
-                    border: `1px solid ${isDark ? "rgba(220,38,38,0.25)" : "#fca5a5"}`,
-                    letterSpacing: "0.03em",
-                    transition: "all 0.18s ease",
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = isDark ? "rgba(220,38,38,0.2)" : "#fee2e2";
-                    e.currentTarget.style.boxShadow = "0 4px 14px rgba(220,38,38,0.15)";
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = isDark ? "rgba(220,38,38,0.12)" : "#fef2f2";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="16" y1="13" x2="8" y2="13"/>
-                    <line x1="16" y1="17" x2="8" y2="17"/>
-                    <polyline points="10 9 9 9 8 9"/>
-                  </svg>
-                  Exportar PDF
-                </button>
-              </div>
-            </div>
-            )}
 
             {/* -- ACCIONES ADMIN -- */}
             {esAdmin && (

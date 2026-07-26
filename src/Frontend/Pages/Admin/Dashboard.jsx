@@ -198,7 +198,12 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
   const cargarSolicitudes = useCallback(() =>
     apiFetch(API_ROUTES.SOLICITUDES_PEND)
       .then(r => r.json())
-      .then(data => setSolicitudes(Array.isArray(data) ? data : []))
+      .then(data => {
+        console.log("[solicitudes pendientes raw]", data);
+        const lista = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+        console.log("[solicitudes pendientes lista]", lista);
+        setSolicitudes(lista);
+      })
       .catch(err => console.error("[Admin] Error cargando solicitudes pendientes:", err.message))
   , []);
 

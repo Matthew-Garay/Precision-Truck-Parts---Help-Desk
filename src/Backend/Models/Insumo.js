@@ -71,10 +71,13 @@ const Insumo = {
   },
 
   actualizar: async (id, { num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, proveedor, imagen_url }) => {
+    // Si imagen_url no viene en el body (undefined), no sobreescribir la foto existente
+    const imgSql  = imagen_url !== undefined ? ", imagen_url=?" : "";
+    const imgVals = imagen_url !== undefined ? [imagen_url || null] : [];
     const [r] = await pool.query(
       `UPDATE insumo
           SET num_serie=?, nombre=?, descripcion=?, marca=?, modelo=?,
-              stock=?, estado=?, id_categoria=?, proveedor=?, imagen_url=?
+              stock=?, estado=?, id_categoria=?, proveedor=?${imgSql}
         WHERE id_insumo=?`,
       [
         num_serie   || null,
@@ -86,7 +89,7 @@ const Insumo = {
         estado,
         id_categoria,
         proveedor   || null,
-        imagen_url  || null,
+        ...imgVals,
         id,
       ]
     );

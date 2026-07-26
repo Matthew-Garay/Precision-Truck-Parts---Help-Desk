@@ -9,7 +9,8 @@ import { safeResolvePath }  from "./security.js";
 const __dirname   = path.dirname(fileURLToPath(import.meta.url));
 const INSUMOS_DIR = path.resolve(__dirname, "../../../storage/Insumos");
 
-const isImage = (mime) => mime?.startsWith("image/");
+const INSUMOS_MIMETYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"]);
+const isImage = (mime) => INSUMOS_MIMETYPES.has(mime);
 
 fs.mkdirSync(INSUMOS_DIR, { recursive: true });
 
@@ -18,7 +19,7 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const idSeguro = parseInt(req.params.id, 10);
     if (isNaN(idSeguro) || idSeguro <= 0) return cb(new Error("ID de insumo inválido"));
-    const extMap = { "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif", "image/avif": ".avif", "image/svg+xml": ".svg" };
+    const extMap = { "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif", "image/avif": ".avif" };
     const ext  = extMap[file.mimetype] ?? ".jpg";
     const rand = crypto.randomBytes(6).toString("hex");
     const nombre = `insumo_${idSeguro}_${Date.now()}${rand}${ext}`;
