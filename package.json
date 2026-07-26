@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "server": "cross-env NODE_ENV=production node --import ./src/Backend/load-env.js src/Backend/server.js",
-    "dev:all": "concurrently -k -n \"BACK,FRONT\" -c \"yellow,cyan\" --timestamp --timefmt \"HH:mm:ss\" \"node --import ./src/Backend/load-env.js src/Backend/server.js\" \"wait-on http://localhost:3001/api/ping && vite --logLevel warn\"",
+    "dev:all": "chcp 65001 && concurrently -k -n \"BACK,FRONT\" -c \"yellow,cyan\" --timestamp --timefmt \"HH:mm:ss\" \"node --import ./src/Backend/load-env.js src/Backend/server.js\" \"wait-on http://localhost:3001/api/ping && vite --logLevel warn\"",
     "build": "vite build",
     "preview": "vite preview"
   },

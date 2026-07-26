@@ -67,7 +67,7 @@ router.use(requireAuth);
 // Rate limit para creacion de tickets: max 30 por hora
 const ticketLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 2000, // STRESS TEST — restaurar a 30 después
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Limite de tickets alcanzado. Intenta mas tarde." },

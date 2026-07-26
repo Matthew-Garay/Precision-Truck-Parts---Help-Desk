@@ -1,3 +1,84 @@
+/**
+ * ticketsController.js
+ *
+ * Controlador que gestiona el ciclo de vida completo de los tickets de soporte
+ * tecnico dentro del sistema HelpDesk.
+ *
+ * Funciones exportadas:
+ *
+ *   crearTicket
+ *     Crea un nuevo ticket con los datos del formulario. Si se adjuntaron
+ *     archivos de evidencia, los mueve del directorio temporal al directorio
+ *     definitivo nombrado con el folio del ticket. Invalida la cache de metricas
+ *     y emite los eventos "ticket:confirmado" al empleado y "ticket:nuevo" a los
+ *     admins por Socket.io.
+ *
+ *   getTicketById
+ *     Retorna el detalle completo de un ticket. Verifica que el solicitante sea
+ *     el dueno del ticket o un administrador antes de responder.
+ *
+ *   getTicketByFolio
+ *     Igual que getTicketById pero busca por folio en lugar de id numerico.
+ *     Tambien retorna la lista de nombres de archivos de evidencia del ticket.
+ *     Usado por las paginas de impresion PDF.
+ *
+ *   getTicketsByEmpleado
+ *     Retorna el historial paginado de tickets de un empleado especifico.
+ *     Acepta filtros de estatus, prioridad, categoria y busqueda por texto.
+ *
+ *   actualizarTicket
+ *     Cambia el estatus, comentarios y tecnico asignado de un ticket.
+ *     Invalida la cache de metricas y rendimiento. Emite "ticket:en_atencion"
+ *     cuando el estatus pasa a "En proceso" con tecnico asignado, o
+ *     "ticket:actualizado" cuando se cierra como Resuelto o No Resuelto.
+ *
+ *   calificarTicket
+ *     Guarda la calificacion (1 a 5) del empleado sobre la atencion recibida.
+ *     Solo el dueno del ticket puede calificar. Emite "ticket:calificado" a admins.
+ *
+ *   editarTicketUsuario
+ *     Permite al empleado editar titulo, descripcion, prioridad y categoria
+ *     de su propio ticket mientras este en estado "En proceso".
+ *
+ *   cancelarTicket
+ *     Cancela un ticket. Solo el dueno puede cancelar y solo si esta En proceso.
+ *     Emite "ticket:actualizado" con estatus "Cancelado" al empleado y a admins.
+ *
+ *   agregarImagenesTicket
+ *     Agrega nuevas imagenes de evidencia a un ticket existente.
+ *     Limita el total a 8 imagenes por ticket.
+ *
+ *   eliminarImagenTicket
+ *     Elimina una imagen de evidencia especifica del disco.
+ *
+ *   getMetricas
+ *     Retorna estadisticas del dashboard: promedio de horas de resolucion,
+ *     tickets por departamento y tendencia mensual de los ultimos 6 meses.
+ *
+ *   getReporte
+ *     Retorna tickets filtrados por rango de fechas y filtros opcionales
+ *     para exportacion a PDF o Excel.
+ *
+ *   getRendimientoTecnicos
+ *     Retorna metricas de desempeno por tecnico: tickets atendidos, resueltos,
+ *     tiempo promedio, calificacion promedio y porcentaje resueltos a tiempo.
+ *
+ *   getAllTickets
+ *     Retorna todos los tickets paginados con filtros multiples.
+ *     Solo para administradores.
+ *
+ *   getAdmins
+ *     Retorna la lista de empleados con rol administrador activos.
+ *     Se usa en el formulario de asignacion de tecnico.
+ *
+ *   getHistorialTicket
+ *     Retorna el historial de cambios de un ticket (tabla ticket_historial).
+ *     Retorna arreglo vacio si la tabla no existe aun.
+ *
+ *   getTicketByFolio
+ *     Busca un ticket por su folio e incluye las imagenes de evidencia.
+ *     Usado por las paginas de impresion.
+ */
 import Ticket   from "../Models/Ticket.js";
 import Empleado from "../Models/Empleado.js";
 import { getIO } from "../Config/socketInstance.js";

@@ -21,8 +21,10 @@
  */
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
 
-dotenv.config();
+dotenv.config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../../../.env") });
 
 // Pool de conexiones a MySQL. Se reutilizan conexiones en lugar de abrir una nueva
 // por cada peticion, lo que mejora el rendimiento bajo carga concurrente.
