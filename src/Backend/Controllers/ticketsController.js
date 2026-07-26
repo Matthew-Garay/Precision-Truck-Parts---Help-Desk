@@ -8,6 +8,35 @@ import { EVIDENCIAS_BASE } from "../Middlewares/uploadEvidencias.js";
 import pool from "../Config/db.js";
 import { cache } from "../Config/cache.js";
 
+export const getHistorialTicket = async (req, res) => {
+  try {
+    const id_ticket = parseInt(req.params.id_ticket);
+    if (isNaN(id_ticket)) return res.status(400).json({ error: "ID inválido" });
+    const ticket = await Ticket.getById(id_ticket);
+    if (!ticket) return res.status(404).json({ error: "Ticket no encontrado" });
+    const { id_rol, id_empleado } = req.usuario;
+    if (id_rol !== 1 && ticket.id_empleado !== id_empleado)
+      return res.status(403).json({ error: "Acceso no autorizado" });
+    // Retornar array vacío si la tabla historial_ticket no existe aún
+    try {
+      const [rows] = await pool.query(
+        `SELECT h.id_historial, h.campo_cambiado, h.valor_anterior, h.valor_nuevo,
+                h.fecha_cambio,
+                TRIM(CONCAT(e.nombre,' ',e.ap_paterno)) AS nombre_empleado
+         FROM historial_ticket h
+         JOIN empleado e ON h.id_empleado = e.id_empleado
+         WHERE h.id_ticket = ?
+         ORDER BY h.fecha_cambio ASC`,
+        [id_ticket]
+      );
+      res.json(rows);
+    } catch { res.json([]); }
+  } catch (err) {
+    console.error("[getHistorialTicket]", err.message);
+    res.status(500).json({ error: "Error al obtener historial" });
+  }
+};
+
 export const getTicketByFolio = async (req, res) => {
   try {
     const folio = req.params.folio?.trim().toUpperCase();
@@ -338,6 +367,11 @@ export const agregarImagenesTicket = async (req, res) => {
     const existentes = fs.existsSync(destDir)
       ? fs.readdirSync(destDir).filter(f => /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|avi)$/i.test(f)).sort()
       : [];
+    if (existentes.length + archivos.length > 8) {
+      // Limpiar archivos subidos antes de rechazar
+      archivos.forEach(f => { try { fs.unlinkSync(f.path); } catch {} });
+      return res.status(400).json({ error: `El ticket ya tiene ${existentes.length} imagen(es). Solo se permiten 8 en total.` });
+    }
     let contador = existentes.length;
     archivos.forEach(file => {
       contador++;

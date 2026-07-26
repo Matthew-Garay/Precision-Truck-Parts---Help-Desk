@@ -63,7 +63,7 @@ function requireOwnerOrAdmin(req, res, next) {
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 500, // STRESS TEST — restaurar a 10 después
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Demasiados intentos de inicio de sesión. Intenta de nuevo en 15 minutos." },

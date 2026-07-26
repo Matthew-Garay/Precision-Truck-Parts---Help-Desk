@@ -86,14 +86,16 @@ if (missing.length > 0) {
 const __dirname  = dirname(fileURLToPath(import.meta.url));
 const app        = express();
 const httpServer = createServer(app);
+httpServer.keepAliveTimeout = 65000;
+httpServer.headersTimeout   = 70000;
+httpServer.maxConnections   = 500;
 const PORT       = process.env.PORT || 3001;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
-const CORS_ORIGINS = (origin, callback) => callback(null, true);
+const CORS_ORIGINS = CORS_ORIGIN;
 
 // -- Socket.io ------------------------------------------------
 const io = new Server(httpServer, {
-  cors: { origin: CORS_ORIGINS, methods: ["GET", "POST"] },
-  // Permitir conexiones desde cualquier IP de red local
+  cors: { origin: CORS_ORIGINS, methods: ["GET", "POST"], credentials: true },
   allowEIO3: true,
 });
 setIO(io);
@@ -172,17 +174,24 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc:  ["'self'"],
-      scriptSrc:   ["'self'", "'unsafe-inline'"],
+      scriptSrc:   ["'self'"],
       workerSrc:   ["'self'", "blob:"],
       styleSrc:    ["'self'", "'unsafe-inline'"],
       styleSrcElem:["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc:    ["'self'", "data:", "https://fonts.gstatic.com"],
       imgSrc:      ["'self'", "data:", "blob:"],
 
-      connectSrc:  ["'self'", "ws:", "wss:", "http:", "https:"],
+      connectSrc:  (() => {
+        const hosts = new Set([`localhost:${PORT}`]);
+        try { if (process.env.APP_URL) hosts.add(new URL(process.env.APP_URL).host); } catch {}
+        try { if (process.env.CORS_ORIGIN) hosts.add(new URL(process.env.CORS_ORIGIN).host); } catch {}
+        const list = ["'self'"];
+        for (const h of hosts) { list.push(`ws://${h}`, `wss://${h}`); }
+        return list;
+      })(),
       objectSrc:      ["'none'"],
       frameSrc:       ["'self'", "blob:"],
-      frameAncestors: ["*"],
+      frameAncestors: ["'self'"],
       upgradeInsecureRequests: null,
     },
   },

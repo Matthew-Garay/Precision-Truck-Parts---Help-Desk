@@ -1,0 +1,72 @@
+config:
+  target: "http://192.168.1.167:3001"
+  phases:
+    - duration: 30
+      arrivalRate: 3
+      name: "Calentamiento"
+    - duration: 60
+      arrivalRate: 10
+      name: "Carga sostenida"
+    - duration: 30
+      arrivalRate: 20
+      rampTo: 50
+      name: "Pico de estres"
+  defaults:
+    headers:
+      x-requested-with: "XMLHttpRequest"
+      Content-Type: "application/json"
+
+scenarios:
+  - name: "Admin consulta metricas dashboard"
+    weight: 40
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "1911.garay.perez@gmail.com"
+            password: "Admin123."
+          capture:
+            - json: "$.token"
+              as: "jwt"
+      - get:
+          url: "/api/tickets/metricas"
+          headers:
+            Authorization: "Bearer {{ jwt }}"
+          expect:
+            - statusCode: 200
+
+  - name: "Admin consulta rendimiento tecnicos"
+    weight: 30
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "1911.garay.perez@gmail.com"
+            password: "Admin123."
+          capture:
+            - json: "$.token"
+              as: "jwt"
+      - get:
+          url: "/api/tickets/rendimiento"
+          headers:
+            Authorization: "Bearer {{ jwt }}"
+          expect:
+            - statusCode: 200
+
+  - name: "Admin consulta metricas solicitudes"
+    weight: 30
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "1911.garay.perez@gmail.com"
+            password: "Admin123."
+          capture:
+            - json: "$.token"
+              as: "jwt"
+      - get:
+          url: "/api/solicitudes/metricas"
+          headers:
+            Authorization: "Bearer {{ jwt }}"
+          expect:
+            - statusCode: 200

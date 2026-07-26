@@ -178,7 +178,10 @@ export const schemaActualizarEstatusSolicitud = z.object({
     id_solicitud_insumo: z.number({ coerce: true }).int().positive(),
     aprobado: z.union([z.literal(0), z.literal(1)]),
   })).optional(),
-});
+}).refine(
+  (d) => d.estatus !== "Aceptado" || (Array.isArray(d.items) && d.items.length > 0),
+  { message: "Debes indicar el estado de aprobación de cada ítem al aceptar", path: ["items"] }
+);
 
 // Schema para filtros de búsqueda en tickets (#16)
 export const schemaFiltrosTickets = z.object({

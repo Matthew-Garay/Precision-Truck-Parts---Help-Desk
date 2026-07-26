@@ -55,7 +55,7 @@ export function iniciarWorkers(io) {
   _stockEnviadoHoy = stockEnviadoHoy;
 
   // Guard de solapamiento: evita que una ejecución lenta se superponga con la siguiente
-  let corriendo = { sla: false, vencidos: false, sesiones: false, sinAtender: false };
+  let corriendo = { sla: false, vencidos: false, sesiones: false, sinAtender: false, stock: false };
 
   // -- Alertas SLA: tickets próximos a vencer (~46.5h) ------------
   const ivSLA = setInterval(async () => {
@@ -167,6 +167,8 @@ export function iniciarWorkers(io) {
   // -- Alertas de stock crítico: 1 vez al día a todos los admins ----
   // Resetea el set cada ciclo para que los insumos vuelvan a alertarse al día siguiente.
   const ivStock = setInterval(async () => {
+    if (corriendo.stock) return;
+    corriendo.stock = true;
     try {
       stockAlertados.clear(); // nuevo día → permitir re-emisión
       const [criticos] = await pool.query(
@@ -186,6 +188,8 @@ export function iniciarWorkers(io) {
       });
     } catch (err) {
       console.error("[stock crítico]", err.message);
+    } finally {
+      corriendo.stock = false;
     }
   }, 24 * 60 * 60 * 1000); // cada 24 horas
   ivStock.unref();

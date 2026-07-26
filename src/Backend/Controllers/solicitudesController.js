@@ -183,6 +183,11 @@ export const getSolicitudesPendientes = async (req, res) => {
     const limit  = Math.min(parseInt(req.query.limit) || 100, 500);
     const page   = Math.max(parseInt(req.query.page)  || 1, 1);
     const offset = (page - 1) * limit;
+    const [[{ total }]] = await pool.query(
+      `SELECT COUNT(DISTINCT s.id_solicitud) AS total
+       FROM solicitud s
+       WHERE s.estatus = 'En proceso'`
+    );
     const [rows] = await pool.query(
       `SELECT s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
               CONCAT(e.nombre,' ',e.ap_paterno) AS nombre_empleado,
@@ -200,7 +205,7 @@ export const getSolicitudesPendientes = async (req, res) => {
        LIMIT ? OFFSET ?`,
       [limit, offset]
     );
-    res.json(rows);
+    res.json({ data: rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
     res.status(500).json({ error: "Error al obtener solicitudes pendientes", ...errDetalle(err) });
   }
