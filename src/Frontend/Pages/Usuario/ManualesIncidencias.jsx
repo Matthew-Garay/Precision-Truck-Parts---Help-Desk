@@ -59,7 +59,7 @@ function DrawerVisor({ manual, T, onClose }) {
 // ── Miniatura portada PDF ─────────────────────────────────────────
 function PdfThumb({ url, isDark }) {
   const ref = useRef(null);
-  const { imgSrc } = usePdfCover(url, ref);
+  const { imgSrc, loading } = usePdfCover(url, ref);
   return (
     <div ref={ref} style={{
       height: 130, background: isDark ? "#0f1117" : "#f1f5f9",
@@ -70,6 +70,15 @@ function PdfThumb({ url, isDark }) {
     }}>
       {imgSrc ? (
         <img src={imgSrc} alt="portada" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      ) : loading ? (
+        <div style={{
+          position: "absolute", inset: 0,
+          background: isDark
+            ? "linear-gradient(90deg,#1e2535 25%,#252d42 50%,#1e2535 75%)"
+            : "linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%)",
+          backgroundSize: "200% 100%",
+          animation: "shimmer 1.2s infinite linear",
+        }} />
       ) : (
         <div style={{
           width: 72, height: 94, borderRadius: 4,
@@ -91,6 +100,7 @@ function PdfThumb({ url, isDark }) {
       }}>
         PDF
       </span>
+      <style>{`@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}`}</style>
     </div>
   );
 }
