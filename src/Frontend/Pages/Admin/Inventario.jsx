@@ -612,7 +612,7 @@ export default function Inventario() {
     { key: "busqueda",  label: "Búsqueda Rápida", type: "search", placeholder: "Nombre, marca, modelo…" },
     { key: "estado",    label: "Estado",           type: "select", opts: ["Todos", ...ESTADO_OPTS] },
     { key: "categoria", label: "Categoría",        type: "select", opts: catOpts },
-    { key: "stock",     label: "Stock",            type: "select", opts: ["Todos", "Con stock", "Sin stock"] },
+    { key: "stock",     label: "Stock",            type: "select", opts: ["Todos", "Con stock"] },
   ];
 
   const filtrados = insumos.filter(i => {

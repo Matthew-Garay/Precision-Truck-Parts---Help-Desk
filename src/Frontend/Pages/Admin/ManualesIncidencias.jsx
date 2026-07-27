@@ -258,13 +258,16 @@ function PdfThumb({ url, isDark }) {
     <div ref={ref} style={{ height: 130, background: isDark ? "#0f1117" : "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, position: "relative", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : SLATE[100]}`, overflow: "hidden" }}>
       {imgSrc ? (
         <img src={imgSrc} alt="portada" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      ) : loading ? (
+        <div style={{ position: "absolute", inset: 0, background: isDark ? "linear-gradient(90deg,#1e2535 25%,#252d42 50%,#1e2535 75%)" : "linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.2s infinite linear" }} />
       ) : (
         <div style={{ width: 72, height: 94, borderRadius: 4, background: isDark ? "#1e2535" : "#fff", border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : SLATE[200]}`, boxShadow: "0 4px 16px rgba(0,0,0,0.15)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <FileText size={18} style={{ color: SLATE[400] }} />
-          {!loading && <span style={{ fontSize: "7px", fontWeight: 700, color: "#dc2626" }}>PDF</span>}
+          <span style={{ fontSize: "7px", fontWeight: 700, color: "#dc2626" }}>PDF</span>
         </div>
       )}
       <span style={{ position: "absolute", top: 8, right: 8, fontSize: 9, fontWeight: 800, letterSpacing: "0.05em", padding: "2px 6px", borderRadius: 4, background: isDark ? "rgba(244,121,32,0.18)" : "#fff7ed", color: ORANGE, border: "1px solid rgba(244,121,32,0.3)" }}>PDF</span>
+      <style>{`@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}`}</style>
     </div>
   );
 }
@@ -272,12 +275,16 @@ function PdfThumb({ url, isDark }) {
 // ── Miniatura fila (memo para evitar re-render al hover) ─────────
 const FilaThumb = memo(function FilaThumb({ pdfUrl, isDark, onClick }) {
   const ref = useRef(null);
-  const { imgSrc } = usePdfCover(pdfUrl, ref);
+  const { imgSrc, loading } = usePdfCover(pdfUrl, ref);
   return (
     <div ref={ref} onClick={onClick} style={{ width: 40, height: 52, flexShrink: 0, borderRadius: 4, overflow: "hidden", background: isDark ? "#0d1117" : "#f1f5f9", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : SLATE[200]}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative" }}>
-      {imgSrc
-        ? <img src={imgSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        : <FileText size={14} style={{ color: SLATE[300] }} />}
+      {imgSrc ? (
+        <img src={imgSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      ) : loading ? (
+        <div style={{ position: "absolute", inset: 0, background: isDark ? "linear-gradient(90deg,#1e2535 25%,#252d42 50%,#1e2535 75%)" : "linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.2s infinite linear" }} />
+      ) : (
+        <FileText size={14} style={{ color: SLATE[300] }} />
+      )}
       <span style={{ position: "absolute", bottom: 0, left: 0, right: 0, fontSize: "5px", fontWeight: 800, textAlign: "center", background: "rgba(220,38,38,0.85)", color: "#fff", padding: "1px 0" }}>PDF</span>
     </div>
   );
