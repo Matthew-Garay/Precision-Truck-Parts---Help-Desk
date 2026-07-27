@@ -49,7 +49,14 @@ export default defineConfig({
       '/api':       { target: 'http://localhost:3001', changeOrigin: true },
       '/storage':   { target: 'http://localhost:3001', changeOrigin: true },
       '/fotos':     { target: 'http://localhost:3001', changeOrigin: true },
-      '/socket.io': { target: 'http://localhost:3001', changeOrigin: true, ws: true },
+      '/socket.io': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        ws: true,
+        configure: (proxy) => {
+          proxy.on('error', () => {});
+        },
+      },
     },
   },
 })

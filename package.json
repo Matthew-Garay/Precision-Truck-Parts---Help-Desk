@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "canvas": "^3.2.3",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dompurify": "^3.4.11",

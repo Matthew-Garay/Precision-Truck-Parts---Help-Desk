@@ -1,0 +1,78 @@
+@startuml SCRUM_FLUJO
+
+!theme plain
+
+skinparam defaultFontName Segoe UI
+skinparam defaultFontSize 12
+
+skinparam activity {
+    BackgroundColor #DDEEFF
+    BorderColor #2C7BE5
+    BorderThickness 2
+    FontColor #1A1A2E
+    FontSize 12
+}
+
+skinparam ArrowColor #2C7BE5
+skinparam ArrowThickness 2
+
+skinparam note {
+    BackgroundColor #FFF9E6
+    BorderColor #F0A500
+    FontSize 11
+    FontColor #4A4A4A
+}
+
+skinparam StartColor #2C7BE5
+skinparam EndColor #E53E3E
+
+title Flujo del Marco de Trabajo SCRUM\nPrecisionTrucks HelpDesk
+
+start
+
+:Planificacion del Sprint;
+note right
+  - Seleccion de items del Product Backlog
+  - Estimacion de esfuerzo (Story Points)
+  - Definicion del Sprint Goal
+end note
+
+repeat
+
+  :Sincronizacion Diaria;
+  note right
+    Daily Scrum (max. 15 min)
+    - Que hice ayer?
+    - Que hare hoy?
+    - Hay algun impedimento?
+  end note
+
+  :Desarrollo del Sprint;
+  note right
+    - Implementacion de funcionalidades
+    - Pruebas unitarias
+    - Integracion continua
+  end note
+
+repeat while (Sprint completado?) is (No)
+-> Continuar iteracion;
+
+:Revision Tecnica;
+note right
+  - Demo del incremento al stakeholder
+  - Validacion de criterios de aceptacion
+  - Actualizacion del Product Backlog
+end note
+
+:Retrospectiva;
+note right
+  - Que salio bien?
+  - Que se puede mejorar?
+  - Acciones de mejora para el siguiente Sprint
+end note
+
+-> Iniciar nuevo Sprint;
+
+stop
+
+@enduml
