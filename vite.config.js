@@ -11,8 +11,9 @@
  *   pdfjs-dist se pre-optimiza explicitamente porque usa un worker de Web Worker
  *   que Vite necesita preparar antes de la primera ejecucion.
  *
- * Servidor de desarrollo (puerto 5173):
- *   Proxy transparente hacia el servidor Express en localhost:3001 para:
+ * Servidor de desarrollo:
+ *   Puerto configurable via VITE_PORT (por defecto 5173).
+ *   Proxy transparente hacia el backend (VITE_BACKEND_URL, por defecto http://localhost:3001) para:
  *     /api       - peticiones REST del backend
  *     /storage   - archivos estaticos (evidencias, manuales, fotos)
  *     /fotos     - fotos de perfil con autenticacion JWT
@@ -21,6 +22,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+
+const BACKEND_URL = process.env.VITE_BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`
+const FRONTEND_PORT = parseInt(process.env.VITE_PORT || '5173', 10)
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -45,14 +49,14 @@ export default defineConfig({
   },
   server: {
     host: true,
-    port: 5173,
+    port: FRONTEND_PORT,
     allowedHosts: 'all',
     proxy: {
-      '/api':       { target: 'http://localhost:3001', changeOrigin: true },
-      '/storage':   { target: 'http://localhost:3001', changeOrigin: true },
-      '/fotos':     { target: 'http://localhost:3001', changeOrigin: true },
+      '/api':       { target: BACKEND_URL, changeOrigin: true },
+      '/storage':   { target: BACKEND_URL, changeOrigin: true },
+      '/fotos':     { target: BACKEND_URL, changeOrigin: true },
       '/socket.io': {
-        target: 'http://localhost:3001',
+        target: BACKEND_URL,
         changeOrigin: true,
         ws: true,
         configure: (proxy) => {

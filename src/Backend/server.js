@@ -287,7 +287,7 @@ httpServer.listen(PORT, "0.0.0.0", async () => {
   console.log(line);
 
   console.log(`  Backend  ->  http://localhost:${PORT}`);
-  console.log(`  Frontend ->  http://localhost:5173`);
+  console.log(`  Frontend ->  ${process.env.APP_URL || "http://localhost:5173"}`);
   if (process.env.APP_URL) console.log(`  Publico  ->  ${process.env.APP_URL}`);
 
   const nets = networkInterfaces();
@@ -299,15 +299,15 @@ httpServer.listen(PORT, "0.0.0.0", async () => {
   try {
     const conn = await pool.getConnection();
     conn.release();
-    console.log(`  DB       ->  ✅ MySQL`);
+    console.log(`  DB       ->  OK  MySQL`);
   } catch {
-    console.log(`  DB       ->  ❌ MySQL sin conexion`);
+    console.log(`  DB       ->  ERROR  MySQL sin conexion`);
   }
 
-  console.log(`  Socket   ->  ${httpServer.listening ? "✅" : "❌"} WebSockets`);
-  console.log(`  Workers  ->  ✅ Iniciando jobs programados`);
-  console.log(`  SMTP     ->  ${process.env.SMTP_USER ? "✅ Correos activos" : "⚠️  No configurado - correos desactivados"}`);
-  console.log(`  JWT      ->  ${process.env.JWT_SECRET ? "✅ Configurado" : "❌ JWT_SECRET faltante"}`);
+  console.log(`  Socket   ->  ${httpServer.listening ? "OK" : "ERROR"}  WebSockets`);
+  console.log(`  Workers  ->  OK  Iniciando jobs programados`);
+  console.log(`  SMTP     ->  ${process.env.SMTP_USER ? "OK  Correos activos" : "AVISO  No configurado - correos desactivados"}`);
+  console.log(`  JWT      ->  ${process.env.JWT_SECRET ? "OK  Configurado" : "ERROR  JWT_SECRET faltante"}`);
 
   console.log(line + "\n");
 
