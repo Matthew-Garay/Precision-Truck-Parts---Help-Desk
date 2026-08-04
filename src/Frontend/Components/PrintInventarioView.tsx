@@ -1,4 +1,4 @@
-import { PageHeader, PageFooter, Section, nowFechaGen } from "./PrintShared";
+import { PageHeader, PageFooter, nowFechaGen } from "./PrintShared";
 import "./print-report.css";
 
 interface InsumoRow {
@@ -75,7 +75,11 @@ export default function PrintInventarioView({ datos }: { datos: InsumoRow[] }) {
           <span style={{ fontSize: "7.5pt", color: "#444" }}>Folio: {folioDoc}</span>
         </div>
 
-        <Section title="Catálogo de Insumos" noPad>
+        <section className="pr-inv-section">
+          <div className="pr-inv-section-hdr">
+            <span className="pr-inv-section-title">Catálogo de Insumos</span>
+            <span className="pr-inv-section-count">{datos.length} registros</span>
+          </div>
           <table className="pr-inv-table">
             <thead>
               <tr style={{ background: "var(--pr-navy)" }}>
@@ -157,7 +161,7 @@ export default function PrintInventarioView({ datos }: { datos: InsumoRow[] }) {
               })}
             </tbody>
           </table>
-        </Section>
+        </section>
 
       </div>
 

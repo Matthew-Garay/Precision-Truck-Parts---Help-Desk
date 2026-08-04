@@ -63,9 +63,7 @@ export function useSocket(id_empleado, onEvento) {
       socketRef.current = null;
     }
 
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[Socket] Conectando a:", SOCKET_URL);
-    }
+    console.log("[Socket] Conectando a:", SOCKET_URL);
 
     const socket = io(SOCKET_URL, {
       auth: { token },
@@ -75,9 +73,9 @@ export function useSocket(id_empleado, onEvento) {
     });
     socketRef.current = socket;
 
-    socket.on("connect", () => { if (process.env.NODE_ENV !== "production") console.log("[Socket] Conectado ✅"); });
-    socket.on("connect_error", (err) => console.error("[Socket] ERROR:", err.message));
-    socket.on("disconnect", (reason) => { if (process.env.NODE_ENV !== "production") console.warn("[Socket] Desconectado:", reason); });
+    socket.on("connect", () => {});
+    socket.on("connect_error", () => {});
+    socket.on("disconnect", () => {});
 
     // Eventos que escucha el usuario
     socket.on("ticket:actualizado",   d => cbRef.current?.({ tipo: "ticket:actualizado",   data: d }));

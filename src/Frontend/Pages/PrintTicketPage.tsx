@@ -53,7 +53,7 @@ export default function PrintTicketPage() {
       })
       .then(data => setTicket(data))
       .catch(e => setError(e.message));
-  }, [folio, searchParams]);
+  }, [folio]);
 
   useEffect(() => {
     if (!ticket) return;

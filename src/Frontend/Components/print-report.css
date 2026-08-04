@@ -863,6 +863,17 @@ body, body.print-preview {
   .pr-inv-section   { break-inside: auto !important; }
   .pr-inv-accent-bar { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   .pr-inv-kpi-card  { break-inside: avoid !important; }
+
+  /* ── Paginación de tabla: permite que la tabla se divida entre páginas ── */
+  .pr-inv-table          { break-inside: auto; page-break-inside: auto; }
+  /* Repite el encabezado de la tabla en cada página */
+  .pr-inv-table thead    { display: table-header-group; }
+  .pr-inv-table thead th { display: table-cell; }
+  /* Evita que una fila individual se parta entre dos páginas */
+  .pr-inv-table tbody tr { break-inside: avoid; page-break-inside: avoid; }
+  .pr-inv-table tbody td { break-inside: avoid; }
+  /* El header de la sección se queda con la primera fila, no se separa */
+  .pr-inv-section-hdr    { break-after: avoid; page-break-after: avoid; }
 }
 
 .pr-items-list { display: flex; flex-direction: column; gap: 3px; }

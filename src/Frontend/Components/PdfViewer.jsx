@@ -10,17 +10,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw } from "lucide-react";
 
-let _pdfjsLib = null;
-async function getPdfjs() {
-  if (_pdfjsLib) return _pdfjsLib;
-  const mod = await import("pdfjs-dist");
-  mod.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.mjs",
-    import.meta.url
-  ).href;
-  _pdfjsLib = mod;
-  return _pdfjsLib;
-}
+import pdfjs, { PDFJS_PARAMS } from "../Config/pdfjs";
 
 export default function PdfViewer({ url, isDark }) {
   const canvasRef   = useRef(null);
@@ -33,6 +23,7 @@ export default function PdfViewer({ url, isDark }) {
   const [pageNum,   setPageNum]   = useState(1);
   const numPagesRef = useRef(0);
   const [scale,     setScale]     = useState(1.2);
+  const [scaleInput, setScaleInput] = useState("");
   const [rotation,  setRotation]  = useState(0);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState(false);
@@ -55,9 +46,13 @@ export default function PdfViewer({ url, isDark }) {
 
     (async () => {
       try {
-        const pdfjs = await getPdfjs();
-        const pdf   = await pdfjs.getDocument({ url, withCredentials: false }).promise;
-        if (cancelled) return;
+        const token = localStorage.getItem("_tk");
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const pdfRes  = await fetch(url, { headers });
+        const data    = new Uint8Array(await pdfRes.arrayBuffer());
+        const loadingTask = pdfjs.getDocument({ ...PDFJS_PARAMS, data });
+        const pdf = await loadingTask.promise;
+        if (cancelled) { await loadingTask.destroy(); return; }
         pdfRef.current = pdf;
         numPagesRef.current = pdf.numPages;
         setNumPages(pdf.numPages);
@@ -209,39 +204,59 @@ export default function PdfViewer({ url, isDark }) {
 
         <div style={{ width: 1, height: 20, background: isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)", margin: "0 4px" }} />
 
-        {/* Zoom — oculto en móvil/tablet */}
-        {!isMobileOrTablet && (
-          <>
-            <button style={btnSt} onClick={() => setScale(s => Math.max(0.5, +(s - 0.2).toFixed(1)))} disabled={loading}>
-              <ZoomOut size={13} />
-            </button>
-            <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: txt }}>
-              <input
-                type="number"
-                min={50}
-                max={300}
-                value={Math.round(scale * 100)}
-                onChange={e => {
+        {/* Zoom — siempre visible */}
+        <>
+          <button style={btnSt} onClick={() => { const s = Math.max(0.5, +(scale - 0.25).toFixed(2)); setScale(s); setScaleInput(""); }} disabled={loading}>
+            <ZoomOut size={13} />
+          </button>
+          <div style={{
+            display: "flex", alignItems: "center",
+            border: `1px solid ${isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)"}`,
+            borderRadius: 5, overflow: "hidden",
+            background: isDark ? "rgba(255,255,255,0.07)" : "#fff",
+          }}>
+            <input
+              type="number"
+              min={25}
+              max={500}
+              value={scaleInput !== "" ? scaleInput : Math.round(scale * 100)}
+              onChange={e => setScaleInput(e.target.value)}
+              onBlur={e => {
+                const v = parseInt(e.target.value, 10);
+                if (!isNaN(v) && v >= 25 && v <= 500) setScale(v / 100);
+                setScaleInput("");
+              }}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
                   const v = parseInt(e.target.value, 10);
-                  if (!isNaN(v)) setScale(Math.min(3, Math.max(0.5, v / 100)));
-                }}
-                style={{
-                  width: 44, height: 24, textAlign: "center", borderRadius: 5,
-                  border: `1px solid ${isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)"}`,
-                  background: isDark ? "rgba(255,255,255,0.07)" : "#fff",
-                  color: txt, fontSize: 11, fontWeight: 600,
-                  outline: "none", padding: 0,
-                  MozAppearance: "textfield",
-                }}
-              />
-              <span style={{ opacity: 0.55 }}>%</span>
-            </span>
-            <button style={btnSt} onClick={() => setScale(s => Math.min(3, +(s + 0.2).toFixed(1)))} disabled={loading}>
-              <ZoomIn size={13} />
-            </button>
-            <div style={{ width: 1, height: 20, background: isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)", margin: "0 4px" }} />
-          </>
-        )}
+                  if (!isNaN(v) && v >= 25 && v <= 500) setScale(v / 100);
+                  setScaleInput("");
+                  e.target.blur();
+                }
+              }}
+              disabled={loading}
+              style={{
+                width: 44, height: 24, textAlign: "center",
+                border: "none", background: "transparent",
+                color: txt, fontSize: 11, fontWeight: 600,
+                outline: "none", padding: 0,
+                MozAppearance: "textfield",
+              }}
+            />
+            <span style={{
+              padding: "0 6px", fontSize: 11, fontWeight: 600,
+              color: txt, opacity: 0.55,
+              borderLeft: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.10)"}`,
+              background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
+              height: 24, display: "flex", alignItems: "center",
+              userSelect: "none",
+            }}>%</span>
+          </div>
+          <button style={btnSt} onClick={() => { const s = Math.min(5, +(scale + 0.25).toFixed(2)); setScale(s); setScaleInput(""); }} disabled={loading}>
+            <ZoomIn size={13} />
+          </button>
+          <div style={{ width: 1, height: 20, background: isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)", margin: "0 4px" }} />
+        </>
 
         {/* Rotar */}
         <button style={btnSt} onClick={() => setRotation(r => (r + 90) % 360)} disabled={loading}>
