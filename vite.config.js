@@ -26,7 +26,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   optimizeDeps: {
     include: ['pdfjs-dist'],
+    exclude: ['pdfjs-dist/build/pdf.worker.mjs'],
   },
+  assetsInclude: ['**/*.wasm'],
   build: {
     target: 'es2020',
     chunkSizeWarningLimit: 600,
@@ -55,6 +57,9 @@ export default defineConfig({
         ws: true,
         configure: (proxy) => {
           proxy.on('error', () => {});
+          proxy.on('proxyReqWs', (_, __, socket) => {
+            socket.on('error', () => {});
+          });
         },
       },
     },
