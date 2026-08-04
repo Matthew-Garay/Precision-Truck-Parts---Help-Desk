@@ -3,7 +3,7 @@
 
 **Versión:** 1.0  
 **Sistema:** PrecisionTrucks HelpDesk  
-**Empresa:** Precision Truck Parts & Accessories  
+**Empresa:** Precision Truck Parts and Accessories  
 
 ---
 

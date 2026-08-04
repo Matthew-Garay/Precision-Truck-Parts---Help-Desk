@@ -205,11 +205,9 @@ function RootInner() {
 }
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <BrowserRouter>
-      <ErrorBoundary>
-        <Root />
-      </ErrorBoundary>
-    </BrowserRouter>
-  </StrictMode>
+  <BrowserRouter>
+    <ErrorBoundary>
+      <Root />
+    </ErrorBoundary>
+  </BrowserRouter>
 )

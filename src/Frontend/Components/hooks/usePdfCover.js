@@ -1,31 +1,49 @@
 import { useEffect, useState, useRef } from "react";
+import { getToken } from "../../Config/api";
+import pdfjs, { PDFJS_PARAMS } from "../../Config/pdfjs";
 
-const cache   = new Map();          // url → objectURL
-const pending = new Map();          // id  → resolve
-let worker    = null;
-let nextId    = 0;
+const cache    = new Map(); // url → objectURL | null
+const inflight = new Map(); // url → Promise
 
-function getWorker() {
-  if (worker) return worker;
-  worker = new Worker(new URL("./pdfCoverWorker.js", import.meta.url), { type: "module" });
-  worker.onmessage = ({ data: { id, buffer } }) => {
-    const resolve = pending.get(id);
-    if (!resolve) return;
-    pending.delete(id);
-    const url = buffer ? URL.createObjectURL(new Blob([buffer], { type: "image/jpeg" })) : null;
-    resolve(url);
-  };
-  worker.onerror = () => {};
-  return worker;
-}
+async function renderCover(url) {
+  if (cache.has(url))    return cache.get(url);
+  if (inflight.has(url)) return inflight.get(url);
 
-function requestCover(url) {
-  if (cache.has(url)) return Promise.resolve(cache.get(url));
-  return new Promise(resolve => {
-    const id = nextId++;
-    pending.set(id, result => { cache.set(url, result); resolve(result); });
-    getWorker().postMessage({ id, url });
-  });
+  const promise = (async () => {
+    try {
+      const token   = getToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res     = await fetch(url, { headers });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = new Uint8Array(await res.arrayBuffer());
+
+      const task = pdfjs.getDocument({ ...PDFJS_PARAMS, data });
+      const pdf  = await task.promise;
+      const page = await pdf.getPage(1);
+      const vp0  = page.getViewport({ scale: 1 });
+      const vp   = page.getViewport({ scale: 140 / vp0.width });
+
+      const canvas  = document.createElement("canvas");
+      canvas.width  = Math.round(vp.width);
+      canvas.height = Math.round(vp.height);
+      await page.render({ canvasContext: canvas.getContext("2d"), viewport: vp }).promise;
+      await task.destroy();
+
+      const objectUrl = await new Promise((resolve, reject) =>
+        canvas.toBlob(b => b ? resolve(URL.createObjectURL(b)) : reject(), "image/jpeg", 0.70)
+      );
+      cache.set(url, objectUrl);
+      return objectUrl;
+    } catch {
+      cache.set(url, null);
+      return null;
+    } finally {
+      inflight.delete(url);
+    }
+  })();
+
+  inflight.set(url, promise);
+  return promise;
 }
 
 export function usePdfCover(url, containerRef) {
@@ -41,7 +59,7 @@ export function usePdfCover(url, containerRef) {
       if (triggered.current) return;
       triggered.current = true;
       let cancelled = false;
-      requestCover(url).then(src => { if (!cancelled) { setImgSrc(src); setLoading(false); } });
+      renderCover(url).then(src => { if (!cancelled) { setImgSrc(src); setLoading(false); } });
       return () => { cancelled = true; };
     };
 
