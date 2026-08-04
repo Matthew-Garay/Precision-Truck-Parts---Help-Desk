@@ -146,6 +146,10 @@ SMTP_FROM="Precision HelpDesk" <tu_correo@gmail.com>
 VITE_API_URL=
 CORS_ORIGIN=http://localhost:5173
 APP_URL=http://localhost:5173
+
+# Vite Dev Server
+VITE_PORT=5173
+VITE_BACKEND_URL=http://localhost:3001
 ```
 
 Si `SMTP_USER` no esta configurado, los correos se omiten silenciosamente. Esto es util en desarrollo.
