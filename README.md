@@ -1,64 +1,64 @@
 # PrecisionTrucks HelpDesk
 
-Sistema interno de soporte tecnico, inventario y documentacion para Precision Truck Parts and Accessories.
+Sistema interno de soporte técnico, inventario y documentación para Precision Truck Parts and Accessories.
 
-Proyecto de Residencias Profesionales desarrollado por Matthew Garay.
+**Autor:** Matthew Ilveneff Garay Pérez
 
 ---
 
 ## Tabla de contenidos
 
-1. [Descripcion del proyecto](#descripcion-del-proyecto)
-2. [Modulos del sistema](#modulos-del-sistema)
-3. [Stack tecnologico](#stack-tecnologico)
+1. [Descripción del proyecto](#descripción-del-proyecto)
+2. [Módulos del sistema](#módulos-del-sistema)
+3. [Stack tecnológico](#stack-tecnológico)
 4. [Requisitos previos](#requisitos-previos)
-5. [Instalacion](#instalacion)
+5. [Instalación](#instalación)
 6. [Variables de entorno](#variables-de-entorno)
 7. [Comandos disponibles](#comandos-disponibles)
 8. [Arquitectura](#arquitectura)
 9. [Roles del sistema](#roles-del-sistema)
 10. [Notificaciones en tiempo real](#notificaciones-en-tiempo-real)
-11. [Workers automaticos](#workers-automaticos)
+11. [Workers automáticos](#workers-automáticos)
 12. [Seguridad](#seguridad)
-13. [Despliegue en produccion](#despliegue-en-produccion)
-14. [Documentacion tecnica](#documentacion-tecnica)
+13. [Despliegue en producción](#despliegue-en-producción)
+14. [Documentación técnica](#documentación-técnica)
 15. [Estructura del proyecto](#estructura-del-proyecto)
 
 ---
 
-## Descripcion del proyecto
+## Descripción del proyecto
 
-PrecisionTrucks HelpDesk es una aplicacion web full-stack de uso interno que centraliza la operacion de soporte tecnico y logistica de la empresa. El sistema permite gestionar tickets de incidencias, controlar el inventario de insumos, administrar manuales tecnicos en formato PDF y coordinar al personal con roles diferenciados.
+PrecisionTrucks HelpDesk es una aplicación web full-stack de uso interno que centraliza la operación de soporte técnico y logística de la empresa. El sistema permite gestionar tickets de incidencias, controlar el inventario de insumos, administrar manuales técnicos en formato PDF y coordinar al personal con roles diferenciados.
 
-La aplicacion cuenta con notificaciones en tiempo real mediante Socket.io, exportacion de reportes en PDF y Excel, y un sistema de alertas automaticas para el cumplimiento de acuerdos de nivel de servicio (SLA) de 48 horas.
+La aplicación cuenta con notificaciones en tiempo real mediante Socket.io, exportación de reportes en PDF y Excel, y un sistema de alertas automáticas para el cumplimiento de acuerdos de nivel de servicio (SLA) de 48 horas.
 
 ---
 
-## Modulos del sistema
+## Módulos del sistema
 
-| Modulo | Descripcion |
+| Módulo | Descripción |
 |--------|-------------|
-| Tickets de soporte | Ciclo completo de gestion de incidencias con SLA de 48 horas, evidencias fotograficas, asignacion de tecnicos y calificacion del usuario |
-| Inventario de insumos | CRUD completo con control de stock, alertas criticas, solicitudes de reposicion y exportacion a PDF/Excel |
-| Gestion documental | Biblioteca de manuales tecnicos en formato PDF con vista previa de portada y descarga directa |
-| Administracion de personal | Gestion de empleados, roles, sucursales, departamentos e historial de accesos |
-| Notificaciones en tiempo real | Comunicacion bidireccional via Socket.io con sonidos programaticos y panel de notificaciones persistente |
-| Reportes exportables | Generacion de documentos PDF y Excel desde el dashboard de administrador con diseno corporativo |
+| Tickets de soporte | Ciclo completo de gestión de incidencias con SLA de 48 horas, evidencias fotográficas, asignación de técnicos y calificación del usuario |
+| Inventario de insumos | CRUD completo con control de stock, alertas críticas, solicitudes de reposición y exportación a PDF/Excel |
+| Gestión documental | Biblioteca de manuales técnicos en formato PDF con vista previa de portada y descarga directa |
+| Administración de personal | Gestión de empleados, roles, sucursales, departamentos e historial de accesos |
+| Notificaciones en tiempo real | Comunicación bidireccional vía Socket.io con sonidos programáticos y panel de notificaciones persistente |
+| Reportes exportables | Generación de documentos PDF y Excel desde el dashboard de administrador con diseño corporativo |
 
 ---
 
-## Stack tecnologico
+## Stack tecnológico
 
-| Capa | Tecnologia |
+| Capa | Tecnología |
 |------|-----------|
 | Frontend | React 18, Vite 6, Tailwind CSS 4, Lucide React |
 | Backend | Node.js, Express 5, Socket.io 4 |
 | Base de datos | MySQL 8 (InnoDB, utf8mb4) |
-| Autenticacion | JWT (jsonwebtoken 9), bcryptjs 3 |
-| Validacion | Zod 4 |
-| Correo electronico | Nodemailer 9 (SMTP) |
+| Autenticación | JWT (jsonwebtoken 9), bcryptjs 3 |
+| Validación | Zod 4 |
+| Correo electrónico | Nodemailer 9 (SMTP) |
 | Subida de archivos | Multer 2, Sharp 0.35 |
-| Exportacion | jsPDF 4, ExcelJS 4 |
+| Exportación | jsPDF 4, ExcelJS 4 |
 | Visor PDF | pdfjs-dist 6 |
 
 ---
@@ -71,7 +71,7 @@ La aplicacion cuenta con notificaciones en tiempo real mediante Socket.io, expor
 
 ---
 
-## Instalacion
+## Instalación
 
 ```bash
 # 1. Clonar el repositorio
@@ -96,7 +96,7 @@ mysql -u root -p < docs/database.sql
 npm run dev:all
 ```
 
-Para verificar que el servidor esta activo:
+Para verificar que el servidor está activo:
 
 ```
 GET http://localhost:3001/api/ping
@@ -108,9 +108,9 @@ Respuesta: { "status": "ok", "message": "Servidor HelpDesk activo" }
 | Campo | Valor |
 |-------|-------|
 | Email | `admin@precisiontrucks.com` |
-| Contrasena | `Admin123.` |
+| Contraseña | `Admin123.` |
 
-Cambiar la contrasena desde Configuracion de Perfil despues del primer inicio de sesion.
+Cambiar la contraseña desde Configuración de Perfil después del primer inicio de sesión.
 
 ---
 
@@ -135,7 +135,7 @@ DB_SSL=false
 # Generar con: node -e "require('crypto').randomBytes(64).toString('hex')|console.log()"
 JWT_SECRET=CAMBIA_ESTO_POR_UN_SECRETO_DE_64_BYTES
 
-# SMTP (Gmail con contrasena de aplicacion)
+# SMTP (Gmail con contraseña de aplicación)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=tu_correo@gmail.com
@@ -152,19 +152,19 @@ VITE_PORT=5173
 VITE_BACKEND_URL=http://localhost:3001
 ```
 
-Si `SMTP_USER` no esta configurado, los correos se omiten silenciosamente. Esto es util en desarrollo.
+Si `SMTP_USER` no está configurado, los correos se omiten silenciosamente. Esto es útil en desarrollo.
 
 ---
 
 ## Comandos disponibles
 
-| Comando | Descripcion |
+| Comando | Descripción |
 |---------|-------------|
 | `npm run dev:all` | Frontend y Backend en paralelo (desarrollo) |
 | `npm run dev` | Solo frontend en `http://localhost:5173` |
 | `npm run server` | Solo backend en `http://localhost:3001` |
-| `npm run build` | Build de produccion en la carpeta `dist/` |
-| `npm run preview` | Vista previa del build de produccion |
+| `npm run build` | Build de producción en la carpeta `dist/` |
+| `npm run preview` | Vista previa del build de producción |
 
 ---
 
@@ -177,9 +177,9 @@ Browser
 Express (server.js)
   |-- Middlewares/   ->  Helmet, CORS, Rate-limit, CSRF, JWT, Zod
   |-- Routes/        ->  Mapeo URL a Controller
-  |-- Controllers/   ->  Logica de negocio + emision Socket.io
+  |-- Controllers/   ->  Lógica de negocio + emisión Socket.io
   |-- Models/        ->  Queries parametrizadas MySQL2
-  |-- Workers/       ->  5 jobs automaticos (SLA, stock, sesiones)
+  |-- Workers/       ->  5 jobs automáticos (SLA, stock, sesiones)
 
 React SPA (Vite)
   |-- Pages/Admin/   ->  Dashboard, tickets, inventario, personal, reportes
@@ -187,7 +187,7 @@ React SPA (Vite)
   |-- Components/    ->  UI reutilizable + hooks + contextos
 ```
 
-Para el diseno completo con diagramas de flujo y decisiones tecnicas, consultar [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md).
+Para el diseño completo con diagramas de flujo y decisiones técnicas, consultar [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md).
 
 ---
 
@@ -195,60 +195,60 @@ Para el diseno completo con diagramas de flujo y decisiones tecnicas, consultar 
 
 | Rol | id_rol | Capacidades |
 |-----|--------|-------------|
-| Administrador | 1 | Gestion completa: tickets, inventario, personal, manuales, reportes |
+| Administrador | 1 | Gestión completa: tickets, inventario, personal, manuales, reportes |
 | Usuario | 2 | Crear tickets, solicitar insumos, ver historial propio, consultar manuales |
 
 ---
 
 ## Notificaciones en tiempo real
 
-El sistema utiliza Socket.io para emitir eventos en tiempo real a los usuarios conectados. Cada socket se autentica con JWT y se une a salas segun el rol del empleado.
+El sistema utiliza Socket.io para emitir eventos en tiempo real a los usuarios conectados. Cada socket se autentica con JWT y se une a salas según el rol del empleado.
 
-| Evento | Sala | Descripcion |
+| Evento | Sala | Descripción |
 |--------|------|-------------|
 | `ticket:nuevo` | admins | Nuevo ticket creado por un usuario |
 | `ticket:actualizado` | empleado_{id} | Cambio de estatus del ticket |
-| `ticket:sla_warning` | admins | Ticket proximo a superar las 48 horas |
+| `ticket:sla_warning` | admins | Ticket próximo a superar las 48 horas |
 | `insumo:stock_critico` | admins | Insumo con stock menor o igual a 5 unidades |
 | `solicitud:nueva` | admins | Nueva solicitud de insumos creada |
-| `ticket:sin_atender` | admins | Ticket con mas de 24 horas sin tecnico asignado |
-| `tickets:vencidos` | admins | Tickets cerrados automaticamente por vencimiento de SLA |
-| `ticket:en_atencion` | empleado_{id} | Un tecnico tomo el ticket |
-| `ticket:calificado` | admins | Un usuario califico un ticket resuelto |
+| `ticket:sin_atender` | admins | Ticket con más de 24 horas sin técnico asignado |
+| `tickets:vencidos` | admins | Tickets cerrados automáticamente por vencimiento de SLA |
+| `ticket:en_atencion` | empleado_{id} | Un técnico tomó el ticket |
+| `ticket:calificado` | admins | Un usuario calificó un ticket resuelto |
 | `ticket:confirmado` | empleado_{id} | Ticket registrado correctamente |
 | `ticket:cancelado` | empleado_{id} | Ticket cancelado |
 | `solicitud:actualizada` | empleado_{id} | Cambio de estatus de solicitud de insumos |
 
 ---
 
-## Workers automaticos
+## Workers automáticos
 
 El servidor arranca 5 jobs en segundo plano al iniciar. Todos usan `.unref()` para no impedir el cierre del proceso.
 
-| Job | Intervalo | Funcion |
+| Job | Intervalo | Función |
 |-----|-----------|---------|
-| Alertas SLA | 30 minutos | Emite `ticket:sla_warning` para tickets con 46.5 horas o mas abiertos |
-| Cierre automatico | 1 hora | Cierra como "No Resuelto" los tickets que superan 48 horas |
-| Sesiones huerfanas | 1 hora | Cierra registros de `historial_acceso` sin fecha de salida con mas de 12 horas |
-| Stock critico | 24 horas | Emite `insumo:stock_critico` para insumos con stock menor o igual a 5 |
-| Tickets sin atender | 1 hora | Emite alerta para tickets con mas de 24 horas sin tecnico asignado |
+| Alertas SLA | 30 minutos | Emite `ticket:sla_warning` para tickets con 46.5 horas o más abiertos |
+| Cierre automático | 1 hora | Cierra como "No Resuelto" los tickets que superan 48 horas |
+| Sesiones huérfanas | 1 hora | Cierra registros de `historial_acceso` sin fecha de salida con más de 12 horas |
+| Stock crítico | 24 horas | Emite `insumo:stock_critico` para insumos con stock menor o igual a 5 |
+| Tickets sin atender | 1 hora | Emite alerta para tickets con más de 24 horas sin técnico asignado |
 
 ---
 
 ## Seguridad
 
-- **JWT**: algoritmo HS256, 12 horas de vigencia, renovable via `/api/auth/refresh-token`
+- **JWT**: algoritmo HS256, 12 horas de vigencia, renovable vía `/api/auth/refresh-token`
 - **CSRF**: las mutaciones requieren el header `x-requested-with: XMLHttpRequest`
-- **Rate limiting**: login (10 intentos/15 min), recuperacion (5 intentos/15 min), tickets (30/hora), solicitudes (20/hora)
+- **Rate limiting**: login (10 intentos/15 min), recuperación (5 intentos/15 min), tickets (30/hora), solicitudes (20/hora)
 - **Helmet**: cabeceras CSP, HSTS, X-Content-Type-Options, referrer policy
-- **Path traversal**: funcion `safeResolvePath()` en todas las operaciones de archivo
-- **Fotos de perfil protegidas**: la ruta `/fotos` requiere JWT valido
-- **Validacion de entrada**: esquemas Zod en todos los endpoints de escritura
-- **Hash de contrasenas**: bcrypt con factor de costo 12
+- **Path traversal**: función `safeResolvePath()` en todas las operaciones de archivo
+- **Fotos de perfil protegidas**: la ruta `/fotos` requiere JWT válido
+- **Validación de entrada**: esquemas Zod en todos los endpoints de escritura
+- **Hash de contraseñas**: bcrypt con factor de costo 12
 
 ---
 
-## Despliegue en produccion
+## Despliegue en producción
 
 ```bash
 # Construir el frontend
@@ -258,22 +258,22 @@ npm run build
 npm run server
 ```
 
-El repositorio incluye configuracion para Railway en el archivo `railway.json`.
+El repositorio incluye configuración para Railway en el archivo `railway.json`.
 
-Para la guia completa de despliegue con Cloudflare Tunnel, dominio propio y PM2, consultar [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
+Para la guía completa de despliegue con Cloudflare Tunnel, dominio propio y PM2, consultar [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
 
 ---
 
-## Documentacion tecnica
+## Documentación técnica
 
-| Documento | Descripcion |
+| Documento | Descripción |
 |-----------|-------------|
-| [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) | Diseno, flujos de peticion y decisiones tecnicas |
+| [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) | Diseño, flujos de petición y decisiones técnicas |
 | [`docs/DICCIONARIO_DATOS.md`](docs/DICCIONARIO_DATOS.md) | Esquema completo de las tablas MySQL |
 | [`docs/IEEE830_REQUERIMIENTOS.md`](docs/IEEE830_REQUERIMIENTOS.md) | Requerimientos funcionales y no funcionales (IEEE 830) |
-| [`docs/PRUEBAS_Y_VALIDACION.md`](docs/PRUEBAS_Y_VALIDACION.md) | Plan de pruebas y casos de validacion |
-| [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | Guia paso a paso de despliegue en produccion |
-| [`docs/3.5_DESARROLLO_TECNICO.md`](docs/3.5_DESARROLLO_TECNICO.md) | Desarrollo tecnico detallado del sistema |
+| [`docs/PRUEBAS_Y_VALIDACION.md`](docs/PRUEBAS_Y_VALIDACION.md) | Plan de pruebas y casos de validación |
+| [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | Guía paso a paso de despliegue en producción |
+| [`docs/3.5_DESARROLLO_TECNICO.md`](docs/3.5_DESARROLLO_TECNICO.md) | Desarrollo técnico detallado del sistema |
 | [`docs/database.sql`](docs/database.sql) | Script SQL para crear la base de datos |
 | [`.env.example`](.env.example) | Plantilla de variables de entorno |
 
@@ -283,8 +283,8 @@ Para la guia completa de despliegue con Cloudflare Tunnel, dominio propio y PM2,
 
 ```
 PrecisionTrucks_HelpDesk/
-|-- docs/                        Documentacion tecnica completa
-|-- public/assets/img/           Logos e imagenes de marca
+|-- docs/                        Documentación técnica completa
+|-- public/assets/img/           Logos e imágenes de marca
 |-- storage/                     Archivos subidos (no versionar contenido)
 |   |-- Evidencias_Tickets/
 |   |-- Fotos de Perfil/
@@ -294,23 +294,23 @@ PrecisionTrucks_HelpDesk/
 |-- src/
 |   |-- Backend/
 |   |   |-- Config/              Pool de DB, mailer, instancia de Socket.io
-|   |   |-- Controllers/         Logica de negocio
-|   |   |-- Middlewares/         Auth, seguridad, uploads, validacion
+|   |   |-- Controllers/         Lógica de negocio
+|   |   |-- Middlewares/         Auth, seguridad, uploads, validación
 |   |   |-- Models/              Queries MySQL parametrizadas
-|   |   |-- Routes/              Definicion de endpoints REST
-|   |   |-- Workers/             Jobs automaticos (SLA, stock, sesiones)
+|   |   |-- Routes/              Definición de endpoints REST
+|   |   |-- Workers/             Jobs automáticos (SLA, stock, sesiones)
 |   |   |-- server.js            Entry point Express + Socket.io
 |   |-- Frontend/
 |   |   |-- Components/          UI reutilizable + hooks + contextos
 |   |   |-- Config/              API client, tema, notificaciones
 |   |   |-- Pages/Admin/         Vistas del administrador
-|   |   |-- Pages/Usuario/       Vistas del usuario estandar
+|   |   |-- Pages/Usuario/       Vistas del usuario estándar
 |   |-- main.jsx                 Entry point React
 |-- .env.example                 Plantilla de variables de entorno
-|-- railway.json                 Configuracion de despliegue Railway
+|-- railway.json                 Configuración de despliegue Railway
 |-- vite.config.js               Vite + proxy /api, /storage, /socket.io
 ```
 
 ---
 
-Desarrollado por Matthew Garay. Proyecto de Residencias Profesionales. Precision Truck Parts and Accessories.
+**Matthew Ilveneff Garay Pérez**
