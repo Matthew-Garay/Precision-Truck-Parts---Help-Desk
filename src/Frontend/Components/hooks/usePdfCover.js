@@ -67,6 +67,7 @@ export function usePdfCover(url, containerRef) {
   const [imgSrc,  setImgSrc]  = useState(() => cache.get(url) ?? null);
   const [loading, setLoading] = useState(!cache.has(url));
   const triggered = useRef(false);
+  const cancelled = useRef(false);
 
   useEffect(() => {
     if (!url) return;
@@ -75,9 +76,13 @@ export function usePdfCover(url, containerRef) {
     const trigger = () => {
       if (triggered.current) return;
       triggered.current = true;
-      let cancelled = false;
-      renderCover(url).then(src => { if (!cancelled) { setImgSrc(src); setLoading(false); } });
-      return () => { cancelled = true; };
+      cancelled.current = false;
+      renderCover(url).then(src => { 
+        if (!cancelled.current) { 
+          setImgSrc(src); 
+          setLoading(false); 
+        } 
+      });
     };
 
     const el = containerRef?.current;
@@ -86,9 +91,13 @@ export function usePdfCover(url, containerRef) {
         if (e.isIntersecting) { obs.disconnect(); trigger(); }
       }, { rootMargin: "300px" });
       obs.observe(el);
-      return () => obs.disconnect();
+      return () => { 
+        cancelled.current = true;
+        obs.disconnect(); 
+      };
     }
-    return trigger();
+    trigger();
+    return () => { cancelled.current = true; };
   }, [url, containerRef]);
 
   return { imgSrc, loading };

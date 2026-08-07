@@ -16,6 +16,7 @@ import { requireAuth, requireAdmin } from "../Middlewares/authMiddleware.js";
 import { csrfProtection, safeResolvePath } from "../Middlewares/security.js";
 import { uploadManual, MANUALES_DIR, nombreManual } from "../Middlewares/uploadManuales.js";
 import Manual from "../Models/Manual.js";
+import { generarPortada } from "../utils/generarPortada.js";
 
 const router = Router();
 router.use(csrfProtection);
@@ -33,7 +34,7 @@ router.get("/", async (_req, res) => {
         const kb = stat.size / 1024;
         tamaño = kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
       } catch { /* archivo no encontrado */ }
-      return { ...m, url: `/storage/Manuales/${encodeURIComponent(path.basename(m.ruta_pdf))}`, tamaño };
+      return { ...m, url: `/storage/Manuales/${path.basename(m.ruta_pdf)}`, tamaño };
     }));
     res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
