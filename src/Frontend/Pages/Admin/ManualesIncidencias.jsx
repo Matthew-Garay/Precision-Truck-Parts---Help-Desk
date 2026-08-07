@@ -6,8 +6,7 @@ import {
   Trash2, Pencil, Download, Eye, Tag, Clock, AlertTriangle,
   LayoutGrid, List, ChevronUp, ChevronDown,
 } from "lucide-react";
-import { apiFetch, API_ROUTES } from "../../Config/api";
-import API from "../../Config/api";
+import API, { apiFetch, API_ROUTES } from "../../Config/api";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import { usePdfCover } from "../../Components/hooks/usePdfCover";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
