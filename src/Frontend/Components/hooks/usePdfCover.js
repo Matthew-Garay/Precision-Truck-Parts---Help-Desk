@@ -17,24 +17,41 @@ async function renderCover(url) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = new Uint8Array(await res.arrayBuffer());
 
-      const task = pdfjs.getDocument({ ...PDFJS_PARAMS, data });
+      // Deshabilitar worker para evitar problemas de contexto en miniaturas
+      const task = pdfjs.getDocument({ 
+        ...PDFJS_PARAMS, 
+        data,
+        useWorker: false 
+      });
       const pdf  = await task.promise;
       const page = await pdf.getPage(1);
       const vp0  = page.getViewport({ scale: 1 });
-      const vp   = page.getViewport({ scale: 140 / vp0.width });
+      
+      // Calcular escala segura con límites
+      const targetWidth = 140;
+      const scale = Math.max(0.5, Math.min(3, targetWidth / Math.max(vp0.width, 1)));
+      const vp   = page.getViewport({ scale });
 
       const canvas  = document.createElement("canvas");
-      canvas.width  = Math.round(vp.width);
-      canvas.height = Math.round(vp.height);
-      await page.render({ canvasContext: canvas.getContext("2d"), viewport: vp }).promise;
+      const dpr     = window.devicePixelRatio || 1;
+      canvas.width  = Math.round(vp.width * dpr);
+      canvas.height = Math.round(vp.height * dpr);
+      canvas.style.width  = `${vp.width}px`;
+      canvas.style.height = `${vp.height}px`;
+      
+      const ctx = canvas.getContext("2d");
+      ctx.scale(dpr, dpr);
+      
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
       await task.destroy();
 
       const objectUrl = await new Promise((resolve, reject) =>
-        canvas.toBlob(b => b ? resolve(URL.createObjectURL(b)) : reject(), "image/jpeg", 0.70)
+        canvas.toBlob(b => b ? resolve(URL.createObjectURL(b)) : reject(), "image/jpeg", 0.85)
       );
       cache.set(url, objectUrl);
       return objectUrl;
-    } catch {
+    } catch (err) {
+      console.error("[usePdfCover] Error rendering cover:", err);
       cache.set(url, null);
       return null;
     } finally {
