@@ -18,7 +18,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 // En desarrollo, Vite sirve los archivos desde node_modules.
 // En producción, los archivos .wasm se copian a /assets/ por Vite.
 // Usamos la ruta relativa correcta desde src/Frontend/Config/ hasta node_modules.
-const wasmUrl = new URL("../../../node_modules/pdfjs-dist/wasm/", import.meta.url).href;
+// Importante: agregar slash final para evitar error "Invalid factory url"
+const wasmUrl = new URL("../../../node_modules/pdfjs-dist/wasm/", import.meta.url).href.replace(/\/?$/, "/");
 
 export const PDFJS_PARAMS = {
   // No descargar los archivos con fetch del worker (evita problemas de CORS)
