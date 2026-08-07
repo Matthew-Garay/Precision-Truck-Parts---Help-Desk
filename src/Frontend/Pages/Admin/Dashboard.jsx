@@ -289,7 +289,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
                 </h1>
               </div>
               <p className="hidden sm:block text-[10px] font-medium ml-3 truncate" style={{ color: T.textMuted }}>
-                Panel de administracion - Precision Trucks Parts
+                Panel de administracion - Precision Truck Parts, Parts and Accesories, S.A de C.V.
               </p>
             </div>
           </div>

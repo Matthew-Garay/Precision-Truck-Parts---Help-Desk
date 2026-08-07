@@ -372,7 +372,7 @@ async function exportarExcel(datos) {
   ws.getRow(3).height = 14;
   ws.mergeCells("A3:F3");
   const empCell = ws.getCell("A3");
-  empCell.value = "Precision Truck Parts and Accessories  ·  Departamento de Soporte Técnico";
+  empCell.value = "Precision Truck Parts, Parts and Accesories, S.A de C.V.  ·  Departamento de Soporte Técnico";
   empCell.font  = { name: "Calibri", size: 9, italic: true, color: { argb: GRAY600 } };
   empCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
   empCell.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: WHITE } };

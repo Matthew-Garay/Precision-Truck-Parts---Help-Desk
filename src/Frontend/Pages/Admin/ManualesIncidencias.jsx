@@ -579,7 +579,7 @@ export default function ManualesAdmin({ T }) {
             <div>
               <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase",
                 color: isDark ? "rgba(255,255,255,0.32)" : SLATE[400], margin: 0 }}>
-                Precision Truck Parts
+                Precision Truck Parts, Parts and Accesories, S.A de C.V.
               </p>
               <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? "rgba(255,255,255,0.58)" : SLATE[600], margin: 0 }}>
                 Centro de Conocimientos

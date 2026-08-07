@@ -1,4 +1,4 @@
-# Pruebas y Validación — PrecisionTrucks HelpDesk
+# Pruebas y Validación — Precision Truck Parts, Parts and Accesories, S.A de C.V. HelpDesk
 
 ## Herramientas utilizadas
 
@@ -37,13 +37,13 @@
 **Pasos:**
 1. Crear request `POST {{base_url}}/auth/login`
 2. En la pestaña **Headers** agregar:
-   - `Content-Type: application/json`
-   - `x-requested-with: XMLHttpRequest`
-3. En **Body → raw → JSON** poner:
+ - `Content-Type: application/json`
+ - `x-requested-with: XMLHttpRequest`
+3. En **Body -> raw -> JSON** poner:
 ```json
 {
-  "email": "admin@precisiontrucks.com",
-  "password": "Admin123."
+ "email": "admin@precisiontrucks.com",
+ "password": "Admin123."
 }
 ```
 4. Clic en **Send**
@@ -132,17 +132,17 @@ UPDATE empleado SET estatus = 'Activo' WHERE email = 'admin@precisiontrucks.com'
 
 **Pasos:**
 1. `POST {{base_url}}/auth/recuperar` con `{ "email": "admin@precisiontrucks.com" }`
-   - Resultado esperado: `200 OK` con mensaje genérico (aunque SMTP no esté configurado)
+ - Resultado esperado: `200 OK` con mensaje genérico (aunque SMTP no esté configurado)
 2. Revisar en MySQL el código generado (solo en desarrollo):
 ```sql
 -- No hay tabla para esto; el código está en Workers/reset_tokens.json
 ```
 3. `POST {{base_url}}/auth/verificar-codigo` con `{ "email": "...", "codigo": "XXXXXX" }`
-   - Resultado esperado: `200 OK`, `{ "ok": true }`
+ - Resultado esperado: `200 OK`, `{ "ok": true }`
 4. `POST {{base_url}}/auth/reset-password` con email, codigo y `password_nueva` válida
-   - Resultado esperado: `200 OK`, `{ "ok": true }`
+ - Resultado esperado: `200 OK`, `{ "ok": true }`
 5. Intentar login con la nueva contraseña
-   - Resultado esperado: Login exitoso
+ - Resultado esperado: Login exitoso
 
 ---
 
@@ -167,13 +167,13 @@ UPDATE empleado SET estatus = 'Activo' WHERE email = 'admin@precisiontrucks.com'
 **Pasos:**
 1. `POST {{base_url}}/tickets`
 2. Headers:
-   - `Authorization: Bearer {{token_usuario}}`
-   - `x-requested-with: XMLHttpRequest`
+ - `Authorization: Bearer {{token_usuario}}`
+ - `x-requested-with: XMLHttpRequest`
 3. Body (form-data para soportar archivos):
-   - `titulo`: `Computadora no enciende`
-   - `descripcion`: `Al presionar el botón de encendido no hay respuesta`
-   - `prioridad`: `Alta`
-   - `id_categoria`: `1`
+ - `titulo`: `Computadora no enciende`
+ - `descripcion`: `Al presionar el botón de encendido no hay respuesta`
+ - `prioridad`: `Alta`
+ - `id_categoria`: `1`
 
 **Resultado esperado:**
 - Status: `201 Created`
@@ -240,8 +240,8 @@ SELECT * FROM ticket ORDER BY id_ticket DESC LIMIT 1;
 4. Body:
 ```json
 {
-  "estatus": "En proceso",
-  "id_resuelto_por": 1
+ "estatus": "En proceso",
+ "id_resuelto_por": 1
 }
 ```
 
@@ -320,12 +320,12 @@ SELECT estatus, id_tecnico FROM ticket WHERE id_ticket = :id;
 4. Body:
 ```json
 {
-  "prioridad": "Media",
-  "id_empleado": 2,
-  "insumos": [
-    { "id_insumo": 1, "cantidad": 2 },
-    { "id_insumo": 2, "cantidad": 1 }
-  ]
+ "prioridad": "Media",
+ "id_empleado": 2,
+ "insumos": [
+ { "id_insumo": 1, "cantidad": 2 },
+ { "id_insumo": 2, "cantidad": 1 }
+ ]
 }
 ```
 
@@ -358,10 +358,10 @@ SELECT id_insumo, nombre, stock FROM insumo WHERE id_insumo = 1;
 3. Body:
 ```json
 {
-  "estatus": "Aceptado",
-  "items": [
-    { "id_solicitud_insumo": 1, "aprobado": 1, "cantidad_aprobada": 2 }
-  ]
+ "estatus": "Aceptado",
+ "items": [
+ { "id_solicitud_insumo": 1, "aprobado": 1, "cantidad_aprobada": 2 }
+ ]
 }
 ```
 
@@ -415,13 +415,13 @@ UPDATE insumo SET stock = 10 WHERE id_insumo = 1;
 3. Body:
 ```json
 {
-  "nombre": "Cable HDMI 2m",
-  "descripcion": "Cable HDMI de alta velocidad",
-  "marca": "Genérico",
-  "modelo": "HDMI-2M",
-  "stock": 15,
-  "estado": "Excelente",
-  "id_categoria": 1
+ "nombre": "Cable HDMI 2m",
+ "descripcion": "Cable HDMI de alta velocidad",
+ "marca": "Genérico",
+ "modelo": "HDMI-2M",
+ "stock": 15,
+ "estado": "Excelente",
+ "id_categoria": 1
 }
 ```
 

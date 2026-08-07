@@ -18,6 +18,7 @@ export default function PdfViewer({ url, isDark }) {
   const pdfRef      = useRef(null);
   const scrollRef   = useRef(null);
   const pageNumRef  = useRef(1);
+  const fitScaleRef = useRef(1.2);
 
   const [numPages,  setNumPages]  = useState(0);
   const [pageNum,   setPageNum]   = useState(1);
@@ -49,6 +50,7 @@ export default function PdfViewer({ url, isDark }) {
         const token = localStorage.getItem("_tk");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const pdfRes  = await fetch(url, { headers });
+        if (!pdfRes.ok) throw new Error(`HTTP ${pdfRes.status}`);
         const data    = new Uint8Array(await pdfRes.arrayBuffer());
         const loadingTask = pdfjs.getDocument({ ...PDFJS_PARAMS, data });
         const pdf = await loadingTask.promise;
@@ -61,7 +63,9 @@ export default function PdfViewer({ url, isDark }) {
           const page1 = await pdf.getPage(1);
           const vp = page1.getViewport({ scale: 1, rotation: 0 });
           const available = scrollRef.current.clientWidth - 48;
-          setScale(+(available / vp.width).toFixed(2));
+          const fit = Math.max(0.5, +(available / vp.width).toFixed(2));
+          fitScaleRef.current = fit;
+          setScale(fit);
         }
         setLoading(false);
       } catch (e) {
@@ -89,10 +93,18 @@ export default function PdfViewer({ url, isDark }) {
       const vp   = page.getViewport({ scale, rotation });
       const canvas = canvasRef.current;
       const ctx    = canvas.getContext("2d");
+      const dpr    = window.devicePixelRatio || 1;
       canvas.width  = vp.width;
       canvas.height = vp.height;
+      canvas.style.width  = `${vp.width / dpr}px`;
+      canvas.style.height = `${vp.height / dpr}px`;
 
-      const task = page.render({ canvasContext: ctx, viewport: vp });
+      const task = page.render({
+        canvasContext: ctx,
+        viewport: vp,
+        // Prevenir interrupciones visuales
+        intent: "display",
+      });
       renderTask.current = task;
       await task.promise;
       renderTask.current = null;
@@ -109,6 +121,37 @@ export default function PdfViewer({ url, isDark }) {
 
   // Sincronizar ref de página para el handler de wheel
   useEffect(() => { pageNumRef.current = pageNum; }, [pageNum]);
+
+  // Reajustar escala cuando cambia el tamaño de la ventana
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !pdfRef.current || loading) return;
+    let timeout;
+    const onResize = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        const page1 = pdfRef.current;
+        if (!page1) return;
+        page1.getPage(1).then(page => {
+          const vp = page.getViewport({ scale: 1, rotation });
+          const available = scrollRef.current?.clientWidth - 48;
+          if (available) {
+            const fit = Math.max(0.5, +(available / vp.width).toFixed(2));
+            fitScaleRef.current = fit;
+            setScale(prev => {
+              // Si estaba en fit, seguir en fit; si no, mantener zoom del usuario
+              return Math.abs(prev - fitScaleRef.current) < 0.05 ? fit : prev;
+            });
+          }
+        }).catch(() => {});
+      }, 200);
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [loading, rotation]);
 
   // Scroll para cambiar de página
   useEffect(() => {
@@ -149,12 +192,17 @@ export default function PdfViewer({ url, isDark }) {
   };
 
   if (error) return (
-    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8, background: bg }}>
-      <span style={{ fontSize: 13, color: isDark ? "rgba(255,255,255,0.4)" : "#64748b" }}>
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, background: bg, padding: 24 }}>
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={isDark ? "rgba(255,255,255,0.3)" : "#94a3b8"} strokeWidth="1.5">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" />
+        <path d="M14 2v6h6" />
+        <path d="M9 13h6M9 17h6" strokeLinecap="round" />
+      </svg>
+      <span style={{ fontSize: 14, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.5)" : "#475569" }}>
         No se pudo cargar el PDF
       </span>
       <a href={url} target="_blank" rel="noreferrer"
-        style={{ fontSize: 12, color: "#F47920", textDecoration: "underline" }}>
+        style={{ fontSize: 13, color: "#F47920", textDecoration: "underline", fontWeight: 500 }}>
         Abrir en nueva pestaña
       </a>
     </div>
@@ -277,6 +325,8 @@ export default function PdfViewer({ url, isDark }) {
             ref={canvasRef}
             style={{
               display: "block",
+              maxWidth: "100%",
+              height: "auto",
               boxShadow: "0 4px 24px rgba(0,0,0,0.25)",
               borderRadius: 4,
             }}

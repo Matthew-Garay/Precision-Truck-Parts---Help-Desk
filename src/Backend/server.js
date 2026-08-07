@@ -77,16 +77,23 @@ import manualesRoutes    from "./Routes/manualesRoutes.js";
 const REQUIRED_ENV = ["JWT_SECRET", "DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"];
 const missing = REQUIRED_ENV.filter(k => !process.env[k]);
 if (missing.length > 0) {
-  console.error(`[ERROR] Variables de entorno faltantes: ${missing.join(", ")}`);
+  console.error(`[❌ ERROR] Variables de entorno faltantes: ${missing.join(", ")}`);
   process.exit(1);
 }
 
 const __dirname  = dirname(fileURLToPath(import.meta.url));
 const app        = express();
 const httpServer = createServer(app);
-httpServer.keepAliveTimeout = 65000;
-httpServer.headersTimeout   = 70000;
-httpServer.maxConnections   = 500;
+// Optimizaciones de rendimiento para alta concurrencia:
+// - keepAliveTimeout extendido para reducir handshakes TLS repetidos
+// - headersTimeout proporcionado con margen de seguridad
+// - maxConnections alto para soportar cientos de usuarios simultáneos
+// - maxRequestsPerSocket para evitar DOS por keep-alive abusivo
+httpServer.keepAliveTimeout    = 65000;
+httpServer.headersTimeout      = 70000;
+httpServer.maxConnections      = 2000;
+httpServer.requestTimeout      = 120000;
+httpServer.maxRequestsPerSocket = 1000;
 const PORT        = process.env.PORT || 3001;
 const CORS_ORIGIN  = process.env.CORS_ORIGIN || "http://localhost:5173";
 const CORS_ORIGINS = CORS_ORIGIN;
@@ -166,7 +173,16 @@ process.on("SIGINT",  () => shutdown("SIGINT"));
 if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
 
 // -- Middlewares globales -------------------------------------
-app.use(compression({ level: 6, threshold: 1024 }));
+// Compresión gzip/brotli para reducir el ancho de banda
+app.use(compression({
+  level: 6,
+  threshold: 1024,
+  filter: (req, res) => {
+    // No comprimir archivos ya comprimidos
+    if (req.headers["x-no-compression"]) return false;
+    return compression.filter(req, res);
+  },
+}));
 app.use(helmet({
   crossOriginResourcePolicy:  { policy: "cross-origin" },
   crossOriginOpenerPolicy:    false,
@@ -202,6 +218,7 @@ app.use(helmet({
 app.use(cors({ origin: CORS_ORIGINS, credentials: true }));
 app.use((_req, res, next) => { res.setHeader("ngrok-skip-browser-warning", "1"); next(); });
 app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 // Servidor de archivos estaticos para /storage.
 // Bloquea el acceso a archivos .json y .env por seguridad.
@@ -283,31 +300,31 @@ httpServer.listen(PORT, "0.0.0.0", async () => {
   const line = "-".repeat(52);
 
   console.log(`\n${line}`);
-  console.log(`  Precision Trucks Parts - HelpDesk`);
+  console.log(`  Precision Truck Parts, Parts and Accesories, S.A de C.V. - HelpDesk`);
   console.log(line);
 
-  console.log(`  Backend  ->  http://localhost:${PORT}`);
-  console.log(`  Frontend ->  ${process.env.APP_URL || "http://localhost:5173"}`);
-  if (process.env.APP_URL) console.log(`  Publico  ->  ${process.env.APP_URL}`);
+  console.log(`  Backend  ->  ✅  http://localhost:${PORT}`);
+  console.log(`  Frontend ->  ✅  ${process.env.APP_URL || "http://localhost:5173"}`);
+  if (process.env.APP_URL) console.log(`  Publico  ->  ✅  ${process.env.APP_URL}`);
 
   const nets = networkInterfaces();
   for (const iface of Object.values(nets))
     for (const addr of iface)
       if (addr.family === "IPv4" && !addr.internal)
-        console.log(`  Red      ->  http://${addr.address}:${PORT}  (LAN)`);
+        console.log(`  Red      ->  ✅  http://${addr.address}:${PORT}  (LAN)`);
 
   try {
     const conn = await pool.getConnection();
     conn.release();
-    console.log(`  DB       ->  OK  MySQL`);
+    console.log(`  DB       ->  ✅  MySQL`);
   } catch {
-    console.log(`  DB       ->  ERROR  MySQL sin conexion`);
+    console.log(`  DB       ->  ❌  MySQL sin conexion`);
   }
 
-  console.log(`  Socket   ->  ${httpServer.listening ? "OK" : "ERROR"}  WebSockets`);
-  console.log(`  Workers  ->  OK  Iniciando jobs programados`);
-  console.log(`  SMTP     ->  ${process.env.SMTP_USER ? "OK  Correos activos" : "AVISO  No configurado - correos desactivados"}`);
-  console.log(`  JWT      ->  ${process.env.JWT_SECRET ? "OK  Configurado" : "ERROR  JWT_SECRET faltante"}`);
+  console.log(`  Socket   ->  ${httpServer.listening ? "✅" : "❌"}  WebSockets`);
+  console.log(`  Workers  ->  ✅  Iniciando jobs programados`);
+  console.log(`  SMTP     ->  ${process.env.SMTP_USER ? "✅  Correos activos" : "⚠️  No configurado - correos desactivados"}`);
+  console.log(`  JWT      ->  ${process.env.JWT_SECRET ? "✅  Configurado" : "❌  JWT_SECRET faltante"}`);
 
   console.log(line + "\n");
 

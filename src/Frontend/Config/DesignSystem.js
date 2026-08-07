@@ -1,7 +1,7 @@
 /**
  * DesignSystem.js
  *
- * Sistema de diseno centralizado de Precision Truck Parts HelpDesk.
+ * Sistema de diseno centralizado de Precision Truck Parts, Parts and Accesories, S.A de C.V. HelpDesk.
  * Define todos los tokens visuales, estilos de componentes atomicos,
  * moleculas, organismos y patrones de UX que se aplican en toda la aplicacion.
  *
@@ -18,7 +18,7 @@
  *   #16A34A - Confirmacion (operacion exitosa)
  *
  * Acento corporativo:
- *   Naranja #F47920 de Precision Truck Parts para CTAs corporativos
+ *   Naranja #F47920 de Precision Truck Parts, Parts and Accesories, S.A de C.V. para CTAs corporativos
  *   y elementos de identidad de marca.
  *
  * Heuristicas de Nielsen aplicadas:
@@ -100,11 +100,11 @@ export const ACCENT = {
   muted:  "rgba(37,99,235,0.12)",  // focus ring
 };
 
-// ── ACENTO CORPORATIVO (Precision Truck Parts) ────────────────────
+// ── ACENTO CORPORATIVO (Precision Truck Parts, Parts and Accesories, S.A de C.V.) ────────────────────
 // Naranja #F97316 para acciones primarias corporativas (CTA, botones principales)
 // Token unificado con themeTokens.js (LIGHT.orange / DARK.orange)
 export const BRAND = {
-  orange:      "#F47920",   // Precision Truck Parts — naranja corporativo
+  orange:      "#F47920",   // Precision Truck Parts, Parts and Accesories, S.A de C.V. — naranja corporativo
   orangeDark:  "#D4610A",   // hover (idéntico a themeTokens.LIGHT.orangeDark)
   orangeLight: "#FFF7ED",   // bg sutil
   orangeMuted: "rgba(244,121,32,0.12)",  // focus ring / highlight

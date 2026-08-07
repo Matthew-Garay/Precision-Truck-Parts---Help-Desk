@@ -44,7 +44,7 @@ export default function PantallaSalida() {
         <div className="text-center flex flex-col gap-1">
           <p className="text-white text-lg font-black uppercase tracking-widest leading-none"
             style={{ animation: "slide-up 0.5s 0.15s ease-out both" }}>
-            Precision Truck Parts
+            Precision Truck Parts, Parts and Accesories, S.A de C.V.
           </p>
           <p className="text-[11px] font-medium uppercase tracking-widest"
             style={{ color: "rgba(255,255,255,0.35)", animation: "slide-up 0.5s 0.28s ease-out both" }}>
