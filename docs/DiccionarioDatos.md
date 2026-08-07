@@ -1,7 +1,7 @@
-# Diccionario de Datos — PrecisionTrucks HelpDesk
+# Diccionario de Datos — Precision Truck Parts, Parts and Accesories, S.A de C.V. HelpDesk
 
-**Base de datos:** `precision_helpdesk`  
-**Motor:** MySQL 8.x · InnoDB · utf8mb4_unicode_ci  
+**Base de datos:** `precision_helpdesk`
+**Motor:** MySQL 8.x · InnoDB · utf8mb4_unicode_ci
 **Total de tablas:** 11
 
 ---
@@ -26,13 +26,13 @@
 
 Catálogo compartido que clasifica tickets, insumos y manuales. Un mismo registro puede pertenecer a uno o más contextos mediante las banderas booleanas.
 
-| Columna           | Tipo           | Nulo | Default | Descripción                                      |
+| Columna | Tipo | Nulo | Default | Descripción |
 |-------------------|----------------|------|---------|--------------------------------------------------|
-| `id_categoria`    | INT (PK, AI)   | NO   | —       | Identificador único de la categoría              |
-| `nombre_categoria`| VARCHAR(100)   | NO   | —       | Nombre descriptivo de la categoría               |
-| `en_tickets`      | TINYINT(1)     | NO   | 0       | 1 = disponible para clasificar tickets           |
-| `en_insumos`      | TINYINT(1)     | NO   | 0       | 1 = disponible para clasificar insumos           |
-| `en_manuales`     | TINYINT(1)     | NO   | 0       | 1 = disponible para clasificar manuales PDF      |
+| `id_categoria` | INT (PK, AI) | NO | — | Identificador único de la categoría |
+| `nombre_categoria`| VARCHAR(100) | NO | — | Nombre descriptivo de la categoría |
+| `en_tickets` | TINYINT(1) | NO | 0 | 1 = disponible para clasificar tickets |
+| `en_insumos` | TINYINT(1) | NO | 0 | 1 = disponible para clasificar insumos |
+| `en_manuales` | TINYINT(1) | NO | 0 | 1 = disponible para clasificar manuales PDF |
 
 **Índices:** `PRIMARY KEY (id_categoria)`
 
@@ -49,10 +49,10 @@ Catálogo compartido que clasifica tickets, insumos y manuales. Un mismo registr
 
 Catálogo de áreas organizacionales de la empresa. Cada empleado pertenece a un departamento.
 
-| Columna               | Tipo         | Nulo | Default | Descripción                          |
+| Columna | Tipo | Nulo | Default | Descripción |
 |-----------------------|--------------|------|---------|--------------------------------------|
-| `id_departamento`     | INT (PK, AI) | NO   | —       | Identificador único del departamento |
-| `nombre_departamento` | VARCHAR(100) | NO   | —       | Nombre del área (único en la tabla)  |
+| `id_departamento` | INT (PK, AI) | NO | — | Identificador único del departamento |
+| `nombre_departamento` | VARCHAR(100) | NO | — | Nombre del área (único en la tabla) |
 
 **Índices:** `PRIMARY KEY (id_departamento)`, `UNIQUE (nombre_departamento)`
 
@@ -69,19 +69,19 @@ Catálogo de áreas organizacionales de la empresa. Cada empleado pertenece a un
 
 Catálogo de roles del sistema. Define el nivel de acceso de cada empleado.
 
-| Columna     | Tipo         | Nulo | Default | Descripción                    |
+| Columna | Tipo | Nulo | Default | Descripción |
 |-------------|--------------|------|---------|--------------------------------|
-| `id_rol`    | INT (PK, AI) | NO   | —       | Identificador único del rol    |
-| `nombre_rol`| VARCHAR(50)  | NO   | —       | Nombre del rol (único)         |
+| `id_rol` | INT (PK, AI) | NO | — | Identificador único del rol |
+| `nombre_rol`| VARCHAR(50) | NO | — | Nombre del rol (único) |
 
 **Índices:** `PRIMARY KEY (id_rol)`, `UNIQUE (nombre_rol)`
 
 **Valores semilla:**
 
-| id_rol | nombre_rol      | Capacidades                                                        |
+| id_rol | nombre_rol | Capacidades |
 |--------|-----------------|--------------------------------------------------------------------|
-| 1      | Administrador   | Gestión completa: tickets, inventario, personal, manuales, reportes |
-| 2      | Usuario         | Crear tickets, solicitar insumos, ver historial propio, manuales   |
+| 1 | Administrador | Gestión completa: tickets, inventario, personal, manuales, reportes |
+| 2 | Usuario | Crear tickets, solicitar insumos, ver historial propio, manuales |
 
 **Reglas de negocio:**
 - Solo existen dos roles en el sistema; no se crean roles adicionales desde la UI.
@@ -94,10 +94,10 @@ Catálogo de roles del sistema. Define el nivel de acceso de cada empleado.
 
 Catálogo de ubicaciones físicas de la empresa. Asignación opcional por empleado.
 
-| Columna           | Tipo         | Nulo | Default | Descripción                      |
+| Columna | Tipo | Nulo | Default | Descripción |
 |-------------------|--------------|------|---------|----------------------------------|
-| `id_sucursal`     | INT (PK, AI) | NO   | —       | Identificador único de sucursal  |
-| `nombre_sucursal` | VARCHAR(100) | NO   | —       | Nombre de la sucursal (único)    |
+| `id_sucursal` | INT (PK, AI) | NO | — | Identificador único de sucursal |
+| `nombre_sucursal` | VARCHAR(100) | NO | — | Nombre de la sucursal (único) |
 
 **Índices:** `PRIMARY KEY (id_sucursal)`, `UNIQUE (nombre_sucursal)`
 
@@ -114,27 +114,27 @@ Catálogo de ubicaciones físicas de la empresa. Asignación opcional por emplea
 
 Usuarios del sistema. Almacena credenciales, datos personales y referencias a catálogos.
 
-| Columna          | Tipo                        | Nulo | Default  | Descripción                                         |
+| Columna | Tipo | Nulo | Default | Descripción |
 |------------------|-----------------------------|------|----------|-----------------------------------------------------|
-| `id_empleado`    | INT (PK, AI)                | NO   | —        | Identificador único del empleado                    |
-| `num_empleado`   | VARCHAR(20)                 | NO   | —        | Número de nómina (único)                            |
-| `nombre`         | VARCHAR(50)                 | NO   | —        | Nombre(s) del empleado                              |
-| `ap_paterno`     | VARCHAR(50)                 | NO   | —        | Apellido paterno                                    |
-| `ap_materno`     | VARCHAR(50)                 | SÍ   | NULL     | Apellido materno (opcional)                         |
-| `email`          | VARCHAR(100)                | NO   | —        | Correo electrónico (único, usado para login)        |
-| `password`       | VARCHAR(255)                | NO   | —        | Hash bcrypt (12 rounds) de la contraseña            |
-| `foto`           | VARCHAR(255)                | SÍ   | NULL     | Nombre de archivo del avatar en `storage/Fotos de Perfil/` |
-| `estatus`        | ENUM('Activo','Inactivo')   | NO   | 'Activo' | Estado de la cuenta                                 |
-| `id_rol`         | INT (FK → rol)              | NO   | —        | Rol asignado (1=Admin, 2=Usuario)                   |
-| `id_departamento`| INT (FK → departamento)     | NO   | —        | Área organizacional del empleado                    |
-| `id_sucursal`    | INT (FK → sucursal)         | SÍ   | NULL     | Sucursal asignada (opcional)                        |
+| `id_empleado` | INT (PK, AI) | NO | — | Identificador único del empleado |
+| `num_empleado` | VARCHAR(20) | NO | — | Número de nómina (único) |
+| `nombre` | VARCHAR(50) | NO | — | Nombre(s) del empleado |
+| `ap_paterno` | VARCHAR(50) | NO | — | Apellido paterno |
+| `ap_materno` | VARCHAR(50) | SÍ | NULL | Apellido materno (opcional) |
+| `email` | VARCHAR(100) | NO | — | Correo electrónico (único, usado para login) |
+| `password` | VARCHAR(255) | NO | — | Hash bcrypt (12 rounds) de la contraseña |
+| `foto` | VARCHAR(255) | SÍ | NULL | Nombre de archivo del avatar en `storage/Fotos de Perfil/` |
+| `estatus` | ENUM('Activo','Inactivo') | NO | 'Activo' | Estado de la cuenta |
+| `id_rol` | INT (FK -> rol) | NO | — | Rol asignado (1=Admin, 2=Usuario) |
+| `id_departamento`| INT (FK -> departamento) | NO | — | Área organizacional del empleado |
+| `id_sucursal` | INT (FK -> sucursal) | SÍ | NULL | Sucursal asignada (opcional) |
 
 **Índices:** `PRIMARY KEY (id_empleado)`, `UNIQUE (email)`, `UNIQUE (num_empleado)`, índices en FK.
 
 **Relaciones:**
-- `id_rol` → `rol.id_rol` (RESTRICT / CASCADE)
-- `id_departamento` → `departamento.id_departamento` (RESTRICT / CASCADE)
-- `id_sucursal` → `sucursal.id_sucursal` (RESTRICT / CASCADE)
+- `id_rol` -> `rol.id_rol` (RESTRICT / CASCADE)
+- `id_departamento` -> `departamento.id_departamento` (RESTRICT / CASCADE)
+- `id_sucursal` -> `sucursal.id_sucursal` (RESTRICT / CASCADE)
 - Referenciada por `historial_acceso`, `ticket` (empleado y técnico) y `solicitud`.
 
 **Reglas de negocio:**
@@ -151,16 +151,16 @@ Usuarios del sistema. Almacena credenciales, datos personales y referencias a ca
 
 Registro de cada sesión iniciada y cerrada por un empleado.
 
-| Columna        | Tipo                  | Nulo | Default           | Descripción                                      |
+| Columna | Tipo | Nulo | Default | Descripción |
 |----------------|-----------------------|------|-------------------|--------------------------------------------------|
-| `id_acceso`    | INT (PK, AI)          | NO   | —                 | Identificador único del registro de acceso       |
-| `id_empleado`  | INT (FK → empleado)   | NO   | —                 | Empleado que inició sesión                       |
-| `fecha_entrada`| TIMESTAMP             | SÍ   | CURRENT_TIMESTAMP | Fecha y hora de login                            |
-| `fecha_salida` | TIMESTAMP             | SÍ   | NULL              | Fecha y hora de logout (NULL = sesión activa)    |
+| `id_acceso` | INT (PK, AI) | NO | — | Identificador único del registro de acceso |
+| `id_empleado` | INT (FK -> empleado) | NO | — | Empleado que inició sesión |
+| `fecha_entrada`| TIMESTAMP | SÍ | CURRENT_TIMESTAMP | Fecha y hora de login |
+| `fecha_salida` | TIMESTAMP | SÍ | NULL | Fecha y hora de logout (NULL = sesión activa) |
 
 **Índices:** `PRIMARY KEY (id_acceso)`, índice en `id_empleado`.
 
-**Relaciones:** `id_empleado` → `empleado.id_empleado` (ON DELETE CASCADE / ON UPDATE CASCADE).
+**Relaciones:** `id_empleado` -> `empleado.id_empleado` (ON DELETE CASCADE / ON UPDATE CASCADE).
 
 **Reglas de negocio:**
 - Se crea un registro en cada login exitoso; `fecha_salida` se actualiza al hacer logout.
@@ -175,26 +175,26 @@ Registro de cada sesión iniciada y cerrada por un empleado.
 
 Inventario de materiales y equipos disponibles para solicitar.
 
-| Columna       | Tipo                                        | Nulo | Default | Descripción                                              |
+| Columna | Tipo | Nulo | Default | Descripción |
 |---------------|---------------------------------------------|------|---------|----------------------------------------------------------|
-| `id_insumo`   | INT (PK, AI)                                | NO   | —       | Identificador único del insumo                           |
-| `num_serie`   | VARCHAR(100)                                | SÍ   | NULL    | Número de serie del artículo (opcional)                  |
-| `nombre`      | VARCHAR(150)                                | NO   | —       | Nombre del insumo                                        |
-| `descripcion` | TEXT                                        | SÍ   | NULL    | Descripción detallada del insumo                         |
-| `marca`       | VARCHAR(100)                                | SÍ   | NULL    | Marca del fabricante                                     |
-| `modelo`      | VARCHAR(100)                                | SÍ   | NULL    | Modelo del artículo                                      |
-| `stock`       | INT                                         | NO   | 0       | Cantidad disponible en inventario (≥ 0)                  |
-| `estado`      | ENUM('Excelente','Bueno','Regular','Malo')  | SÍ   | NULL    | Condición física del insumo                              |
-| `id_categoria`| INT (FK → categoria)                        | NO   | —       | Categoría del insumo                                     |
-| `proveedor`   | VARCHAR(255)                                | SÍ   | NULL    | Nombre o datos del proveedor                             |
-| `imagen_url`  | VARCHAR(255)                                | SÍ   | NULL    | Nombre de archivo de la imagen en `storage/Insumos/`     |
+| `id_insumo` | INT (PK, AI) | NO | — | Identificador único del insumo |
+| `num_serie` | VARCHAR(100) | SÍ | NULL | Número de serie del artículo (opcional) |
+| `nombre` | VARCHAR(150) | NO | — | Nombre del insumo |
+| `descripcion` | TEXT | SÍ | NULL | Descripción detallada del insumo |
+| `marca` | VARCHAR(100) | SÍ | NULL | Marca del fabricante |
+| `modelo` | VARCHAR(100) | SÍ | NULL | Modelo del artículo |
+| `stock` | INT | NO | 0 | Cantidad disponible en inventario (≥ 0) |
+| `estado` | ENUM('Excelente','Bueno','Regular','Malo') | SÍ | NULL | Condición física del insumo |
+| `id_categoria`| INT (FK -> categoria) | NO | — | Categoría del insumo |
+| `proveedor` | VARCHAR(255) | SÍ | NULL | Nombre o datos del proveedor |
+| `imagen_url` | VARCHAR(255) | SÍ | NULL | Nombre de archivo de la imagen en `storage/Insumos/` |
 
 **Índices:** `PRIMARY KEY (id_insumo)`, índice en `id_categoria`.
 
 **Constraints:** `CHECK (stock >= 0)` — el stock nunca puede ser negativo.
 
 **Relaciones:**
-- `id_categoria` → `categoria.id_categoria` (RESTRICT / CASCADE)
+- `id_categoria` -> `categoria.id_categoria` (RESTRICT / CASCADE)
 - Referenciada por `solicitud_insumo.id_insumo` (RESTRICT).
 
 **Reglas de negocio:**
@@ -211,19 +211,19 @@ Inventario de materiales y equipos disponibles para solicitar.
 
 Registros de documentos PDF del módulo de gestión documental.
 
-| Columna        | Tipo                    | Nulo | Default                          | Descripción                                          |
+| Columna | Tipo | Nulo | Default | Descripción |
 |----------------|-------------------------|------|----------------------------------|------------------------------------------------------|
-| `id_manual`    | INT UNSIGNED (PK, AI)   | NO   | —                                | Identificador único del manual                       |
-| `nombre`       | VARCHAR(150)            | NO   | —                                | Título del manual                                    |
-| `descripcion`  | TEXT                    | SÍ   | NULL                             | Descripción o resumen del contenido                  |
-| `fecha_subida` | TIMESTAMP               | SÍ   | CURRENT_TIMESTAMP                | Fecha en que se subió el archivo                     |
-| `fecha_cambio` | TIMESTAMP               | SÍ   | CURRENT_TIMESTAMP ON UPDATE NOW  | Última modificación de metadatos                     |
-| `ruta_pdf`     | VARCHAR(255)            | NO   | —                                | Nombre de archivo del PDF en `storage/Manuales/`     |
-| `id_categoria` | INT (FK → categoria)    | NO   | —                                | Categoría del manual                                 |
+| `id_manual` | INT UNSIGNED (PK, AI) | NO | — | Identificador único del manual |
+| `nombre` | VARCHAR(150) | NO | — | Título del manual |
+| `descripcion` | TEXT | SÍ | NULL | Descripción o resumen del contenido |
+| `fecha_subida` | TIMESTAMP | SÍ | CURRENT_TIMESTAMP | Fecha en que se subió el archivo |
+| `fecha_cambio` | TIMESTAMP | SÍ | CURRENT_TIMESTAMP ON UPDATE NOW | Última modificación de metadatos |
+| `ruta_pdf` | VARCHAR(255) | NO | — | Nombre de archivo del PDF en `storage/Manuales/` |
+| `id_categoria` | INT (FK -> categoria) | NO | — | Categoría del manual |
 
 **Índices:** `PRIMARY KEY (id_manual)`, `INDEX (id_categoria)`.
 
-**Relaciones:** `id_categoria` → `categoria.id_categoria` (RESTRICT / CASCADE).
+**Relaciones:** `id_categoria` -> `categoria.id_categoria` (RESTRICT / CASCADE).
 
 **Reglas de negocio:**
 - Solo los administradores pueden subir, editar o eliminar manuales.
@@ -238,19 +238,19 @@ Registros de documentos PDF del módulo de gestión documental.
 
 Cabecera de cada solicitud de insumos realizada por un empleado.
 
-| Columna           | Tipo                                        | Nulo | Default           | Descripción                                              |
+| Columna | Tipo | Nulo | Default | Descripción |
 |-------------------|---------------------------------------------|------|-------------------|----------------------------------------------------------|
-| `id_solicitud`    | INT (PK, AI)                                | NO   | —                 | Identificador único de la solicitud                      |
-| `folio_solicitud` | VARCHAR(20)                                 | NO   | —                 | Folio único con formato `SOL-YYYYMM-NNN`                 |
-| `fecha`           | TIMESTAMP                                   | NO   | CURRENT_TIMESTAMP | Fecha y hora de creación                                 |
-| `estatus`         | ENUM('En proceso','Aceptado','Rechazado')   | NO   | 'En proceso'      | Estado actual de la solicitud                            |
-| `prioridad`       | ENUM('Baja','Media','Alta','Urgente')        | NO   | 'Media'           | Nivel de urgencia declarado por el solicitante           |
-| `id_empleado`     | INT (FK → empleado)                         | NO   | —                 | Empleado que realizó la solicitud                        |
+| `id_solicitud` | INT (PK, AI) | NO | — | Identificador único de la solicitud |
+| `folio_solicitud` | VARCHAR(20) | NO | — | Folio único con formato `SOL-YYYYMM-NNN` |
+| `fecha` | TIMESTAMP | NO | CURRENT_TIMESTAMP | Fecha y hora de creación |
+| `estatus` | ENUM('En proceso','Aceptado','Rechazado') | NO | 'En proceso' | Estado actual de la solicitud |
+| `prioridad` | ENUM('Baja','Media','Alta','Urgente') | NO | 'Media' | Nivel de urgencia declarado por el solicitante |
+| `id_empleado` | INT (FK -> empleado) | NO | — | Empleado que realizó la solicitud |
 
 **Índices:** `PRIMARY KEY (id_solicitud)`, `UNIQUE (folio_solicitud)`, índices compuestos en `(estatus, fecha)` y `(id_empleado)`.
 
 **Relaciones:**
-- `id_empleado` → `empleado.id_empleado` (RESTRICT / CASCADE)
+- `id_empleado` -> `empleado.id_empleado` (RESTRICT / CASCADE)
 - Referenciada por `solicitud_insumo.id_solicitud` (CASCADE).
 
 **Reglas de negocio:**
@@ -267,20 +267,20 @@ Cabecera de cada solicitud de insumos realizada por un empleado.
 
 Tabla de unión que detalla los ítems (insumos y cantidades) de cada solicitud.
 
-| Columna               | Tipo                  | Nulo | Default | Descripción                                                  |
+| Columna | Tipo | Nulo | Default | Descripción |
 |-----------------------|-----------------------|------|---------|--------------------------------------------------------------|
-| `id_solicitud_insumo` | INT (PK, AI)          | NO   | —       | Identificador único del ítem                                 |
-| `id_solicitud`        | INT (FK → solicitud)  | NO   | —       | Solicitud a la que pertenece el ítem                         |
-| `id_insumo`           | INT (FK → insumo)     | NO   | —       | Insumo solicitado                                            |
-| `descripcion`         | TEXT                  | SÍ   | NULL    | Justificación o nota adicional del ítem                      |
-| `cantidad`            | INT                   | NO   | 1       | Cantidad solicitada del insumo                               |
-| `aprobado`            | TINYINT(1)            | SÍ   | NULL    | NULL=pendiente · 1=aprobado · 0=rechazado (por ítem)         |
+| `id_solicitud_insumo` | INT (PK, AI) | NO | — | Identificador único del ítem |
+| `id_solicitud` | INT (FK -> solicitud) | NO | — | Solicitud a la que pertenece el ítem |
+| `id_insumo` | INT (FK -> insumo) | NO | — | Insumo solicitado |
+| `descripcion` | TEXT | SÍ | NULL | Justificación o nota adicional del ítem |
+| `cantidad` | INT | NO | 1 | Cantidad solicitada del insumo |
+| `aprobado` | TINYINT(1) | SÍ | NULL | NULL=pendiente · 1=aprobado · 0=rechazado (por ítem) |
 
 **Índices:** `PRIMARY KEY (id_solicitud_insumo)`, índices en `id_solicitud` e `id_insumo`.
 
 **Relaciones:**
-- `id_solicitud` → `solicitud.id_solicitud` (ON DELETE CASCADE)
-- `id_insumo` → `insumo.id_insumo` (ON DELETE RESTRICT)
+- `id_solicitud` -> `solicitud.id_solicitud` (ON DELETE CASCADE)
+- `id_insumo` -> `insumo.id_insumo` (ON DELETE RESTRICT)
 
 **Reglas de negocio:**
 - La aprobación es granular: cada ítem puede aprobarse o rechazarse de forma independiente (`PATCH /solicitudes/:id/items`).
@@ -295,28 +295,28 @@ Tabla de unión que detalla los ítems (insumos y cantidades) de cada solicitud.
 
 Incidencias técnicas reportadas por los empleados. Núcleo del módulo HelpDesk.
 
-| Columna         | Tipo                                                    | Nulo | Default           | Descripción                                                    |
+| Columna | Tipo | Nulo | Default | Descripción |
 |-----------------|---------------------------------------------------------|------|-------------------|----------------------------------------------------------------|
-| `id_ticket`     | INT (PK, AI)                                            | NO   | —                 | Identificador único del ticket                                 |
-| `folio_ticket`  | VARCHAR(20)                                             | NO   | —                 | Folio único con formato `PTP-YYYYMM-NNN`                       |
-| `titulo`        | VARCHAR(150)                                            | NO   | —                 | Título breve de la incidencia                                  |
-| `descripcion`   | TEXT                                                    | NO   | —                 | Descripción detallada del problema                             |
-| `fecha_subido`  | TIMESTAMP                                               | SÍ   | CURRENT_TIMESTAMP | Fecha y hora de creación del ticket                            |
-| `fecha_resuelto`| TIMESTAMP                                               | SÍ   | NULL              | Fecha y hora en que se marcó como resuelto                     |
-| `estatus`       | ENUM('En proceso','Resuelto','No Resuelto','Cancelado') | NO   | 'En proceso'      | Estado actual del ticket                                       |
-| `prioridad`     | ENUM('Baja','Media','Alta','Urgente')                   | NO   | 'Media'           | Nivel de urgencia del ticket                                   |
-| `comentarios`   | TEXT                                                    | SÍ   | NULL              | Notas del técnico o administrador sobre la resolución          |
-| `id_empleado`   | INT (FK → empleado)                                     | NO   | —                 | Empleado que reportó la incidencia                             |
-| `id_categoria`  | INT (FK → categoria)                                    | NO   | —                 | Categoría técnica del ticket                                   |
-| `id_tecnico`    | INT (FK → empleado)                                     | SÍ   | NULL              | Administrador/técnico asignado (NULL = sin atender)            |
-| `calificacion`  | TINYINT                                                 | SÍ   | NULL              | Calificación del usuario al cierre (1–5 estrellas)             |
+| `id_ticket` | INT (PK, AI) | NO | — | Identificador único del ticket |
+| `folio_ticket` | VARCHAR(20) | NO | — | Folio único con formato `PTP-YYYYMM-NNN` |
+| `titulo` | VARCHAR(150) | NO | — | Título breve de la incidencia |
+| `descripcion` | TEXT | NO | — | Descripción detallada del problema |
+| `fecha_subido` | TIMESTAMP | SÍ | CURRENT_TIMESTAMP | Fecha y hora de creación del ticket |
+| `fecha_resuelto`| TIMESTAMP | SÍ | NULL | Fecha y hora en que se marcó como resuelto |
+| `estatus` | ENUM('En proceso','Resuelto','No Resuelto','Cancelado') | NO | 'En proceso' | Estado actual del ticket |
+| `prioridad` | ENUM('Baja','Media','Alta','Urgente') | NO | 'Media' | Nivel de urgencia del ticket |
+| `comentarios` | TEXT | SÍ | NULL | Notas del técnico o administrador sobre la resolución |
+| `id_empleado` | INT (FK -> empleado) | NO | — | Empleado que reportó la incidencia |
+| `id_categoria` | INT (FK -> categoria) | NO | — | Categoría técnica del ticket |
+| `id_tecnico` | INT (FK -> empleado) | SÍ | NULL | Administrador/técnico asignado (NULL = sin atender) |
+| `calificacion` | TINYINT | SÍ | NULL | Calificación del usuario al cierre (1–5 estrellas) |
 
 **Índices:** `PRIMARY KEY (id_ticket)`, `UNIQUE (folio_ticket)`, índices en `id_empleado`, `id_categoria`, `id_tecnico`.
 
 **Relaciones:**
-- `id_empleado` → `empleado.id_empleado` (RESTRICT / CASCADE)
-- `id_categoria` → `categoria.id_categoria` (RESTRICT / CASCADE)
-- `id_tecnico` → `empleado.id_empleado` (RESTRICT / CASCADE) — autorreferencia a la misma tabla
+- `id_empleado` -> `empleado.id_empleado` (RESTRICT / CASCADE)
+- `id_categoria` -> `categoria.id_categoria` (RESTRICT / CASCADE)
+- `id_tecnico` -> `empleado.id_empleado` (RESTRICT / CASCADE) — autorreferencia a la misma tabla
 
 **Reglas de negocio:**
 - El folio `PTP-YYYYMM-NNN` se genera con bloqueo `FOR UPDATE` para garantizar unicidad bajo concurrencia.
@@ -334,22 +334,22 @@ Incidencias técnicas reportadas por los empleados. Núcleo del módulo HelpDesk
 ## Diagrama de relaciones (resumen)
 
 ```
-rol ──────────────────────────────────────────────────────────────────┐
-departamento ─────────────────────────────────────────────────────────┤
-sucursal ─────────────────────────────────────────────────────────────┤
-                                                                       ▼
-                                                                   empleado
-                                                                  /    |    \
-                                              historial_acceso ◄─┘    │     └─► ticket (como técnico)
-                                                                       │
-                                                              solicitud│    ticket
-                                                                  │    │      │
-                                                       solicitud_insumo│   (evidencias en storage/)
-                                                                  │    │
-categoria ◄──────────────────────────────────────────────────────┘────┘
-    │
-    ├──► insumo
-    └──► manual
+rol ----
+departamento ----
+sucursal ----
+
+ empleado
+ / | \
+ historial_acceso ---- | ---- ticket (como técnico)
+ |
+ solicitud| ticket
+ | | |
+ solicitud_insumo| (evidencias en storage/)
+ | |
+categoria --------
+ |
+ |-- insumo
+ `-- manual
 ```
 
 ---
@@ -388,15 +388,15 @@ La separación de los catálogos `rol`, `departamento`, `sucursal` y `categoria`
 
 ### Tercera Forma Normal (3FN) — Eliminación de dependencias transitivas
 
-Una tabla se encuentra en Tercera Forma Normal cuando ya cumple 2FN y, además, ningún atributo no clave depende funcionalmente de otro atributo no clave. Dicho de otra manera, no deben existir dependencias transitivas de la forma `atributo_A → atributo_B → clave_primaria`, donde tanto `atributo_A` como `atributo_B` son columnas no clave. Cuando esto ocurre, `atributo_A` no depende directamente de la clave primaria de la tabla, sino que lo hace de forma indirecta a través de `atributo_B`, lo que introduce redundancia y anomalías de actualización: si el valor de `atributo_B` cambia, todos los registros que contengan el valor derivado de `atributo_A` deben actualizarse manualmente, con riesgo real de inconsistencias si alguna fila queda sin actualizar.
+Una tabla se encuentra en Tercera Forma Normal cuando ya cumple 2FN y, además, ningún atributo no clave depende funcionalmente de otro atributo no clave. Dicho de otra manera, no deben existir dependencias transitivas de la forma `atributo_A -> atributo_B -> clave_primaria`, donde tanto `atributo_A` como `atributo_B` son columnas no clave. Cuando esto ocurre, `atributo_A` no depende directamente de la clave primaria de la tabla, sino que lo hace de forma indirecta a través de `atributo_B`, lo que introduce redundancia y anomalías de actualización: si el valor de `atributo_B` cambia, todos los registros que contengan el valor derivado de `atributo_A` deben actualizarse manualmente, con riesgo real de inconsistencias si alguna fila queda sin actualizar.
 
-En el esquema `precision_helpdesk` la 3FN se cumple de forma sistemática en todas las tablas principales. La tabla `empleado` es el ejemplo más claro. Un empleado tiene asignado un rol, un departamento y opcionalmente una sucursal. En lugar de almacenar directamente los nombres de estos elementos (`nombre_rol`, `nombre_departamento`, `nombre_sucursal`) como columnas de `empleado`, el esquema almacena únicamente las claves foráneas `id_rol`, `id_departamento` e `id_sucursal`. Si se almacenara `nombre_rol` en `empleado`, existiría la dependencia transitiva `nombre_rol → id_rol → id_empleado`: el nombre del rol no dependería del empleado en sí, sino del rol que tiene asignado. Esto significaría que si el nombre del rol "Administrador" cambiara a "Administrador del Sistema", habría que actualizar esa cadena en cada fila de `empleado` que tuviera ese rol, con alto riesgo de inconsistencia si alguna fila quedara desactualizada. Al guardar solo `id_rol` y obtener el nombre mediante JOIN, el cambio se realiza en un único registro de la tabla `rol` y se propaga automáticamente a todas las consultas sin ningún riesgo de datos contradictorios.
+En el esquema `precision_helpdesk` la 3FN se cumple de forma sistemática en todas las tablas principales. La tabla `empleado` es el ejemplo más claro. Un empleado tiene asignado un rol, un departamento y opcionalmente una sucursal. En lugar de almacenar directamente los nombres de estos elementos (`nombre_rol`, `nombre_departamento`, `nombre_sucursal`) como columnas de `empleado`, el esquema almacena únicamente las claves foráneas `id_rol`, `id_departamento` e `id_sucursal`. Si se almacenara `nombre_rol` en `empleado`, existiría la dependencia transitiva `nombre_rol -> id_rol -> id_empleado`: el nombre del rol no dependería del empleado en sí, sino del rol que tiene asignado. Esto significaría que si el nombre del rol "Administrador" cambiara a "Administrador del Sistema", habría que actualizar esa cadena en cada fila de `empleado` que tuviera ese rol, con alto riesgo de inconsistencia si alguna fila quedara desactualizada. Al guardar solo `id_rol` y obtener el nombre mediante JOIN, el cambio se realiza en un único registro de la tabla `rol` y se propaga automáticamente a todas las consultas sin ningún riesgo de datos contradictorios.
 
-La tabla `ticket` aplica el mismo principio en dos relaciones distintas. La categoría del ticket se referencia mediante `id_categoria` (FK a `categoria`), sin almacenar `nombre_categoria` dentro del ticket. El técnico asignado se referencia mediante `id_tecnico` (FK a `empleado`), sin almacenar el nombre del técnico en la tabla `ticket`. Si se guardara `nombre_tecnico` en `ticket`, existiría la dependencia transitiva `nombre_tecnico → id_tecnico → id_ticket`: el nombre del técnico no es un atributo del ticket, sino del empleado que actúa como técnico. Cualquier cambio en el nombre del empleado —por ejemplo, una corrección ortográfica o un cambio de apellido— requeriría actualizar todos los tickets que ese técnico tenga asignados, con riesgo de inconsistencia entre registros. Con el diseño actual, el nombre se obtiene siempre en tiempo de consulta mediante JOIN, garantizando que la información sea siempre consistente con el registro maestro del empleado.
+La tabla `ticket` aplica el mismo principio en dos relaciones distintas. La categoría del ticket se referencia mediante `id_categoria` (FK a `categoria`), sin almacenar `nombre_categoria` dentro del ticket. El técnico asignado se referencia mediante `id_tecnico` (FK a `empleado`), sin almacenar el nombre del técnico en la tabla `ticket`. Si se guardara `nombre_tecnico` en `ticket`, existiría la dependencia transitiva `nombre_tecnico -> id_tecnico -> id_ticket`: el nombre del técnico no es un atributo del ticket, sino del empleado que actúa como técnico. Cualquier cambio en el nombre del empleado —por ejemplo, una corrección ortográfica o un cambio de apellido— requeriría actualizar todos los tickets que ese técnico tenga asignados, con riesgo de inconsistencia entre registros. Con el diseño actual, el nombre se obtiene siempre en tiempo de consulta mediante JOIN, garantizando que la información sea siempre consistente con el registro maestro del empleado.
 
-La tabla `insumo` también cumple 3FN. Los atributos `marca`, `modelo`, `descripcion` y `proveedor` describen directamente al insumo y dependen de `id_insumo` sin pasar por ningún atributo intermedio. Se podría argumentar que `marca` podría extraerse a una tabla propia, pero en este dominio la marca es un atributo descriptivo del insumo sin identidad propia ni atributos adicionales que generen dependencias transitivas. No existe ninguna relación del tipo `precio_por_marca → marca → id_insumo`; la marca es simplemente un texto descriptivo que depende directamente del insumo. Mantenerla como columna de `insumo` es correcto desde el punto de vista de 3FN y evita una sobre-normalización innecesaria que complicaría las consultas sin aportar beneficios reales de integridad.
+La tabla `insumo` también cumple 3FN. Los atributos `marca`, `modelo`, `descripcion` y `proveedor` describen directamente al insumo y dependen de `id_insumo` sin pasar por ningún atributo intermedio. Se podría argumentar que `marca` podría extraerse a una tabla propia, pero en este dominio la marca es un atributo descriptivo del insumo sin identidad propia ni atributos adicionales que generen dependencias transitivas. No existe ninguna relación del tipo `precio_por_marca -> marca -> id_insumo`; la marca es simplemente un texto descriptivo que depende directamente del insumo. Mantenerla como columna de `insumo` es correcto desde el punto de vista de 3FN y evita una sobre-normalización innecesaria que complicaría las consultas sin aportar beneficios reales de integridad.
 
-Los folios `PTP-YYYYMM-NNN` (en `ticket`) y `SOL-YYYYMM-NNN` (en `solicitud`) merecen una mención especial. Técnicamente, estos folios contienen información derivada: el año y el mes están implícitos en `fecha_subido` y `fecha` respectivamente, por lo que podría argumentarse que existe una dependencia transitiva `folio → fecha → id_ticket`. Sin embargo, esta es una excepción deliberada y justificada por requisitos de negocio: los folios son identificadores de comunicación con el usuario (aparecen en correos, reportes y en la interfaz), deben ser estables e inmutables una vez asignados, y su generación con bloqueo `FOR UPDATE` garantiza unicidad bajo alta concurrencia. Persistirlos como columnas `UNIQUE` es una decisión de diseño consciente que prioriza la trazabilidad y la integridad operativa sobre la pureza formal de 3FN, práctica aceptada y documentada en el diseño de bases de datos relacionales para sistemas de producción.
+Los folios `PTP-YYYYMM-NNN` (en `ticket`) y `SOL-YYYYMM-NNN` (en `solicitud`) merecen una mención especial. Técnicamente, estos folios contienen información derivada: el año y el mes están implícitos en `fecha_subido` y `fecha` respectivamente, por lo que podría argumentarse que existe una dependencia transitiva `folio -> fecha -> id_ticket`. Sin embargo, esta es una excepción deliberada y justificada por requisitos de negocio: los folios son identificadores de comunicación con el usuario (aparecen en correos, reportes y en la interfaz), deben ser estables e inmutables una vez asignados, y su generación con bloqueo `FOR UPDATE` garantiza unicidad bajo alta concurrencia. Persistirlos como columnas `UNIQUE` es una decisión de diseño consciente que prioriza la trazabilidad y la integridad operativa sobre la pureza formal de 3FN, práctica aceptada y documentada en el diseño de bases de datos relacionales para sistemas de producción.
 
 Finalmente, la tabla `historial_acceso` refuerza 3FN al separar completamente el registro de sesiones de la tabla `empleado`. Si las fechas de acceso se almacenaran como columnas de `empleado` (por ejemplo, `ultima_entrada`, `ultima_salida`), solo se podría conservar la sesión más reciente, perdiendo el historial completo. Pero más importante aún desde el punto de vista de normalización: si se almacenaran múltiples fechas en columnas numeradas (`entrada_1`, `salida_1`, `entrada_2`, `salida_2`…), se violaría 1FN. Al tener `historial_acceso` como tabla independiente, cada sesión es una entidad propia con sus atributos (`fecha_entrada`, `fecha_salida`) dependiendo directamente de `id_acceso`, sin ninguna dependencia transitiva ni grupo repetido, y el historial completo de cualquier empleado puede consultarse con una simple query `WHERE id_empleado = ?`.
 

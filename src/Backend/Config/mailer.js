@@ -155,7 +155,7 @@ export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
               `</p>` +
 
               `<p class="r-t-sub" style="margin:0 0 24px 0;font-size:13px;line-height:1.75;color:#444444;text-align:left;">` +
-                `Hemos recibido una solicitud para restablecer la contrasena de tu cuenta en Precision Truck Parts - HelpDesk. Para continuar, utiliza el siguiente codigo de verificacion:` +
+                `Hemos recibido una solicitud para restablecer la contrasena de tu cuenta en Precision Truck Parts, Parts and Accesories, S.A de C.V. - HelpDesk. Para continuar, utiliza el siguiente codigo de verificacion:` +
               `</p>` +
 
               `<p style="margin:0 0 16px 0;font-size:26px;font-weight:700;color:#111111;text-align:center;letter-spacing:0;">${codigoStr}</p>` +
@@ -186,7 +186,7 @@ export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
               `<p class="r-t-foot" style="margin:0 0 4px 0;font-size:11px;color:#888888;line-height:1.7;text-align:left;">` +
                 `Este correo fue generado de forma automatica por el sistema. Por favor no respondas directamente a esta direccion.` +
               `</p>` +
-              `<p class="r-t-foot" style="margin:0;font-size:11px;color:#aaaaaa;">Precision Truck Parts and Accessories 2026.</p>` +
+              `<p class="r-t-foot" style="margin:0;font-size:11px;color:#aaaaaa;">Precision Truck Parts, Parts and Accesories, S.A de C.V. 2026.</p>` +
             `</td>` +
           `</tr>` +
 

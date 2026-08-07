@@ -1,4 +1,4 @@
-# Guía de Despliegue — PrecisionTrucks HelpDesk
+# Guía de Despliegue — Precision Truck Parts, Parts and Accesories, S.A de C.V. HelpDesk
 
 Cómo exponer la app al público usando **tu propia PC como servidor** +
 **Cloudflare Tunnel** + **dominio propio registrado en Cloudflare**.
@@ -23,12 +23,12 @@ Cómo exponer la app al público usando **tu propia PC como servidor** +
 ## Paso 1 — Registrar un dominio en Cloudflare
 
 1. Inicia sesión en [dash.cloudflare.com](https://dash.cloudflare.com)
-2. En el menú izquierdo ve a **Domain Registration → Register Domains**
+2. En el menú izquierdo ve a **Domain Registration -> Register Domains**
 3. Busca el nombre que quieras, ej: `precisiontrucks-helpdesk.com`
 4. Selecciónalo y completa el pago (~$10 USD/año)
 5. El dominio queda automáticamente en Cloudflare con DNS gestionado por ellos
 
-> ✅ No necesitas configurar nameservers — al registrar en Cloudflare ya están apuntando a Cloudflare.
+> No necesitas configurar nameservers — al registrar en Cloudflare ya están apuntando a Cloudflare.
 
 ---
 
@@ -44,10 +44,10 @@ Copy-Item "C:\Users\CONTRALORIA 01\cloudflared-new.exe" "C:\cloudflared\cloudfla
 
 Agrega `C:\cloudflared` al PATH del sistema:
 
-1. Presiona `Windows + R` → escribe `sysdm.cpl` → Enter
-2. Ve a **Opciones avanzadas → Variables de entorno**
-3. En **Variables del sistema** busca `Path` → clic en **Editar**
-4. Clic en **Nuevo** → escribe `C:\cloudflared`
+1. Presiona `Windows + R` -> escribe `sysdm.cpl` -> Enter
+2. Ve a **Opciones avanzadas -> Variables de entorno**
+3. En **Variables del sistema** busca `Path` -> clic en **Editar**
+4. Clic en **Nuevo** -> escribe `C:\cloudflared`
 5. Acepta todo y cierra
 
 Verifica en una terminal nueva:
@@ -63,7 +63,7 @@ cloudflared --version
 cloudflared tunnel login
 ```
 
-Se abrirá el navegador → inicia sesión en Cloudflare → selecciona tu dominio → autoriza.
+Se abrirá el navegador -> inicia sesión en Cloudflare -> selecciona tu dominio -> autoriza.
 
 Esto guarda el certificado en:
 ```
@@ -94,11 +94,11 @@ tunnel: TU_TUNNEL_ID_AQUI
 credentials-file: C:\Users\CONTRALORIA 01\.cloudflared\TU_TUNNEL_ID_AQUI.json
 
 ingress:
-  - hostname: tudominio.com
-    service: http://localhost:3001
-  - hostname: www.tudominio.com
-    service: http://localhost:3001
-  - service: http_status:404
+ - hostname: tudominio.com
+ service: http://localhost:3001
+ - hostname: www.tudominio.com
+ service: http://localhost:3001
+ - service: http_status:404
 ```
 
 > Reemplaza `TU_TUNNEL_ID_AQUI` con el ID del paso anterior y `tudominio.com` con tu dominio real.
@@ -114,9 +114,9 @@ cloudflared tunnel route dns TU_TUNNEL_ID_AQUI www.tudominio.com
 
 Esto crea automáticamente un registro CNAME en el DNS de Cloudflare apuntando al tunnel.
 
-Verifica en [dash.cloudflare.com](https://dash.cloudflare.com) → tu dominio → **DNS → Records**:
+Verifica en [dash.cloudflare.com](https://dash.cloudflare.com) -> tu dominio -> **DNS -> Records**:
 ```
-tudominio.com    CNAME    TU_TUNNEL_ID.cfargotunnel.com    Proxied ✅
+tudominio.com CNAME TU_TUNNEL_ID.cfargotunnel.com Proxied
 ```
 
 ---
@@ -186,10 +186,10 @@ pm2 startup
 Comandos útiles de PM2:
 
 ```powershell
-pm2 status          # ver estado
-pm2 logs helpdesk   # ver logs en tiempo real
+pm2 status # ver estado
+pm2 logs helpdesk # ver logs en tiempo real
 pm2 restart helpdesk # reiniciar
-pm2 stop helpdesk   # detener
+pm2 stop helpdesk # detener
 ```
 
 ---
@@ -224,7 +224,7 @@ Invoke-WebRequest -Uri "https://tudominio.com/api/ping"
 
 Ambos deben responder:
 ```json
-{ "status": "ok", "message": "Servidor HelpDesk activo ✅" }
+{ "status": "ok", "message": "Servidor HelpDesk activo " }
 ```
 
 Abre en el navegador:
@@ -238,16 +238,16 @@ https://tudominio.com
 
 ```
 Usuario en cualquier lugar
-          ↓
-  https://tudominio.com
-          ↓
-  Cloudflare (SSL + DDoS)
-          ↓
-  Cloudflare Tunnel (cifrado)
-          ↓
-  Tu PC → Node.js :3001
-          ↓
-  Sirve dist/ (React) + /api/* (Express) + MySQL
+
+ https://tudominio.com
+
+ Cloudflare (SSL + DDoS)
+
+ Cloudflare Tunnel (cifrado)
+
+ Tu PC -> Node.js :3001
+
+ Sirve dist/ (React) + /api/* (Express) + MySQL
 ```
 
 ---
@@ -294,4 +294,4 @@ npm run server
 
 La URL cambia cada vez que reinicias ngrok. Comparte la URL que aparece en `Forwarding`.
 
-> ⚠️ ngrok gratis no tiene URL fija. Para URL permanente necesitas el dominio propio con Cloudflare.
+> ngrok gratis no tiene URL fija. Para URL permanente necesitas el dominio propio con Cloudflare.
