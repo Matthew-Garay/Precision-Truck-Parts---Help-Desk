@@ -6,7 +6,7 @@
  *
  * Cada objeto de tema contiene:
  *   isDark       - bandera booleana para que los componentes puedan hacer logica condicional
- *   orange       - naranja corporativo de Precision Truck Parts (#F47920)
+ *   orange       - naranja corporativo de Precision Truck Parts, Parts and Accesories, S.A de C.V. (#F47920)
  *   orangeDark   - naranja oscuro para hover y estados activos
  *   orangeMuted  - naranja transparente para fondos y focus rings
  *   navy         - azul marino muy oscuro para la sidebar y elementos de estructura

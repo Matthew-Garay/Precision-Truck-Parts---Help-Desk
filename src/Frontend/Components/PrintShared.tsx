@@ -80,7 +80,7 @@ export function PageHeader({ titulo, subtitulo, dept, metaRows }: {
       </div>
       <div className="pr-header-center">
         {titulo    && <span className="pr-header-doc">{titulo}</span>}
-        <span className="pr-header-company">Precision Truck Parts and Accessories</span>
+        <span className="pr-header-company">Precision Truck Parts, Parts and Accesories, S.A de C.V.</span>
         {(subtitulo || dept) && (
           <span className="pr-header-dept">{subtitulo ?? dept}</span>
         )}
@@ -105,7 +105,7 @@ export function PageFooter({ right }: { right: string }) {
   return (
     <footer className="pr-page-footer">
       <span className="pr-footer-center-text">
-        Precision Truck Parts and Accessories
+        Precision Truck Parts, Parts and Accesories, S.A de C.V.
       </span>
       <span className="pr-footer-side pr-footer-right-text">{right}</span>
     </footer>
@@ -207,7 +207,7 @@ export function Firma({ nombre, rol }: { nombre: string; rol: string }) {
       <div className="pr-signature-line" />
       <span className="pr-signature-name">{nombre}</span>
       <span className="pr-signature-role">{rol}</span>
-      <span className="pr-signature-role">Precision Truck Parts and Accessories</span>
+      <span className="pr-signature-role">Precision Truck Parts, Parts and Accesories, S.A de C.V.</span>
     </div>
   );
 }

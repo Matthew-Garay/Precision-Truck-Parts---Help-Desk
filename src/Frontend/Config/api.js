@@ -135,4 +135,6 @@ export async function apiFetch(endpoint, options = {}) {
   return res;
 }
 
-export default API_BASE;
+// Export default como API para compatibilidad con componentes existentes
+const API = API_BASE;
+export default API;
