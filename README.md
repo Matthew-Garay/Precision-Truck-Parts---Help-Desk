@@ -1,11 +1,87 @@
-# PrecisionTrucks HelpDesk
+# Precision Truck Parts - HelpDesk
 
-**Sistema de gestion de tickets de soporte tecnico, solicitudes de insumos y manuales para PrecisionTrucks**
+**Sistema integral de gestion de tickets de soporte tecnico, solicitudes de insumos, control de inventario, acceso a manuales tecnicos y seguimiento de incidencias para Precision Truck Parts, Parts and Accesories, S.A de C.V.**
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/node.js-v18+-green.svg)](https://nodejs.org/)
-[![React](https://img.shields.io/badge/react-18.2+-blue.svg)](https://react.dev/)
-[![MySQL](https://img.shields.io/badge/mysql-8.0+-orange.svg)](https://www.mysql.com/)
+---
+
+## Descripcion del Sistema
+
+Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrollada para la gestion eficiente de soporte tecnico, control de inventario, administracion de manuales tecnicos y seguimiento de incidencias. El sistema permite a los empleados reportar problemas tecnicos, solicitar insumos, consultar manuales de procedimientos y acceder a historiales de acceso, todo en un entorno seguro y centralizado.
+
+### Funcionalidades Principales
+
+**Gestion de Tickets de Soporte**
+- Creacion, edicion y eliminacion de tickets de soporte tecnico
+- Asignacion de tickets a tecnicos especializados
+- Seguimiento en tiempo real con notificaciones via Socket.io
+- Sistema de comentarios y carga de evidencias (imagenes y videos)
+- Estados de ticket: En proceso, Resuelto, No Resuelto, Cancelado
+- Sistema de prioridades: Baja, Media, Alta, Urgente
+- Calificacion del servicio con escala de 1 a 5 estrellas
+- Cierre automatico de tickets vencidos (SLA de 48 horas)
+- Alertas automaticas de SLA y tickets sin atender
+
+**Gestion de Manuales Tecnicos**
+- Subida y administracion de manuales PDF
+- Visor de PDF integrado con navegacion por paginas
+- Generacion automatica de portadas en miniatura
+- Busqueda y filtrado por categorias
+- Descarga de manuales
+- Subida masiva de manuales (hasta 20 archivos simultaneamente)
+- Vista en grid y lista para mejor navegacion
+
+**Gestion de Insumos e Inventario**
+- Catalogo completo de insumos disponibles
+- Sistema de solicitudes de insumos por empleados
+- Aprobacion individual de items por administradores
+- Control de stock con descuento automatico
+- Alertas de stock critico (agotado y bajo)
+- Historial completo de solicitudes
+- Generacion de reportes en PDF y Excel
+
+**Gestion de Empleados y Accesos**
+- Registro y administracion de empleados
+- Asignacion de roles: Administrador y Usuario
+- Control de acceso basado en roles (RBAC)
+- Perfiles de usuario personalizables con foto
+- Historial completo de accesos al sistema
+- Recuperacion de contrasena por correo electronico
+- Sesiones seguras con JWT (12 horas de vigencia)
+
+**Reportes y Estadisticas**
+- Reportes de tickets por periodo
+- Estadisticas de actividad y rendimiento
+- Graficos de desempeno por tecnico
+- Exportacion de datos a Excel y PDF
+- Paginas de impresion dedicadas
+- Filtros avanzados por fecha, categoria y tecnico
+
+**Seguridad**
+- Autenticacion con JWT (12 horas de vigencia)
+- Encriptacion de contrasenas con bcryptjs (12 rounds)
+- Configuracion CORS restrictiva
+- Rate limiting para prevenir ataques de fuerza bruta
+- Validacion de datos con Zod
+- Headers de seguridad HTTP con Helmet
+- Proteccion CSRF en formularios
+- Proteccion contra path traversal
+- Revocacion de tokens al cerrar sesion
+- Registro de historial de accesos
+
+---
+
+## Requisitos
+
+### Minimos
+- **Node.js**: v18.0.0 o superior
+- **npm**: v9.0.0 o superior
+- **MySQL**: v8.0 o superior
+- **Git**: v2.0 o superior
+
+### Recomendados
+- **Visual Studio Code**: Editor de codigo
+- **Postman**: Para pruebas de API
+- **MySQL Workbench**: Gestor de base de datos
 
 ---
 
