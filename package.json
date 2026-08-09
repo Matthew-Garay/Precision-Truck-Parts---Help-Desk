@@ -1,8 +1,9 @@
 {
-  "name": "precisiontrucks-helpdesk",
+  "name": "precision-truck-parts-helpdesk",
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "description": "Sistema integral de gestión de tickets de soporte técnico, solicitudes de insumos, control de inventario, acceso a manuales técnicos y seguimiento de incidencias para Precision Truck Parts, Parts and Accesories, S.A de C.V.",
   "scripts": {
     "dev": "vite",
     "server": "cross-env NODE_ENV=production node --import ./src/Backend/load-env.js src/Backend/server.js",
