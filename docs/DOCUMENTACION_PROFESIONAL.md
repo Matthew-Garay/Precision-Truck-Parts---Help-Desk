@@ -1,6 +1,6 @@
 # DOCUMENTACION TECNICA PROFESIONAL COMPLETA
 ## Sistema de Gestion de Tickets de Soporte Tecnico y Solicitudes de Insumos
-### PrecisionTrucks HelpDesk
+### Precision Truck Parts - HelpDesk
 
 ---
 

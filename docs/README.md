@@ -1,6 +1,6 @@
-# Documentación - PrecisionTrucks HelpDesk
+# Documentación - Precision Truck Parts - HelpDesk
 
-**Índice completo de documentación técnica y guías del proyecto.**
+**Índice completo de documentación técnica y guías del proyecto de sistema de gestión de soporte técnico, inventario y manuales empresariales.**
 
 ---
 
