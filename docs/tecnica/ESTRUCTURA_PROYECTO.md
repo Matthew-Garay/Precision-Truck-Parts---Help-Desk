@@ -46,21 +46,25 @@ PrecisionTrucks_HelpDesk/
 |
 |-- docs/ # Documentación
 | |-- README.md # Índice de documentación
-| |-- Arquitectura.md # Diagrama de arquitectura
-| |-- 3.5_DesarrolloTecnico.md # Stack tecnológico
-| |-- ESTRUCTURA_PROYECTO.md # Este archivo
-| |-- DOCUMENTACION_INTERNA.md # Estándares de código
-| |-- DiccionarioDatos.md # Descripción de BD
 | |-- database.sql # Script SQL
-| |-- Despliegue.md # Guía de despliegue
-| |-- PruebasYValidacion.md # Plan de pruebas
-| |-- IEEE830_Requerimientos.md # Especificación
-| |-- SOLUCION_PDFS.md # Solución de problemas
 | |-- ScrumFlujo.puml # Diagrama Scrum
-| `-- GUIAS_USUARIO/ # Guías para usuarios
+| |-- profesional/ # Documentación profesional
+| | `-- DOCUMENTACION_PROFESIONAL.md
+| |-- tecnica/ # Documentación técnica
+| | |-- ARQUITECTURA.md # Diagrama de arquitectura
+| | |-- 3.5_DesarrolloTecnico.md # Stack tecnológico
+| | |-- DiccionarioDatos.md # Descripción de BD
+| | |-- ESTRUCTURA_PROYECTO.md # Este archivo
+| | |-- DOCUMENTACION_INTERNA.md # Estándares de código
+| | |-- IEEE830_REQUERIMIENTOS.md # Especificación
+| | `-- PruebasYValidacion.md # Plan de pruebas
+| |-- operacion/ # Operación y despliegue
+| | |-- DESPLIEGUE.md # Guía de despliegue
+| | |-- SOLUCION_PDFS.md # Solución de problemas
+| | `-- MANUAL_MANTENIMIENTO_SOFTWARE.md
+| `-- guia_usuario/ # Guías para usuarios
 | |-- README.md # Índice de guías
-| |-- Admin_Manual.md # Manual del administrador
-| `-- Usuario_Manual.md # Manual del usuario
+| `-- MANUAL_USO_SISTEMA.md # Manual de usuario
 |
 |-- public/ # Archivos estáticos
 | |-- .htaccess # Configuración Apache
@@ -158,16 +162,16 @@ src/Backend/
 
 ### Descripción de Archivos Backend
 
-| Archivo | Propósito | Responsabilidad |
-|---------|-----------|-----------------|
-| **server.js** | Punto de entrada | Inicializar servidor, cargar middlewares, rutas |
-| **Config/db.js** | Conexión BD | Conectar a MySQL, pool de conexiones |
-| **Models/** | Modelos | Definir estructura de datos |
-| **Controllers/** | Lógica | Procesar solicitudes, validar datos |
-| **Routes/** | Rutas | Mapear URLs a controladores |
-| **Middlewares/** | Procesamiento | Autenticación, validación, seguridad |
-| **Workers/** | Tareas | Procesos en background |
-| **utils/** | Utilidades | Funciones reutilizables |
+| Archivo          | Propósito        | Responsabilidad                                 |
+| ---------------- | ---------------- | ----------------------------------------------- |
+| **server.js**    | Punto de entrada | Inicializar servidor, cargar middlewares, rutas |
+| **Config/db.js** | Conexión BD      | Conectar a MySQL, pool de conexiones            |
+| **Models/**      | Modelos          | Definir estructura de datos                     |
+| **Controllers/** | Lógica           | Procesar solicitudes, validar datos             |
+| **Routes/**      | Rutas            | Mapear URLs a controladores                     |
+| **Middlewares/** | Procesamiento    | Autenticación, validación, seguridad            |
+| **Workers/**     | Tareas           | Procesos en background                          |
+| **utils/**       | Utilidades       | Funciones reutilizables                         |
 
 ---
 
@@ -270,15 +274,15 @@ src/Frontend/
 
 ### Descripción de Archivos Frontend
 
-| Carpeta | Propósito | Contenido |
-|---------|-----------|----------|
-| **components/** | Componentes reutilizables | Botones, modales, tarjetas |
-| **pages/** | Páginas principales | Vistas completas |
-| **hooks/** | Lógica reutilizable | Estado, efectos, datos |
-| **services/** | Comunicación con API | Llamadas HTTP |
-| **context/** | Estado global | Autenticación, notificaciones |
-| **styles/** | Estilos CSS | Temas, responsive |
-| **assets/** | Recursos estáticos | Imágenes, iconos |
+| Carpeta         | Propósito                 | Contenido                     |
+| --------------- | ------------------------- | ----------------------------- |
+| **components/** | Componentes reutilizables | Botones, modales, tarjetas    |
+| **pages/**      | Páginas principales       | Vistas completas              |
+| **hooks/**      | Lógica reutilizable       | Estado, efectos, datos        |
+| **services/**   | Comunicación con API      | Llamadas HTTP                 |
+| **context/**    | Estado global             | Autenticación, notificaciones |
+| **styles/**     | Estilos CSS               | Temas, responsive             |
+| **assets/**     | Recursos estáticos        | Imágenes, iconos              |
 
 ---
 
@@ -288,42 +292,50 @@ src/Frontend/
 
 ```
 docs/
-|-- README.md # Índice de documentación
-|-- Arquitectura.md # Diagrama de arquitectura
-|-- 3.5_DesarrolloTecnico.md # Stack tecnológico
-|-- ESTRUCTURA_PROYECTO.md # Este archivo
-|-- DOCUMENTACION_INTERNA.md # Estándares de código
-|-- DiccionarioDatos.md # Descripción de BD
-|-- database.sql # Script SQL
-|-- Despliegue.md # Guía de despliegue
-|-- PruebasYValidacion.md # Plan de pruebas
-|-- IEEE830_Requerimientos.md # Especificación
-|-- SOLUCION_PDFS.md # Solución de problemas
-|-- ScrumFlujo.puml # Diagrama Scrum
+|-- README.md                    # Índice de documentación
+|-- database.sql                 # Script SQL
+|-- ScrumFlujo.puml              # Diagrama Scrum
 |
-`-- GUIAS_USUARIO/ # Guías para usuarios
- |-- README.md # Índice de guías
- |-- Admin_Manual.md # Manual del administrador
- `-- Usuario_Manual.md # Manual del usuario
+|-- profesional/                 # Documentación profesional
+| `-- DOCUMENTACION_PROFESIONAL.md
+|
+|-- tecnica/                     # Documentación técnica
+| |-- ARQUITECTURA.md            # Diagrama de arquitectura
+| |-- 3.5_DesarrolloTecnico.md   # Stack tecnológico
+| |-- DiccionarioDatos.md        # Descripción de BD
+| |-- ESTRUCTURA_PROYECTO.md     # Este archivo
+| |-- DOCUMENTACION_INTERNA.md   # Estándares de código
+| |-- IEEE830_REQUERIMIENTOS.md  # Especificación
+| `-- PruebasYValidacion.md      # Plan de pruebas
+|
+|-- operacion/                   # Operación y despliegue
+| |-- DESPLIEGUE.md              # Guía de despliegue
+| |-- SOLUCION_PDFS.md           # Solución de problemas
+| `-- MANUAL_MANTENIMIENTO_SOFTWARE.md
+|
+`-- guia_usuario/                # Guías para usuarios
+ |-- README.md                   # Índice de guías
+ `-- MANUAL_USO_SISTEMA.md       # Manual de usuario
 ```
 
 ### Descripción de Documentos
 
-| Documento | Audiencia | Contenido |
-|-----------|-----------|----------|
-| **README.md** | Todos | Índice y navegación |
-| **Arquitectura.md** | Desarrolladores | Diagrama y componentes |
-| **3.5_DesarrolloTecnico.md** | Desarrolladores | Stack y decisiones |
-| **ESTRUCTURA_PROYECTO.md** | Desarrolladores | Estructura de carpetas |
-| **DOCUMENTACION_INTERNA.md** | Desarrolladores | Estándares de código |
-| **DiccionarioDatos.md** | DBAs, Desarrolladores | Tablas y campos |
-| **database.sql** | DBAs | Script SQL |
-| **Despliegue.md** | DevOps | Guía de producción |
-| **PruebasYValidacion.md** | QA | Plan de pruebas |
-| **IEEE830_Requerimientos.md** | Analistas | Especificación |
-| **SOLUCION_PDFS.md** | Soporte | Problemas con PDFs |
-| **Admin_Manual.md** | Administradores | Guía de admin |
-| **Usuario_Manual.md** | Usuarios | Guía de usuario |
+| Documento                                      | Audiencia             | Contenido                 |
+| ---------------------------------------------- | --------------------- | ------------------------- |
+| **README.md**                                  | Todos                 | Índice y navegación       |
+| **profesional/DOCUMENTACION_PROFESIONAL.md**   | Todos los roles       | Documentación profesional |
+| **tecnica/ARQUITECTURA.md**                    | Desarrolladores       | Diagrama y componentes    |
+| **tecnica/3.5_DesarrolloTecnico.md**           | Desarrolladores       | Stack y decisiones        |
+| **tecnica/ESTRUCTURA_PROYECTO.md**             | Desarrolladores       | Estructura de carpetas    |
+| **tecnica/DOCUMENTACION_INTERNA.md**           | Desarrolladores       | Estándares de código      |
+| **tecnica/DiccionarioDatos.md**                | DBAs, Desarrolladores | Tablas y campos           |
+| **tecnica/IEEE830_REQUERIMIENTOS.md**          | Analistas             | Especificación            |
+| **tecnica/PruebasYValidacion.md**              | QA                    | Plan de pruebas           |
+| **operacion/DESPLIEGUE.md**                    | DevOps                | Guía de producción        |
+| **operacion/SOLUCION_PDFS.md**                 | Soporte               | Problemas con PDFs        |
+| **operacion/MANUAL_MANTENIMIENTO_SOFTWARE.md** | DevOps                | Mantenimiento del sistema |
+| **guia_usuario/MANUAL_USO_SISTEMA.md**         | Usuarios              | Guía de usuario           |
+| **database.sql**                               | DBAs                  | Script SQL                |
 
 ---
 
@@ -382,31 +394,31 @@ chmod 644 storage/Portadas/*
 
 ### Descripción de Archivos
 
-| Archivo | Propósito |
-|---------|-----------|
-| **package.json** | Dependencias y scripts |
-| **package-lock.json** | Lock de versiones |
-| **.env.example** | Variables de entorno (ejemplo) |
-| **.gitignore** | Archivos ignorados por Git |
-| **vite.config.js** | Configuración de Vite |
-| **railway.json** | Configuración de Railway |
-| **index.html** | HTML principal |
-| **README.md** | Documentación principal |
+| Archivo               | Propósito                      |
+| --------------------- | ------------------------------ |
+| **package.json**      | Dependencias y scripts         |
+| **package-lock.json** | Lock de versiones              |
+| **.env.example**      | Variables de entorno (ejemplo) |
+| **.gitignore**        | Archivos ignorados por Git     |
+| **vite.config.js**    | Configuración de Vite          |
+| **railway.json**      | Configuración de Railway       |
+| **index.html**        | HTML principal                 |
+| **README.md**         | Documentación principal        |
 
 ### package.json - Scripts Disponibles
 
 ```json
 {
- "scripts": {
- "dev": "vite",
- "server": "node src/Backend/server.js",
- "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
- "build": "vite build",
- "preview": "vite preview",
- "lint": "eslint src/",
- "test": "jest",
- "test:watch": "jest --watch"
- }
+  "scripts": {
+    "dev": "vite",
+    "server": "node src/Backend/server.js",
+    "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src/",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  }
 }
 ```
 
@@ -451,12 +463,12 @@ chmod 644 storage/Portadas/*
 ```javascript
 // Correcto
 const userName = "Juan";
-function getUserById(id) { }
+function getUserById(id) {}
 const isActive = true;
 
 // Incorrecto
 const user_name = "Juan";
-function get_user_by_id(id) { }
+function get_user_by_id(id) {}
 const IsActive = true;
 ```
 
@@ -464,12 +476,12 @@ const IsActive = true;
 
 ```javascript
 // Correcto
-function UserProfile() { }
+function UserProfile() {}
 export default UserProfile;
 
 // Incorrecto
-function userProfile() { }
-function user_profile() { }
+function userProfile() {}
+function user_profile() {}
 ```
 
 ---
@@ -506,18 +518,18 @@ function user_profile() { }
 
 ## Matriz de Responsabilidades
 
-| Carpeta | Responsable | Tipo |
-|---------|-------------|------|
-| **src/Backend/Config/** | DevOps | Configuración |
-| **src/Backend/Models/** | Desarrollador Backend | Datos |
-| **src/Backend/Controllers/** | Desarrollador Backend | Lógica |
-| **src/Backend/Routes/** | Desarrollador Backend | API |
-| **src/Backend/Middlewares/** | Desarrollador Backend | Procesamiento |
-| **src/Frontend/components/** | Desarrollador Frontend | UI |
-| **src/Frontend/pages/** | Desarrollador Frontend | Vistas |
-| **src/Frontend/services/** | Desarrollador Frontend | API |
-| **docs/** | Todos | Documentación |
-| **storage/** | DevOps | Archivos |
+| Carpeta                      | Responsable            | Tipo          |
+| ---------------------------- | ---------------------- | ------------- |
+| **src/Backend/Config/**      | DevOps                 | Configuración |
+| **src/Backend/Models/**      | Desarrollador Backend  | Datos         |
+| **src/Backend/Controllers/** | Desarrollador Backend  | Lógica        |
+| **src/Backend/Routes/**      | Desarrollador Backend  | API           |
+| **src/Backend/Middlewares/** | Desarrollador Backend  | Procesamiento |
+| **src/Frontend/components/** | Desarrollador Frontend | UI            |
+| **src/Frontend/pages/**      | Desarrollador Frontend | Vistas        |
+| **src/Frontend/services/**   | Desarrollador Frontend | API           |
+| **docs/**                    | Todos                  | Documentación |
+| **storage/**                 | DevOps                 | Archivos      |
 
 ---
 

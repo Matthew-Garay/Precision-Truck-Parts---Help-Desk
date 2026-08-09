@@ -11,6 +11,7 @@ Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrol
 ### Funcionalidades Principales
 
 **Gestion de Tickets de Soporte**
+
 - Creacion, edicion y eliminacion de tickets de soporte tecnico
 - Asignacion de tickets a tecnicos especializados
 - Seguimiento en tiempo real con notificaciones via Socket.io
@@ -22,6 +23,7 @@ Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrol
 - Alertas automaticas de SLA y tickets sin atender
 
 **Gestion de Manuales Tecnicos**
+
 - Subida y administracion de manuales PDF
 - Visor de PDF integrado con navegacion por paginas
 - Generacion automatica de portadas en miniatura
@@ -31,6 +33,7 @@ Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrol
 - Vista en grid y lista para mejor navegacion
 
 **Gestion de Insumos e Inventario**
+
 - Catalogo completo de insumos disponibles
 - Sistema de solicitudes de insumos por empleados
 - Aprobacion individual de items por administradores
@@ -40,6 +43,7 @@ Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrol
 - Generacion de reportes en PDF y Excel
 
 **Gestion de Empleados y Accesos**
+
 - Registro y administracion de empleados
 - Asignacion de roles: Administrador y Usuario
 - Control de acceso basado en roles (RBAC)
@@ -49,6 +53,7 @@ Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrol
 - Sesiones seguras con JWT (12 horas de vigencia)
 
 **Reportes y Estadisticas**
+
 - Reportes de tickets por periodo
 - Estadisticas de actividad y rendimiento
 - Graficos de desempeno por tecnico
@@ -57,6 +62,7 @@ Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrol
 - Filtros avanzados por fecha, categoria y tecnico
 
 **Seguridad**
+
 - Autenticacion con JWT (12 horas de vigencia)
 - Encriptacion de contrasenas con bcryptjs (12 rounds)
 - Configuracion CORS restrictiva
@@ -73,12 +79,14 @@ Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrol
 ## Requisitos
 
 ### Minimos
+
 - **Node.js**: v18.0.0 o superior
 - **npm**: v9.0.0 o superior
 - **MySQL**: v8.0 o superior
 - **Git**: v2.0 o superior
 
 ### Recomendados
+
 - **Visual Studio Code**: Editor de codigo
 - **Postman**: Para pruebas de API
 - **MySQL Workbench**: Gestor de base de datos
@@ -104,6 +112,7 @@ Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrol
 ## Caracteristicas
 
 ### Gestion de Tickets
+
 - Crear, editar y eliminar tickets de soporte
 - Asignar tickets a tecnicos
 - Seguimiento en tiempo real con Socket.io
@@ -115,6 +124,7 @@ Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrol
 - Alertas de SLA y tickets sin atender
 
 ### Gestion de Manuales
+
 - Subir y gestionar manuales PDF
 - Visor de PDF integrado
 - Generacion automatica de portadas
@@ -123,6 +133,7 @@ Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrol
 - Subida masiva de manuales (hasta 20 archivos)
 
 ### Gestion de Insumos
+
 - Catalogo de insumos disponibles
 - Solicitudes de insumos
 - Aprobacion individual de items
@@ -131,6 +142,7 @@ Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrol
 - Historial de solicitudes
 
 ### Gestion de Empleados
+
 - Crear y gestionar empleados
 - Asignar roles (Admin, Usuario)
 - Control de acceso basado en roles (RBAC)
@@ -139,6 +151,7 @@ Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrol
 - Recuperacion de contrasena por correo
 
 ### Reportes y Estadisticas
+
 - Reportes de tickets por periodo
 - Estadisticas de actividad
 - Graficos de desempeno por tecnico
@@ -146,6 +159,7 @@ Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrol
 - Paginas de impresion dedicadas
 
 ### Seguridad
+
 - Autenticacion con JWT (12 horas de vigencia)
 - Encriptacion de contrasenas (bcryptjs, 12 rounds)
 - CORS configurado
@@ -161,12 +175,14 @@ Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrol
 ## Requisitos
 
 ### Minimos
+
 - **Node.js**: v18.0.0 o superior
 - **npm**: v9.0.0 o superior
 - **MySQL**: v8.0 o superior
 - **Git**: v2.0 o superior
 
 ### Recomendados
+
 - **Visual Studio Code**: Editor de codigo
 - **Postman**: Para pruebas de API
 - **MySQL Workbench**: Gestor de base de datos
@@ -251,6 +267,7 @@ npm run server
 ```
 
 **URLs de acceso:**
+
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:3001
 
@@ -261,10 +278,11 @@ npm run server
 ### Configuracion de Email (Gmail)
 
 1. Habilitar "Contrasenas de aplicacion":
- - Ir a https://myaccount.google.com/security
- - Activar "Verificacion en dos pasos"
- - Generar "Contrasena de aplicacion"
- - Copiar contrasena en `.env` como `SMTP_PASS`
+
+- Ir a https://myaccount.google.com/security
+- Activar "Verificacion en dos pasos"
+- Generar "Contrasena de aplicacion"
+- Copiar contrasena en `.env` como `SMTP_PASS`
 
 ### Configuracion de Base de Datos
 
@@ -308,11 +326,13 @@ icacls "storage" /grant:r "%USERNAME%:F" /t
 1. Iniciar sesion
 2. Ir a **Nuevo Reporte**
 3. Completar formulario:
- - Titulo: Descripcion breve
- - Descripcion: Detalles del problema
- - Categoria: Seleccionar categoria
- - Prioridad: Seleccionar prioridad
- - Evidencias: Adjuntar archivos (opcional, maximo 8)
+
+- Titulo: Descripcion breve
+- Descripcion: Detalles del problema
+- Categoria: Seleccionar categoria
+- Prioridad: Seleccionar prioridad
+- Evidencias: Adjuntar archivos (opcional, maximo 8)
+
 4. Hacer clic en **Crear Ticket**
 
 ### Subir Manual PDF
@@ -321,9 +341,11 @@ icacls "storage" /grant:r "%USERNAME%:F" /t
 2. Hacer clic en **Subir Manual**
 3. Seleccionar archivo PDF
 4. Completar informacion:
- - Nombre del manual
- - Descripcion
- - Categoria
+
+- Nombre del manual
+- Descripcion
+- Categoria
+
 5. Hacer clic en **Subir**
 
 ---
@@ -332,17 +354,27 @@ icacls "storage" /grant:r "%USERNAME%:F" /t
 
 ```
 PrecisionTrucks_HelpDesk/
-|-- docs/ Documentacion tecnica
+|-- docs/ Documentacion
 | |-- README.md Indice de documentacion
-| |-- DOCUMENTACION_PROFESIONAL.md Documentacion profesional integral
-| |-- ESTRUCTURA_PROYECTO.md Estructura de carpetas
-| |-- DOCUMENTACION_INTERNA.md Guia de documentacion
-| |-- Arquitectura.md Diagrama de arquitectura
 | |-- database.sql Script de BD
-| `-- GUIAS_USUARIO/ Guias para usuarios
-| |-- README.md Indice de guias
-| |-- Admin_Manual.md Manual del administrador
-| `-- Usuario_Manual.md Manual del usuario
+| |-- ScrumFlujo.puml Diagrama Scrum
+| |-- profesional/ Documentacion profesional
+| | `-- DOCUMENTACION_PROFESIONAL.md
+| |-- tecnica/ Documentacion tecnica
+| | |-- ARQUITECTURA.md
+| | |-- 3.5_DesarrolloTecnico.md
+| | |-- DiccionarioDatos.md
+| | |-- ESTRUCTURA_PROYECTO.md
+| | |-- DOCUMENTACION_INTERNA.md
+| | |-- IEEE830_REQUERIMIENTOS.md
+| | `-- PruebasYValidacion.md
+| |-- operacion/ Operacion y despliegue
+| | |-- DESPLIEGUE.md
+| | |-- SOLUCION_PDFS.md
+| | `-- MANUAL_MANTENIMIENTO_SOFTWARE.md
+| `-- guia_usuario/ Guias de usuario
+| |-- README.md
+| `-- MANUAL_USO_SISTEMA.md
 |
 |-- src/ Codigo fuente
 | |-- Backend/ Servidor Node.js/Express
@@ -377,37 +409,54 @@ PrecisionTrucks_HelpDesk/
 `-- README.md Este archivo
 ```
 
-**Para mas detalles**: Ver [ESTRUCTURA_PROYECTO.md](docs/ESTRUCTURA_PROYECTO.md)
+**Para mas detalles**: Ver [ESTRUCTURA_PROYECTO.md](docs/tecnica/ESTRUCTURA_PROYECTO.md)
 
 ---
 
 ## Documentacion
 
+### Indice de Documentacion
+
+| Documento                        | Descripcion                              |
+| -------------------------------- | ---------------------------------------- |
+| [docs/README.md](docs/README.md) | Indice completo de toda la documentacion |
+
+### Documentacion Profesional
+
+| Documento                                                                     | Descripcion                                    |
+| ----------------------------------------------------------------------------- | ---------------------------------------------- |
+| [DOCUMENTACION_PROFESIONAL.md](docs/profesional/DOCUMENTACION_PROFESIONAL.md) | Documentacion profesional integral del sistema |
+
 ### Documentacion Tecnica
 
-| Documento | Descripcion |
-|-----------|-------------|
-| [DOCUMENTACION_PROFESIONAL.md](docs/DOCUMENTACION_PROFESIONAL.md) | Documentacion profesional integral del sistema |
-| [Arquitectura.md](docs/Arquitectura.md) | Diagrama y descripcion de arquitectura |
-| [3.5_DesarrolloTecnico.md](docs/3.5_DesarrolloTecnico.md) | Stack tecnologico y decisiones tecnicas |
-| [Despliegue.md](docs/Despliegue.md) | Guia de despliegue en produccion |
-| [DiccionarioDatos.md](docs/DiccionarioDatos.md) | Descripcion de tablas y campos |
-| [IEEE830_Requerimientos.md](docs/IEEE830_Requerimientos.md) | Especificacion de requerimientos |
-| [PruebasYValidacion.md](docs/PruebasYValidacion.md) | Plan de pruebas |
+| Documento                                                           | Descripcion                             |
+| ------------------------------------------------------------------- | --------------------------------------- |
+| [Arquitectura.md](docs/tecnica/ARQUITECTURA.md)                     | Diagrama y descripcion de arquitectura  |
+| [3.5_DesarrolloTecnico.md](docs/tecnica/3.5_DesarrolloTecnico.md)   | Stack tecnologico y decisiones tecnicas |
+| [DiccionarioDatos.md](docs/tecnica/DiccionarioDatos.md)             | Descripcion de tablas y campos          |
+| [IEEE830_Requerimientos.md](docs/tecnica/IEEE830_REQUERIMIENTOS.md) | Especificacion de requerimientos        |
+| [PruebasYValidacion.md](docs/tecnica/PruebasYValidacion.md)         | Plan de pruebas                         |
+
+### Operacion y Despliegue
+
+| Documento                                                                           | Descripcion                          |
+| ----------------------------------------------------------------------------------- | ------------------------------------ |
+| [Despliegue.md](docs/operacion/DESPLIEGUE.md)                                       | Guia de despliegue en produccion     |
+| [SOLUCION_PDFS.md](docs/operacion/SOLUCION_PDFS.md)                                 | Solucion de problemas con PDFs       |
+| [MANUAL_MANTENIMIENTO_SOFTWARE.md](docs/operacion/MANUAL_MANTENIMIENTO_SOFTWARE.md) | Manual de mantenimiento del software |
 
 ### Guias de Usuario
 
-| Guia | Descripcion |
-|------|-------------|
-| [Admin_Manual.md](docs/GUIAS_USUARIO/Admin_Manual.md) | Manual para administradores |
-| [Usuario_Manual.md](docs/GUIAS_USUARIO/Usuario_Manual.md) | Manual para usuarios finales |
+| Guia                                                             | Descripcion                        |
+| ---------------------------------------------------------------- | ---------------------------------- |
+| [MANUAL_USO_SISTEMA.md](docs/guia_usuario/MANUAL_USO_SISTEMA.md) | Manual completo de uso del sistema |
 
 ### Documentacion Interna
 
-| Documento | Descripcion |
-|-----------|-------------|
-| [ESTRUCTURA_PROYECTO.md](docs/ESTRUCTURA_PROYECTO.md) | Estructura de carpetas y archivos |
-| [DOCUMENTACION_INTERNA.md](docs/DOCUMENTACION_INTERNA.md) | Estandares de documentacion de codigo |
+| Documento                                                         | Descripcion                           |
+| ----------------------------------------------------------------- | ------------------------------------- |
+| [ESTRUCTURA_PROYECTO.md](docs/tecnica/ESTRUCTURA_PROYECTO.md)     | Estructura de carpetas y archivos     |
+| [DOCUMENTACION_INTERNA.md](docs/tecnica/DOCUMENTACION_INTERNA.md) | Estandares de documentacion de codigo |
 
 ---
 
@@ -520,29 +569,34 @@ id_categoria: 1
 **Soluciones**:
 
 1. **Verificar archivos existen**:
- ```bash
- ls -la storage/Manuales/
- ```
+
+```bash
+ls -la storage/Manuales/
+```
 
 2. **Verificar permisos**:
- ```bash
- chmod 644 storage/Manuales/*
- ```
+
+```bash
+chmod 644 storage/Manuales/*
+```
 
 3. **Regenerar portadas**:
- ```bash
- node src/Backend/scripts/generarPortadasExistentes.js
- ```
+
+```bash
+node src/Backend/scripts/generarPortadasExistentes.js
+```
 
 4. **Limpiar cache del navegador**:
- - Presionar `Ctrl+Shift+Delete`
- - Seleccionar "Todos los tiempos"
- - Hacer clic en "Limpiar datos"
+
+- Presionar `Ctrl+Shift+Delete`
+- Seleccionar "Todos los tiempos"
+- Hacer clic en "Limpiar datos"
 
 5. **Verificar CORS**:
- - Revisar consola del navegador (F12)
- - Buscar errores de CORS
- - Verificar `.env` CORS_ORIGIN
+
+- Revisar consola del navegador (F12)
+- Buscar errores de CORS
+- Verificar `.env` CORS_ORIGIN
 
 ### Error de conexion a BD
 
@@ -551,26 +605,29 @@ id_categoria: 1
 **Soluciones**:
 
 1. **Verificar MySQL esta corriendo**:
- ```bash
- # Linux/Mac
- sudo systemctl status mysql
 
- # Windows
- services.msc (buscar MySQL)
- ```
+```bash
+# Linux/Mac
+sudo systemctl status mysql
+
+# Windows
+services.msc (buscar MySQL)
+```
 
 2. **Verificar credenciales en `.env`**:
- ```env
- DB_HOST=localhost
- DB_PORT=3306
- DB_USER=root
- DB_PASSWORD=tu_contrasena
- ```
+
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=tu_contrasena
+```
 
 3. **Reiniciar servidor**:
- ```bash
- npm run server
- ```
+
+```bash
+npm run server
+```
 
 ### Emails no se envian
 
@@ -579,16 +636,18 @@ id_categoria: 1
 **Soluciones**:
 
 1. **Para Gmail**:
- - Habilitar "Contrasenas de aplicacion"
- - Usar contrasena de aplicacion en `.env`
+
+- Habilitar "Contrasenas de aplicacion"
+- Usar contrasena de aplicacion en `.env`
 
 2. **Verificar credenciales SMTP**:
- ```env
- SMTP_HOST=smtp.gmail.com
- SMTP_PORT=587
- SMTP_USER=tu_correo@gmail.com
- SMTP_PASS=xxxx xxxx xxxx xxxx
- ```
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=tu_correo@gmail.com
+SMTP_PASS=xxxx xxxx xxxx xxxx
+```
 
 ### Rendimiento lento
 
@@ -597,22 +656,25 @@ id_categoria: 1
 **Soluciones**:
 
 1. **Limpiar cache**:
- ```bash
- # En el navegador
- Ctrl+Shift+Delete
- ```
+
+```bash
+# En el navegador
+Ctrl+Shift+Delete
+```
 
 2. **Optimizar BD**:
- ```bash
- mysql -u root -p precision_helpdesk
- OPTIMIZE TABLE ticket;
- OPTIMIZE TABLE solicitud;
- ```
+
+```bash
+mysql -u root -p precision_helpdesk
+OPTIMIZE TABLE ticket;
+OPTIMIZE TABLE solicitud;
+```
 
 3. **Aumentar memoria Node.js**:
- ```bash
- NODE_OPTIONS=--max-old-space-size=4096 npm run server
- ```
+
+```bash
+NODE_OPTIONS=--max-old-space-size=4096 npm run server
+```
 
 ---
 
@@ -621,31 +683,36 @@ id_categoria: 1
 ### Pasos para Contribuir
 
 1. **Fork el repositorio**
- ```bash
- git clone https://github.com/tu-usuario/Precision-Truck-Parts---Help-Desk.git
- ```
+
+```bash
+git clone https://github.com/tu-usuario/Precision-Truck-Parts---Help-Desk.git
+```
 
 2. **Crear rama de feature**
- ```bash
- git checkout -b feature/nueva-funcionalidad
- ```
+
+```bash
+git checkout -b feature/nueva-funcionalidad
+```
 
 3. **Hacer cambios y commit**
- ```bash
- git add .
- git commit -m "Agregar nueva funcionalidad"
- ```
+
+```bash
+git add .
+git commit -m "Agregar nueva funcionalidad"
+```
 
 4. **Push a la rama**
- ```bash
- git push origin feature/nueva-funcionalidad
- ```
+
+```bash
+git push origin feature/nueva-funcionalidad
+```
 
 5. **Crear Pull Request**
- - Ir a GitHub
- - Hacer clic en "New Pull Request"
- - Describir cambios
- - Esperar revision
+
+- Ir a GitHub
+- Hacer clic en "New Pull Request"
+- Describir cambios
+- Esperar revision
 
 ### Estandares de Codigo
 
