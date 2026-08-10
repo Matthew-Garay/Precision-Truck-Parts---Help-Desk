@@ -1,5 +1,5 @@
 /**
- * theme.jsx
+ * RelojCalendario.jsx
  *
  * Componentes visuales del dashboard que muestran fecha, hora y calendario.
  * Reciben el objeto T de tokens del tema activo para adaptarse al modo claro u oscuro.

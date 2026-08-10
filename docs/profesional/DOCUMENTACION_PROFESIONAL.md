@@ -100,7 +100,7 @@ El sistema reconoce dos roles principales de usuario:
 | | Componentes compartidos: Notificaciones, Kanban, PDF Viewer, | |
 | | Tablas de Manuales, Filtros, Modales, Componentes de Reporte | |
 | | | |
-| | Configuracion: api.js, theme.jsx, session.js, socket.js, | |
+| | Configuracion: api.js, themeContext.js, session.js, socket.js, | |
 | | NotificationService.js, printUtils.ts | |
 | `------ |
 `----------
@@ -506,10 +506,9 @@ PrecisionTrucks_HelpDesk/
 | |-- operacion/
 | | |-- DESPLIEGUE.md Guia de despliegue en produccion
 | | |-- SOLUCION_PDFS.md Soluciones para problemas de PDF
-| | `-- MANUAL_MANTENIMIENTO_SOFTWARE.md
-| `-- guia_usuario/
-| |-- README.md Indice de guias de usuario
-| `-- MANUAL_USO_SISTEMA.md Manual de uso del sistema
+| -- manuales_residencia/ Manuales de la residencia
+|    |-- MANUAL_DE_USO.md Manual de uso
+|    -- MANUAL_DE_MANTENIMIENTO.md Manual de mantenimiento
 |
 |-- public/
 | |-- .htaccess Configuracion Apache para SPA
@@ -592,9 +591,9 @@ PrecisionTrucks_HelpDesk/
 | | |-- PdfViewer.jsx Visor de PDF integrado
 | | |-- PerfilShared.jsx Perfil compartido
 | | |-- ProgressTimeline.jsx Linea de progreso de tickets
-| | |-- StockBar.jsx Barra de stock para insumos
+| | | |-- StockBar.jsx Barra de stock para insumos
+| | | |-- RelojCalendario.jsx Reloj y calendario del dashboard
 | | |-- ThemeToggle.jsx Interruptor de tema claro/oscuro
-| | |-- PrintAccesosView.tsx Vista de impresion de accesos
 | | |-- PrintHistorialView.tsx Vista de impresion de historial
 | | |-- PrintInventarioView.tsx Vista de impresion de inventario
 | | |-- PrintReporteListaView.tsx Vista de impresion de lista de reporte
@@ -613,7 +612,6 @@ PrecisionTrucks_HelpDesk/
 | | |-- pdfjs.js Configuracion de pdfjs-dist
 | | |-- printUtils.ts Utilidades de impresion PDF
 | | |-- session.js Gestion de sesion frontend
-| | |-- theme.jsx Tema base (colores, tokens)
 | | |-- themeContext.js Contexto de tema
 | | |-- ThemeContext.jsx Contexto de tema alternativo
 | | |-- themeTokens.js Tokens de tema para CSS
@@ -1865,7 +1863,8 @@ El servidor maneja SIGTERM y SIGINT:
 | docs/tecnica/IEEE830_REQUERIMIENTOS.md        | Especificacion formal de requerimientos |
 | docs/tecnica/PruebasYValidacion.md            | Plan de pruebas y validacion            |
 | docs/operacion/SOLUCION_PDFS.md               | Soluciones para problemas con PDF       |
-| docs/guia_usuario/MANUAL_USO_SISTEMA.md       | Manual de uso del sistema               |
+| docs/manuales_residencia/MANUAL_DE_USO.md | Manual de uso del sistema |
+| docs/manuales_residencia/MANUAL_DE_MANTENIMIENTO.md | Manual de mantenimiento del sistema |
 | docs/ScrumFlujo.puml                          | Diagrama PlantUML del flujo Scrum       |
 
 ### 23.2 Repositorio
