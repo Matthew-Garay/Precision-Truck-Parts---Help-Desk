@@ -371,10 +371,9 @@ PrecisionTrucks_HelpDesk/
 | |-- operacion/ Operacion y despliegue
 | | |-- DESPLIEGUE.md
 | | |-- SOLUCION_PDFS.md
-| | `-- MANUAL_MANTENIMIENTO_SOFTWARE.md
-| `-- guia_usuario/ Guias de usuario
-| |-- README.md
-| `-- MANUAL_USO_SISTEMA.md
+| `-- manuales_residencia/ Manuales de la residencia
+|    |-- MANUAL_DE_USO.md
+|    `-- MANUAL_DE_MANTENIMIENTO.md
 |
 |-- src/ Codigo fuente
 | |-- Backend/ Servidor Node.js/Express
@@ -443,13 +442,13 @@ PrecisionTrucks_HelpDesk/
 | ----------------------------------------------------------------------------------- | ------------------------------------ |
 | [Despliegue.md](docs/operacion/DESPLIEGUE.md)                                       | Guia de despliegue en produccion     |
 | [SOLUCION_PDFS.md](docs/operacion/SOLUCION_PDFS.md)                                 | Solucion de problemas con PDFs       |
-| [MANUAL_MANTENIMIENTO_SOFTWARE.md](docs/operacion/MANUAL_MANTENIMIENTO_SOFTWARE.md) | Manual de mantenimiento del software |
+| [MANUAL_DE_MANTENIMIENTO.md](docs/manuales_residencia/MANUAL_DE_MANTENIMIENTO.md) | Manual de mantenimiento del software |
 
 ### Guias de Usuario
 
 | Guia                                                             | Descripcion                        |
 | ---------------------------------------------------------------- | ---------------------------------- |
-| [MANUAL_USO_SISTEMA.md](docs/guia_usuario/MANUAL_USO_SISTEMA.md) | Manual completo de uso del sistema |
+| [MANUAL_DE_USO.md](docs/manuales_residencia/MANUAL_DE_USO.md) | Manual completo de uso del sistema |
 
 ### Documentacion Interna
 

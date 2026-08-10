@@ -1,560 +1,253 @@
-# Estructura del Proyecto - PrecisionTrucks HelpDesk
+# Estructura del Proyecto — PrecisionTrucks HelpDesk
 
-**Guía completa de la estructura de carpetas y archivos del proyecto.**
+**Este documento es el mapa del código. Si tienes duda de qué archivo es cuál o para qué sirve algo, aquí está la respuesta.**
 
----
-
-## Tabla de Contenidos
-
-1. [Estructura General](#estructura-general)
-2. [Carpeta src/Backend](#carpeta-srcbackend)
-3. [Carpeta src/Frontend](#carpeta-srcfrontend)
-4. [Carpeta docs](#carpeta-docs)
-5. [Carpeta storage](#carpeta-storage)
-6. [Archivos Raíz](#archivos-raíz)
-7. [Convenciones de Nombres](#convenciones-de-nombres)
-8. [Guía de Navegación](#guía-de-navegación)
+**Última actualización:** Septiembre 2026 · **Versión:** 2.0 (reorganización)
 
 ---
 
-## Estructura General
+## 1. El proyecto en dos palabras: cliente-servidor + MVC
+
+El sistema está dividido en **dos aplicaciones** que se comunican por HTTP (API REST):
+
+```
+┌─────────────────────────── CLIENTE ───────────────────────────┐
+│  src/Frontend/  (React en el navegador)                       │
+│  Es "la Vista" del patrón MVC: solo dibuja pantallas,          │
+│  captura lo que escribe el usuario y llama a la API.          │
+└──────────────────────────────┬────────────────────────────────┘
+                               │  fetch /axios  (/api/*, con JWT)
+                               ▼
+┌─────────────────────────── SERVIDOR ──────────────────────────┐
+│  src/Backend/  (Node.js + Express)                            │
+│  ┌────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
+│  │  Routes/   │→ │ Controllers/ │→ │ Models/  (SQL) → MySQL │ │
+│  │ (cuál URL) │  │ (qué hace)   │  └────────────────────────┘ │
+│  └────────────┘  └──────────────┘                             │
+│       = "Controlador" del patrón MVC                          │
+└───────────────────────────────────────────────────────────────┘
+```
+
+Regla práctica para orientarte en el código:
+
+| Tienes que... | Toca esto |
+| --- | --- |
+| Cambiar una pantalla o botón | `src/Frontend/Pages` (o `Components`) |
+| Cambiar cómo se ve algo / validar un formulario | `src/Frontend/Config` o `Components` |
+| Agregar/quitar una URL de la API | `src/Backend/Routes` + `Controllers` |
+| Cambiar la lógica de negocio | `src/Backend/Controllers` |
+| Cambiar una consulta a la base | `src/Backend/Models` |
+| Bloquear/validar algo en cada petición | `src/Backend/Middlewares` |
+
+---
+
+## 2. Árbol general del proyecto
 
 ```
 PrecisionTrucks_HelpDesk/
-|
-|-- src/ # Código fuente principal
-| |-- Backend/ # Servidor Node.js/Express
-| | |-- server.js # Punto de entrada del servidor
-| | |-- Config/ # Configuración
-| | |-- Models/ # Modelos de datos
-| | |-- Controllers/ # Controladores (lógica)
-| | |-- Routes/ # Rutas de API
-| | |-- Middlewares/ # Middlewares
-| | |-- Workers/ # Tareas programadas
-| | |-- utils/ # Funciones auxiliares
-| | `-- scripts/ # Scripts de utilidad
-| |
-| `-- Frontend/ # Aplicación React
-| |-- main.jsx # Punto de entrada
-| |-- components/ # Componentes React
-| |-- pages/ # Páginas principales
-| |-- hooks/ # Custom hooks
-| |-- services/ # Servicios API
-| |-- context/ # Context API
-| |-- styles/ # Estilos CSS
-| `-- assets/ # Imágenes y recursos
-|
-|-- docs/ # Documentación
-| |-- README.md # Índice de documentación
-| |-- database.sql # Script SQL
-| |-- ScrumFlujo.puml # Diagrama Scrum
-| |-- profesional/ # Documentación profesional
-| | `-- DOCUMENTACION_PROFESIONAL.md
-| |-- tecnica/ # Documentación técnica
-| | |-- ARQUITECTURA.md # Diagrama de arquitectura
-| | |-- 3.5_DesarrolloTecnico.md # Stack tecnológico
-| | |-- DiccionarioDatos.md # Descripción de BD
-| | |-- ESTRUCTURA_PROYECTO.md # Este archivo
-| | |-- DOCUMENTACION_INTERNA.md # Estándares de código
-| | |-- IEEE830_REQUERIMIENTOS.md # Especificación
-| | `-- PruebasYValidacion.md # Plan de pruebas
-| |-- operacion/ # Operación y despliegue
-| | |-- DESPLIEGUE.md # Guía de despliegue
-| | |-- SOLUCION_PDFS.md # Solución de problemas
-| | `-- MANUAL_MANTENIMIENTO_SOFTWARE.md
-| `-- guia_usuario/ # Guías para usuarios
-| |-- README.md # Índice de guías
-| `-- MANUAL_USO_SISTEMA.md # Manual de usuario
-|
-|-- public/ # Archivos estáticos
-| |-- .htaccess # Configuración Apache
-| `-- assets/ # Imágenes y recursos
-|
-|-- storage/ # Almacenamiento de archivos
-| |-- Manuales/ # PDFs de manuales
-| |-- Portadas/ # Portadas de PDFs
-| |-- Evidencias_Tickets/ # Imágenes de tickets
-| |-- Fotos de Perfil/ # Fotos de empleados
-| `-- Insumos/ # Imágenes de insumos
-|
-|-- package.json # Dependencias del proyecto
-|-- package-lock.json # Lock de dependencias
-|-- .env.example # Variables de entorno (ejemplo)
-|-- .gitignore # Archivos ignorados por Git
-|-- vite.config.js # Configuración de Vite
-|-- railway.json # Configuración de Railway
-|-- index.html # HTML principal
-`-- README.md # README principal
+├── index.html          ← Punto de entrada de la app (lo abre Vite)
+├── package.json        ← Dependencias y scripts (npm run dev:all, build…)
+├── vite.config.js      ← Configuración de Vite y proxy hacia el backend
+├── railway.json        ← Config de despliegue en Railway
+├── .env / .env.example ← Variables de entorno (NUNCA versionar el .env)
+├── .gitignore          ← Qué no se sube al repositorio
+├── README.md           ← Presentación e instalación
+│
+├── src/                ← TODO el código fuente
+│   ├── main.jsx        ← Entrada de React (rutas, tema, toasts, login)
+│   ├── orientation.css
+│   ├── Frontend/       ← CLIENTE (Vista)
+│   └── Backend/        ← SERVIDOR (Controlador + Modelo)
+│
+├── public/             ← Archivos estáticos (logos, favicon)
+├── storage/            ← Datos en tiempo de ejecución (archivos de usuarios)
+├── dist/               ← Build de producción (generado, no se edita)
+└── docs/               ← Documentación
 ```
 
 ---
 
-## Carpeta src/Backend
-
-### Estructura Detallada
+## 3. Servidor — `src/Backend/` (la parte de control)
 
 ```
 src/Backend/
-|-- server.js # Punto de entrada
-|
-|-- Config/ # Configuración
-| |-- db.js # Conexión a BD
-| |-- environment.js # Variables de entorno
-| `-- constants.js # Constantes globales
-|
-|-- Models/ # Modelos de datos
-| |-- User.js # Modelo de usuario
-| |-- Ticket.js # Modelo de ticket
-| |-- Manual.js # Modelo de manual
-| |-- Insumo.js # Modelo de insumo
-| |-- Solicitud.js # Modelo de solicitud
-| `-- Categoria.js # Modelo de categoría
-|
-|-- Controllers/ # Controladores
-| |-- authController.js # Autenticación
-| |-- ticketsController.js # Gestión de tickets
-| |-- manualesController.js # Gestión de manuales
-| |-- insumosController.js # Gestión de insumos
-| |-- solicitudesController.js # Gestión de solicitudes
-| |-- usuariosController.js # Gestión de usuarios
-| |-- reportesController.js # Generación de reportes
-| `-- categoriasController.js # Gestión de categorías
-|
-|-- Routes/ # Rutas de API
-| |-- authRoutes.js # Rutas de autenticación
-| |-- ticketsRoutes.js # Rutas de tickets
-| |-- manualesRoutes.js # Rutas de manuales
-| |-- insumosRoutes.js # Rutas de insumos
-| |-- solicitudesRoutes.js # Rutas de solicitudes
-| |-- usuariosRoutes.js # Rutas de usuarios
-| |-- reportesRoutes.js # Rutas de reportes
-| `-- categoriasRoutes.js # Rutas de categorías
-|
-|-- Middlewares/ # Middlewares
-| |-- authMiddleware.js # Autenticación JWT
-| |-- roleMiddleware.js # Control de roles
-| |-- errorHandler.js # Manejo de errores
-| |-- security.js # Seguridad (CORS, Helmet)
-| |-- uploadManuales.js # Subida de manuales
-| |-- uploadEvidencias.js # Subida de evidencias
-| `-- validation.js # Validación de datos
-|
-|-- Workers/ # Tareas programadas
-| |-- emailWorker.js # Envío de emails
-| |-- reportWorker.js # Generación de reportes
-| `-- cleanupWorker.js # Limpieza de archivos
-|
-|-- utils/ # Funciones auxiliares
-| |-- emailService.js # Servicio de email
-| |-- pdfService.js # Servicio de PDFs
-| |-- imageService.js # Servicio de imágenes
-| |-- tokenService.js # Servicio de tokens
-| |-- hashService.js # Servicio de hash
-| |-- validators.js # Validadores
-| `-- helpers.js # Funciones auxiliares
-|
-`-- scripts/ # Scripts de utilidad
- |-- generarPortadasExistentes.js # Regenerar portadas
- |-- verificarPDFs.js # Verificar integridad
- |-- crearUsuarioAdmin.js # Crear admin
- `-- resetearBD.js # Resetear BD
+├── server.js          ← PUNTO DE ENTRADA. Crea Express, monta Rutas,
+│                        sirve el frontend en producción y hace health-check.
+├── load-env.js        ← Carga el .env antes de que arranque el servidor
+│
+├── Config/            ← Configuración "global"
+│   ├── db.js              ← Pool de conexiones a MySQL
+│   ├── mailer.js          ← Envío de correos (SMTP)
+│   ├── socketInstance.js  ← Instancia única de Socket.IO (notificaciones)
+│   └── cache.js           ← Caché en memoria para métricas/catálogos
+│
+├── Routes/            ← CUÁL URL responde a qué controlador (router de Express)
+│   ├── authRoutes.js        ← /api/auth (login, logout, perfil)
+│   ├── ticketsRoutes.js     ← /api/tickets
+│   ├── solicitudesRoutes.js ← /api/solicitudes (insumos)
+│   ├── categoriasRoutes.js  ← /api/categorias
+│   └── manualesRoutes.js    ← /api/manuales
+│
+├── Controllers/       ← LA LÓGICA (qué hace cada endpoint)
+│   ├── authController.js        ← autenticación y empleados
+│   ├── ticketsController.js     ← crear/atender/cerrar tickets
+│   ├── solicitudesController.js ← solicitudes de insumos y estatus
+│   ├── categoriasController.js  ← catálogo de categorías
+│   └── resetController.js       ← recuperación de contraseña (código)
+│
+├── Models/            ← CONSULTAS SQL por entidad
+│   ├── Empleado.js, Ticket.js, Solicitud.js
+│   ├── Insumo.js, Manual.js, Categoria.js
+│
+├── Middlewares/       ← Se ejecutan ANTES del controlador (validar/bloquear)
+│   ├── authMiddleware.js  ← valida JWT y rol (requireAuth, requireAdmin)
+│   ├── security.js        ← CSRF, rate-limit
+│   ├── validate.js        ← valida datos de entrada
+│   └── upload*.js         ← subida de evidencias/fotos/insumos/manuales
+│
+├── utils/             ← Funciones auxiliares (portadas, helpers)
+├── Workers/           ← Tareas automáticas (SLA, cierres, stock)
+│   └── scheduledJobs.js       ← define los jobs programados
+├── scripts/           ← Scripts manuales
+│   ├── migrate.js              ← migraciones de base de datos (¡correr tras cada pull!)
+│   └── generarPortadasExistentes.js ← regenera portadas de PDFs
 ```
 
-### Descripción de Archivos Backend
-
-| Archivo          | Propósito        | Responsabilidad                                 |
-| ---------------- | ---------------- | ----------------------------------------------- |
-| **server.js**    | Punto de entrada | Inicializar servidor, cargar middlewares, rutas |
-| **Config/db.js** | Conexión BD      | Conectar a MySQL, pool de conexiones            |
-| **Models/**      | Modelos          | Definir estructura de datos                     |
-| **Controllers/** | Lógica           | Procesar solicitudes, validar datos             |
-| **Routes/**      | Rutas            | Mapear URLs a controladores                     |
-| **Middlewares/** | Procesamiento    | Autenticación, validación, seguridad            |
-| **Workers/**     | Tareas           | Procesos en background                          |
-| **utils/**       | Utilidades       | Funciones reutilizables                         |
+> Los archivos `alert_state.json` y `reset_tokens.json` dentro de `Workers/` son **estado en tiempo de ejecución** (los genera el sistema y están en `.gitignore`, no se editan a mano).
 
 ---
 
-## Carpeta src/Frontend
-
-### Estructura Detallada
+## 4. Cliente — `src/Frontend/` (la Vista)
 
 ```
 src/Frontend/
-|-- main.jsx # Punto de entrada
-|
-|-- components/ # Componentes React
-| |-- Common/ # Componentes comunes
-| | |-- Header.jsx # Encabezado
-| | |-- Sidebar.jsx # Barra lateral
-| | |-- Footer.jsx # Pie de página
-| | |-- Modal.jsx # Modal genérico
-| | |-- Button.jsx # Botón genérico
-| | `-- Loading.jsx # Indicador de carga
-| |
-| |-- Tickets/ # Componentes de tickets
-| | |-- TicketList.jsx # Lista de tickets
-| | |-- TicketForm.jsx # Formulario de ticket
-| | |-- TicketDetail.jsx # Detalle de ticket
-| | `-- TicketCard.jsx # Tarjeta de ticket
-| |
-| |-- Manuales/ # Componentes de manuales
-| | |-- ManualList.jsx # Lista de manuales
-| | |-- ManualViewer.jsx # Visor de PDF
-| | |-- ManualUpload.jsx # Subida de manual
-| | `-- ManualCard.jsx # Tarjeta de manual
-| |
-| |-- Insumos/ # Componentes de insumos
-| | |-- InsumoList.jsx # Lista de insumos
-| | |-- InsumoForm.jsx # Formulario de insumo
-| | `-- InsumoCard.jsx # Tarjeta de insumo
-| |
-| |-- Solicitudes/ # Componentes de solicitudes
-| | |-- SolicitudList.jsx # Lista de solicitudes
-| | |-- SolicitudForm.jsx # Formulario de solicitud
-| | `-- SolicitudCard.jsx # Tarjeta de solicitud
-| |
-| |-- Admin/ # Componentes de admin
-| | |-- UserManagement.jsx # Gestión de usuarios
-| | |-- CategoryManagement.jsx # Gestión de categorías
-| | |-- ReportGenerator.jsx # Generador de reportes
-| | `-- SystemSettings.jsx # Configuración del sistema
-| |
-| `-- Auth/ # Componentes de autenticación
-| |-- Login.jsx # Página de login
-| |-- Register.jsx # Página de registro
-| `-- ForgotPassword.jsx # Recuperar contraseña
-|
-|-- pages/ # Páginas principales
-| |-- Dashboard.jsx # Panel principal
-| |-- TicketsPage.jsx # Página de tickets
-| |-- ManualesPage.jsx # Página de manuales
-| |-- InsumosPage.jsx # Página de insumos
-| |-- SolicitudesPage.jsx # Página de solicitudes
-| |-- AdminPage.jsx # Página de administración
-| |-- ProfilePage.jsx # Página de perfil
-| |-- NotFoundPage.jsx # Página 404
-| `-- ErrorPage.jsx # Página de error
-|
-|-- hooks/ # Custom hooks
-| |-- useAuth.js # Hook de autenticación
-| |-- useTickets.js # Hook de tickets
-| |-- useManuales.js # Hook de manuales
-| |-- useInsumos.js # Hook de insumos
-| |-- useFetch.js # Hook de fetch genérico
-| `-- useForm.js # Hook de formularios
-|
-|-- services/ # Servicios API
-| |-- api.js # Configuración de axios
-| |-- authService.js # Servicio de autenticación
-| |-- ticketsService.js # Servicio de tickets
-| |-- manualesService.js # Servicio de manuales
-| |-- insumosService.js # Servicio de insumos
-| |-- solicitudesService.js # Servicio de solicitudes
-| |-- usuariosService.js # Servicio de usuarios
-| `-- reportesService.js # Servicio de reportes
-|
-|-- context/ # Context API
-| |-- AuthContext.jsx # Contexto de autenticación
-| |-- TicketsContext.jsx # Contexto de tickets
-| `-- NotificationContext.jsx # Contexto de notificaciones
-|
-|-- styles/ # Estilos CSS
-| |-- index.css # Estilos globales
-| |-- components.css # Estilos de componentes
-| |-- pages.css # Estilos de páginas
-| |-- responsive.css # Estilos responsivos
-| `-- variables.css # Variables CSS
-|
-`-- assets/ # Imágenes y recursos
- |-- images/ # Imágenes
- |-- icons/ # Iconos
- `-- fonts/ # Fuentes
-```
-
-### Descripción de Archivos Frontend
-
-| Carpeta         | Propósito                 | Contenido                     |
-| --------------- | ------------------------- | ----------------------------- |
-| **components/** | Componentes reutilizables | Botones, modales, tarjetas    |
-| **pages/**      | Páginas principales       | Vistas completas              |
-| **hooks/**      | Lógica reutilizable       | Estado, efectos, datos        |
-| **services/**   | Comunicación con API      | Llamadas HTTP                 |
-| **context/**    | Estado global             | Autenticación, notificaciones |
-| **styles/**     | Estilos CSS               | Temas, responsive             |
-| **assets/**     | Recursos estáticos        | Imágenes, iconos              |
-
----
-
-## Carpeta docs
-
-### Estructura Detallada
-
-```
-docs/
-|-- README.md                    # Índice de documentación
-|-- database.sql                 # Script SQL
-|-- ScrumFlujo.puml              # Diagrama Scrum
-|
-|-- profesional/                 # Documentación profesional
-| `-- DOCUMENTACION_PROFESIONAL.md
-|
-|-- tecnica/                     # Documentación técnica
-| |-- ARQUITECTURA.md            # Diagrama de arquitectura
-| |-- 3.5_DesarrolloTecnico.md   # Stack tecnológico
-| |-- DiccionarioDatos.md        # Descripción de BD
-| |-- ESTRUCTURA_PROYECTO.md     # Este archivo
-| |-- DOCUMENTACION_INTERNA.md   # Estándares de código
-| |-- IEEE830_REQUERIMIENTOS.md  # Especificación
-| `-- PruebasYValidacion.md      # Plan de pruebas
-|
-|-- operacion/                   # Operación y despliegue
-| |-- DESPLIEGUE.md              # Guía de despliegue
-| |-- SOLUCION_PDFS.md           # Solución de problemas
-| `-- MANUAL_MANTENIMIENTO_SOFTWARE.md
-|
-`-- guia_usuario/                # Guías para usuarios
- |-- README.md                   # Índice de guías
- `-- MANUAL_USO_SISTEMA.md       # Manual de usuario
-```
-
-### Descripción de Documentos
-
-| Documento                                      | Audiencia             | Contenido                 |
-| ---------------------------------------------- | --------------------- | ------------------------- |
-| **README.md**                                  | Todos                 | Índice y navegación       |
-| **profesional/DOCUMENTACION_PROFESIONAL.md**   | Todos los roles       | Documentación profesional |
-| **tecnica/ARQUITECTURA.md**                    | Desarrolladores       | Diagrama y componentes    |
-| **tecnica/3.5_DesarrolloTecnico.md**           | Desarrolladores       | Stack y decisiones        |
-| **tecnica/ESTRUCTURA_PROYECTO.md**             | Desarrolladores       | Estructura de carpetas    |
-| **tecnica/DOCUMENTACION_INTERNA.md**           | Desarrolladores       | Estándares de código      |
-| **tecnica/DiccionarioDatos.md**                | DBAs, Desarrolladores | Tablas y campos           |
-| **tecnica/IEEE830_REQUERIMIENTOS.md**          | Analistas             | Especificación            |
-| **tecnica/PruebasYValidacion.md**              | QA                    | Plan de pruebas           |
-| **operacion/DESPLIEGUE.md**                    | DevOps                | Guía de producción        |
-| **operacion/SOLUCION_PDFS.md**                 | Soporte               | Problemas con PDFs        |
-| **operacion/MANUAL_MANTENIMIENTO_SOFTWARE.md** | DevOps                | Mantenimiento del sistema |
-| **guia_usuario/MANUAL_USO_SISTEMA.md**         | Usuarios              | Guía de usuario           |
-| **database.sql**                               | DBAs                  | Script SQL                |
-
----
-
-## Carpeta storage
-
-### Estructura Detallada
-
-```
-storage/
-|-- Manuales/ # PDFs de manuales
-| |-- manual-1.pdf
-| |-- manual-2.pdf
-| `-- ...
-|
-|-- Portadas/ # Portadas de PDFs
-| |-- manual-1_portada.jpg
-| |-- manual-2_portada.jpg
-| `-- ...
-|
-|-- Evidencias_Tickets/ # Imágenes de tickets
-| |-- ticket-1/
-| | |-- evidencia-1.jpg
-| | `-- evidencia-2.jpg
-| `-- ...
-|
-|-- Fotos de Perfil/ # Fotos de empleados
-| |-- usuario-1.jpg
-| |-- usuario-2.jpg
-| `-- ...
-|
-`-- Insumos/ # Imágenes de insumos
- |-- insumo-1.jpg
- |-- insumo-2.jpg
- `-- ...
-```
-
-### Permisos Recomendados
-
-```bash
-# Carpetas: 755 (rwxr-xr-x)
-chmod 755 storage/
-chmod 755 storage/Manuales/
-chmod 755 storage/Portadas/
-chmod 755 storage/Evidencias_Tickets/
-chmod 755 storage/Fotos\ de\ Perfil/
-chmod 755 storage/Insumos/
-
-# Archivos: 644 (rw-r--r--)
-chmod 644 storage/Manuales/*
-chmod 644 storage/Portadas/*
+├── Pages/             ← LAS PANTALLAS (un archivo = una pantalla)
+│   ├── login.jsx                     ← pantalla de inicio de sesión
+│   ├── Admin/                        ← pantallas exclusivas de administrador
+│   │   ├── Dashboard.jsx             ← panel con métricas y menú admin
+│   │   ├── HistorialIncidencias.jsx  ← atender tickets (asignar, estados)
+│   │   ├── HistorialInsumos.jsx      ← aprobar/rechazar solicitudes
+│   │   ├── Inventario.jsx            ← control de stock (con exportar)
+│   │   ├── RendimientoTecnicos.jsx   ← estadísticas por técnico
+│   │   ├── Personal.jsx              ← crear/desactivar empleados
+│   │   └── ManualesIncidencias.jsx   ← biblioteca + subir manuales
+│   ├── Usuario/                      ← pantallas de usuario normal
+│   │   ├── Dashboard.jsx             ← panel del usuario
+│   │   ├── NuevoReporte.jsx          ← crear un ticket
+│   │   ├── HistorialIncidencias.jsx  ← mis tickets
+│   │   ├── SolicitudInsumo.jsx       ← pedir insumos
+│   │   ├── VistaInsumos.jsx / VistaSolicitud.jsx / VistaTicket.jsx ← detalle
+│   │   └── ManualesIncidencias.jsx   ← ver/descargar manuales
+│   └── Print*.Page.tsx               ← vistas para imprimir/PDF (ticket, solicitud, reporte…)
+│
+├── Components/        ← Pedazos de interfaz REUTILIZABLES
+│   ├── (Card, Modal, StockBar, ProgressTimeline, PdfViewer…)
+│   ├── RelojCalendario.jsx        ← reloj y calendario del dashboard
+│   ├── CampanaNotificaciones.jsx  ← campana de avisos en tiempo real
+│   ├── Inventario/                ← modales del inventario
+│   ├── hooks/                     ← custom hooks (useToast, usePdfCover)
+│   └── context/                   ← contexto de toasts
+│
+├── Config/            ← Lógica de infraestructura del frontend
+│   ├── api.js            ← llama a la API (adjunta JWT, maneja errores)
+│   ├── session.js        ← guarda/lee la sesión (localStorage)
+│   ├── themeContext.js / ThemeContext.jsx / themeTokens.js  ← tema claro/oscuro
+│   ├── useSocket.js / useTicketNotification.js / useAutoRefresh.js ← notificaciones
+│   ├── NotificationService.js  ← silenciar/mostrar notificaciones
+│   ├── DesignSystem.js / themeTokens.js  ← colores y sistema de diseño
+│   ├── pdfjs.js / printUtils.ts  ← visor de PDF e impresión
+│
+└── Styles/             ← CSS global (design-system.css, login.css)
 ```
 
 ---
 
-## Archivos Raíz
+## 5. Carpeta `public/` (archivos estáticos)
 
-### Descripción de Archivos
+Vite copia estos archivos tal cual al build.
 
-| Archivo               | Propósito                      |
-| --------------------- | ------------------------------ |
-| **package.json**      | Dependencias y scripts         |
-| **package-lock.json** | Lock de versiones              |
-| **.env.example**      | Variables de entorno (ejemplo) |
-| **.gitignore**        | Archivos ignorados por Git     |
-| **vite.config.js**    | Configuración de Vite          |
-| **railway.json**      | Configuración de Railway       |
-| **index.html**        | HTML principal                 |
-| **README.md**         | Documentación principal        |
-
-### package.json - Scripts Disponibles
-
-```json
-{
-  "scripts": {
-    "dev": "vite",
-    "server": "node src/Backend/server.js",
-    "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
-    "build": "vite build",
-    "preview": "vite preview",
-    "lint": "eslint src/",
-    "test": "jest",
-    "test:watch": "jest --watch"
-  }
-}
 ```
+public/
+├── .htaccess          ← reglas de Apache (para servidores Apache)
+└── assets/img/        ← logos y favicon del sistema
+    ├── logo.png          ← logo principal (login, dashboards, correos)
+    ├── logo negro.png    ← logo para fondo claro
+    ├── logo blanco.png   ← logo para fondo oscuro
+    ├── logo.ico          ← favicon
+    ├── log.png           ← logo para impresiones/exportaciones
+    └── Fondo Precision Trucks.webp ← fondo de pantalla del login
+```
+
+## 6. Carpeta `storage/` (datos en tiempo de ejecución)
+
+Aquí se guardan los archivos que suben los usuarios. **No se sube a Git** (solo sus `.gitkeep` para conservar la estructura). Se debe respaldar junto con la base de datos.
+
+| Carpeta | Qué guarda |
+| --- | --- |
+| `Evidencias_Tickets/` | Fotos/videos adjuntos a los tickets |
+| `Manuales/` | PDFs de la biblioteca de manuales |
+| `Fotos de Perfil/` | Avatares de los empleados |
+| `Insumos/` | Fotos de los insumos del inventario |
+| `Portadas/` | Miniatura generada de cada manual PDF |
+
+## 7. Carpeta `docs/`
+
+| Carpeta | Qué contiene |
+| --- | --- |
+| `manuales_residencia/` | Manual de uso y de mantenimiento (oficiales) |
+| `tecnica/` | Documentación para desarrolladores (incluye este mapa) |
+| `operacion/` | Despliegue y solución de problemas en producción |
+| `profesional/` | Documentación integral del proyecto |
+
+## 8. Archivos raíz importantes
+
+| Archivo | Para qué |
+| --- | --- |
+| `package.json` | Scripts (`npm run dev:all` dev, `npm run build` producción) |
+| `vite.config.js` | Dev server y proxy `/api` y `/socket.io` hacia el backend |
+| `index.html` | HTML que monta la app React |
+| `.env` | Variables de entorno (secreto, BD, SMTP) |
+| `railway.json` | Cómo se despliega en Railway |
 
 ---
 
-## Convenciones de Nombres
+## 9. Guía rápida: ¿qué abro para qué?
 
-### Carpetas
-
-```
- Correcto:
-- src/Backend/
-- src/Frontend/
-- src/Backend/Controllers/
-- src/Frontend/components/
-
- Incorrecto:
-- src/backend/
-- src/frontend/
-- src/Backend/controllers/
-- src/Frontend/Components/
-```
-
-### Archivos
-
-```
- Correcto:
-- userController.js (camelCase)
-- UserModel.js (PascalCase para clases)
-- authService.js (camelCase)
-- User.jsx (PascalCase para componentes)
-
- Incorrecto:
-- user_controller.js (snake_case)
-- usermodel.js (minúsculas)
-- AuthService.js (PascalCase para servicios)
-- user.jsx (minúsculas para componentes)
-```
-
-### Variables y Funciones
-
-```javascript
-// Correcto
-const userName = "Juan";
-function getUserById(id) {}
-const isActive = true;
-
-// Incorrecto
-const user_name = "Juan";
-function get_user_by_id(id) {}
-const IsActive = true;
-```
-
-### Componentes React
-
-```javascript
-// Correcto
-function UserProfile() {}
-export default UserProfile;
-
-// Incorrecto
-function userProfile() {}
-function user_profile() {}
-```
+| Quiero... | Abro |
+| --- | --- |
+| Arrancar en desarrollo | Terminal: `npm run dev:all` |
+| Compilar para producción | Terminal: `npm run build` |
+| Cambiar el login | `src/Frontend/Pages/login.jsx` |
+| Cambiar el menú del usuario | `src/Frontend/Pages/Usuario/Dashboard.jsx` (arreglo `NAV`) |
+| Cambiar el menú del admin | `src/Frontend/Pages/Admin/Dashboard.jsx` (arreglo `NAV`) |
+| Crear una pantalla nueva | `src/Frontend/Pages/Usuario/` o `Admin/` + registrarla en `Dashboard.jsx` |
+| Añadir un endpoint nuevo | `src/Backend/Routes/…` + método en `Controllers/…` |
+| Cambiar una consulta a la BD | `src/Backend/Models/…` |
+| Restringir una acción a admin | `src/Backend/Middlewares/authMiddleware.js` (requireAdmin) |
+| Cambiar el tema/diseño | `src/Frontend/Config/themeTokens.js` y `DesignSystem.js` |
+| Ajustar notificaciones | `src/Frontend/Config/useSocket.js` / `useTicketNotification.js` |
+| La app no arranca tras un `git pull` | Correr `migrate.js` (ver manual de mantenimiento) |
+| Ver cómo fluye una petición | `Routes` → `Controllers` → `Models` (sección 1) |
 
 ---
 
-## Guía de Navegación
+## 10. Flujo de una petición (ejemplo: crear un ticket)
 
-### Para Agregar una Nueva Funcionalidad
+```
+1. Pantalla NuevoReporte.jsx  →  construye el objeto y llama a api.js
+2. api.js                     →  POST /api/tickets  (con JWT del usuario)
+3. ticketsRoutes.js           →  enruta la URL al controlador
+   └─ authMiddleware          →  valida que el token sea válido y el rol correcto
+   └─ validate.js             →  valida los datos del formulario
+4. ticketsController.js       →  lógica: crea el ticket, envia notificación
+   └─ Ticket.js (Modelo)      →  INSERT en la tabla ticket (MySQL)
+5. server.js / Socket.IO      →  avisa al admin por notificación en tiempo real
+```
 
-1. **Crear modelo** -> `src/Backend/Models/`
-2. **Crear controlador** -> `src/Backend/Controllers/`
-3. **Crear rutas** -> `src/Backend/Routes/`
-4. **Crear servicio** -> `src/Frontend/services/`
-5. **Crear componentes** -> `src/Frontend/components/`
-6. **Crear página** -> `src/Frontend/pages/`
-7. **Documentar** -> `docs/`
-
-### Para Agregar una Nueva Página
-
-1. Crear componente en `src/Frontend/pages/`
-2. Crear componentes en `src/Frontend/components/`
-3. Crear servicio en `src/Frontend/services/`
-4. Agregar ruta en el router
-5. Documentar en `docs/`
-
-### Para Agregar un Nuevo Endpoint API
-
-1. Crear modelo en `src/Backend/Models/`
-2. Crear controlador en `src/Backend/Controllers/`
-3. Crear rutas en `src/Backend/Routes/`
-4. Crear servicio en `src/Frontend/services/`
-5. Documentar en `docs/`
+Ese mismo patrón (Ruta → Middleware → Controlador → Modelo) se repite en todo el backend.
 
 ---
 
-## Matriz de Responsabilidades
+**Fin del mapa.** Para los detalles de arquitectura y base de datos revisa `docs/tecnica/ARQUITECTURA.md` y `docs/tecnica/DiccionarioDatos.md`. Si lo que buscas es usar o mantener el sistema, abre `docs/manuales_residencia/`.
 
-| Carpeta                      | Responsable            | Tipo          |
-| ---------------------------- | ---------------------- | ------------- |
-| **src/Backend/Config/**      | DevOps                 | Configuración |
-| **src/Backend/Models/**      | Desarrollador Backend  | Datos         |
-| **src/Backend/Controllers/** | Desarrollador Backend  | Lógica        |
-| **src/Backend/Routes/**      | Desarrollador Backend  | API           |
-| **src/Backend/Middlewares/** | Desarrollador Backend  | Procesamiento |
-| **src/Frontend/components/** | Desarrollador Frontend | UI            |
-| **src/Frontend/pages/**      | Desarrollador Frontend | Vistas        |
-| **src/Frontend/services/**   | Desarrollador Frontend | API           |
-| **docs/**                    | Todos                  | Documentación |
-| **storage/**                 | DevOps                 | Archivos      |
 
----
-
-## Checklist de Estructura
-
-- [x] Carpetas organizadas lógicamente
-- [x] Nombres consistentes
-- [x] Separación de responsabilidades
-- [x] Documentación clara
-- [x] Permisos correctos
-- [x] Estructura escalable
-- [x] Fácil de navegar
-- [x] Convenciones definidas
-
----
-
-**Última actualización**: Agosto 2024
-**Versión**: 1.0.0
-
----
-
-<div align="center">
-
-**¿Preguntas sobre la estructura?**
-
-[Ver Documentación Técnica](README.md)
-
-</div>

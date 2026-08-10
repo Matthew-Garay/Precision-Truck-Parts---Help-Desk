@@ -102,7 +102,7 @@ PrecisionTrucks_HelpDesk/ Raíz del monorepo
 | | |-- DesignSystem.js Tokens de diseño (colores, tipografía)
 | | |-- NotificationService.js Servicio de notificaciones en tiempo real
 | | |-- session.js Helpers de sesión (localStorage)
-| | |-- theme.jsx Provider de tema claro/oscuro
+| | |-- themeContext.js Contexto + hook useTheme
 | | |-- ThemeContext.jsx Context API del tema
 | | |-- themeTokens.js Variables CSS de tokens por tema
 | | |-- useAutoRefresh.js Hook: polling automático de datos

@@ -105,7 +105,7 @@ async function validarYComprimirArchivos(req, res, next) {
       return res.status(400).json({ error: "Archivo rechazado: el contenido no es una imagen o video válido" });
     }
 
-    // Comprimir imágenes (no videos)
+    // Comprimir archivos
     if (MIMETYPES_IMAGEN.has(tipo.mime) && tipo.mime !== "image/gif") {
       try {
         const tmpComprimido = file.path + "_c";
