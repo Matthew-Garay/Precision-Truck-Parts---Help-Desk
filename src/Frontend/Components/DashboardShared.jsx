@@ -36,7 +36,7 @@
  */
 import { useState } from "react";
 import { User, Clock, CheckCircle2, Timer, Building2, BarChart2, Package, TrendingUp } from "lucide-react";
-import { RelojFecha, Calendario } from "../Config/theme.jsx";
+import { RelojFecha, Calendario } from "./RelojCalendario.jsx";
 import { useCardStyles } from "./Card";
 
 // -- TENDENCIA CHART (HTML puro, sin SVG, 100% responsive) ----
