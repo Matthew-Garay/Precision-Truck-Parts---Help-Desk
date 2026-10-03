@@ -1,6 +1,6 @@
 import {
-  Badge, Stars, PageHeader, PageFooter, Section, DataGrid, Firma,
-  PRIO_META, ESTATUS_META, fmt, nowFechaGen,
+  Stars, PageHeader, PageFooter, PageSize, Section, DataGrid, Firma,
+  PRIO_META, fmt, nowFechaGen,
 } from "./PrintShared";
 
 interface Ticket {
@@ -66,11 +66,11 @@ export default function PrintReportView({ ticket }: { ticket: Ticket }) {
     ? calcTiempo(ticket.fecha_subido, ticket.fecha_resuelto) : null;
 
   const prio    = PRIO_META[ticket.prioridad]  ?? PRIO_META.Media;
-  const estatus = ESTATUS_META[ticket.estatus] ?? ESTATUS_META["En proceso"];
 
   return (
     <div className="pr-root" data-ready="true">
-
+      {/* Carta vertical: este documento cabe en una hoja tamaño carta */}
+      <PageSize />
       <PageHeader
         titulo="Reporte de Incidencia Técnica"
         subtitulo="Departamento de Soporte Técnico"
@@ -82,19 +82,27 @@ export default function PrintReportView({ ticket }: { ticket: Ticket }) {
 
       <div className="pr-content">
 
-        {/* Línea de estado */}
+        {/* Línea de estado — tipografía, sin cajas ni color */}
         <div style={{
-          display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8,
-          padding: "6px 10px", marginBottom: 10,
-          border: "1px solid #cccccc", background: "#f5f5f5",
+          display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 12,
+          padding: "0 0 6px", marginBottom: 12,
+          borderBottom: "1px solid var(--pr-ink)",
         }}>
-          <span style={{ flex: 1, fontSize: "9pt", fontWeight: "bold", color: "#000" }}>
+          <span style={{ flex: 1, minWidth: 160, fontSize: "11pt", fontWeight: 700, color: "var(--pr-ink)", lineHeight: 1.25 }}>
             {ticket.titulo}
           </span>
-          <Badge label={ticket.estatus} icon={estatus.icon} bg="#f5f5f5" color="#000" border="#cccccc" />
-          <Badge label={prio.label} bg="#f5f5f5" color="#000" border="#cccccc" />
+          <span style={{ fontSize: "7.5pt", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--pr-muted)" }}>
+            {ticket.estatus}
+          </span>
+          {/* El naranja de la marca marca lo único urgente */}
+          <span style={{
+            fontSize: "7.5pt", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em",
+            color: ticket.prioridad === "Urgente" ? "var(--pr-accent)" : "var(--pr-faint)",
+          }}>
+            {prio.icon ? `${prio.icon} ` : ""}{prio.label}
+          </span>
           {tiempoRes && (
-            <span style={{ fontSize: "7.5pt", color: "#444" }}>Resuelto en: {tiempoRes}</span>
+            <span style={{ fontSize: "7.5pt", color: "var(--pr-muted)" }}>Resuelto en {tiempoRes}</span>
           )}
         </div>
 
@@ -127,14 +135,10 @@ export default function PrintReportView({ ticket }: { ticket: Ticket }) {
         </Section>
 
         <Section title="Resolución y Comentarios del Técnico">
-          <div style={{ borderLeft: "3px solid #cccccc", paddingLeft: 10 }}>
-            <div className="pr-rich-text">
-              {ticket.comentarios
-                ? <span dangerouslySetInnerHTML={{ __html: ticket.comentarios }} />
-                : <em>Sin comentarios registrados.</em>
-              }
-            </div>
-          </div>
+          {ticket.comentarios
+            ? <div className="pr-rich-text" dangerouslySetInnerHTML={{ __html: ticket.comentarios }} />
+            : <p className="pr-empty">Sin comentarios registrados.</p>
+          }
         </Section>
 
         <div className="pr-two-col">

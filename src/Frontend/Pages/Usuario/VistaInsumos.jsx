@@ -3,7 +3,6 @@ import { Package, AlertTriangle, CheckCircle2, XCircle, Inbox, Tag, Hash, Layout
 import apiFetch, { API_ROUTES } from "../../Config/api";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
-import StockBar from "../../Components/StockBar";
 import ModalDetalleInsumo from "../../Components/Inventario/ModalDetalleInsumo";
 
 const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo"];
@@ -117,10 +116,6 @@ function TarjetaInsumo({ i, onClick, T }) {
             </div>
           )}
         </div>
-        <div style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}`, paddingTop: 7 }}>
-          <span style={{ fontSize: "0.9rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: T.textFaint, display: "block", marginBottom: 5 }}>Stock</span>
-          <StockBar stock={i.stock ?? 0} isDark={isDark} />
-        </div>
       </div>
     </div>
   );
@@ -143,12 +138,11 @@ function TablaInsumos({ filtrados, onSelect, T }) {
     <div style={{ overflowX: "auto", width: "100%" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 520 }}>
         <colgroup>
-          <col style={{ width: "25%" }} />
-          <col style={{ width: "18%" }} />
+          <col style={{ width: "27%" }} />
           <col style={{ width: "20%" }} />
-          <col style={{ width: "17%" }} />
-          <col style={{ width: "10%" }} />
-          <col style={{ width: "10%" }} />
+          <col style={{ width: "22%" }} />
+          <col style={{ width: "16%" }} />
+          <col style={{ width: "15%" }} />
         </colgroup>
         <thead>
           <tr>
@@ -157,7 +151,6 @@ function TablaInsumos({ filtrados, onSelect, T }) {
             <th style={thBase}>Marca / Modelo</th>
             <th style={thBase}>N° Serie</th>
             <th style={{ ...thBase, textAlign: "center" }}>Estado</th>
-            <th style={thBase}>Stock</th>
           </tr>
         </thead>
         <tbody>
@@ -197,9 +190,6 @@ function TablaInsumos({ filtrados, onSelect, T }) {
                 <td style={{ ...tdBase, borderBottom: borderB, textAlign: "center", overflow: "visible" }}>
                   <BadgeEstado estado={i.estado} />
                 </td>
-                <td style={{ ...tdBase, borderBottom: borderB, overflow: "visible" }}>
-                  <StockBar stock={i.stock ?? 0} isDark={isDark} />
-                </td>
               </tr>
             );
           })}
@@ -215,7 +205,7 @@ export default function VistaInsumos({ T }) {
   const [loading,    setLoading]    = useState(true);
   const [syncing,    setSyncing]    = useState(false);
   const [ultimaSync, setUltimaSync] = useState(null);
-  const [filtros,    setFiltros]    = useState({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos" });
+  const [filtros,    setFiltros]    = useState({ busqueda: "", estado: "Todos", categoria: "Todos" });
   const [viewMode,   setViewMode]   = useState("cards");
   const [insumoSel,  setInsumoSel]  = useState(null);
 
@@ -235,7 +225,6 @@ export default function VistaInsumos({ T }) {
     { key: "busqueda",  label: "Búsqueda",  type: "search", placeholder: "Nombre, marca, modelo..." },
     { key: "estado",    label: "Estado",     type: "select", opts: ["Todos", ...ESTADO_OPTS] },
     { key: "categoria", label: "Categoría",  type: "select", opts: catOpts },
-    { key: "stock",     label: "Stock",      type: "select", opts: ["Todos", "Con stock", "Sin stock"] },
   ];
 
   const filtrados = insumos.filter(i => {
@@ -246,15 +235,12 @@ export default function VistaInsumos({ T }) {
     }
     if (filtros.estado    !== "Todos" && i.estado !== filtros.estado)              return false;
     if (filtros.categoria !== "Todos" && i.nombre_categoria !== filtros.categoria) return false;
-    if (filtros.stock === "Con stock" && !(i.stock > 0))                           return false;
-    if (filtros.stock === "Sin stock" && i.stock > 0)                              return false;
     return true;
   });
 
-  const hayFiltros = filtros.busqueda || filtros.estado !== "Todos" || filtros.categoria !== "Todos" || filtros.stock !== "Todos";
-  const limpiar    = () => setFiltros({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos" });
+  const hayFiltros = filtros.busqueda || filtros.estado !== "Todos" || filtros.categoria !== "Todos";
+  const limpiar    = () => setFiltros({ busqueda: "", estado: "Todos", categoria: "Todos" });
 
-  const totalStock    = insumos.reduce((s, i) => s + (i.stock || 0), 0);
   const estadoMalo    = insumos.filter(i => i.estado === "Malo").length;
   const estadoRegular = insumos.filter(i => i.estado === "Regular").length;
 
@@ -264,10 +250,9 @@ export default function VistaInsumos({ T }) {
         <div style={{ maxWidth: 1400, width: "100%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 10 }}>
 
           {/* KPIs */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {[
               { label: "Total insumos",   val: insumos.length, color: "#3b82f6", icon: Package      },
-              { label: "Piezas en stock", val: totalStock,     color: "#16a34a", icon: CheckCircle2 },
               { label: "Estado malo",     val: estadoMalo,     color: "#dc2626", icon: XCircle      },
               { label: "Estado regular",  val: estadoRegular,  color: "#ca8a04", icon: AlertTriangle },
             ].map(({ label, val, color, icon: Icon }) => (

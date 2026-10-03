@@ -1,43 +1,43 @@
 import { useEffect, useState } from "react";
-import PrintInventarioView from "../Components/PrintInventarioView";
+import PrintEntradasView, { EntradasPayload } from "../Components/PrintEntradasView";
 import { LoadingPrint, ErrorPrint } from "../Components/PrintShared";
 import { waitForImages } from "../Config/printUtils";
 
-const SESSION_KEY = "print_inventario_datos";
+const SESSION_KEY = "print_entradas_datos";
 
-export default function PrintInventarioPage() {
-  const [datos, setDatos] = useState<object[] | null>(null);
+export default function PrintEntradasPage() {
+  const [payload, setPayload] = useState<EntradasPayload | null>(null);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
-  const [aplicados, setAplicados] = useState<string[]>([]);
 
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(SESSION_KEY);
       if (!raw) { setError("No se encontraron datos para imprimir."); return; }
       const parsed = JSON.parse(raw);
-      // Compat: antes se guardaba un array plano; ahora { rows, filtros }
-      const rows = Array.isArray(parsed) ? parsed : parsed?.rows;
-      if (!Array.isArray(rows)) { setError("Datos inválidos."); return; }
-      setDatos(rows);
-      setAplicados(Array.isArray(parsed) ? [] : (Array.isArray(parsed?.filtros) ? parsed.filtros : []));
+      if (!parsed || !Array.isArray(parsed.rows)) { setError("Datos inválidos."); return; }
+      setPayload({
+        rows:    parsed.rows,
+        filtros: Array.isArray(parsed.filtros) ? parsed.filtros : [],
+        total:   Number(parsed.total) || parsed.rows.length,
+      });
     } catch {
-      setError("Error al leer los datos del inventario.");
+      setError("Error al leer los datos de las entradas.");
     }
   }, []);
 
   useEffect(() => {
-    if (!datos) return;
+    if (!payload) return;
     waitForImages().then(() => setReady(true));
-  }, [datos]);
+  }, [payload]);
 
   if (error)  return <ErrorPrint message={error} />;
-  if (!datos) return <LoadingPrint />;
+  if (!payload) return <LoadingPrint />;
 
   return (
     <>
       <div className="pr-toolbar">
-        <span className="pr-toolbar-title">Vista previa — Inventario de Insumos ({datos.length} registros)</span>
+        <span className="pr-toolbar-title">Vista previa — Entradas de material ({payload.rows.length} registros)</span>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="pr-btn pr-btn--outline" onClick={() => window.close()}>Cerrar</button>
           <button
@@ -49,7 +49,7 @@ export default function PrintInventarioPage() {
           </button>
         </div>
       </div>
-      <PrintInventarioView datos={datos as never} filtros={aplicados} />
+      <PrintEntradasView payload={payload} />
     </>
   );
 }

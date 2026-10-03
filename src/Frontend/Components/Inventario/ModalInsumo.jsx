@@ -12,7 +12,7 @@ const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo"];
 
 const INSUMO_VACIO = {
   num_serie: "", nombre: "", descripcion: "", marca: "",
-  modelo: "", stock: 0, estado: "Bueno", id_categoria: "", proveedor: "", imagen_url: "",
+  modelo: "", stock: 0, estado: "Bueno", id_categoria: "", imagen_url: "",
 };
 
 function Field({ label, htmlFor, required, children, textFaint }) {
@@ -115,7 +115,6 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
         stock:        Number(form.stock),
         estado:       form.estado,
         id_categoria: Number(form.id_categoria),
-        proveedor:    form.proveedor   || null,
         imagen_url:   form.imagen_url  || null,
       };
 
@@ -334,19 +333,12 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
               </Field>
             </div>
 
-            {/* N.º serie + Proveedor */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              <Field htmlFor="fi-serie" label="N.º de serie" textFaint={textFaint}>
-                <input id="fi-serie" type="text" value={form.num_serie}
-                  onChange={e => set("num_serie", e.target.value)}
-                  placeholder="Ej. SN-00421" style={inp} onFocus={onFocus} onBlur={onBlur} />
-              </Field>
-              <Field htmlFor="fi-prov" label="Proveedor" textFaint={textFaint}>
-                <input id="fi-prov" type="text" value={form.proveedor ?? ""}
-                  onChange={e => set("proveedor", e.target.value)}
-                  placeholder="Ej. Autopartes García" style={inp} onFocus={onFocus} onBlur={onBlur} />
-              </Field>
-            </div>
+            {/* N.º de serie */}
+            <Field htmlFor="fi-serie" label="N.º de serie" textFaint={textFaint}>
+              <input id="fi-serie" type="text" value={form.num_serie}
+                onChange={e => set("num_serie", e.target.value)}
+                placeholder="Ej. SN-00421" style={inp} onFocus={onFocus} onBlur={onBlur} />
+            </Field>
 
             {/* Stock + Categoría */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
@@ -375,6 +367,11 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
                 {ESTADO_OPTS.map(o => <option key={o}>{o}</option>)}
               </select>
             </Field>
+
+            {/* Nota: campos vacíos se guardan como N/A automáticamente */}
+            <p style={{ margin: 0, fontSize: "10px", color: textFaint, textAlign: "right" }}>
+              Los campos vacíos se guardarán como <b>N/A</b>.
+            </p>
 
             {/* Error */}
             {error && (

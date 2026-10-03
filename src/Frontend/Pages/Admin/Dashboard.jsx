@@ -175,6 +175,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
 
   const nombreCompleto = [usuario.nombre, usuario.ap_paterno, usuario.ap_materno].filter(Boolean).join(" ") || "-";
   const departamento   = usuario.departamento || "-";
+  const sucursal       = usuario.sucursal || usuario.nombre_sucursal || "-";
 
   const ticketVerRef = useRef(null);
   ticketVerRef.current = ticketVer;
@@ -355,7 +356,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
       </div>
 
       {/* Panel derecho solo en xl+ */}
-      <PanelDerecho T={T} nombre={nombreCompleto} departamento={departamento}
+      <PanelDerecho T={T} nombre={nombreCompleto} departamento={departamento} sucursal={sucursal}
         foto={usuario.foto ? `/storage/${usuario.foto}` : null}
         tickets={tickets}
         etiquetaRol="Activo" />

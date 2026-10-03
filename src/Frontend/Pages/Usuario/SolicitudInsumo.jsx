@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Minus, Trash2, Package, AlertCircle, CheckCircle2, Search, Tag, Ticket, ChevronDown, Clock, XCircle, X, History, Inbox, Eye } from "lucide-react";
 import { apiFetch, API_ROUTES } from "../../Config/api";
-import StockBar from "../../Components/StockBar";
 import { useCardStyles } from "../../Components/Card";
 import ModalDetalleInsumo from "../../Components/Inventario/ModalDetalleInsumo";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
@@ -15,24 +14,8 @@ const PRIORITY_OPTIONS = [
   { value: "Baja",    label: "Baja",    color: "#6b7280", bg: "rgba(107,114,128,0.08)",border: "rgba(107,114,128,0.25)"},
 ];
 
-const STATUS_BADGE = {
-  Disponible: { label: "Disponible", bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0" },
-  Bajo:       { label: "Stock Bajo", bg: "#fffbeb", color: "#d97706", border: "#fde68a" },
-  Agotado:    { label: "Agotado",    bg: "#fef2f2", color: "#dc2626", border: "#fecaca" },
-};
-
-function getStockStatus(stock) {
-  if (stock === 0) return "Agotado";
-  if (stock < 5)  return "Bajo";
-  return "Disponible";
-}
-
-function SupplyRow({ supply, isAdded, onAdd, animatingId, T, cartQty, onDetail }) {
-  const status      = getStockStatus(supply.stock);
-  const badge       = STATUS_BADGE[status];
-  const isExhausted = supply.stock === 0;
+function SupplyRow({ supply, isAdded, onAdd, animatingId, T, onDetail }) {
   const isAnimating = animatingId === supply.id_insumo;
-  const atMax       = cartQty >= supply.stock;
 
   return (
     <tr style={{
@@ -72,7 +55,7 @@ function SupplyRow({ supply, isAdded, onAdd, animatingId, T, cartQty, onDetail }
         </div>
       </td>
 
-      <td className="px-3 py-1.5">
+      <td className="px-3 py-1.5 pr-col-categoria">
         {supply.nombre_categoria ? (
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold"
             style={{ background: T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>
@@ -84,30 +67,12 @@ function SupplyRow({ supply, isAdded, onAdd, animatingId, T, cartQty, onDetail }
         )}
       </td>
 
-      <td className="px-3 py-1.5 w-32">
-        <StockBar stock={supply.stock} maxStock={100} />
-      </td>
-
       <td className="px-3 py-1.5">
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border"
-          style={{ background: badge.bg, color: badge.color, borderColor: badge.border }}>
-          <span className="w-1.5 h-1.5 rounded-full" style={{ background: badge.color }} />
-          {badge.label}
-        </span>
-      </td>
-
-      <td className="px-3 py-1.5">
-        {isExhausted ? (
-          <button disabled className="px-2.5 py-1 rounded text-[10px] font-bold cursor-not-allowed"
-            style={{ background: T.surfaceAlt, color: T.textFaint, border: `1px solid ${T.border}`, opacity: 0.6 }}>
-            Agotado
-          </button>
-        ) : isAdded ? (
-          <button onClick={() => !atMax && onAdd(supply.id_insumo)}
-            disabled={atMax}
-            className="px-2.5 py-1 rounded text-[10px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        {isAdded ? (
+          <button onClick={() => onAdd(supply.id_insumo)}
+            className="px-2.5 py-1 rounded text-[10px] font-bold transition-colors"
             style={{ background: T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.3)" }}>
-            {atMax ? `Máx (${supply.stock})` : "+ Agregar otro"}
+            + Agregar otro
           </button>
         ) : (
           <button onClick={() => onAdd(supply.id_insumo)}
@@ -121,7 +86,7 @@ function SupplyRow({ supply, isAdded, onAdd, animatingId, T, cartQty, onDetail }
   );
 }
 
-function RequestItem({ supply, quantity, onRemove, onChangeQty, T }) {
+function RequestItem({ supply, quantity, onRemove, onChangeQty, esUltimo = false, T }) {
   const [localVal, setLocalVal] = useState(String(quantity));
   const editing = useRef(false);
 
@@ -132,6 +97,7 @@ function RequestItem({ supply, quantity, onRemove, onChangeQty, T }) {
 
   const commit = () => {
     editing.current = false;
+    // Mínimo 1 pieza: si se escribe 0 o algo inválido, vuelve a la cantidad actual.
     const n = parseInt(localVal, 10);
     if (!isNaN(n) && n >= 1) onChangeQty(supply.id_insumo, n);
     else setLocalVal(String(quantity));
@@ -149,13 +115,15 @@ function RequestItem({ supply, quantity, onRemove, onChangeQty, T }) {
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-semibold truncate leading-tight" style={{ color: T.text }}>{supply.nombre}</p>
         <p className="text-[9px] font-mono" style={{ color: T.textFaint }}>
-          #{String(supply.id_insumo).padStart(4, "0")} · stock: {supply.stock}
+          #{String(supply.id_insumo).padStart(4, "0")}
         </p>
       </div>
-      {/* Controles de cantidad */}
+      {/* Controles de cantidad — siempre entre 1 y el máximo (el stock lo valida el backend) */}
       <div className="flex items-center gap-1 flex-shrink-0">
         <button onClick={() => onChangeQty(supply.id_insumo, quantity - 1)}
-          className="w-5 h-5 rounded flex items-center justify-center transition-colors"
+          disabled={quantity <= 1}
+          title={quantity <= 1 ? "Debe quedar al menos 1 pieza" : "Quitar una pieza"}
+          className="w-5 h-5 rounded flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           style={{ background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, border: `1px solid ${T.border}`, color: T.textMuted }}>
           <Minus size={9} />
         </button>
@@ -163,23 +131,25 @@ function RequestItem({ supply, quantity, onRemove, onChangeQty, T }) {
           type="text"
           inputMode="numeric"
           value={localVal}
-          onChange={e => { editing.current = true; setLocalVal(e.target.value); }}
+          onChange={e => { editing.current = true; setLocalVal(e.target.value.replace(/[^0-9]/g, "")); }}
           onBlur={commit}
           onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
           className="text-[11px] font-black text-center rounded outline-none"
           style={{ width: "28px", background: T.surfaceAlt, border: `1px solid ${T.border}`, color: T.text, padding: "1px 2px" }}
         />
         <button onClick={() => onChangeQty(supply.id_insumo, quantity + 1)}
-          disabled={quantity >= supply.stock}
-          className="w-5 h-5 rounded flex items-center justify-center transition-colors disabled:opacity-30"
+          title="Agregar una pieza"
+          className="w-5 h-5 rounded flex items-center justify-center transition-colors"
           style={{ background: T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff", border: "1px solid rgba(59,130,246,0.3)", color: "#3b82f6" }}>
           <Plus size={9} />
         </button>
       </div>
       <button onClick={() => onRemove(supply.id_insumo)}
-        className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0 transition-colors"
+        disabled={esUltimo}
+        title={esUltimo ? "Debe quedar al menos un insumo en la solicitud" : "Quitar de la solicitud"}
+        className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         style={{ background: T.isDark ? "rgba(239,68,68,0.12)" : "#fef2f2", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}
-        onMouseEnter={e => { e.currentTarget.style.background = T.isDark ? "rgba(239,68,68,0.25)" : "#fee2e2"; e.currentTarget.style.color = "#dc2626"; }}
+        onMouseEnter={e => { if (esUltimo) return; e.currentTarget.style.background = T.isDark ? "rgba(239,68,68,0.25)" : "#fee2e2"; e.currentTarget.style.color = "#dc2626"; }}
         onMouseLeave={e => { e.currentTarget.style.background = T.isDark ? "rgba(239,68,68,0.12)" : "#fef2f2"; e.currentTarget.style.color = "#f87171"; }}>
         <Trash2 size={10} />
       </button>
@@ -401,14 +371,37 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   const [justification,   setJustification]   = useState("");
   const [searchQuery,     setSearchQuery]     = useState("");
   const [categoryFilter,  setCategoryFilter]  = useState("Todos");
-  const [estadoFilter,    setEstadoFilter]    = useState("Todos");
-  const [sortBy,          setSortBy]          = useState("nombre");
+  // (filtro y orden por stock eliminados: el rol Usuario no ve el stock)
   const [isLoading,       setIsLoading]       = useState(true);
   const [isSubmitting,    setIsSubmitting]    = useState(false);
   const [resultModal,     setResultModal]     = useState(null);
   const [animatingId,     setAnimatingId]     = useState(null);
   const [tab,             setTab]             = useState("nueva");
   const [drawerOpen,      setDrawerOpen]      = useState(false);
+
+  /* ── Estilos del panel móvil ──────────────────────────────────────
+     En celular el alto util cambia cuando aparece/desaparece la barra
+     del navegador: `vh` deja el drawer mas alto que la pantalla y
+     esconde los controles. `dvh` (altura dinamica) lo corrige; el
+     `@supports` mantiene el comportamiento en navegadores viejos. */
+  const estilosMovil = `
+    @keyframes prFade  { from{opacity:0} to{opacity:1} }
+    @keyframes prSheet { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    .pr-drawer { max-height: 88vh; }
+    @supports (max-height: 88dvh) { .pr-drawer { max-height: 88dvh; } }
+    .pr-drawer-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    /* La barra flotante tapa la ultima fila del catalogo */
+    @media (max-width: 1023px) { .pr-catalogo-scroll { padding-bottom: 84px; } }
+    @media (max-width: 400px)  { .pr-col-categoria { display: none; } }
+  `;
+
+  /* Con el drawer abierto la pagina de fondo no debe seguir desplazandose */
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const previo = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previo; };
+  }, [drawerOpen]);
   const [insumoDetalle,   setInsumoDetalle]   = useState(null);
   const [solicitudes,     setSolicitudes]     = useState([]);
   const [solPage,         setSolPage]         = useState(1);
@@ -451,26 +444,18 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   const filteredSupplies = supplies
     .filter(s => {
       if (categoryFilter !== "Todos" && s.nombre_categoria !== categoryFilter) return false;
-      if (estadoFilter !== "Todos" && getStockStatus(s.stock) !== estadoFilter) return false;
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
       return s.nombre?.toLowerCase().includes(q) || s.marca?.toLowerCase().includes(q) || s.modelo?.toLowerCase().includes(q);
-    })
-    .sort((a, b) => {
-      if (sortBy === "nombre")   return a.nombre.localeCompare(b.nombre);
-      if (sortBy === "stock_asc")  return a.stock - b.stock;
-      if (sortBy === "stock_desc") return b.stock - a.stock;
-      return 0;
     });
-  const hayFiltrosInsumos = searchQuery || categoryFilter !== "Todos" || estadoFilter !== "Todos" || sortBy !== "nombre";
-  const limpiarFiltrosInsumos = () => { setSearchQuery(""); setCategoryFilter("Todos"); setEstadoFilter("Todos"); setSortBy("nombre"); };
+  const hayFiltrosInsumos = searchQuery || categoryFilter !== "Todos";
+  const limpiarFiltrosInsumos = () => { setSearchQuery(""); setCategoryFilter("Todos"); };
 
   const handleAddSupply = useCallback((supplyId) => {
     const supply = supplies.find(s => s.id_insumo === supplyId);
     if (!supply) return;
     setRequestCart(prev => {
       const current = prev[supplyId] || 0;
-      if (current >= supply.stock) return prev; // no exceder stock
       return { ...prev, [supplyId]: current + 1 };
     });
     setAnimatingId(supplyId);
@@ -478,16 +463,23 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   }, [supplies]);
 
   const handleRemoveSupply = useCallback((supplyId) => {
-    setRequestCart(prev => { const u = { ...prev }; delete u[supplyId]; return u; });
+    setRequestCart(prev => {
+      // Regla del carrito: siempre debe quedar al menos un insumo.
+      const restantes = Object.keys(prev).filter(k => Number(k) !== Number(supplyId));
+      if (restantes.length === 0) return prev;
+      const u = { ...prev };
+      delete u[supplyId];
+      return u;
+    });
   }, []);
 
   const handleChangeQty = useCallback((supplyId, newQty) => {
-    if (newQty < 1) { handleRemoveSupply(supplyId); return; }
-    const supply = supplies.find(s => s.id_insumo === supplyId);
-    if (!supply) return;
-    const clamped = Math.min(newQty, supply.stock);
-    setRequestCart(prev => ({ ...prev, [supplyId]: clamped }));
-  }, [supplies, handleRemoveSupply]);
+    // Se puede subir o bajar la cantidad, pero nunca por debajo de 1:
+    // antes al bajar de 1 el insumo se quitaba del carrito y la solicitud
+    // se quedaba sin nada que enviar.
+    const n = Math.max(1, parseInt(newQty, 10) || 1);
+    setRequestCart(prev => ({ ...prev, [supplyId]: n }));
+  }, [supplies]);
 
   const cartEntries = Object.entries(requestCart)
     .map(([id, qty]) => ({ supply: supplies.find(s => s.id_insumo === parseInt(id)), quantity: qty, id }))
@@ -501,6 +493,10 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
     const payload = {
       prioridad:   priority || "Media",
       id_empleado: parseInt(usuario.id_empleado, 10),
+      // Justificación GENERAL: es el campo que valida el backend (descripcion
+      // de la solicitud). Sin este campo el POST se rechaza aunque el usuario
+      // haya escrito la justificación.
+      descripcion: justification.trim(),
       insumos:     Object.entries(requestCart).map(([id, qty]) => ({
         id_insumo:   parseInt(id, 10),
         cantidad:    parseInt(qty, 10),
@@ -513,7 +509,9 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
       const data = await res.json();
       if (!res.ok) {
         const errorMsg = data.errores ? data.errores.map(e => e.mensaje).join(", ") : (data.error || "Error al crear el ticket");
-        // Si es error de stock, refrescar catálogo y corregir carrito
+        // Si es error de stock, refrescar catálogo y quitar del carrito los
+        // insumos que ya no aparecen (agotados). El cliente ya no conoce el
+        // stock: la cantidad exacta la revalida el backend al enviar.
         if (res.status === 400 && errorMsg.toLowerCase().includes("stock")) {
           try {
             const r = await apiFetch(API_ROUTES.INSUMOS);
@@ -521,13 +519,10 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
               const fresh = await r.json();
               if (Array.isArray(fresh)) {
                 setSupplies(fresh);
-                // Ajustar cantidades del carrito al stock real
                 setRequestCart(prev => {
                   const next = { ...prev };
-                  for (const [id, qty] of Object.entries(next)) {
-                    const ins = fresh.find(s => s.id_insumo === parseInt(id));
-                    if (!ins || ins.stock === 0) delete next[id];
-                    else if (qty > ins.stock) next[id] = ins.stock;
+                  for (const id of Object.keys(next)) {
+                    if (!fresh.some(s => s.id_insumo === parseInt(id))) delete next[id];
                   }
                   return next;
                 });
@@ -967,31 +962,6 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     )}
                   </div>
 
-                  {/* Estado */}
-                  <select value={estadoFilter} onChange={e => setEstadoFilter(e.target.value)}
-                    style={{ height: 32, paddingLeft: 8, paddingRight: 8, borderRadius: 7, fontSize: 11, fontWeight: 600,
-                        border: `1px solid ${estadoFilter !== "Todos" ? "#3b82f6" : T.border}`,
-                        background: estadoFilter !== "Todos" ? (T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff") : T.surfaceAlt,
-                        color: estadoFilter !== "Todos" ? "#3b82f6" : T.textMuted,
-                        outline: "none", cursor: "pointer" }}>
-                    <option value="Todos">Estado: Todos</option>
-                    <option value="Disponible">✓ Disponible</option>
-                    <option value="Bajo">⚠ Stock Bajo</option>
-                    <option value="Agotado">✕ Agotado</option>
-                  </select>
-
-                  {/* Ordenar */}
-                  <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-                    style={{ height: 32, paddingLeft: 8, paddingRight: 8, borderRadius: 7, fontSize: 11, fontWeight: 600,
-                        border: `1px solid ${sortBy !== "nombre" ? "#3b82f6" : T.border}`,
-                        background: sortBy !== "nombre" ? (T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff") : T.surfaceAlt,
-                        color: sortBy !== "nombre" ? "#3b82f6" : T.textMuted,
-                        outline: "none", cursor: "pointer" }}>
-                    <option value="nombre">Ordenar: A–Z</option>
-                    <option value="stock_desc">Stock: Mayor</option>
-                    <option value="stock_asc">Stock: Menor</option>
-                  </select>
-
                   {/* Limpiar */}
                   {hayFiltrosInsumos && (
                     <button onClick={limpiarFiltrosInsumos}
@@ -1024,13 +994,14 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
               </div>
 
               {/* Tabla de insumos */}
-              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, overflow: "hidden", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-                <div style={{ overflowX: "auto", overflowY: "auto", flex: 1, minHeight: 0 }}>
-                  <table className="w-full text-left border-collapse" style={{ minWidth: "420px" }}>
+              <div className="pr-catalogo-scroll" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, overflow: "hidden", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+                <div style={{ overflowX: "auto", overflowY: "auto", flex: 1, minHeight: 0, WebkitOverflowScrolling: "touch" }}>
+                  <table className="w-full text-left border-collapse" style={{ minWidth: "360px" }}>
                     <thead>
                       <tr style={{ background: T.surfaceAlt, position: "sticky", top: 0, zIndex: 10 }}>
-                        {["Img", "Insumo", "Categoría", "Stock", "Estado", "Acción"].map(col => (
-                          <th key={col} style={{ padding: "8px 10px", fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+                        {["Img", "Insumo", "Categoría", "Acción"].map((col, i) => (
+                          <th key={i} className={col === "Categoría" ? "pr-col-categoria" : undefined}
+                            style={{ padding: "8px 10px", fontSize: 10, fontWeight: 700, textTransform: "uppercase",
                               letterSpacing: "0.06em", whiteSpace: "nowrap", color: T.textMuted,
                               borderBottom: `1px solid ${T.border}` }}>
                             {col}
@@ -1040,14 +1011,14 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     </thead>
                     <tbody>
                       {isLoading ? (
-                        <tr><td colSpan={5} style={{ padding: "64px 0", textAlign: "center" }}>
+                        <tr><td colSpan={4} style={{ padding: "64px 0", textAlign: "center" }}>
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: T.textFaint }}>
                             <svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
                             <span style={{ fontSize: 12 }}>Cargando insumos…</span>
                           </div>
                         </td></tr>
                       ) : filteredSupplies.length === 0 ? (
-                        <tr><td colSpan={5} style={{ padding: "64px 0", textAlign: "center" }}>
+                        <tr><td colSpan={4} style={{ padding: "64px 0", textAlign: "center" }}>
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: T.textFaint }}>
                             <Package size={28} />
                             <span style={{ fontSize: 13, fontWeight: 600 }}>Sin resultados</span>
@@ -1058,7 +1029,6 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                           <SupplyRow key={supply.id_insumo} supply={supply}
                             isAdded={!!requestCart[supply.id_insumo]}
                             onAdd={handleAddSupply} animatingId={animatingId}
-                            cartQty={requestCart[supply.id_insumo] || 0}
                             onDetail={setInsumoDetalle} T={T} />
                         ))
                       )}
@@ -1114,7 +1084,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                   </div>
                 ) : (
                   cartEntries.map(({ supply, quantity, id }) => (
-                    <RequestItem key={id} supply={supply} quantity={quantity} onRemove={handleRemoveSupply} onChangeQty={handleChangeQty} T={T} />
+                    <RequestItem key={id} supply={supply} quantity={quantity} onRemove={handleRemoveSupply} onChangeQty={handleChangeQty} esUltimo={cartEntries.length <= 1} T={T} />
                   ))
                 )}
               </div>
@@ -1191,6 +1161,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
       </div>
 
       {/* ── Drawer móvil — panel solicitud ─────────────────────── */}
+      <style>{estilosMovil}</style>
       <div className="lg:hidden">
           {/* Barra flotante inferior */}
           <div
@@ -1200,23 +1171,26 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
               background: T.isDark ? "#1e3a5f" : "#1e3a5f",
               borderTop: "2px solid rgba(96,165,250,0.3)",
               padding: "10px 16px",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
+              paddingBottom: "calc(10px + env(safe-area-inset-bottom))",
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
               cursor: "pointer",
               boxShadow: "0 -4px 20px rgba(0,0,0,0.25)",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Ticket size={16} style={{ color: "#60a5fa" }} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Solicitud en Proceso</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+              <Ticket size={16} style={{ color: "#60a5fa", flexShrink: 0 }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>
+                {totalItemCount > 0 ? "Tu solicitud" : "Agrega insumos"}
+              </span>
               {totalItemCount > 0 && (
-                <span style={{ fontSize: 11, fontWeight: 800, padding: "1px 8px", borderRadius: 99, background: "#2563eb", color: "#fff" }}>
-                  {totalItemCount}
+                <span style={{ fontSize: 11, fontWeight: 800, padding: "1px 8px", borderRadius: 99, background: "#2563eb", color: "#fff", flexShrink: 0 }}>
+                  {totalItemCount} pza.
                 </span>
               )}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               {cartEntries.length > 0 && (
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", whiteSpace: "nowrap" }}>
                   {cartEntries.length} insumo{cartEntries.length !== 1 ? "s" : ""}
                 </span>
               )}
@@ -1229,18 +1203,24 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
             <>
               <div
                 onClick={() => setDrawerOpen(false)}
-                style={{ position: "fixed", inset: 0, zIndex: 51, background: "rgba(0,0,0,0.45)" }}
+                style={{ position: "fixed", inset: 0, zIndex: 51, background: "rgba(0,0,0,0.45)", animation: "prFade 0.18s ease" }}
               />
-              <div style={{
-                position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 52,
-                background: T.surface,
-                borderRadius: "16px 16px 0 0",
-                border: `1px solid ${T.border}`,
-                boxShadow: "0 -8px 32px rgba(0,0,0,0.3)",
-                maxHeight: "85vh",
-                display: "flex", flexDirection: "column",
-                overflow: "hidden",
-              }}>
+              <div
+                className="pr-drawer"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Solicitud en proceso"
+                style={{
+                  position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 52,
+                  background: T.surface,
+                  borderRadius: "16px 16px 0 0",
+                  border: `1px solid ${T.border}`,
+                  boxShadow: "0 -8px 32px rgba(0,0,0,0.3)",
+                  display: "flex", flexDirection: "column",
+                  overflow: "hidden",
+                  animation: "prSheet 0.22s cubic-bezier(0.32, 0.72, 0, 1)",
+                }}
+              >
                 {/* Handle */}
                 <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
                   <div style={{ width: 36, height: 4, borderRadius: 99, background: T.isDark ? "rgba(255,255,255,0.15)" : "#cbd5e1" }} />
@@ -1269,7 +1249,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                 </div>
 
                 {/* Contenido scrollable */}
-                <div style={{ overflowY: "auto", flex: 1 }}>
+                <div className="pr-drawer-scroll" style={{ overflowY: "auto", flex: 1, minHeight: 0, overscrollBehavior: "contain" }}>
                   {/* Solicitante */}
                   <div style={{ padding: "12px 16px", background: T.isDark ? T.surfaceAlt : "#f0f4f8", borderBottom: `1px solid ${T.border}` }}>
                     <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint, marginBottom: 8 }}>Solicitante</p>
@@ -1296,13 +1276,13 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                       </div>
                     ) : (
                       cartEntries.map(({ supply, quantity, id }) => (
-                        <RequestItem key={id} supply={supply} quantity={quantity} onRemove={handleRemoveSupply} onChangeQty={handleChangeQty} T={T} />
+                        <RequestItem key={id} supply={supply} quantity={quantity} onRemove={handleRemoveSupply} onChangeQty={handleChangeQty} esUltimo={cartEntries.length <= 1} T={T} />
                       ))
                     )}
                   </div>
 
                   {/* Prioridad + justificación + botón */}
-                  <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12, borderTop: `1px solid ${T.border}` }}>
+                  <div style={{ padding: "12px 16px", paddingBottom: "calc(16px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 12, borderTop: `1px solid ${T.border}`, background: T.surface }}>
                     <div>
                       <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textMuted, display: "block", marginBottom: 6 }}>Prioridad</label>
                       <div style={{ position: "relative" }}>
@@ -1311,7 +1291,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                           onChange={e => setPriority(e.target.value)}
                           style={{
                             width: "100%", height: 40, paddingLeft: 12, paddingRight: 32,
-                            borderRadius: 8, fontSize: 13, fontWeight: 600,
+                            borderRadius: 8, fontSize: 13, fontWeight: 600, boxSizing: "border-box",
                             border: `1px solid ${activePriority ? activePriority.border : T.border}`,
                             background: activePriority ? activePriority.bg : T.surfaceAlt,
                             color: activePriority ? activePriority.color : T.textFaint,

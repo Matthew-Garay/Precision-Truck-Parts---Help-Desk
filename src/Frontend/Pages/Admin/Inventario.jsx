@@ -4,6 +4,7 @@ import {
   Package, AlertTriangle, BarChart3,
   Inbox, Plus, Pencil, RefreshCw, Layers, Eye,
   CheckCircle2, Activity, Download, FileSpreadsheet, FileText,
+  ArrowDownToLine, History,
 } from "lucide-react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -13,6 +14,7 @@ import FiltrosToolbar    from "../../Components/FiltrosToolbar";
 import { useToast }      from "../../Components/Feedback";
 import ModalInsumo       from "../../Components/Inventario/ModalInsumo";
 import ModalDetalleInsumo   from "../../Components/Inventario/ModalDetalleInsumo";
+import ModalEntradaInsumo   from "../../Components/Inventario/ModalEntradaInsumo";
 import { useTheme }      from "../../Config/themeContext.js";
 
 // ── Paleta ────────────────────────────────────────────────────────
@@ -141,7 +143,7 @@ function KpiCard({ label, value, sub, icon: Icon, color, highlight = false, pct 
 // ── Tabla ────────────────────────────────────────────────────────
 const COLS = ["", "Nombre", "Categoría", "Estado", "Stock", "Acciones"];
 
-function DataTable({ rows, onEdit, onDetail }) {
+function DataTable({ rows, onEdit, onDetail, onEntrada, onHistorial }) {
   const [hoverRow, setHoverRow] = useState(null);
   const { T } = useTheme();
 
@@ -161,7 +163,7 @@ function DataTable({ rows, onEdit, onDetail }) {
         <col style={{ width: "22%" }} />
         <col style={{ width: "14%" }} />
         <col style={{ width: "16%" }} />
-        <col style={{ width: "72px" }} />
+        <col style={{ width: "132px" }} />
       </colgroup>
       <thead>
         <tr>{COLS.map(c => <th key={c} style={th}>{c}</th>)}</tr>
@@ -230,13 +232,133 @@ function DataTable({ rows, onEdit, onDetail }) {
               {/* Acciones */}
               <td style={{ ...td }}>
                 <div style={{ display: "flex", gap: "3px" }}>
+                  <IconBtn onClick={() => onEntrada(row)} title="Registrar entrada de material" hoverColor={TEAL.base} hoverBg={TEAL.light}>
+                    <ArrowDownToLine size={12} />
+                  </IconBtn>
                   <IconBtn onClick={() => onEdit(row)} title="Editar" hoverColor={ORANGE.base} hoverBg={ORANGE.light}>
                     <Pencil size={12} />
                   </IconBtn>
                   <IconBtn onClick={() => onDetail(row)} title="Ver detalle" hoverColor="#2563eb" hoverBg="#eff6ff">
                     <Eye size={12} />
                   </IconBtn>
+                  <IconBtn onClick={() => onHistorial(row)} title="Ver entradas de este insumo" hoverColor="#6366f1" hoverBg="#eef2ff">
+                    <History size={12} />
+                  </IconBtn>
                 </div>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+// ── Entradas de material: tabla de ingresos al inventario ──────────
+const COLS_ENTRADAS = ["Fecha", "Insumo", "Cantidad", "Stock", "Registró", "Motivo"];
+
+function EntradasTable({ rows }) {
+  const [hoverRow, setHoverRow] = useState(null);
+  const { T } = useTheme();
+
+  const th = {
+    padding: "6px 10px", fontSize: "10px", fontWeight: 700,
+    textTransform: "uppercase", letterSpacing: "0.07em",
+    color: T.textMuted, background: T.surfaceAlt,
+    borderBottom: `2px solid ${T.border}`, textAlign: "left",
+    whiteSpace: "nowrap", position: "sticky", top: 0, zIndex: 10,
+  };
+  const td = {
+    padding: "7px 10px", borderBottom: `1px solid ${T.border}`,
+    verticalAlign: "middle", color: T.text, overflow: "hidden", textOverflow: "ellipsis",
+  };
+
+  /* La hora SI se guarda (columna DATETIME). Antes se recortaba porque el
+     formato de 12 h ("30/09/2026, 06:23 p.m.") no cabia en la celda de 130px
+     y esta trae overflow:hidden — solo se leia la fecha.
+     Ahora: fecha arriba, hora 24h abajo (y title con el valor completo). */
+  const toDate = v => {
+    if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
+    const s = String(v ?? "").trim();
+    if (!s) return null;
+    // MySQL devuelve "YYYY-MM-DD HH:MM:SS"; la API lo envia como ISO ("...Z")
+    const d = new Date(/^\d{4}-\d{2}-\d{2} /.test(s) ? s.replace(" ", "T") : s);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+
+  const fmtFecha = f => {
+    const d = toDate(f);
+    if (!d) return { dia: f ? String(f) : "—", hora: "", full: "" };
+    return {
+      dia:  d.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }),
+      hora: d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      full: d.toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }),
+    };
+  };
+
+  return (
+    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", tableLayout: "fixed", minWidth: "960px" }}>
+      <colgroup>
+        <col style={{ width: "130px" }} />
+        <col style={{ width: "26%" }} />
+        <col style={{ width: "92px" }} />
+        <col style={{ width: "104px" }} />
+        <col style={{ width: "18%" }} />
+        <col />
+      </colgroup>
+      <thead>
+        <tr>{COLS_ENTRADAS.map(c => <th key={c} style={th}>{c}</th>)}</tr>
+      </thead>
+      <tbody>
+        {rows.map((m, idx) => {
+          const hover = hoverRow === idx;
+          return (
+            <tr
+              key={m.id_movimiento}
+              onMouseEnter={() => setHoverRow(idx)}
+              onMouseLeave={() => setHoverRow(null)}
+              style={{ background: hover ? (T.isDark ? "rgba(255,255,255,0.03)" : "#f8fafc") : "transparent", transition: "background 0.1s" }}
+            >
+              <td title={fmtFecha(m.fecha).full} style={{ ...td, fontSize: "11px", color: T.textMuted, whiteSpace: "nowrap", overflow: "visible" }}>
+                <div style={{ lineHeight: 1.25 }}>{fmtFecha(m.fecha).dia}</div>
+                {fmtFecha(m.fecha).hora && (
+                  <div style={{ fontWeight: 800, color: T.text, fontVariantNumeric: "tabular-nums", lineHeight: 1.25 }}>
+                    {fmtFecha(m.fecha).hora}
+                  </div>
+                )}
+              </td>
+              <td style={td}>
+                <div style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {m.nombre_insumo || "—"}
+                </div>
+                {(m.marca || m.modelo) && (
+                  <div style={{ fontSize: "10px", color: T.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {[m.marca, m.modelo].filter(Boolean).join(" · ")}
+                  </div>
+                )}
+              </td>
+              <td style={{ ...td, fontWeight: 800, fontVariantNumeric: "tabular-nums", color: "#16a34a" }}>
+                +{m.cantidad}
+              </td>
+              <td style={{ ...td, fontSize: "11px", color: T.textMuted, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                {m.stock_anterior ?? 0} → {m.stock_nuevo ?? 0}
+              </td>
+              <td style={{ ...td, fontSize: "11px", whiteSpace: "nowrap" }}>
+                {m.nombre_empleado || "—"}
+              </td>
+              <td style={td}>
+                <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={m.motivo || ""}>
+                  {m.motivo || "—"}
+                </div>
+                {m.folio_solicitud && (
+                  <span style={{
+                    display: "inline-block", marginTop: "2px", fontSize: "9px", fontWeight: 700,
+                    color: "#0d9488", background: "rgba(13,148,136,0.10)",
+                    border: "1px solid rgba(13,148,136,0.30)", borderRadius: "4px", padding: "1px 6px",
+                  }}>
+                    {m.folio_solicitud}
+                  </span>
+                )}
               </td>
             </tr>
           );
@@ -489,9 +611,9 @@ async function exportarExcel(datos) {
   );
 }
 
-function exportarPDF(datos) {
-  sessionStorage.setItem("print_inventario_datos", JSON.stringify(datos));
-  const win = window.open("/print/inventario", "_blank", "width=1200,height=800");
+// Abre la vista previa de impresión en una pestaña nueva (avisa si está bloqueada)
+function abrirImpresion(url) {
+  const win = window.open(url, "_blank", "width=1200,height=800");
   if (!win) {
     const aviso = document.createElement("div");
     aviso.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#1D1D1B;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;border-left:4px solid #0d9488;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
@@ -501,7 +623,13 @@ function exportarPDF(datos) {
   }
 }
 
-function BtnExportar({ datos, T }) {
+// Hoja de la pestaña Insumos: payload { rows, filtros }
+function exportarPDF(datos, filtrosAplicados = []) {
+  sessionStorage.setItem("print_inventario_datos", JSON.stringify({ rows: datos, filtros: filtrosAplicados }));
+  abrirImpresion("/print/inventario");
+}
+
+function BtnExportar({ datos, T, vista = "insumos", filtros = [], onPdf }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -532,9 +660,13 @@ function BtnExportar({ datos, T }) {
           borderRadius: "6px",
           boxShadow: "0 4px 16px rgba(0,0,0,0.14)", minWidth: "148px", overflow: "hidden",
         }}>
-          {[{ label: "Excel (.xlsx)", icon: FileSpreadsheet, color: "#16a34a", fn: () => { exportarExcel(datos).catch(console.error); setOpen(false); } },
-            { label: "PDF (.pdf)",   icon: FileText,        color: "#dc2626", fn: () => { exportarPDF(datos);   setOpen(false); } },
-          ].map(({ label, icon: Icon, color, fn }) => (
+          {(vista === "entradas"
+            ? [{ label: "Hoja PDF / Imprimir", icon: FileText, color: "#dc2626", fn: () => { onPdf?.(); setOpen(false); } }]
+            : [
+                { label: "Excel (.xlsx)", icon: FileSpreadsheet, color: "#16a34a", fn: () => { exportarExcel(datos).catch(console.error); setOpen(false); } },
+                { label: "PDF (.pdf)",    icon: FileText,        color: "#dc2626", fn: () => { exportarPDF(datos, filtros); setOpen(false); } },
+              ]
+          ).map(({ label, icon: Icon, color, fn }) => (
             <button key={label} onClick={fn}
               style={{
                 width: "100%", display: "flex", alignItems: "center", gap: "8px",
@@ -566,6 +698,16 @@ export default function Inventario() {
   const [pageSize,   setPageSize]   = useState(PAGE_SIZE);
   const [modal,      setModal]      = useState(null);
   const [detalle,    setDetalle]    = useState(null);
+  const [entrada,    setEntrada]    = useState(null);
+  // ── Vista "Entradas" (entradas de material) ──
+  const [vista,      setVista]      = useState("insumos");
+  const [movs,       setMovs]       = useState([]);
+  const [movTotal,   setMovTotal]   = useState(0);
+  const [movLoading, setMovLoading] = useState(false);
+  const [movPagina,  setMovPagina]  = useState(1);
+  const [movPageSize, setMovPageSize] = useState(PAGE_SIZE);
+  const [movFiltros, setMovFiltros] = useState({ q: "", fecha_inicio: "", fecha_fin: "", id_insumo: "" });
+  const [movInsumo,  setMovInsumo]  = useState(null); // nombre del insumo activo en el chip de filtro
   const prevRef = useRef(null);
   const toast   = useToast();
 
@@ -594,17 +736,102 @@ export default function Inventario() {
       .finally(() => { setLoading(false); setSyncing(false); });
   };
 
+  // Entradas de material — GET /api/solicitudes/movimientos (admin)
+  const cargarEntradas = () => {
+    setMovLoading(true);
+    const p = new URLSearchParams({
+      page:  String(movPagina),
+      limit: String(movPageSize),
+      tipo:  "Entrada",
+    });
+    if (movFiltros.q?.trim())    p.set("q", movFiltros.q.trim());
+    if (movFiltros.fecha_inicio) p.set("fecha_inicio", movFiltros.fecha_inicio);
+    if (movFiltros.fecha_fin)    p.set("fecha_fin", movFiltros.fecha_fin);
+    if (movFiltros.id_insumo)    p.set("id_insumo", String(movFiltros.id_insumo));
+    apiFetch(`/api/solicitudes/movimientos?${p.toString()}`)
+      .then(r => r.json())
+      .then(d => {
+        setMovs(Array.isArray(d?.rows) ? d.rows : []);
+        setMovTotal(Number(d?.total) || 0);
+      })
+      .catch(() => {})
+      .finally(() => setMovLoading(false));
+  };
+
   useEffect(() => {
     cargarInventario(true);
     apiFetch("/api/categorias?tipo=insumo").then(r => r.json()).then(d => setCategorias(Array.isArray(d) ? d : [])).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useAutoRefresh(() => cargarInventario(false), 30000);
+  // Cargar las entradas al entrar a la pestaña Entradas o al cambiar filtros/página
+  useEffect(() => {
+    if (vista !== "entradas") return;
+    cargarEntradas();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vista, movPagina, movPageSize, movFiltros]);
+
+  useAutoRefresh(() => {
+    if (vista === "entradas") cargarEntradas();
+    else cargarInventario(false);
+  }, 30000);
 
   const handleSave = (data, isEdit) => {
     setInsumos(prev => isEdit ? prev.map(i => i.id_insumo === data.id_insumo ? data : i) : [...prev, data]);
     setModal(null);
+  };
+
+  // Ver las entradas de un insumo puntual → pestaña Entradas con filtro id_insumo
+  const verEntradasInsumo = (row) => {
+    setMovFiltros({ q: "", fecha_inicio: "", fecha_fin: "", id_insumo: row.id_insumo });
+    setMovInsumo(row.nombre);
+    setMovPagina(1);
+    setVista("entradas");
+  };
+  const limpiarInsumo = () => {
+    setMovFiltros(p => ({ ...p, id_insumo: "" }));
+    setMovInsumo(null);
+    setMovPagina(1);
+  };
+
+  // Etiquetas de los filtros activos de la pestaña Insumos (para la hoja impresa)
+  const etiquetasInsumos = [];
+  if (filtros.busqueda?.trim())                            etiquetasInsumos.push(`Búsqueda: "${filtros.busqueda.trim()}"`);
+  if (filtros.estado && filtros.estado !== "Todos")        etiquetasInsumos.push(`Estado: ${filtros.estado}`);
+  if (filtros.categoria && filtros.categoria !== "Todos")  etiquetasInsumos.push(`Categoría: ${filtros.categoria}`);
+  if (filtros.stock && filtros.stock !== "Todos")          etiquetasInsumos.push(`Stock: ${filtros.stock}`);
+
+  // Hoja de la pestaña Entradas: trae TODAS las entradas con los filtros actuales.
+  // El backend limita a 500 registros por petición → se pagina en bloques de 500.
+  const exportarEntradasPDF = async () => {
+    try {
+      const BLOQUE = 500;
+      const MAX    = 20000; // tope de seguridad
+      let rows = [], total = 0, page = 1, chunk = [];
+      do {
+        const p = new URLSearchParams({ page: String(page), limit: String(BLOQUE), tipo: "Entrada" });
+        if (movFiltros.q?.trim())    p.set("q", movFiltros.q.trim());
+        if (movFiltros.fecha_inicio) p.set("fecha_inicio", movFiltros.fecha_inicio);
+        if (movFiltros.fecha_fin)    p.set("fecha_fin", movFiltros.fecha_fin);
+        if (movFiltros.id_insumo)    p.set("id_insumo", String(movFiltros.id_insumo));
+        const r = await apiFetch(`/api/solicitudes/movimientos?${p.toString()}`);
+        const d = await r.json();
+        chunk = Array.isArray(d?.rows) ? d.rows : [];
+        rows  = rows.concat(chunk);
+        total = Number(d?.total) || rows.length;
+        page += 1;
+      } while (chunk.length === BLOQUE && rows.length < total && rows.length < MAX);
+
+      const etiquetas = [];
+      if (movFiltros.q?.trim())                            etiquetas.push(`Búsqueda: "${movFiltros.q.trim()}"`);
+      if (movFiltros.fecha_inicio || movFiltros.fecha_fin) etiquetas.push(`Periodo: ${movFiltros.fecha_inicio || "…"} al ${movFiltros.fecha_fin || "…"}`);
+      if (movInsumo)                                       etiquetas.push(`Insumo: ${movInsumo}`);
+
+      sessionStorage.setItem("print_entradas_datos", JSON.stringify({ rows, filtros: etiquetas, total }));
+      abrirImpresion("/print/entradas");
+    } catch {
+      toast.error("No se pudo generar la hoja de entradas");
+    }
   };
 
   const catOpts      = ["Todos", ...Array.from(new Set(insumos.map(i => i.nombre_categoria).filter(Boolean)))];
@@ -612,7 +839,14 @@ export default function Inventario() {
     { key: "busqueda",  label: "Búsqueda Rápida", type: "search", placeholder: "Nombre, marca, modelo…" },
     { key: "estado",    label: "Estado",           type: "select", opts: ["Todos", ...ESTADO_OPTS] },
     { key: "categoria", label: "Categoría",        type: "select", opts: catOpts },
-    { key: "stock",     label: "Stock",            type: "select", opts: ["Todos", "Con stock"] },
+    { key: "stock",     label: "Stock",            type: "select", opts: ["Todos", "Con stock", "Sin stock"] },
+  ];
+
+  // Filtros de la pestaña "Entradas"
+  const camposFiltroE = [
+    { key: "q",            label: "Búsqueda", type: "search", placeholder: "Insumo, motivo, folio…", debounce: 300 },
+    { key: "fecha_inicio", label: "Desde",    type: "date" },
+    { key: "fecha_fin",    label: "Hasta",    type: "date" },
   ];
 
   const filtrados = insumos.filter(i => {
@@ -640,6 +874,10 @@ export default function Inventario() {
   const estadoMalo     = insumos.filter(i => i.estado === "Malo" || i.estado === "Regular").length;
   const tasaSalud      = insumos.length > 0 ? Math.round((estadoBueno / insumos.length) * 100) : 0;
 
+  // Entradas: paginación del servidor
+  const movTotalPaginas = Math.max(1, Math.ceil(movTotal / movPageSize));
+  const movPaginaActual = Math.min(movPagina, movTotalPaginas);
+
   const { T } = useTheme();
 
   return (
@@ -647,26 +885,58 @@ export default function Inventario() {
       <div style={{ maxWidth: "1400px", width: "100%", margin: "0 auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "10px", flex: 1, minHeight: 0 }}>
 
         {/* ── Page Header ───────────────────────────────────────── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap" }}>
-          {syncing && <RefreshCw size={11} style={{ color: TEAL.base, animation: "spin 1s linear infinite" }} />}
-          <BtnExportar datos={filtrados} T={T} />
-          <button
-            onClick={() => setModal({})}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: "6px",
-              padding: "8px 14px", borderRadius: "6px", border: "none",
-              background: TEAL.base, color: "#fff",
-              fontSize: "11px", fontWeight: 600, cursor: "pointer",
-              transition: "opacity 0.15s",
-            }}
-            onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
-            onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-          >
-            <Plus size={14} /> Nuevo insumo
-          </button>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", flexWrap: "wrap" }}>
+          {/* Tabs: Insumos / Entradas */}
+          <div style={{ display: "flex", gap: "4px" }}>
+            {[
+              { id: "insumos",  label: "Insumos",  Icon: Package },
+              { id: "entradas", label: "Entradas", Icon: ArrowDownToLine },
+            ].map(({ id, label, Icon }) => {
+              const activa = vista === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setVista(id)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: "5px",
+                    padding: "7px 14px", borderRadius: "6px", cursor: "pointer",
+                    fontSize: "11px", fontWeight: 700, transition: "all 0.15s",
+                    border: `1px solid ${activa ? TEAL.base : T.border}`,
+                    background: activa ? (T.isDark ? "rgba(13,148,136,0.18)" : TEAL.light) : "transparent",
+                    color: activa ? TEAL.base : T.textMuted,
+                  }}
+                >
+                  <Icon size={13} /> {label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {syncing && <RefreshCw size={11} style={{ color: TEAL.base, animation: "spin 1s linear infinite" }} />}
+            {vista === "insumos" && <BtnExportar datos={filtrados} filtros={etiquetasInsumos} T={T} />}
+            {vista === "entradas" && <BtnExportar vista="entradas" onPdf={exportarEntradasPDF} T={T} />}
+            {vista === "insumos" && (
+              <button
+                onClick={() => setModal({})}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "6px",
+                  padding: "8px 14px", borderRadius: "6px", border: "none",
+                  background: TEAL.base, color: "#fff",
+                  fontSize: "11px", fontWeight: 600, cursor: "pointer",
+                  transition: "opacity 0.15s",
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+                onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+              >
+                <Plus size={14} /> Nuevo insumo
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* ── KPIs ──────────────────────────────────────────────── */}
+        {/* ── KPIs (solo pestaña Insumos) ──────────────────────── */}
+        {vista === "insumos" && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "6px" }}>
           <KpiCard
             label="Total Registrados" value={insumos.length}
@@ -693,15 +963,27 @@ export default function Inventario() {
             highlight={tasaSalud < 70} pct={tasaSalud}
           />
         </div>
+        )}
 
         {/* ── Filtros ───────────────────────────────────────────── */}
-        <FiltrosToolbar
-          campos={camposFiltro}
-          valores={filtros}
-          onChange={(k, v) => { setFiltros(p => ({ ...p, [k]: v })); setPagina(1); }}
-          onLimpiar={() => { setFiltros({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos" }); setPagina(1); }}
-          T={T}
-        />
+        {vista === "insumos" ? (
+          <FiltrosToolbar
+            campos={camposFiltro}
+            valores={filtros}
+            onChange={(k, v) => { setFiltros(p => ({ ...p, [k]: v })); setPagina(1); }}
+            onLimpiar={() => { setFiltros({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos" }); setPagina(1); }}
+            T={T}
+          />
+        ) : (
+          <FiltrosToolbar
+            campos={camposFiltroE}
+            valores={movFiltros}
+            onChange={(k, v) => { setMovFiltros(p => ({ ...p, [k]: v })); setMovPagina(1); }}
+            onLimpiar={() => { setMovFiltros({ q: "", fecha_inicio: "", fecha_fin: "", id_insumo: "" }); setMovInsumo(null); setMovPagina(1); }}
+            loading={movLoading}
+            T={T}
+          />
+        )}
 
         {/* ── Tabla principal ───────────────────────────────────── */}
         <div style={{ background: T.surface, borderRadius: "8px", border: `1px solid ${T.border}`, boxShadow: T.shadowSm, overflow: "hidden", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
@@ -713,22 +995,51 @@ export default function Inventario() {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <Layers size={14} style={{ color: TEAL.base }} />
-              <span style={{ fontSize: "11px", fontWeight: 700, color: T.text }}>Catálogo de Insumos</span>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: T.text }}>
+                {vista === "insumos" ? "Catálogo de Insumos" : "Entradas de material"}
+              </span>
               <span style={{
                 fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "99px",
                 background: T.isDark ? "rgba(13,148,136,0.18)" : "#f0fdfa",
                 color: "#0d9488",
                 border: T.isDark ? "1px solid rgba(13,148,136,0.35)" : "1px solid #99f6e4",
               }}>
-                {filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}
+                {vista === "insumos"
+                  ? `${filtrados.length} registro${filtrados.length !== 1 ? "s" : ""}`
+                  : `${movTotal} entrada${movTotal !== 1 ? "s" : ""}`}
               </span>
+              {vista === "entradas" && movInsumo && (
+                <button onClick={limpiarInsumo} title="Quitar filtro por insumo"
+                  style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", cursor: "pointer", background: T.isDark ? "rgba(37,99,235,0.18)" : "#eff6ff", color: "#2563eb", border: T.isDark ? "1px solid rgba(37,99,235,0.40)" : "1px solid #bfdbfe" }}>
+                  <Package size={10} />
+                  {movInsumo}
+                  <span style={{ fontSize: "11px", fontWeight: 800, lineHeight: 1 }}>✕</span>
+                </button>
+              )}
             </div>
 
           </div>
 
           {/* Contenido */}
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "auto" }}>
-            {loading ? (
+            {vista === "entradas" ? (
+              movLoading && movs.length === 0 ? (
+                <div style={{ display: "flex", justifyContent: "center", padding: "64px 0" }}>
+                  <RefreshCw size={24} style={{ color: TEAL.base, animation: "spin 1s linear infinite" }} />
+                </div>
+              ) : movs.length === 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "64px 24px", gap: "10px" }}>
+                  <div style={{ width: "52px", height: "52px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
+                    <Inbox size={24} style={{ color: T.textFaint }} />
+                  </div>
+                  <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: T.textMuted }}>
+                    {movInsumo ? `Sin entradas de "${movInsumo}" — ajusta los filtros` : "Sin entradas registradas — ajusta los filtros"}
+                  </p>
+                </div>
+              ) : (
+                <EntradasTable rows={movs} />
+              )
+            ) : loading ? (
               <div style={{ display: "flex", justifyContent: "center", padding: "64px 0" }}>
                 <RefreshCw size={24} style={{ color: TEAL.base, animation: "spin 1s linear infinite" }} />
               </div>
@@ -742,25 +1053,38 @@ export default function Inventario() {
                 </p>
               </div>
             ) : (
-              <DataTable rows={filasPagina} onEdit={setModal} onDetail={setDetalle} />
+              <DataTable rows={filasPagina} onEdit={setModal} onDetail={setDetalle} onEntrada={setEntrada} onHistorial={verEntradasInsumo} />
             )}
           </div>
           {/* Paginación — siempre visible, dentro del card */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", borderTop: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <button disabled={paginaActual <= 1} onClick={() => irPagina(paginaActual - 1)}
-                style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: paginaActual <= 1 ? "not-allowed" : "pointer", border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.textMuted, opacity: paginaActual <= 1 ? 0.4 : 1 }}>
+              <button
+                disabled={vista === "insumos" ? paginaActual <= 1 : movPaginaActual <= 1}
+                onClick={() => vista === "insumos" ? irPagina(paginaActual - 1) : setMovPagina(movPaginaActual - 1)}
+                style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: (vista === "insumos" ? paginaActual <= 1 : movPaginaActual <= 1) ? "not-allowed" : "pointer", border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.textMuted, opacity: (vista === "insumos" ? paginaActual <= 1 : movPaginaActual <= 1) ? 0.4 : 1 }}>
                 Anterior
               </button>
-              <button disabled={paginaActual >= totalPaginas} onClick={() => irPagina(paginaActual + 1)}
-                style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: paginaActual >= totalPaginas ? "not-allowed" : "pointer", border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.textMuted, opacity: paginaActual >= totalPaginas ? 0.4 : 1 }}>
+              <button
+                disabled={vista === "insumos" ? paginaActual >= totalPaginas : movPaginaActual >= movTotalPaginas}
+                onClick={() => vista === "insumos" ? irPagina(paginaActual + 1) : setMovPagina(movPaginaActual + 1)}
+                style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: (vista === "insumos" ? paginaActual >= totalPaginas : movPaginaActual >= movTotalPaginas) ? "not-allowed" : "pointer", border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.textMuted, opacity: (vista === "insumos" ? paginaActual >= totalPaginas : movPaginaActual >= movTotalPaginas) ? 0.4 : 1 }}>
                 Siguiente
               </button>
-              <span style={{ fontSize: "11px", marginLeft: "6px", color: T.textMuted }}>{`Página ${paginaActual} de ${totalPaginas}`}</span>
+              <span style={{ fontSize: "11px", marginLeft: "6px", color: T.textMuted }}>
+                {vista === "insumos"
+                  ? `Página ${paginaActual} de ${totalPaginas}`
+                  : `Página ${movPaginaActual} de ${movTotalPaginas}`}
+              </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <label style={{ fontSize: "10px", color: T.textMuted }}>Mostrar</label>
-              <select value={pageSize} onChange={e => { setPageSize(parseInt(e.target.value, 10)); setPagina(1); }}
+              <select
+                value={vista === "insumos" ? pageSize : movPageSize}
+                onChange={e => {
+                  if (vista === "insumos") { setPageSize(parseInt(e.target.value, 10)); setPagina(1); }
+                  else { setMovPageSize(parseInt(e.target.value, 10)); setMovPagina(1); }
+                }}
                 style={{ padding: "4px", borderRadius: "6px", border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: "11px" }}>
                 {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
               </select>
@@ -778,6 +1102,12 @@ export default function Inventario() {
       {modal !== null && (
         <ModalInsumo insumo={modal} categorias={categorias}
           onClose={() => setModal(null)} onSave={handleSave} T={T} />
+      )}
+      {entrada !== null && (
+        <ModalEntradaInsumo insumo={entrada}
+          onClose={() => setEntrada(null)}
+          onSaved={() => { setEntrada(null); cargarInventario(false); cargarEntradas(); }}
+          T={T} />
       )}
 
     </div>

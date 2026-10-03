@@ -30,6 +30,8 @@
 import { useState, useEffect } from "react";
 import { User } from "lucide-react";
 import API, { apiFetch } from "../Config/api";
+import { emailCorporativoValido, DOMINIOS_PERMITIDOS } from "../Config/email.js";
+import { evaluarPassword, passwordSeguro } from "../Config/password.js";
 import { EyeBtn, ModalRecorte, usePerfilStyles, procesarYSubirFoto, generarPDFAccesos } from "./PerfilShared";
 
 export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActualizado, rol = "Usuario" }) {
@@ -47,6 +49,9 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
   const [passConf,   setPassConf]   = useState("");
   const [showNueva, setShowNueva] = useState(false);
   const [showConf,  setShowConf]  = useState(false);
+
+  // Política de contraseña: se evalúa en vivo con cada tecla
+  const evaluacion = evaluarPassword(passNueva);
 
   const fotoUrl = f => f ? `/storage/${f}` : null;
   const [foto,         setFoto]         = useState(fotoUrl(usuario.foto));
@@ -134,7 +139,11 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
 
   const guardar = async () => {
     if (passNueva && passNueva !== passConf) return setMsg({ tipo: "err", texto: "Las contraseñas no coinciden" });
-    if (passNueva && passNueva.length < 8)  return setMsg({ tipo: "err", texto: "La contraseña debe tener al menos 8 caracteres" });
+    // Misma política que valida el backend (8 caracteres, mayúscula, número y símbolo)
+    const passErr = passwordSeguro(passNueva);
+    if (passErr) return setMsg({ tipo: "err", texto: `La contraseña debe cumplir: ${passErr.toLowerCase()}` });
+    const emailErr = emailCorporativoValido(email);
+    if (emailErr) return setMsg({ tipo: "err", texto: emailErr });
     setLoading(true); setMsg(null);
     try {
       const res  = await apiFetch(`/api/auth/perfil/${usuario.id_empleado}`, {
@@ -234,6 +243,9 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
               <span className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Correo Electrónico</span>
               <input style={{ ...inp, fontSize: "14px", lineHeight: "1.35" }} type="email" value={email} onChange={e => { setEmail(e.target.value); setEmailEditado(true); }}
                 onFocus={e => e.target.style.borderColor = T.orange} onBlur={e => e.target.style.borderColor = T.border} />
+              <span className="text-[11px] leading-tight" style={{ color: T.textFaint }}>
+                Dominios permitidos: {DOMINIOS_PERMITIDOS.map(d => `@${d}`).join(", ")}
+              </span>
             </div>
           </div>
         </div>
@@ -291,6 +303,36 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
               </div>
             </div>
 
+            {/* Seguridad de la contraseña — se evalúa mientras escribe */}
+            {!evaluacion.vacia && (
+              <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: "6px", padding: "2px 0 6px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ flex: 1, height: "4px", borderRadius: "99px", background: isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${evaluacion.pct}%`, background: evaluacion.color, borderRadius: "99px", transition: "width 0.2s, background 0.2s" }} />
+                  </div>
+                  <span style={{ fontSize: "0.7rem", fontWeight: 700, color: evaluacion.color, whiteSpace: "nowrap" }}>{evaluacion.etiqueta}</span>
+                </div>
+                <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "2px 10px" }}>
+                  {evaluacion.reglas.map(r => (
+                    <li key={r.id} style={{
+                      display: "flex", alignItems: "center", gap: "5px", fontSize: "0.72rem",
+                      color: r.ok ? "#16a34a" : (isDark ? "rgba(255,255,255,0.35)" : "#94a3b8"),
+                    }}>
+                      {r.ok
+                        ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>}
+                      {r.texto}
+                    </li>
+                  ))}
+                </ul>
+                {evaluacion.cumple && (
+                  <p style={{ margin: 0, fontSize: "0.72rem", fontWeight: 700, color: "#16a34a" }}>
+                    Contraseña segura — cumple la política
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Confirmar Contraseña */}
             <div style={{ display: "grid", gridTemplateColumns: "14px 140px 1fr", alignItems: "baseline", gap: "10px", padding: "8px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}` }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isDark ? "rgba(255,255,255,0.22)" : "#c0c9d6"} strokeWidth="2" style={{ marginTop: "1px" }}><polyline points="20 6 9 17 4 12"/></svg>
@@ -306,6 +348,17 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
                 <EyeBtn show={showConf} onToggle={() => setShowConf(s => !s)} textFaint={T.textFaint} />
               </div>
             </div>
+
+            {/* Aviso en vivo si la confirmación no coincide */}
+            {passConf && passConf !== passNueva && (
+              <p role="alert" style={{
+                gridColumn: "1 / -1", margin: "0 0 4px", fontSize: "0.75rem", fontWeight: 600,
+                color: "#dc2626", display: "flex", alignItems: "center", gap: "5px",
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Las contraseñas no coinciden
+              </p>
+            )}
 
             {/* Mensaje feedback */}
             {msg && (
