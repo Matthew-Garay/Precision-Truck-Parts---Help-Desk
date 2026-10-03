@@ -43,6 +43,7 @@ import path     from "path";
 import { fileURLToPath } from "url";
 import Empleado from "../Models/Empleado.js";
 import { enviarCodigoRecuperacion } from "../Config/mailer.js";
+import { validarEmailCorporativo } from "../Middlewares/validate.js";
 
 const TTL          = 10 * 60 * 1000;
 const MAX_INTENTOS = 5;
@@ -99,6 +100,10 @@ export const solicitarRecuperacion = async (req, res) => {
   const emailRaw = req.body?.email;
   if (!emailRaw) return res.status(400).json({ error: "El correo es requerido" });
   const email = normalizeEmail(emailRaw);
+  // Política de dominios corporativos: esta ruta no tiene middleware validate,
+  // así que la validación se aplica directamente en el controlador.
+  const errEmail = validarEmailCorporativo(email);
+  if (errEmail) return res.status(400).json({ error: errEmail });
 
   try {
     const empleado = await Empleado.findByEmail(email);

@@ -9,7 +9,11 @@
     "server": "cross-env NODE_ENV=production node --import ./src/Backend/load-env.js src/Backend/server.js",
     "dev:all": "chcp 65001 && concurrently -k -n \"BACK,FRONT\" -c \"yellow,cyan\" --timestamp --timefmt \"HH:mm:ss\" \"node --import ./src/Backend/load-env.js src/Backend/server.js\" \"wait-on http://localhost:3001/api/ping && vite --logLevel warn\"",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "all": "npm run dev:all",
+    "probar:correo": "node --import ./src/Backend/load-env.js src/Backend/scripts/probar-correo.js",
+    "migrate": "node --import ./src/Backend/load-env.js src/Backend/scripts/migrate.js",
+    "respaldar": "powershell -ExecutionPolicy Bypass -File respaldar.ps1"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

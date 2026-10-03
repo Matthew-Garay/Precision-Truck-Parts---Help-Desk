@@ -67,6 +67,7 @@ import path              from "path";
 import pool              from "./Config/db.js";
 import { requireAuth }   from "./Middlewares/authMiddleware.js";
 import { setIO }         from "./Config/socketInstance.js";
+import { smtpConfigurado } from "./Config/mailer.js";
 import { iniciarWorkers, getStockEnviadoHoy } from "./Workers/scheduledJobs.js";
 import categoriasRoutes  from "./Routes/categoriasRoutes.js";
 import authRoutes        from "./Routes/authRoutes.js";
@@ -323,7 +324,7 @@ httpServer.listen(PORT, "0.0.0.0", async () => {
 
   console.log(`  Socket   ->  ${httpServer.listening ? "✅" : "❌"}  WebSockets`);
   console.log(`  Workers  ->  ✅  Iniciando jobs programados`);
-  console.log(`  SMTP     ->  ${process.env.SMTP_USER ? "✅  Correos activos" : "⚠️  No configurado - correos desactivados"}`);
+  console.log(`  SMTP     ->  ${smtpConfigurado() ? `✅  Correos activos (${process.env.SMTP_HOST}:${process.env.SMTP_PORT})` : "⚠️  No configurado - correos desactivados"}`);
   console.log(`  JWT      ->  ${process.env.JWT_SECRET ? "✅  Configurado" : "❌  JWT_SECRET faltante"}`);
 
   console.log(line + "\n");

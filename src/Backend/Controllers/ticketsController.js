@@ -98,20 +98,25 @@ export const getHistorialTicket = async (req, res) => {
     const { id_rol, id_empleado } = req.usuario;
     if (id_rol !== 1 && ticket.id_empleado !== id_empleado)
       return res.status(403).json({ error: "Acceso no autorizado" });
-    // Retornar array vacío si la tabla historial_ticket no existe aún
+    /* La tabla real es `ticket_historial` y su columna de fecha es `fecha`
+       (no `historial_ticket` / `fecha_cambio`: esos nombres no existen y
+       hacian que este endpoint devolviera siempre []). */
     try {
       const [rows] = await pool.query(
         `SELECT h.id_historial, h.campo_cambiado, h.valor_anterior, h.valor_nuevo,
-                h.fecha_cambio,
+                h.fecha AS fecha_cambio,
                 TRIM(CONCAT(e.nombre,' ',e.ap_paterno)) AS nombre_empleado
-         FROM historial_ticket h
+         FROM ticket_historial h
          JOIN empleado e ON h.id_empleado = e.id_empleado
          WHERE h.id_ticket = ?
-         ORDER BY h.fecha_cambio ASC`,
+         ORDER BY h.fecha ASC`,
         [id_ticket]
       );
       res.json(rows);
-    } catch { res.json([]); }
+    } catch (err) {
+      console.warn("[getHistorialTicket]", err.message);
+      res.json([]);
+    }
   } catch (err) {
     console.error("[getHistorialTicket]", err.message);
     res.status(500).json({ error: "Error al obtener historial" });
@@ -302,7 +307,12 @@ export const actualizarTicket = async (req, res) => {
 
     let updated;
     try {
-      updated = await Ticket.actualizar(id_ticket, { comentarios, estatus, id_resuelto_por });
+      updated = await Ticket.actualizar(id_ticket, {
+        comentarios,
+        estatus,
+        id_resuelto_por,
+        actor: req.usuario?.id_empleado ?? null,
+      });
     } catch (err) {
       if (err.status === 409) return res.status(409).json({ error: err.message });
       throw err;
@@ -420,6 +430,7 @@ export const editarTicketUsuario = async (req, res) => {
       id_categoria: parseInt(id_categoria),
       estatus:      estatusFinal,
       comentarios:  comentarios !== undefined ? comentarios : undefined,
+      actor:        req.usuario?.id_empleado ?? null,
     });
     if (!ok) return res.status(404).json({ error: "Ticket no encontrado o ya está cerrado" });
     res.json({ ok: true });

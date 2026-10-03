@@ -16,9 +16,11 @@
  *   Debe usarse siempre despues de requireAuth en la cadena de middlewares.
  *   Retorna 403 si el usuario autenticado no tiene rol de administrador.
  *
- * La clave secreta se obtiene con getSecret() en tiempo de ejecucion (no al
- * cargar el modulo) para garantizar que dotenv.config() ya se ejecuto y la
- * variable JWT_SECRET esta disponible. Si no esta definida el proceso termina.
+ * El cierre de sesion se resuelve con `empleado.token_version`: cada token
+ * lleva dentro la version con la que se expidio (payload `ver`) y, si el
+ * empleado ya va en una version mayor, el token se rechaza. No hace falta
+ * una tabla de lista negra: sobrevive a reinicios y funciona igual con
+ * varias instancias del servidor.
  */
 import jwt  from "jsonwebtoken";
 import pool from "../Config/db.js";
@@ -29,27 +31,17 @@ function getSecret() {
   return s;
 }
 
-/**
- * Añade el jti (JWT ID) a la lista de tokens revocados.
- * Se llama desde logout para invalidar el token antes de su expiración.
- */
-export async function revocarToken(jti, id_empleado, expiraEn) {
+/** Version de token vigente de un empleado (0 si la columna aun no existe). */
+async function versionDeToken(id_empleado) {
   try {
-    await pool.query(
-      `INSERT IGNORE INTO token_revocado (jti, id_empleado, expira_en)
-       VALUES (?, ?, FROM_UNIXTIME(?))`,
-      [jti, id_empleado, expiraEn]
+    const [[row]] = await pool.query(
+      "SELECT token_version FROM empleado WHERE id_empleado = ? LIMIT 1",
+      [id_empleado]
     );
-  } catch { /* tabla puede no existir en entornos de test */ }
-}
-
-/**
- * Limpia tokens revocados ya expirados (se llama desde scheduledJobs).
- */
-export async function limpiarTokensRevocados() {
-  try {
-    await pool.query(`DELETE FROM token_revocado WHERE expira_en < NOW()`);
-  } catch { /* ignorar si tabla no existe */ }
+    return row?.token_version ?? 0;
+  } catch {
+    return 0;
+  }
 }
 
 export async function requireAuth(req, res, next) {
@@ -58,14 +50,13 @@ export async function requireAuth(req, res, next) {
     return res.status(401).json({ error: "No autorizado" });
   try {
     const payload = jwt.verify(header.slice(7), getSecret());
-    // Verificar si el token fue revocado (logout explícito)
-    if (payload.jti) {
-      const [[rev]] = await pool.query(
-        "SELECT id_revocado FROM token_revocado WHERE jti = ? LIMIT 1",
-        [payload.jti]
-      ).catch(() => [[null]]);
-      if (rev) return res.status(401).json({ error: "Sesión cerrada. Inicia sesión de nuevo." });
-    }
+
+    // Token emitido antes del ultimo cierre de sesion -> invalidado
+    const actual = await versionDeToken(payload.id_empleado);
+    const emitida = Number(payload.ver ?? 0);
+    if (actual > emitida)
+      return res.status(401).json({ error: "Sesión cerrada. Inicia sesión de nuevo." });
+
     req.usuario = payload;
     next();
   } catch {

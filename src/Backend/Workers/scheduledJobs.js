@@ -44,7 +44,6 @@
 import pool   from "../Config/db.js";
 import Ticket from "../Models/Ticket.js";
 import { crearSetsPersistentes } from "./alertState.js";
-import { limpiarTokensRevocados } from "../Middlewares/authMiddleware.js";
 
 // stockEnviadoHoy se inicializa al llamar iniciarWorkers()
 let _stockEnviadoHoy = null;
@@ -155,7 +154,8 @@ export function iniciarWorkers(io) {
          WHERE fecha_salida IS NOT NULL
          AND fecha_entrada < DATE_SUB(NOW(), INTERVAL 90 DAY)`
       );
-      await limpiarTokensRevocados();
+      /* `token_revocado` ya no existe: la invalidacion corre con
+         `empleado.token_version`, que no necesita purgarse. */
     } catch (err) {
       console.error("[sesiones]", err.message);
     } finally {

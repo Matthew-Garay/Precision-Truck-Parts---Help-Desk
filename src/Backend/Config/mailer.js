@@ -81,11 +81,57 @@ function getAhoraHermosillo() {
   return `${diaCap}, ${day} de ${month} de ${year} a las ${h12}:${min} ${ampm}`;
 }
 
+// ── Configuración del transporte ──────────────────────────────────────
+// Nodemailer es genérico: el MISMO código sirve para Gmail, Zoho, Outlook o
+// cualquier servidor SMTP; lo único que cambia son las variables del .env.
+// Referencia rápida (copia siempre los datos exactos que Zoho muestra en
+// Configuración → Cuentas de correo, porque dependen del centro de datos):
+//   Zoho Mail → smtp.zoho.com · 465 (SSL) o 587 (TLS)
+//               smtppro.zoho.com si la cuenta de pago usa dominio propio
+//   Gmail     → smtp.gmail.com · 587 (exige contraseña de aplicación)
+//   Outlook   → smtp.office365.com · 587
+// En Zoho el usuario es el CORREO COMPLETO y el remitente (SMTP_FROM) debe
+// coincidir con esa misma cuenta; si no, Zoho responde "Transmisión no
+// permitida" y el correo no sale.
+const PUERTOS_SSL = new Set([465, 8465, 994]);
+
+const SMTP_PORT = parseInt(process.env.SMTP_PORT, 10) || 587;
+const SMTP_SECURE = process.env.SMTP_SECURE !== undefined
+  ? process.env.SMTP_SECURE === "true"
+  : PUERTOS_SSL.has(SMTP_PORT);
+
+// Avisos de configuración: fallan en caliente y es más fácil que adivinar
+const PASS_PENDIENTE = /^PEGAR_|^TU_CONTRASENA|^X{4,}$/i;
+
+/**
+ * smtpConfigurado()
+ *   true solo si hay usuario, contraseña REAL (no el valor de ejemplo) y
+ *   host. Evita que el arranque anuncie "correos activos" cuando en realidad
+ *   el .env todavía trae el placeholder de la contraseña.
+ */
+export function smtpConfigurado() {
+  return Boolean(
+    process.env.SMTP_USER &&
+    process.env.SMTP_HOST &&
+    process.env.SMTP_PASS &&
+    !PASS_PENDIENTE.test(process.env.SMTP_PASS.trim())
+  );
+}
+
+if (process.env.SMTP_USER && !process.env.SMTP_HOST)
+  console.warn("[mailer] SMTP_USER definido pero falta SMTP_HOST — revisa el .env");
+if (process.env.SMTP_USER && PASS_PENDIENTE.test((process.env.SMTP_PASS ?? "").trim()))
+  console.warn("[mailer] SMTP_PASS sigue con el valor de ejemplo: pega la contraseña específica de la aplicación de Zoho en el .env");
+else if (process.env.SMTP_USER && !process.env.SMTP_PASS)
+  console.warn("[mailer] SMTP_USER definido pero falta SMTP_PASS — en Zoho y Gmail usa una contraseña específica para la aplicación");
+if (process.env.SMTP_USER && !process.env.SMTP_FROM)
+  console.warn("[mailer] Falta SMTP_FROM — se usará el SMTP_USER como remitente");
+
 // Transporter de Nodemailer. Se crea una sola vez al cargar el modulo.
 const transporter = nodemailer.createTransport({
   host:   process.env.SMTP_HOST,
-  port:   parseInt(process.env.SMTP_PORT) || 587,
-  secure: parseInt(process.env.SMTP_PORT) === 465,
+  port:   SMTP_PORT,
+  secure: SMTP_SECURE,
   auth:   { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
 });
 
@@ -107,8 +153,12 @@ export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
   const codigoStr = String(codigo);
   const ahora    = getAhoraHermosillo();
 
+  // El logo tiene el rombo y el texto en NEGRO: SIEMPRE debe ir sobre una
+  // placa blanca. El fondo blanco va en el atributo style (además de la clase)
+  // porque algunos clientes de correo ignoran las hojas de estilo.
   const logoTag =
-    `<img src="cid:logoptp" alt="Precision Truck Parts" width="94" height="60" style="display:block;margin:0 auto;border:0;width:94px;height:60px;" />`;
+    `<img src="cid:logoptp" alt="Precision Truck Parts" width="94" height="60" ` +
+    `style="display:block;margin:0 auto;border:0;width:94px;height:60px;background:#ffffff;" />`;
 
   const html =
     `<!DOCTYPE html>` +
@@ -117,6 +167,10 @@ export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
       `<meta charset="UTF-8"/>` +
       `<meta name="viewport" content="width=device-width,initial-scale=1"/>` +
       `<meta http-equiv="X-UA-Compatible" content="IE=edge"/>` +
+      // Evita que el cliente de correo invierta los colores al detectado en
+      // modo oscuro (Gmail/Outlook en móvil) y vuelva negro el fondo del logo.
+      `<meta name="color-scheme" content="light dark"/>` +
+      `<meta name="supported-color-schemes" content="light dark"/>` +
       `<title>Codigo de verificacion - Precision Truck Parts</title>` +
       `<style>` +
         `body,table,td,p,a,div{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif!important;}` +
@@ -124,7 +178,9 @@ export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
         `@media(prefers-color-scheme:dark){` +
           `.r-outer{background-color:#111111!important;}` +
           `.r-card{background-color:#1C1C1C!important;}` +
-          `.r-hdr{background-color:#0D0D0D!important;}` +
+          // El encabezado y el logo se mantienen BLANCOS en modo oscuro:
+          // el logo es negro y sobre fondo negro desapareceria.
+          `.r-hdr,.r-logo{background-color:#FFFFFF!important;}` +
           `.r-body{background-color:#1C1C1C!important;}` +
           `.r-box{background-color:#252525!important;border-color:#333333!important;}` +
           `.r-footer{background-color:#141414!important;border-color:#252525!important;}` +
@@ -142,8 +198,12 @@ export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
         `<table class="r-card" role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.05);">` +
 
           `<tr>` +
-            `<td class="r-hdr" style="background:#000000;padding:28px 36px;border-bottom:4px solid #E56B00;text-align:center;">` +
-              logoTag +
+            `<td class="r-hdr" align="center" style="background:#ffffff;padding:28px 36px;border-bottom:4px solid #E56B00;">` +
+              `<table class="r-logo" role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#ffffff;border-collapse:collapse;">` +
+                `<tr><td align="center" style="background:#ffffff;padding:0;">` +
+                  logoTag +
+                `</td></tr>` +
+              `</table>` +
             `</td>` +
           `</tr>` +
 
@@ -198,7 +258,9 @@ export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
     `</body></html>`;
 
   await transporter.sendMail({
-    from:    process.env.SMTP_FROM,
+    // Sin SMTP_FROM se usa la misma cuenta de salida: es lo que exigen
+    // Zoho y Gmail (el remitente debe coincidir con el usuario autenticado).
+    from:    process.env.SMTP_FROM || process.env.SMTP_USER,
     to,
     subject: "=?UTF-8?Q?C=C3=B3digo_de_verificaci=C3=B3n?=",
     html,

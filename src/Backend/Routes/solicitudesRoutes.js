@@ -16,7 +16,15 @@
  *   PUT    /insumos/:id          - actualizar datos de un insumo
  *   DELETE /insumos/:id          - eliminar un insumo (falla si tiene solicitudes activas)
  *   PATCH  /:id/estatus          - cambiar estatus de una solicitud (descuenta stock si Resuelto)
+ *   PATCH  /:id/items            - guardar aprobacion y cantidad aceptada por item
+ *   PATCH  /:id/ruta             - guardar la ruta del material (origen -> destino)
  *   GET    /pendientes           - solicitudes sin cerrar ordenadas por prioridad
+ *
+ *   Entradas de material (tabla movimiento_inventario):
+ *   POST   /insumos/:id/entrada  - registrar ENTRADA de material (suma stock)
+ *   GET    /movimientos          - movimientos filtrables (admin)
+ *   GET    /insumos/:id/movimientos - movimientos de un insumo
+ *   GET    /:id/movimientos      - salidas generadas por una solicitud (admin)
  *
  * Rutas de usuario autenticado:
  *
@@ -32,12 +40,13 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { csrfProtection } from "../Middlewares/security.js";
 import { requireAuth, requireAdmin } from "../Middlewares/authMiddleware.js";
-import { validate, schemaCrearSolicitud, schemaActualizarEstatusSolicitud, schemaInsumo } from "../Middlewares/validate.js";
+import { validate, schemaCrearSolicitud, schemaActualizarEstatusSolicitud, schemaInsumo, schemaEntradaInsumo, schemaItemsSolicitud, schemaRutaSolicitud } from "../Middlewares/validate.js";
 import {
   getInsumos, getInventario, getInsumosStockBajo, crearSolicitud, getSolicitudesByEmpleado,
   getSolicitudById, getSolicitudByFolio, getAllSolicitudes, getSolicitudesPendientes,
   actualizarEstatusSolicitud, aprobarItemsSolicitud, crearInsumo, actualizarInsumo,
-  eliminarInsumo, getReporteSolicitudes, subirFotoInsumo, getMetricasSolicitudes
+  eliminarInsumo, getReporteSolicitudes, subirFotoInsumo, getMetricasSolicitudes,
+  registrarEntradaInsumo, guardarRutaSolicitud, getMovimientosInventario, getMovimientosInsumo, getMovimientosSolicitud
 } from "../Controllers/solicitudesController.js";
 import { uploadInsumo } from "../Middlewares/uploadInsumos.js";
 
@@ -72,13 +81,19 @@ router.post("/insumos",           requireAdmin, validate(schemaInsumo), crearIns
 router.put("/insumos/:id",        requireAdmin, validate(schemaInsumo), actualizarInsumo);
 router.post("/insumos/:id/foto",  requireAdmin, ...uploadInsumo.single("foto"), subirFotoInsumo);
 router.delete("/insumos/:id",     requireAdmin, eliminarInsumo);
+// Entrada de material al inventario — suma stock y deja el movimiento
+router.post("/insumos/:id/entrada", requireAdmin, validate(schemaEntradaInsumo), registrarEntradaInsumo);
+router.get("/movimientos",        requireAdmin, getMovimientosInventario);
 router.patch("/:id/estatus",  requireAdmin, validate(schemaActualizarEstatusSolicitud), actualizarEstatusSolicitud);
-router.patch("/:id/items",    requireAdmin, aprobarItemsSolicitud);
+router.patch("/:id/items",    requireAdmin, validate(schemaItemsSolicitud), aprobarItemsSolicitud);
+router.patch("/:id/ruta",     requireAdmin, validate(schemaRutaSolicitud), guardarRutaSolicitud);
+router.get("/:id/movimientos", requireAdmin, getMovimientosSolicitud);
 
 // ── Rutas de usuario autenticado ──────────────────────────────
 // Rutas con paths fijos van antes de /:id para evitar ambigüedad
-router.get("/insumos/stock-bajo", getInsumosStockBajo);
+router.get("/insumos/stock-bajo", requireAdmin, getInsumosStockBajo);
 router.get("/insumos",            getInsumos);
+router.get("/insumos/:id/movimientos", requireAdmin, getMovimientosInsumo);
 router.get("/inventario",         getInventario);
 router.get("/pendientes",         requireAdmin, getSolicitudesPendientes);
 router.get("/empleado/:id_empleado", requireOwnerOrAdmin, getSolicitudesByEmpleado);
