@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Package, Hash, Layers, Truck, Tag, AlignLeft, BarChart2 } from "lucide-react";
+import { X, Package, Hash, Layers, Tag, AlignLeft, BarChart2, ZoomIn } from "lucide-react";
 
 const ORANGE = "#F47920";
 
@@ -53,13 +53,21 @@ function DataRow({ icon: Icon, label, value, T, multiline = false, highlight }) 
 
 export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = false }) {
   const [imgError, setImgError] = useState(false);
+  const [ampliar, setAmpliar] = useState(false);   // imagen en grande
   const isDark = T?.isDark ?? false;
 
+  useEffect(() => { if (imgError) setAmpliar(false); }, [imgError]);
+
+  // Escape cierra primero la imagen ampliada y despues el modal
   useEffect(() => {
-    const fn = (e) => { if (e.key === "Escape") onClose(); };
+    const fn = (e) => {
+      if (e.key !== "Escape") return;
+      if (ampliar) setAmpliar(false);
+      else onClose();
+    };
     document.addEventListener("keydown", fn);
     return () => document.removeEventListener("keydown", fn);
-  }, [onClose]);
+  }, [ampliar, onClose]);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -166,20 +174,39 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
         {/* ── Body ── */}
         <div style={{ flex: 1, overflowY: "auto" }}>
 
-          {/* Imagen */}
+          {/* Imagen — clic para verla en grande */}
           {imgSrc ? (
-            <div style={{
-              width: "100%", height: "180px",
-              background: isDark ? "#1a2030" : "#f4f6f8",
-              borderBottom: `1px solid ${border}`,
-              overflow: "hidden",
-            }}>
-              <img
-                src={imgSrc}
-                alt={insumo.nombre}
-                onError={() => setImgError(true)}
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-              />
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                onClick={() => setAmpliar(true)}
+                title="Ver imagen en grande"
+                aria-label={`Ampliar imagen de ${insumo.nombre}`}
+                style={{
+                  display: "block", width: "100%", height: "180px", padding: 0, border: "none",
+                  background: isDark ? "#1a2030" : "#f4f6f8",
+                  borderBottom: `1px solid ${border}`,
+                  overflow: "hidden", cursor: "zoom-in",
+                }}>
+                <img
+                  src={imgSrc}
+                  alt={insumo.nombre}
+                  onError={() => setImgError(true)}
+                  style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+                />
+              </button>
+              {/* Pista visual de que se puede ampliar */}
+              <span style={{
+                position: "absolute", right: 8, bottom: 8,
+                display: "inline-flex", alignItems: "center", gap: 4,
+                padding: "3px 8px", borderRadius: "99px",
+                fontSize: 10, fontWeight: 700,
+                background: isDark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.85)",
+                color: isDark ? "rgba(255,255,255,0.8)" : "#475569",
+                border: `1px solid ${border}`, pointerEvents: "none",
+              }}>
+                <ZoomIn size={11} /> Ampliar
+              </span>
             </div>
           ) : (
             <div style={{
@@ -223,8 +250,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
             <DataRow icon={Layers}    label="Marca"        value={insumo.marca}                  T={T} />
             <DataRow icon={Layers}    label="Modelo"       value={insumo.modelo}                 T={T} />
             <DataRow icon={Hash}      label="N.º de serie" value={insumo.num_serie}               T={T} />
-            <DataRow icon={Truck}     label="Proveedor"    value={insumo.proveedor}               T={T} />
-            {!ocultarStock && (
+            {!ocultarStock && insumo.stock != null && (
               <DataRow
                 icon={BarChart2}
                 label="Stock"
@@ -265,6 +291,61 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
           </button>
         </div>
       </div>
+
+      {/* ── Imagen en grande ── */}
+      {ampliar && imgSrc && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Imagen de ${insumo.nombre} en grande`}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setAmpliar(false); }}
+          style={{
+            position: "fixed", inset: 0, zIndex: 1100,
+            background: "rgba(0,0,0,0.88)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "24px", cursor: "zoom-out", animation: "dmFade 0.15s ease",
+          }}
+        >
+          <img
+            src={imgSrc}
+            alt={insumo.nombre}
+            onClick={() => setAmpliar(false)}
+            style={{
+              maxWidth: "100%", maxHeight: "100%",
+              objectFit: "contain",
+              borderRadius: "8px",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setAmpliar(false)}
+            aria-label="Cerrar imagen"
+            title="Cerrar (Esc)"
+            style={{
+              position: "absolute", top: 16, right: 16,
+              width: "34px", height: "34px",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: "rgba(255,255,255,0.12)",
+              border: "1px solid rgba(255,255,255,0.25)",
+              borderRadius: "8px", cursor: "pointer", color: "#fff",
+              transition: "background 0.12s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.22)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; }}
+          >
+            <X size={16} strokeWidth={2} />
+          </button>
+          <p style={{
+            position: "absolute", bottom: 16, left: 0, right: 0,
+            margin: 0, textAlign: "center",
+            fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.75)",
+            pointerEvents: "none",
+          }}>
+            {insumo.nombre} · clic o Esc para cerrar
+          </p>
+        </div>
+      )}
     </div>
   );
 }

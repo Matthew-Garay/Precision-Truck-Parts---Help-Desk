@@ -9,14 +9,18 @@ export default function PrintInventarioPage() {
   const [datos, setDatos] = useState<object[] | null>(null);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
+  const [aplicados, setAplicados] = useState<string[]>([]);
 
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(SESSION_KEY);
       if (!raw) { setError("No se encontraron datos para imprimir."); return; }
       const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) { setError("Datos inválidos."); return; }
-      setDatos(parsed);
+      // Compat: antes se guardaba un array plano; ahora { rows, filtros }
+      const rows = Array.isArray(parsed) ? parsed : parsed?.rows;
+      if (!Array.isArray(rows)) { setError("Datos inválidos."); return; }
+      setDatos(rows);
+      setAplicados(Array.isArray(parsed) ? [] : (Array.isArray(parsed?.filtros) ? parsed.filtros : []));
     } catch {
       setError("Error al leer los datos del inventario.");
     }
@@ -45,7 +49,7 @@ export default function PrintInventarioPage() {
           </button>
         </div>
       </div>
-      <PrintInventarioView datos={datos as never} />
+      <PrintInventarioView datos={datos as never} filtros={aplicados} />
     </>
   );
 }

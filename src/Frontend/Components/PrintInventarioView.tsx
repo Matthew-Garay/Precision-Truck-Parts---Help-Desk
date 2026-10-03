@@ -1,4 +1,4 @@
-import { PageHeader, PageFooter, nowFechaGen } from "./PrintShared";
+import { PageHeader, PageFooter, PageSize, nowFechaGen } from "./PrintShared";
 import "./print-report.css";
 
 interface InsumoRow {
@@ -15,24 +15,40 @@ interface InsumoRow {
   imagen_url?: string | null;
 }
 
+/* Estado del insumo — escala de grises de la marca.
+   Solo "Malo" usa el naranja de la marca como señal de atención. */
 const ESTADO_COLOR: Record<string, string> = {
-  Excelente: "#15803D",
-  Bueno:     "#2563eb",
-  Regular:   "#A16207",
-  Malo:      "#B91C1C",
+  Excelente: "var(--pr-ink)",
+  Bueno:     "var(--pr-muted)",
+  Regular:   "var(--pr-faint)",
+  Malo:      "var(--pr-accent)",
 };
 
 const ESTADO_BG: Record<string, string> = {
-  Excelente: "#f0fdf4",
-  Bueno:     "#eff6ff",
-  Regular:   "#fffbeb",
-  Malo:      "#fef2f2",
+  Excelente: "var(--pr-light)",
+  Bueno:     "var(--pr-surface)",
+  Regular:   "var(--pr-surface)",
+  Malo:      "var(--pr-accent-ink)",
+};
+
+/* Categorías — una sola tinta con distinta opacidad: la identidad va en
+   el peso tipográfico, no en ocho colores */
+const CAT_PALETTES = [
+  { color: "var(--pr-ink)",  bg: "var(--pr-light)",   border: "var(--pr-border)" },
+  { color: "var(--pr-muted)", bg: "var(--pr-surface)", border: "var(--pr-border)" },
+  { color: "var(--pr-faint)", bg: "var(--pr-white)",   border: "var(--pr-border)" },
+  { color: "var(--pr-accent)", bg: "var(--pr-accent-ink)", border: "var(--pr-accent)" },
+];
+const catColor = (name = "") => {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+  return CAT_PALETTES[h % CAT_PALETTES.length];
 };
 
 function InsumoThumb({ url }: { url?: string | null }) {
   if (!url) return (
     <div className="pr-inv-thumb-placeholder">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--pr-faint)" strokeWidth="1.5">
         <rect x="3" y="3" width="18" height="18" rx="2"/>
         <circle cx="8.5" cy="8.5" r="1.5"/>
         <polyline points="21 15 16 10 5 21"/>
@@ -42,13 +58,14 @@ function InsumoThumb({ url }: { url?: string | null }) {
   return <img src={url} alt="" className="pr-inv-thumb" />;
 }
 
-export default function PrintInventarioView({ datos }: { datos: InsumoRow[] }) {
+export default function PrintInventarioView({ datos, filtros = [] }: { datos: InsumoRow[]; filtros?: string[] }) {
   const now      = new Date();
   const fechaGen = nowFechaGen();
   const folioDoc = `INV-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
 
   return (
     <div className="pr-root pr-landscape" data-ready="true">
+      <PageSize landscape />
 
       <PageHeader
         titulo="Reporte de Inventario de Insumos"
@@ -62,105 +79,108 @@ export default function PrintInventarioView({ datos }: { datos: InsumoRow[] }) {
 
       <div className="pr-content">
 
-        {/* Barra de estado — igual que PDF de tickets */}
-        <div style={{
-          display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8,
-          padding: "6px 10px", marginBottom: 10,
-          border: "1px solid #cccccc", background: "#f5f5f5",
-        }}>
-          <span style={{ flex: 1, fontSize: "9pt", fontWeight: "bold", color: "#000" }}>
-            Catálogo de Insumos
-          </span>
-          <span style={{ fontSize: "7.5pt", color: "#444" }}>{datos.length} registros</span>
-          <span style={{ fontSize: "7.5pt", color: "#444" }}>Folio: {folioDoc}</span>
-        </div>
-
         <section className="pr-inv-section">
           <div className="pr-inv-section-hdr">
             <span className="pr-inv-section-title">Catálogo de Insumos</span>
-            <span className="pr-inv-section-count">{datos.length} registros</span>
+            <span className="pr-inv-section-count">{datos.length} registro{datos.length !== 1 ? "s" : ""}</span>
           </div>
-          <table className="pr-inv-table">
+
+          {/* Filtros activos — los mismos que muestra la barra en pantalla */}
+          {filtros.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, padding: "5px 8px", borderBottom: "1px solid var(--pr-border)", background: "var(--pr-surface)" }}>
+              {filtros.map(f => (
+                <span key={f} style={{ fontSize: "6pt", fontWeight: 700, color: "var(--pr-accent)", padding: "1px 7px", whiteSpace: "nowrap" }}>
+                  {f}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Mismas columnas que la pestaña Insumos en pantalla */}
+          <table className="pr-inv-table" style={{ tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: 56 }} />
+              <col style={{ width: "44%" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "14%" }} />
+              <col style={{ width: "22%" }} />
+            </colgroup>
             <thead>
-              <tr style={{ background: "var(--pr-navy)" }}>
-                <th className="pr-inv-th" style={{ width: 52 }}>Imagen</th>
-                <th className="pr-inv-th" style={{ width: "24%" }}>Nombre</th>
-                <th className="pr-inv-th" style={{ width: "11%" }}>Marca / Modelo</th>
-                <th className="pr-inv-th" style={{ width: "9%" }}>N° Serie</th>
-                <th className="pr-inv-th" style={{ width: "12%" }}>Categoría</th>
-                <th className="pr-inv-th" style={{ width: "8%" }}>Estado</th>
-                <th className="pr-inv-th" style={{ width: "9%" }}>Disponibilidad</th>
-                <th className="pr-inv-th" style={{ width: 48, textAlign: "center" }}>Stock</th>
-                <th className="pr-inv-th">Descripción</th>
+              <tr>
+                <th className="pr-inv-th">Imagen</th>
+                <th className="pr-inv-th">Nombre</th>
+                <th className="pr-inv-th">Categoría</th>
+                <th className="pr-inv-th">Estado</th>
+                <th className="pr-inv-th">Stock</th>
               </tr>
             </thead>
             <tbody>
               {datos.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ padding: 20, textAlign: "center", color: "var(--pr-faint)", fontStyle: "italic", fontSize: "7pt" }}>
-                    Sin registros en el inventario.
+                  <td colSpan={5} style={{ padding: 20, textAlign: "center", color: "var(--pr-faint)", fontStyle: "italic", fontSize: "7.5pt" }}>
+                    Sin registros con los filtros actuales.
                   </td>
                 </tr>
-              ) : datos.map((i, idx) => {
-                const estadoColor = ESTADO_COLOR[i.estado ?? ""] ?? "#94a3b8";
-                const estadoBgCol = ESTADO_BG[i.estado ?? ""]   ?? "#f8fafc";
-                const stockColor  = (i.stock ?? 0) === 0 ? "#B91C1C" : (i.stock ?? 0) <= 5 ? "#d97706" : "#15803D";
-                const stockBg     = (i.stock ?? 0) === 0 ? "#fef2f2" : (i.stock ?? 0) <= 5 ? "#fffbeb" : "#f0fdf4";
-                const isAlt       = idx % 2 === 1;
+              ) : datos.map((i) => {
+                const estadoColor = ESTADO_COLOR[i.estado ?? ""] ?? "var(--pr-faint)";
+                const estadoBgCol = ESTADO_BG[i.estado ?? ""]   ?? "var(--pr-surface)";
+                const stockColor  = (i.stock ?? 0) === 0 ? "var(--pr-accent)" : "var(--pr-ink)";
+                const cat         = catColor(i.nombre_categoria ?? "");
+                const stockPct    = Math.min(100, Math.round(((i.stock ?? 0) / 20) * 100));
                 return (
-                  <tr key={i.id_insumo} style={{ background: isAlt ? "var(--pr-surface)" : "#fff", borderBottom: "1px solid var(--pr-border)" }}>
+                  <tr key={i.id_insumo}>
                     <td className="pr-inv-td pr-inv-td-img">
                       <InsumoThumb url={i.imagen_url} />
                     </td>
+                    {/* Nombre — barra de color de estado + marca · modelo (igual que en pantalla) */}
                     <td className="pr-inv-td">
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 5 }}>
-                        <div style={{ width: 3, minHeight: 32, borderRadius: 2, background: estadoColor, flexShrink: 0, marginTop: 2 }} />
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: "7pt", color: "var(--pr-ink)", lineHeight: 1.3 }}>{i.nombre}</div>
-                          <div style={{ fontSize: "5.5pt", color: "var(--pr-faint)", marginTop: 1, fontFamily: "monospace" }}>#{String(idx + 1).padStart(3, "0")}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                        <div style={{ width: 3, height: 24, borderRadius: 2, background: estadoColor, flexShrink: 0 }} />
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: "8pt", color: "var(--pr-ink)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.nombre}</div>
+                          {(i.marca || i.modelo) && (
+                            <div style={{ fontSize: "6.5pt", color: "var(--pr-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {[i.marca, i.modelo].filter(Boolean).join(" · ")}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
-                    <td className="pr-inv-td" style={{ fontSize: "6.5pt", color: "var(--pr-muted)" }}>
-                      {[i.marca, i.modelo].filter(Boolean).join(" · ") || <span style={{ color: "var(--pr-border)" }}>—</span>}
-                    </td>
-                    <td className="pr-inv-td" style={{ fontSize: "6pt", fontFamily: "monospace", color: "var(--pr-muted)" }}>
-                      {i.num_serie || <span style={{ color: "var(--pr-border)" }}>—</span>}
-                    </td>
+                    {/* Categoría — chip con el mismo color que en pantalla */}
                     <td className="pr-inv-td">
                       {i.nombre_categoria ? (
-                        <span className="pr-badge" style={{ background: "#f0f9ff", color: "#0369a1", border: "1px solid #bae6fd" }}>
+                        <span className="pr-badge" style={{ fontSize: "6.5pt", background: cat.bg, color: cat.color, border: `1px solid ${cat.border}`, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {i.nombre_categoria}
                         </span>
                       ) : <span style={{ color: "var(--pr-border)" }}>—</span>}
                     </td>
+                    {/* Estado — chip con punto de color */}
                     <td className="pr-inv-td">
-                      <span className="pr-badge" style={{ background: estadoBgCol, color: estadoColor, border: `1px solid ${estadoColor}30` }}>
+                      <span className="pr-badge" style={{ fontSize: "6.5pt", background: estadoBgCol, color: estadoColor, border: `1px solid ${estadoColor}50`, whiteSpace: "nowrap" }}>
                         <span style={{ width: 5, height: 5, borderRadius: "50%", background: estadoColor, flexShrink: 0, display: "inline-block" }} />
                         {i.estado || "—"}
                       </span>
                     </td>
-                    <td className="pr-inv-td" style={{ fontSize: "6.5pt", color: "var(--pr-muted)" }}>
-                      {i.disponibilidad || <span style={{ color: "var(--pr-border)" }}>—</span>}
-                    </td>
-                    <td className="pr-inv-td" style={{ textAlign: "center", padding: "4px 6px" }}>
-                      <span className="pr-badge" style={{
-                        background: stockBg, color: stockColor,
-                        border: `1px solid ${stockColor}30`,
-                        fontFamily: "monospace", fontSize: "8.5pt", fontWeight: 900,
-                        minWidth: 28, justifyContent: "center",
-                      }}>
-                        {i.stock ?? 0}
-                      </span>
-                    </td>
-                    <td className="pr-inv-td" style={{ fontSize: "6pt", color: "var(--pr-muted)", lineHeight: 1.4 }}>
-                      {i.descripcion || <span style={{ color: "var(--pr-border)", fontStyle: "italic" }}>Sin descripción</span>}
+                    {/* Stock — número con color + barra de nivel (igual que en pantalla) */}
+                    <td className="pr-inv-td" style={{ padding: "4px 8px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontFamily: "monospace", fontSize: "9pt", fontWeight: 900, color: stockColor, minWidth: 20, textAlign: "right" }}>{i.stock ?? 0}</span>
+                        <div style={{ flex: 1, height: 4, borderRadius: "99px", background: "var(--pr-border)", overflow: "hidden" }}>
+                          <div style={{ width: `${stockPct}%`, height: "100%", background: stockColor, borderRadius: "99px" }} />
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+
+          {/* Pie de totales */}
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 10px", borderTop: "1px solid var(--pr-border)", background: "var(--pr-light)", fontSize: "6.5pt", fontWeight: 700, color: "var(--pr-muted)" }}>
+            <span>Total: {datos.length} registro{datos.length !== 1 ? "s" : ""}</span>
+            <span>Stock total: {datos.reduce((s, i) => s + (i.stock ?? 0), 0)} unidades</span>
+          </div>
         </section>
 
       </div>

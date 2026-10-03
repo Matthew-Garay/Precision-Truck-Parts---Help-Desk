@@ -2,25 +2,37 @@
  * print-report.css — Precision Truck Parts & Accessories
  * Documento técnico · Blanco y negro · Sin decoración
  */
-
 /* ── TOKENS ─────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   TOKENS — identidad Precision Truck Parts
+   Negro (rombo + "TRUCK PARTS" en negro) + naranja de la marca + grises.
+   El naranja es el ÚNICO color de acento: se usa en folio, cifras clave y
+   marcadores. Todo lo demás es negro o gris.
+   ══════════════════════════════════════════════════════════════════ */
 :root {
-  --pr-ink:    #000000;
-  --pr-muted:  #444444;
-  --pr-faint:  #777777;
-  --pr-border: #cccccc;
-  --pr-light:  #f5f5f5;
+  --pr-ink:    #000000;   /* negro del rombo */
+  --pr-muted:  #3F3F3F;
+  --pr-faint:  #6E6E6E;
+  --pr-border: #D5D5D5;
+  --pr-hair:   #ECECEC;
+  --pr-light:  #F5F5F5;
+  --pr-surface: #FAFAFA;
   --pr-white:  #ffffff;
-  --pr-navy:   #0C1A2E;
-  --pr-accent: #E8621A;
-  --pr-surface: #f9f9f9;
+  --pr-navy:   #000000;   /* alias: los encabezados son en negro, no azul */
+  --pr-accent: #E8621A;   /* naranja "TRUCK PARTS" */
+  --pr-accent-ink: rgba(232, 98, 26, 0.10);
 }
 
 /* ── PRINT ──────────────────────────────────────────────────────── */
+/* Portrait (carta vertical) es el default. Las vistas que necesiten
+   horizontal usan <PageSize landscape /> que inyecta su propio @page. */
 @media print {
+  /* margin:0 es lo que hace que Chrome/Edge NO impriman el encabezado del
+     navegador (URL local, fecha y numero de pagina). Como ya no hay margen
+     del navegador, el aire lo pone .pr-root con padding propio (abajo). */
   @page {
-    size: letter landscape;
-    margin: 10mm 12mm;
+    size: letter portrait;
+    margin: 0;
   }
 
   * {
@@ -45,7 +57,8 @@
     min-height: 100vh !important;
     max-width: none !important;
     margin: 0 !important;
-    padding: 0 !important;
+    /* Margenes propios en mm (reemplazan los del navegador) */
+    padding: 14mm 16mm 12mm !important;
     box-shadow: none !important;
     transform: none !important;
     background: #fff !important;
@@ -55,8 +68,8 @@
 
   .pr-page-header {
     position: static !important;
-    padding: 0 0 6pt !important;
-    margin: 0 0 10pt !important;
+    padding: 0 0 16pt !important;
+    margin: 0 0 22pt !important;
     background: #fff !important;
     border-bottom: 2px solid #000 !important;
     flex-shrink: 0 !important;
@@ -69,10 +82,14 @@
     flex: 1 !important;
   }
 
+  /* Mas aire entre secciones: el documento "respira" */
+  .pr-section { margin-bottom: 18px !important; }
+  .pr-two-col { gap: 18px !important; margin-bottom: 18px !important; }
+
   .pr-page-footer {
     position: static !important;
-    padding: 6pt 0 0 !important;
-    margin: 10pt 0 0 !important;
+    padding: 8pt 0 0 !important;
+    margin: 20pt 0 0 !important;
     background: #fff !important;
     border-top: 1px solid #000 !important;
     flex-shrink: 0 !important;
@@ -101,6 +118,41 @@
 /* Una sola fuente en todo el documento — sin excepciones */
 .pr-root * {
   font-family: "Inter", "Segoe UI", Arial, sans-serif !important;
+}
+
+/* ── SOLICITUD DE INSUMOS en carta vertical (portrait) ──────────────
+   Tablas y columnas colapsables para que NADA desborde el ancho
+   de la hoja y el documento encaje en UNA hoja tamaño carta. */
+.pr-solicitud .pr-insumos-table {
+  table-layout: fixed;
+}
+.pr-solicitud .pr-insumos-table thead th,
+.pr-solicitud .pr-insumos-table tbody td {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+/* Encabezados con label largo ("Por aceptar", "Justificación") pueden partir
+   de línea dentro de su columna fija */
+.pr-solicitud .pr-insumos-table thead th {
+  white-space: normal;
+}
+.pr-solicitud .pr-two-col {
+  grid-template-columns: 1fr 1fr;
+}
+@media print {
+  /* En vertical hay menos ancho: las 2 columnas se apilan */
+  .pr-solicitud .pr-two-col { grid-template-columns: 1fr; }
+  /* El grid de datos a 2 columnas en vez de 4 para no apretar texto */
+  .pr-solicitud .pr-data-grid { grid-template-columns: repeat(2, 1fr); }
+  .pr-solicitud .pr-data-cell.half { grid-column: span 1; }
+  .pr-solicitud .pr-data-cell.wide { grid-column: 1 / -1; }
+  /* La tabla de insumos puede partirse entre páginas si hay muchos ítems */
+  .pr-solicitud .pr-insumos-table { break-inside: auto; page-break-inside: auto; }
+  .pr-solicitud .pr-insumos-table thead { display: table-header-group; }
+  .pr-solicitud .pr-insumos-table tbody tr { break-inside: avoid; page-break-inside: avoid; }
+  /* Firmas lado a lado solo si caben; si no, apiladas */
+  .pr-solicitud .pr-two-col.pr-firmas { grid-template-columns: 1fr 1fr; }
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -351,6 +403,250 @@
 /* ══════════════════════════════════════════════════════════════════
    DOS COLUMNAS
 ══════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════
+   SOLICITUD DE INSUMOS — documento tecnico sobrio
+   Sin imagenes de producto, sin bordes verticales, sin iconos.
+   Solo texto, reglas horizontales muy tenues y una pill por estado.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Encabezado: logo a la izquierda, titulo + folio a la derecha */
+.pr-doc-hdr {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 0 12pt;
+  margin-bottom: 20pt;
+  border-bottom: 2px solid var(--pr-ink);
+}
+
+.pr-doc-brand { flex-shrink: 0; }
+
+.pr-doc-logo {
+  height: 64px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.pr-doc-company {
+  margin-top: 6px;
+  font-size: 6.5pt;
+  line-height: 1.35;
+  color: var(--pr-muted);
+  letter-spacing: 0.04em;
+  max-width: 190px;
+}
+
+.pr-doc-hdr-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  text-align: right;
+}
+
+.pr-doc-title {
+  font-size: 15pt;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pr-ink);
+  line-height: 1.1;
+}
+
+.pr-doc-folio {
+  font-size: 13pt;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--pr-ink);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.pr-doc-gen {
+  font-size: 6.5pt;
+  color: var(--pr-faint);
+}
+
+/* Ruta del material: discreta pero legible, debajo del título,
+   sin mezclarse con el estatus */
+.pr-doc-ruta {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--pr-hair);
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 8px;
+  font-size: 8pt;
+  color: var(--pr-muted);
+  text-align: right;
+}
+
+.pr-doc-ruta-label {
+  font-size: 6pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--pr-faint);
+}
+
+.pr-doc-ruta-val {
+  font-size: 8.5pt;
+  font-weight: 700;
+  color: var(--pr-ink);
+}
+
+/* Titulo de seccion del documento */
+.pr-doc-h2 {
+  font-size: 7pt;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--pr-faint);
+  padding-bottom: 5px;
+  margin: 0 0 10pt;
+  border-bottom: 1px solid var(--pr-ink);
+}
+
+/* Cuadricula de datos generales en dos columnas */
+.pr-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 34px;
+  margin-bottom: 20pt;
+}
+
+.pr-info-col-title {
+  font-size: 6pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--pr-faint);
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--pr-hair);
+}
+
+.pr-info-row {
+  display: grid;
+  grid-template-columns: 108px 1fr;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.pr-info-label {
+  font-size: 6.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--pr-faint);   /* gris medio para los titulos */
+}
+
+.pr-info-value {
+  font-size: 8.5pt;
+  font-weight: 500;
+  color: #000000;           /* negro absoluto para los datos */
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+/* Pill de estado: solo texto, bordes redondeados, sin checks ni iconos */
+.pr-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1.5px 9px;
+  border-radius: 99px;
+  border: 1px solid var(--pr-border);
+  background: #fff;
+  font-size: 6.5pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pr-muted);
+  white-space: nowrap;
+}
+
+.pr-pill--solid  { background: var(--pr-ink);   border-color: var(--pr-ink);   color: #fff; }
+.pr-pill--accent { color: var(--pr-accent);    border-color: var(--pr-accent); }
+.pr-pill--quiet  { color: var(--pr-faint);      border-color: #E5E7EB; }
+
+/* Tabla de insumos: sin imagenes, sin bordes verticales, solo hairlines */
+.pr-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 7.5pt;
+}
+
+.pr-items-table thead th {
+  padding: 0 8px 5px 0;
+  text-align: left;
+  font-size: 5.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--pr-faint);          /* gris medio: los titulos no compiten */
+  border-bottom: 1px solid var(--pr-ink);
+  vertical-align: bottom;
+}
+
+.pr-items-table tbody td {
+  padding: 7px 8px 7px 0;
+  vertical-align: top;
+  border-bottom: 1px solid #E5E7EB;   /* gris muy tenue, solo horizontal */
+  border-left: none;
+  border-right: none;
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Alineacion contable: los numeros a la derecha */
+.pr-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pr-items-table tfoot td {
+  padding: 8px 8px 0 0;
+  border-top: 1px solid var(--pr-ink);
+  border-bottom: none;
+  border-left: none;
+  border-right: none;
+  font-size: 6.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--pr-faint);
+}
+
+.pr-items-table tfoot .pr-num {
+  font-size: 10.5pt;
+  font-weight: 800;
+  color: var(--pr-ink);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.pr-item-name { font-size: 8pt; font-weight: 700; color: var(--pr-ink); line-height: 1.3; }
+.pr-item-sub  { font-size: 6.5pt; font-weight: 400; color: var(--pr-faint); line-height: 1.3; }
+.pr-item-note { font-size: 6.5pt; font-weight: 400; color: var(--pr-faint); }
+
+@media print {
+  .pr-doc-hdr     { padding: 0 0 14pt !important; margin-bottom: 22pt !important; }
+  .pr-doc-logo    { height: 68px !important; }
+  .pr-info-grid   { gap: 0 34px !important; margin-bottom: 24pt !important; }
+  .pr-info-row    { padding: 5px 0 !important; }
+  .pr-items-table tbody td { padding: 8px 8px 8px 0 !important; }
+  .pr-items-table thead    { display: table-header-group; }
+  .pr-items-table tbody tr { break-inside: avoid; page-break-inside: avoid; }
+}
+
 .pr-two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -365,7 +661,7 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 6px 8px;
+  padding: 0;
 }
 
 .pr-stars { display: flex; gap: 2px; }
@@ -377,7 +673,7 @@
    FIRMA
 ══════════════════════════════════════════════════════════════════ */
 .pr-signature {
-  padding: 6px 8px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -543,31 +839,32 @@ body, body.print-preview {
   .pr-root.pr-landscape ~ * { display: none; }
 }
 
-@media print {
-  @page { size: letter landscape; margin: 10mm 12mm; }
-}
+/* @page landscape SOLO para documentos que lo pidan con <PageSize landscape />.
+   Esa componente inyecta su propio <style>@page{size:letter landscape}</style>
+   al final del <head>, que gana por cascada. No debe existir una regla global
+   landscape aquí porque pisaría a los documentos verticales. */
 
 .pr-insumos-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 6.5pt;
 }
-.pr-insumos-table thead tr { background: var(--pr-navy); }
+.pr-insumos-table thead tr { background: var(--pr-light); }
 .pr-insumos-table thead th {
-  padding: 4px 6px;
+  padding: 5px 6px;
   text-align: left;
   font-size: 5pt;
   font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: rgba(255,255,255,0.85);
+  letter-spacing: 0.14em;
+  color: var(--pr-ink);
   white-space: nowrap;
-  border-bottom: 1px solid var(--pr-border);
+  border-bottom: 1px solid var(--pr-ink);
 }
-.pr-insumos-table tbody tr:nth-child(even) { background: var(--pr-light); }
+.pr-insumos-table tbody tr:nth-child(even) { background: #fcfcfc; }
 .pr-insumos-table tbody tr:nth-child(odd)  { background: var(--pr-white); }
 .pr-insumos-table tbody td {
-  padding: 4px 6px;
+  padding: 5px 6px;
   vertical-align: middle;
   border-bottom: 1px solid var(--pr-border);
 }
@@ -607,7 +904,7 @@ body, body.print-preview {
   display: flex;
   align-items: center;
   padding-right: 16px;
-  border-right: 2px solid #e2e8f0;
+  border-right: 2px solid var(--pr-border);
   flex-shrink: 0;
 }
 
@@ -630,7 +927,7 @@ body, body.print-preview {
 .pr-inv-doc-title {
   font-size: 13pt;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--pr-ink);
   letter-spacing: -0.01em;
   line-height: 1.1;
 }
@@ -638,13 +935,13 @@ body, body.print-preview {
 .pr-inv-company {
   font-size: 8pt;
   font-weight: 600;
-  color: #0d9488;
+  color: var(--pr-accent);
   letter-spacing: 0.04em;
 }
 
 .pr-inv-dept {
   font-size: 6.5pt;
-  color: #94a3b8;
+  color: var(--pr-faint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -654,7 +951,7 @@ body, body.print-preview {
   flex-direction: column;
   align-items: flex-end;
   padding-left: 16px;
-  border-left: 2px solid #e2e8f0;
+  border-left: 2px solid var(--pr-border);
   gap: 6px;
   flex-shrink: 0;
 }
@@ -671,29 +968,29 @@ body, body.print-preview {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #94a3b8;
+  color: var(--pr-faint);
   display: block;
 }
 
 .pr-inv-meta-val {
   font-size: 7.5pt;
-  color: #334155;
+  color: var(--pr-muted);
   font-weight: 500;
 }
 
 .pr-inv-mono {
   font-size: 11pt;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--pr-ink);
   font-family: monospace;
 }
 
-/* Franja accent */
+/* Filete de identidad: negro con un tramo naranja de la marca */
 .pr-inv-accent-bar {
-  height: 4px;
-  background: linear-gradient(90deg, #0d9488 0%, #0891b2 40%, #E8621A 100%);
+  height: 3px;
+  background: linear-gradient(90deg, var(--pr-ink) 0%, var(--pr-ink) 72%, var(--pr-accent) 72%, var(--pr-accent) 100%);
   margin: 8px 0 10px;
-  border-radius: 2px;
+  border-radius: 0;
 }
 
 /* ── KPI Strip ─────────────────────────────────────────────────── */
@@ -705,15 +1002,15 @@ body, body.print-preview {
 }
 
 .pr-inv-kpi-card {
-  border: 1px solid #e2e8f0;
-  border-top-width: 3px;
-  border-radius: 4px;
+  border: 1px solid var(--pr-border);
+  border-top: 2px solid var(--pr-ink);
+  border-radius: 0;
   padding: 6px 8px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  background: #fff;
+  background: var(--pr-white);
 }
 
 .pr-inv-kpi-icon {
@@ -733,24 +1030,25 @@ body, body.print-preview {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #94a3b8;
+  color: var(--pr-faint);
   line-height: 1.2;
 }
 
 /* ── Sección tabla ─────────────────────────────────────────────── */
 .pr-inv-section {
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
+  border: 1px solid var(--pr-border);
+  border-radius: 0;
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .pr-inv-section-hdr {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 5px 10px;
-  background: #0f172a;
+  padding: 6px 10px;
+  background: var(--pr-white);
+  border-bottom: 1px solid var(--pr-ink);
 }
 
 .pr-inv-section-title {
@@ -758,13 +1056,13 @@ body, body.print-preview {
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: rgba(255,255,255,0.9);
+  color: var(--pr-ink);
 }
 
 .pr-inv-section-count {
   font-size: 6pt;
-  color: rgba(255,255,255,0.5);
-  font-weight: 600;
+  color: var(--pr-faint);
+  font-weight: 700;
 }
 
 /* ── Tabla inventario ──────────────────────────────────────────── */
@@ -781,16 +1079,16 @@ body, body.print-preview {
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: rgba(255,255,255,0.75);
-  background: #1e293b;
+  color: var(--pr-ink);
+  background: var(--pr-light);
   white-space: nowrap;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid var(--pr-ink);
 }
 
 .pr-inv-td {
   padding: 5px 7px;
   vertical-align: middle;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--pr-hair);
 }
 
 .pr-inv-td-img {
@@ -804,8 +1102,8 @@ body, body.print-preview {
   width: 38px;
   height: 38px;
   object-fit: cover;
-  border-radius: 4px;
-  border: 1px solid #e2e8f0;
+  border-radius: 0;
+  border: 1px solid var(--pr-border);
   display: block;
   margin: 0 auto;
 }
@@ -813,9 +1111,9 @@ body, body.print-preview {
 .pr-inv-thumb-placeholder {
   width: 38px;
   height: 38px;
-  border-radius: 4px;
-  border: 1px dashed #cbd5e1;
-  background: #f8fafc;
+  border-radius: 0;
+  border: 1px solid var(--pr-border);
+  background: var(--pr-light);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -826,7 +1124,7 @@ body, body.print-preview {
 .pr-inv-summary {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--pr-border);
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 8px;
@@ -837,8 +1135,8 @@ body, body.print-preview {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  border-right: 1px solid #e2e8f0;
-  background: #f8fafc;
+  border-right: 1px solid var(--pr-border);
+  background: var(--pr-surface);
 }
 
 .pr-inv-summary-cell:last-child { border-right: none; }
@@ -849,7 +1147,7 @@ body, body.print-preview {
   align-items: center;
   justify-content: space-between;
   padding: 6px 0 0;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--pr-border);
   margin-top: auto;
 }
 
@@ -875,12 +1173,6 @@ body, body.print-preview {
   /* El header de la sección se queda con la primera fila, no se separa */
   .pr-inv-section-hdr    { break-after: avoid; page-break-after: avoid; }
 }
-
-.pr-items-list { display: flex; flex-direction: column; gap: 3px; }
-.pr-item-row   { display: flex; align-items: center; gap: 4px; }
-.pr-item-name  { font-size: 6.5pt; font-weight: 600; color: var(--pr-ink); }
-.pr-item-qty   { font-size: 6pt; font-weight: 800; color: var(--pr-ink); white-space: nowrap; }
-.pr-item-aprobado { font-size: 5.5pt; padding: 1px 4px; border-radius: 3px; font-weight: 700; }
 
 /* KPI strip */
 .pr-data-cell[style*="border-top"] { border-top-width: 2px !important; }

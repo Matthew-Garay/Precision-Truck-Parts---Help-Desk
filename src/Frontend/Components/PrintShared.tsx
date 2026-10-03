@@ -2,26 +2,32 @@
  * PrintShared.tsx — Componentes base compartidos por todos los PDFs del sistema
  * Todos los layouts de impresión importan desde aquí para garantizar consistencia visual.
  */
+import { useEffect } from "react";
 import "./print-report.css";
 
 /* ── Tipos ─────────────────────────────────────────────────────── */
 export interface BadgeMeta { bg: string; color: string; border: string; icon?: string; }
 
 /* ── Catálogos de colores ───────────────────────────────────────── */
+/* ── Catálogos de color ───────────────────────────────────────────────
+   Identidad Precision Truck Parts: negro + gris + un único acento naranja.
+   Sin íconos ni checks: el estado se comunica solo con la etiqueta de
+   texto. La prioridad NO se codifica con color (verde/rojo/ámbar) ni con
+   símbolos: el naranja queda reservado EXCLUSIVAMENTE para "Urgente". */
 export const PRIO_META: Record<string, BadgeMeta & { label: string }> = {
-  Urgente: { label: "URGENTE", bg: "#FEF2F2", color: "#B91C1C", border: "#FCA5A5" },
-  Alta:    { label: "ALTA",    bg: "#FFF7ED", color: "#C2410C", border: "#FDBA74" },
-  Media:   { label: "MEDIA",   bg: "#FEFCE8", color: "#A16207", border: "#FDE047" },
-  Baja:    { label: "BAJA",    bg: "#F0FDF4", color: "#15803D", border: "#86EFAC" },
+  Urgente: { label: "URGENTE", bg: "#ffffff", color: "#E8621A", border: "#E8621A" },
+  Alta:    { label: "ALTA",    bg: "#ffffff", color: "#000000", border: "#000000" },
+  Media:   { label: "MEDIA",   bg: "#ffffff", color: "#6E6E6E", border: "#D5D5D5" },
+  Baja:    { label: "BAJA",    bg: "#ffffff", color: "#6E6E6E", border: "#D5D5D5" },
 };
 
 export const ESTATUS_META: Record<string, BadgeMeta> = {
-  "Resuelto":    { icon: "✓", bg: "#F0FDF4", color: "#15803D", border: "#86EFAC" },
-  "En proceso":  { icon: "◷", bg: "#FFF7ED", color: "#C2410C", border: "#FDBA74" },
-  "Pendiente":   { icon: "◷", bg: "#EFF6FF", color: "#1D4ED8", border: "#BFDBFE" },
-  "No Resuelto": { icon: "✕", bg: "#FEF2F2", color: "#B91C1C", border: "#FCA5A5" },
-  "Rechazado":   { icon: "✕", bg: "#F1F5F9", color: "#475569", border: "#CBD5E1" },
-  "Cancelado":   { icon: "✕", bg: "#F1F5F9", color: "#475569", border: "#CBD5E1" },
+  "Resuelto":    { bg: "#ffffff", color: "#000000", border: "#000000" },
+  "En proceso":  { bg: "#ffffff", color: "#6E6E6E", border: "#D5D5D5" },
+  "Pendiente":   { bg: "#ffffff", color: "#6E6E6E", border: "#D5D5D5" },
+  "No Resuelto": { bg: "#ffffff", color: "#000000", border: "#000000" },
+  "Rechazado":   { bg: "#ffffff", color: "#6E6E6E", border: "#D5D5D5" },
+  "Cancelado":   { bg: "#ffffff", color: "#6E6E6E", border: "#D5D5D5" },
 };
 
 /* ── Helpers de formato ─────────────────────────────────────────── */
@@ -38,6 +44,24 @@ export const fmt = {
 
 export function nowFechaGen(): string {
   return fmt.fechaHora(new Date().toISOString());
+}
+
+/* ── PageSize: orientación de la hoja ───────────────────────────────
+   Carta vertical (portrait) es el default global del CSS.
+   Las vistas con tablas anchas (inventario, reportes) renderizan
+   <PageSize landscape /> para inyectar su propio @page al final del
+   <head>, que gana por cascada en Chrome/Edge. Se limpia al desmontar. */
+export function PageSize({ landscape = false }: { landscape?: boolean }) {
+  useEffect(() => {
+    const el = document.createElement("style");
+    el.setAttribute("data-pr-pagesize", landscape ? "landscape" : "portrait");
+    el.textContent = landscape
+      ? "@media print { @page { size: letter landscape; margin: 0; } }"
+      : "@media print { @page { size: letter portrait; margin: 0; } }";
+    document.head.appendChild(el);
+    return () => { el.remove(); };
+  }, [landscape]);
+  return null;
 }
 
 /* ── Badge ──────────────────────────────────────────────────────── */
@@ -169,12 +193,12 @@ export function ReporteTable({ headers, rows, colWidths }: {
           </colgroup>
         )}
         <thead>
-          <tr style={{ background: "var(--pr-navy)" }}>
+          <tr style={{ background: "var(--pr-light)" }}>
             {headers.map(h => (
               <th key={h} style={{
-                padding: "4px 6px", textAlign: "left", fontSize: "5pt", fontWeight: 900,
-                textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.85)",
-                whiteSpace: "nowrap",
+                padding: "5px 6px", textAlign: "left", fontSize: "5pt", fontWeight: 900,
+                textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--pr-ink)",
+                whiteSpace: "nowrap", borderBottom: "1px solid var(--pr-ink)",
               }}>{h}</th>
             ))}
           </tr>
@@ -187,7 +211,7 @@ export function ReporteTable({ headers, rows, colWidths }: {
               </td>
             </tr>
           ) : rows.map((cells, i) => (
-            <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "var(--pr-surface)", borderBottom: "1px solid var(--pr-border)" }}>
+            <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "var(--pr-surface)", borderBottom: "1px solid var(--pr-hair)" }}>
               {cells.map((cell, j) => (
                 <td key={j} style={{ padding: "3px 6px", verticalAlign: "top", fontSize: "6.5pt", wordBreak: "break-word", overflowWrap: "break-word" }}>{cell}</td>
               ))}

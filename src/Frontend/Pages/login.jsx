@@ -2,21 +2,13 @@ import { useState, useCallback, useEffect, useLayoutEffect } from "react";
 import { apiFetch } from "../Config/api.js";
 import { COLORS, RADIUS, BG_IMAGE, BG_OVERLAY, DIAGONAL, INPUT_FOCUS, INPUT_BLUR } from "../Config/DesignSystem";
 import { EyeIcon, EyeOffIcon } from "../Components/Icons";
+import { emailCorporativoValido } from "../Config/email.js";
+import { evaluarPassword, passwordSeguro } from "../Config/password.js";
 
 // ── Helpers ───────────────────────────────────────────────────
-const emailValido = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-
-const fuerzaPassword = p => {
-  if (p.length < 6) return null;
-  let score = 0;
-  if (p.length >= 10)        score++;
-  if (/[A-Z]/.test(p))       score++;
-  if (/[0-9]/.test(p))       score++;
-  if (/[^A-Za-z0-9]/.test(p)) score++;
-  if (score <= 1) return { label: "Débil",   color: "#dc2626", bg: "#fee2e2", w: "33%"  };
-  if (score <= 2) return { label: "Media",   color: "#ca8a04", bg: "#fef9c3", w: "66%"  };
-  return              { label: "Fuerte",  color: "#16a34a", bg: "#dcfce7", w: "100%" };
-};
+// Solo se aceptan correos corporativos de los dominios permitidos
+// (refividrio.com.mx, ptp.com.mx, megapartes.com.mx, ebatruck.com.mx).
+const emailValido = v => emailCorporativoValido(v) === null;
 
 // ── Modal recuperar contraseña ────────────────────────────────
 function ModalRecuperar({ onCerrar }) {
@@ -31,7 +23,8 @@ function ModalRecuperar({ onCerrar }) {
   const [error, setError]     = useState("");
   const [exito, setExito]     = useState(false);
 
-  const fuerza = fuerzaPassword(pass1);
+  // Política de contraseña corporativa (misma que valida el backend)
+  const fuerza = evaluarPassword(pass1);
 
   const inp = {
     background: COLORS.silverBg, border: `1px solid ${COLORS.silver}`,
@@ -40,7 +33,11 @@ function ModalRecuperar({ onCerrar }) {
   };
 
   const handleEmail = async (e) => {
-    e.preventDefault(); setError(""); setLoading(true);
+    e.preventDefault(); setError("");
+    // Validación local de la política de dominios antes de llamar al servidor
+    const errEmail = emailCorporativoValido(email);
+    if (errEmail) { setError(errEmail); return; }
+    setLoading(true);
     try {
       const res  = await apiFetch("/api/auth/recuperar", { method: "POST", body: { email } });
       const data = await res.json();
@@ -69,7 +66,8 @@ function ModalRecuperar({ onCerrar }) {
   const handleReset = async (e) => {
     e.preventDefault(); setError("");
     if (pass1 !== pass2) { setError("Las contraseñas no coinciden"); return; }
-    if (pass1.length < 8) { setError("Mínimo 8 caracteres"); return; }
+    const passErr = passwordSeguro(pass1);
+    if (passErr) { setError(`La contraseña debe cumplir: ${passErr.toLowerCase()}`); return; }
     setLoading(true);
     try {
       const res  = await apiFetch("/api/auth/reset-password", { method: "POST", body: { email, codigo, password_nueva: pass1 } });
@@ -190,7 +188,7 @@ function ModalRecuperar({ onCerrar }) {
                 </svg>
                 <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#a0aec0" }}>Correo</span>
                 <input type="email" required value={email} onChange={e => { setEmail(e.target.value); setError(""); }}
-                  placeholder="usuario@dominio.com"
+                  placeholder="usuario@dominio.com.mx"
                   style={{ ...inp, fontSize: "14px" }}
                   onFocus={e => e.target.style.borderColor = "#F47920"}
                   onBlur={e => e.target.style.borderColor = COLORS.silver} />
@@ -252,13 +250,25 @@ function ModalRecuperar({ onCerrar }) {
                 </div>
               </div>
 
-              {/* Barra de fortaleza */}
+              {/* Barra de fortaleza + reglas de la política */}
               {pass1.length > 0 && (
-                <div id="fuerza-pass" style={{ padding: "6px 0 4px", borderBottom: "1px solid #f1f5f9" }}>
-                  <div style={{ width: "100%", height: "4px", borderRadius: "99px", overflow: "hidden", background: COLORS.silverLight }}>
-                    <div style={{ height: "100%", borderRadius: "99px", transition: "all 0.3s", width: fuerza?.w ?? "0%", background: fuerza?.color ?? "transparent" }} />
+                <div id="fuerza-pass" style={{ padding: "6px 0 8px", borderBottom: "1px solid #f1f5f9" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "5px" }}>
+                    <div style={{ flex: 1, height: "4px", borderRadius: "99px", overflow: "hidden", background: COLORS.silverLight }}>
+                      <div style={{ height: "100%", borderRadius: "99px", transition: "all 0.3s", width: `${fuerza.pct}%`, background: fuerza.color }} />
+                    </div>
+                    <span style={{ fontSize: "10px", fontWeight: 700, textAlign: "right", color: fuerza.color }}>{fuerza.etiqueta}</span>
                   </div>
-                  {fuerza && <p style={{ fontSize: "10px", fontWeight: 700, textAlign: "right", marginTop: "3px", color: fuerza.color }}>{fuerza.label}</p>}
+                  <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 8px" }}>
+                    {fuerza.reglas.map(r => (
+                      <li key={r.id} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "10px", color: r.ok ? "#16a34a" : "#9ca3af" }}>
+                        {r.ok
+                          ? <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                          : <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>}
+                        {r.texto}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
@@ -601,7 +611,7 @@ export default function Login({ onLogin }) {
                     <input
                       id="login-email"
                       type="email"
-                      placeholder="usuario@dominio.com"
+                      placeholder="usuario@dominio.com.mx"
                       value={email}
                       onChange={(e) => { setEmail(e.target.value); setError(""); }}
                       onBlur={() => setEmailTouched(true)}
@@ -634,7 +644,7 @@ export default function Login({ onLogin }) {
                   </div>
                   {emailTouched && !emailOk && email.length > 0 && (
                     <p id="email-error" role="alert" style={{ color: "#ef4444", fontSize: "11px", marginTop: "4px" }}>
-                      Ingresa un correo válido
+                      {emailCorporativoValido(email)}
                     </p>
                   )}
                 </div>

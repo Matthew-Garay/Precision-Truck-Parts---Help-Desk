@@ -12,9 +12,14 @@ interface DetalleItem {
   marca?: string | null;
   modelo?: string | null;
   num_serie?: string | null;
+  /** Cantidad pedida por el empleado */
   cantidad: number;
-  stock: number;
+  cantidad_solicitada?: number | null;
+  /** Cantidad que el administrador acepto entregar */
+  cantidad_aprobada?: number | null;
+  cantidad_a_entregar?: number | null;
   descripcion?: string | null;
+  justificacion?: string | null;
   aprobado?: number | null;
   imagen_url?: string | null;
 }
@@ -27,6 +32,10 @@ interface Solicitud {
   nombre_empleado: string;
   nombre_departamento: string;
   nombre_sucursal?: string | null;
+  nombre_sucursal_origen?: string | null;
+  nombre_sucursal_destino?: string | null;
+  fecha_atencion?: string | null;
+  justificacion?: string | null;
   detalle: DetalleItem[];
 }
 
@@ -40,7 +49,13 @@ export default function PrintSolicitudPage() {
   useEffect(() => {
     if (!folio) return;
     const tokenParam = searchParams.get("token");
-    if (tokenParam) setToken(tokenParam);
+    if (tokenParam) {
+      setToken(tokenParam);
+      /* El JWT viaja en la URL para autorizar la vista previa. Se quita de la
+         barra de direcciones apenas se consume: si el navegador imprime sus
+         encabezados, ya no queda la URL local ni el token en el papel. */
+      window.history.replaceState(null, "", window.location.pathname);
+    }
     const token = tokenParam ?? getToken();
     if (!token) {
       setError("Sesión no válida. Cierra esta pestaña, inicia sesión y vuelve a exportar el PDF.");

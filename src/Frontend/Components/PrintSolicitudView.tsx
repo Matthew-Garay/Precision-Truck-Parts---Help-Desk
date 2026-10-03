@@ -1,6 +1,6 @@
 import {
-  Badge, PageHeader, PageFooter, Section, DataGrid, Firma,
-  PRIO_META, ESTATUS_META, fmt, nowFechaGen,
+  PageFooter, PageSize, Firma,
+  PRIO_META, fmt, nowFechaGen,
 } from "./PrintShared";
 
 interface DetalleItem {
@@ -10,9 +10,14 @@ interface DetalleItem {
   marca?: string | null;
   modelo?: string | null;
   num_serie?: string | null;
+  /** Cantidad pedida por el empleado */
   cantidad: number;
-  stock: number;
+  cantidad_solicitada?: number | null;
+  /** Cantidad que el administrador acepto entregar */
+  cantidad_aprobada?: number | null;
+  cantidad_a_entregar?: number | null;
   descripcion?: string | null;
+  justificacion?: string | null;
   aprobado?: number | null;
   imagen_url?: string | null;
 }
@@ -25,20 +30,71 @@ interface Solicitud {
   nombre_empleado: string;
   nombre_departamento: string;
   nombre_sucursal?: string | null;
+  nombre_sucursal_origen?: string | null;
+  nombre_sucursal_destino?: string | null;
+  fecha_atencion?: string | null;
+  justificacion?: string | null;
   detalle: DetalleItem[];
 }
 
-function InsumosTable({ items }: { items: DetalleItem[] }) {
+/** Cantidad pedida por el empleado */
+const solicitadoDe = (d: DetalleItem) => d.cantidad_solicitada ?? d.cantidad;
+/** Cantidad que realmente se entrega (0 si el item fue negado) */
+const entregadoDe  = (d: DetalleItem) => d.cantidad_a_entregar ?? d.cantidad_aprobada ?? d.cantidad;
+
+/* Etiqueta de texto tipo pill. Sin íconos, sin checks, sin emojis:
+   el estado se lee solo con la palabra. */
+function Pill({ children, tone = "default" }: {
+  children: React.ReactNode;
+  tone?: "default" | "solid" | "accent" | "quiet";
+}) {
+  return <span className={`pr-pill${tone !== "default" ? ` pr-pill--${tone}` : ""}`}>{children}</span>;
+}
+
+/** Pastilla del estatus de la solicitud (o de cada renglón) */
+function StatusPill({ estatus }: { estatus: string }) {
+  const tone =
+    estatus === "Aceptado" ? "solid" :
+    estatus === "Rechazado" ? "quiet"  : "default";
+  return <Pill tone={tone}>{estatus}</Pill>;
+}
+
+/** Pastilla de prioridad. El naranja es exclusivo de "Urgente". */
+function PrioridadPill({ prioridad }: { prioridad: string }) {
+  const tone = prioridad === "Urgente" ? "accent" : "default";
+  return <Pill tone={tone}>{(PRIO_META[prioridad] ?? PRIO_META.Baja).label}</Pill>;
+}
+
+function InsumosTable({ items, cerrado, justificacionGeneral }: {
+  items: DetalleItem[];
+  cerrado: boolean;
+  justificacionGeneral?: string | null;
+}) {
   if (!items.length) {
     return <p className="pr-empty">No hay insumos registrados en esta solicitud.</p>;
   }
 
+  const totalSolicitado = items.reduce((s, d) => s + solicitadoDe(d), 0);
+  const totalAprobado = cerrado
+    ? items.filter(d => d.aprobado === 1 || (d.aprobado as unknown) === true)
+        .reduce((s, d) => s + entregadoDe(d), 0)
+    : null;
+
   return (
-    <table className="pr-insumos-table">
+    <table className="pr-items-table">
+      <colgroup>
+        <col style={{ width: "4%" }} />
+        <col style={{ width: "24%" }} />
+        <col style={{ width: "22%" }} />
+        <col style={{ width: "10%" }} />
+        <col style={{ width: "10%" }} />
+        <col style={{ width: "19%" }} />
+        <col style={{ width: "11%" }} />
+      </colgroup>
       <thead>
         <tr>
-          {["#", "Img.", "Insumo", "Especificaciones", "Stock", "Cant.", "Estado"].map(h => (
-            <th key={h}>{h}</th>
+          {["#", "Insumo", "Descripción y S/N", "Solicitado", "Aceptado", "Justificación", "Estado"].map((h, i) => (
+            <th key={h} className={i === 3 || i === 4 ? "pr-num" : undefined}>{h}</th>
           ))}
         </tr>
       </thead>
@@ -46,54 +102,52 @@ function InsumosTable({ items }: { items: DetalleItem[] }) {
         {items.map((d, i) => {
           const sinRevisar = d.aprobado == null;
           const aprobado   = d.aprobado === 1 || (d.aprobado as unknown) === true;
-          const badgeColor  = sinRevisar ? "#92400E" : aprobado ? "#15803D" : "#B91C1C";
-          const badgeBg     = sinRevisar ? "#FFFBEB" : aprobado ? "#F0FDF4" : "#FEF2F2";
-          const badgeBorder = sinRevisar ? "#FDE68A" : aprobado ? "#BBF7D0" : "#FECACA";
-          const badgeLabel  = sinRevisar ? "— Pendiente" : aprobado ? "✓ Aprobado" : "✕ Denegado";
+          const modeloTxt  = [d.marca, d.modelo].filter(Boolean).join(" · ");
+          const descTxt    = (d.descripcion ?? "").trim();
           return (
             <tr key={d.id_solicitud_insumo}>
-              <td style={{ fontSize: "7pt", color: "var(--pr-faint)", textAlign: "center" }}>{i + 1}</td>
-              <td style={{ textAlign: "center", padding: "4px" }}>
-                {d.imagen_url
-                  ? <img src={d.imagen_url} alt={d.nombre}
-                      style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 4, display: "block", margin: "0 auto" }} />
-                  : <span style={{
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      width: 36, height: 36, borderRadius: 4,
-                      background: "#f1f5f9", fontSize: "14pt", color: "#94a3b8",
-                    }}>□</span>
-                }
-              </td>
-              <td style={{ fontSize: "9pt", fontWeight: 700, color: "var(--pr-ink)" }}>{d.nombre}</td>
-              <td style={{ fontSize: "7.5pt", color: "var(--pr-muted)", lineHeight: 1.4 }}>
-                {[d.marca, d.modelo].filter(Boolean).join(" · ") || "—"}
-                {d.num_serie && <><br /><span style={{ fontSize: "6.5pt", color: "var(--pr-faint)" }}>S/N: {d.num_serie}</span></>}
-              </td>
-              <td style={{
-                fontSize: "9pt", fontWeight: 700,
-                color: d.stock > 5 ? "#15803D" : d.stock > 0 ? "#B45309" : "#B91C1C",
-              }}>{d.stock} uds.</td>
-              <td style={{ fontSize: "11pt", fontWeight: 900, color: "var(--pr-accent)" }}>×{d.cantidad}</td>
+              <td style={{ textAlign: "center", color: "var(--pr-faint)", fontSize: "6.5pt" }}>{i + 1}</td>
               <td>
-                <span style={{
-                  display: "inline-flex", alignItems: "center", gap: 3,
-                  fontSize: "7pt", fontWeight: 800,
-                  color: badgeColor, background: badgeBg,
-                  border: `1px solid ${badgeBorder}`,
-                  borderRadius: 3, padding: "2px 6px", whiteSpace: "nowrap" as const,
-                }}>{badgeLabel}</span>
+                <div className="pr-item-name">{d.nombre}</div>
+                {modeloTxt && <div className="pr-item-sub">{modeloTxt}</div>}
+              </td>
+              <td>
+                {descTxt && <div style={{ fontSize: "7pt" }}>{descTxt}</div>}
+                {d.num_serie && <div className="pr-item-note">S/N: {d.num_serie}</div>}
+                {!descTxt && !d.num_serie && <span style={{ color: "var(--pr-faint)" }}>&mdash;</span>}
+              </td>
+              {/* Lo que el empleado pidio */}
+              <td className="pr-num" style={{ fontSize: "9pt", fontWeight: 700, color: "var(--pr-muted)" }}>
+                {solicitadoDe(d)}
+              </td>
+              {/* Lo que el administrador acepto entregar (puede ser menor) */}
+              <td className="pr-num" style={{
+                fontSize: "9.5pt", fontWeight: 800,
+                color: !cerrado ? "var(--pr-faint)" : aprobado ? "var(--pr-ink)" : "var(--pr-faint)",
+              }}>
+                {cerrado ? entregadoDe(d) : solicitadoDe(d)}
+              </td>
+              <td style={{ fontSize: "7pt", color: "var(--pr-muted)" }}>
+                {(d.justificacion ?? "").trim() || justificacionGeneral?.trim() || <span style={{ color: "var(--pr-faint)" }}>&mdash;</span>}
+              </td>
+              <td>
+                {sinRevisar
+                  ? <Pill tone="quiet">Pendiente</Pill>
+                  : aprobado
+                    ? <Pill tone="solid">Aprobado</Pill>
+                    : <Pill tone="quiet">Denegado</Pill>}
               </td>
             </tr>
           );
         })}
       </tbody>
       <tfoot>
-        <tr style={{ background: "var(--pr-navy)" }}>
-          <td colSpan={5} style={{ padding: "7px 8px", fontSize: "6.5pt", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(255,255,255,0.45)" }}>
-            Total de piezas solicitadas
-          </td>
-          <td colSpan={2} style={{ padding: "7px 8px", fontSize: "12pt", fontWeight: 900, color: "#F47920", letterSpacing: "-0.02em" }}>
-            {items.reduce((s, d) => s + d.cantidad, 0)} pzas.
+        <tr>
+          <td colSpan={3}>Total de piezas solicitadas</td>
+          <td className="pr-num">{totalSolicitado}</td>
+          <td className="pr-num">{cerrado ? totalAprobado : "—"}</td>
+          <td colSpan={2} style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400, color: "var(--pr-faint)" }}>
+            {totalAprobado !== null ? `${totalAprobado} piezas aprobadas` : ""}
           </td>
         </tr>
       </tfoot>
@@ -103,28 +157,19 @@ function InsumosTable({ items }: { items: DetalleItem[] }) {
 
 function EstadoSolicitud({ estatus, fechaSolicitud }: { estatus: string; fechaSolicitud: string }) {
   const cerrado = estatus === "Aceptado" || estatus === "Rechazado";
-  const color   = estatus === "Aceptado" ? "#15803D" : estatus === "Rechazado" ? "#B91C1C" : "#C2410C";
-  const icon    = estatus === "Aceptado" ? "✓" : estatus === "Rechazado" ? "✕" : "◷";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "6px 8px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{
-          width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center",
-          justifyContent: "center", flexShrink: 0, fontSize: "13pt", fontWeight: 900,
-          background: cerrado ? (estatus === "Aceptado" ? "#F0FDF4" : "#FEF2F2") : "#FFF7ED",
-          border: `2px solid ${color}`, color,
-        }}>{icon}</span>
-        <div>
-          <p style={{ margin: 0, fontSize: "9pt", fontWeight: 700, color }}>
-            {cerrado ? (estatus === "Aceptado" ? "Solicitud aceptada" : "Solicitud rechazada") : "Pendiente de resolución"}
-          </p>
-          <p style={{ margin: 0, fontSize: "7pt", color: "var(--pr-faint)" }}>
-            {cerrado
-              ? (estatus === "Aceptado" ? "Insumos aprobados y stock descontado" : "La solicitud fue denegada")
-              : `Fecha de solicitud: ${fechaSolicitud}`}
-          </p>
-        </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+      <StatusPill estatus={estatus} />
+      <div>
+        <p style={{ margin: 0, fontSize: "8.5pt", fontWeight: 700, color: "var(--pr-ink)" }}>
+          {cerrado ? (estatus === "Aceptado" ? "Solicitud aceptada" : "Solicitud rechazada") : "Pendiente de resolución"}
+        </p>
+        <p style={{ margin: 0, fontSize: "7pt", color: "var(--pr-faint)" }}>
+          {cerrado
+            ? (estatus === "Aceptado" ? "Insumos aprobados y stock descontado" : "La solicitud fue denegada")
+            : `Fecha de solicitud: ${fechaSolicitud}`}
+        </p>
       </div>
     </div>
   );
@@ -133,73 +178,103 @@ function EstadoSolicitud({ estatus, fechaSolicitud }: { estatus: string; fechaSo
 export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud }) {
   const fechaGen  = nowFechaGen();
   const fechaSol  = fmt.fechaHora(solicitud.fecha);
-  const totalSolicitado = solicitud.detalle.reduce((s, d) => s + d.cantidad, 0);
-  const cerrado = solicitud.estatus === "Aceptado" || solicitud.estatus === "Rechazado";
-  const totalAprobado = cerrado
-    ? solicitud.detalle.filter(d => d.aprobado === 1 || (d.aprobado as unknown) === true).reduce((s, d) => s + d.cantidad, 0)
-    : null;
+  const cerrado   = solicitud.estatus === "Aceptado" || solicitud.estatus === "Rechazado";
 
-  const prio    = PRIO_META[solicitud.prioridad]  ?? PRIO_META.Baja;
-  const estatus = ESTATUS_META[solicitud.estatus] ?? ESTATUS_META["Pendiente"];
+  // Ruta del material elegida por el administrador: de qué sucursal sale el
+  // material y a qué sucursal llega (se define antes de aceptar la solicitud).
+  const rutaOrigen  = solicitud.nombre_sucursal_origen?.trim()  || null;
+  const rutaDestino = solicitud.nombre_sucursal_destino?.trim() || null;
 
   return (
-    <div className="pr-root" data-ready="true">
+    <div className="pr-root pr-solicitud" data-ready="true">
+      {/* Carta vertical: este documento cabe en una hoja tamaño carta */}
+      <PageSize />
 
-      <PageHeader
-        titulo="Solicitud de Insumos"
-        subtitulo="Departamento de Almacén e Inventario"
-        metaRows={[
-          { label: "Folio",    value: solicitud.folio_solicitud, mono: true },
-          { label: "Generado", value: fechaGen },
-        ]}
-      />
+      {/* Encabezado: logo a la izquierda, título y folio a la derecha.
+          La ruta del material va debajo del título, discreta, sin mezclarse
+          con el estatus. */}
+      <header className="pr-doc-hdr">
+        <div className="pr-doc-brand">
+          <img src="/assets/img/log.png" alt="Precision Truck Parts" className="pr-doc-logo" />
+          <div className="pr-doc-company">
+            Precision Truck Parts, Parts and Accesories, S.A de C.V.
+            <br />
+            Departamento de Soporte Técnico
+          </div>
+        </div>
+
+        <div className="pr-doc-hdr-right">
+          <span className="pr-doc-title">Solicitud de Insumos</span>
+          <span className="pr-doc-folio">{solicitud.folio_solicitud}</span>
+          <span className="pr-doc-gen">Generado {fechaGen}</span>
+
+          {/* Ruta del material — siempre visible. Si el administrador aún no la
+              define se imprime "Por definir" para que quede a la vista. */}
+          <div className="pr-doc-ruta">
+            <span className="pr-doc-ruta-label">Ruta del material</span>
+            {rutaOrigen || rutaDestino ? (
+              <span className="pr-doc-ruta-val">
+                {rutaOrigen ?? "—"} → {rutaDestino ?? "—"}
+              </span>
+            ) : (
+              <span className="pr-doc-ruta-val">Por definir</span>
+            )}
+          </div>
+        </div>
+      </header>
 
       <div className="pr-content">
 
-        {/* Línea de estado — igual que en PrintReportView */}
-        <div style={{
-          display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8,
-          padding: "6px 10px", marginBottom: 10,
-          border: "1px solid #cccccc", background: "#f5f5f5",
-        }}>
-          <span style={{ flex: 1, fontSize: "9pt", fontWeight: "bold", color: "#000" }}>
-            {solicitud.nombre_empleado} — {solicitud.nombre_departamento}
-          </span>
-          <Badge label={solicitud.estatus} icon={estatus.icon} bg="#f5f5f5" color="#000" border="#cccccc" />
-          <Badge label={prio.label} bg="#f5f5f5" color="#000" border="#cccccc" />
-          <span style={{ fontSize: "7.5pt", color: "#444" }}>
-            {totalSolicitado} pzas.{totalAprobado !== null ? ` · ${totalAprobado} aprobadas` : ""}
-          </span>
+        {/* Cuadrícula de datos generales: dos columnas */}
+        <div className="pr-info-grid">
+          <div>
+            <div className="pr-info-col-title">Origen</div>
+            <div className="pr-info-row">
+              <span className="pr-info-label">Solicitante</span>
+              <span className="pr-info-value">{solicitud.nombre_empleado}</span>
+            </div>
+            <div className="pr-info-row">
+              <span className="pr-info-label">Departamento</span>
+              <span className="pr-info-value">{solicitud.nombre_departamento}</span>
+            </div>
+            <div className="pr-info-row">
+              <span className="pr-info-label">Sucursal</span>
+              <span className="pr-info-value">{solicitud.nombre_sucursal || "—"}</span>
+            </div>
+          </div>
+
+          <div>
+            <div className="pr-info-col-title">Control</div>
+            <div className="pr-info-row">
+              <span className="pr-info-label">Fecha de solicitud</span>
+              <span className="pr-info-value">{fechaSol}</span>
+            </div>
+            <div className="pr-info-row">
+              <span className="pr-info-label">Estatus</span>
+              <span className="pr-info-value"><StatusPill estatus={solicitud.estatus} /></span>
+            </div>
+            <div className="pr-info-row">
+              <span className="pr-info-label">Prioridad</span>
+              <span className="pr-info-value"><PrioridadPill prioridad={solicitud.prioridad} /></span>
+            </div>
+          </div>
         </div>
 
-        <Section title="Datos de la Solicitud" noPad>
-          <DataGrid items={[
-            { label: "Folio",              value: solicitud.folio_solicitud,       half: true },
-            { label: "Solicitante",        value: solicitud.nombre_empleado,       half: true },
-            { label: "Departamento",       value: solicitud.nombre_departamento,   half: true },
-            { label: "Sucursal",           value: solicitud.nombre_sucursal ?? "—", half: true },
-            { label: "Fecha de solicitud", value: fechaSol,                        half: true },
-            { label: "Estatus",            value: solicitud.estatus,               half: true },
-            { label: "Prioridad",          value: solicitud.prioridad,             half: true },
-            { label: "Tipos de insumo",    value: String(solicitud.detalle.length), half: true },
-            { label: "Total solicitado",   value: `${totalSolicitado} unidades`,   half: true },
-            ...(totalAprobado !== null
-              ? [{ label: "Total aprobado", value: `${totalAprobado} unidades`, half: true }]
-              : []),
-          ]} />
-        </Section>
+        <div className="pr-doc-h2">
+          Insumos solicitados — {solicitud.detalle.length} ítem{solicitud.detalle.length !== 1 ? "s" : ""}
+        </div>
 
-        <Section title={`Insumos Solicitados — ${solicitud.detalle.length} ítem${solicitud.detalle.length !== 1 ? "s" : ""}`}>
-          <InsumosTable items={solicitud.detalle} />
-        </Section>
+        <InsumosTable items={solicitud.detalle} cerrado={cerrado} justificacionGeneral={solicitud.justificacion ?? null} />
 
-        <div className="pr-two-col">
-          <Section title="Estado de la Solicitud">
+        <div className="pr-two-col pr-firmas" style={{ marginTop: 26 }}>
+          <div>
+            <div className="pr-doc-h2">Estado de la solicitud</div>
             <EstadoSolicitud estatus={solicitud.estatus} fechaSolicitud={fechaSol} />
-          </Section>
-          <Section title="Firma del Solicitante">
+          </div>
+          <div>
+            <div className="pr-doc-h2">Firma del solicitante</div>
             <Firma nombre={solicitud.nombre_empleado} rol="Solicitante" />
-          </Section>
+          </div>
         </div>
 
       </div>
