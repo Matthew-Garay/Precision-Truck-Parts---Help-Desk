@@ -63,7 +63,7 @@ import crypto   from "crypto";
 import pool     from "../Config/db.js";
 import { safeResolvePath } from "../Middlewares/security.js";
 import { uploadFoto, FOTOS_DIR, FOTOS_REL } from "../Middlewares/uploadFotos.js";
-import { revocarToken } from "../Middlewares/authMiddleware.js";
+import { validarEmailCorporativo } from "../Middlewares/validate.js";
 
 export { uploadFoto };
 
@@ -72,9 +72,16 @@ const errDetalle = (err) => isProd() ? {} : { detalle: err.message };
 
 export const refreshToken = async (req, res) => {
   try {
-    const jti   = crypto.randomUUID();
+    const [[emp]] = await pool.query(
+      "SELECT id_empleado, id_rol, token_version, estatus FROM empleado WHERE id_empleado = ? LIMIT 1",
+      [req.usuario.id_empleado]
+    );
+    if (!emp) return res.status(401).json({ error: "Usuario no encontrado" });
+    if (emp.estatus?.toLowerCase() !== "activo")
+      return res.status(403).json({ error: "Usuario inactivo, contacte al administrador" });
+
     const token = jwt.sign(
-      { id_empleado: req.usuario.id_empleado, id_rol: req.usuario.id_rol, jti },
+      { id_empleado: emp.id_empleado, id_rol: emp.id_rol, ver: emp.token_version },
       process.env.JWT_SECRET,
       { expiresIn: "12h" }
     );
@@ -109,6 +116,11 @@ export const login = async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
     return res.status(400).json({ error: "Correo y contraseña son requeridos" });
+  // Defensa en profundidad: schemaLogin ya aplica la política de dominios
+  // (middleware validate), pero se repite aquí por si la ruta cambia. Se
+  // responde con el mismo mensaje genérico para no revelar información.
+  if (validarEmailCorporativo(email) !== null)
+    return res.status(401).json({ error: "Correo o contraseña incorrectos" });
   try {
     const empleado = await Empleado.findByEmail(email);
     if (!empleado)
@@ -122,9 +134,10 @@ export const login = async (req, res) => {
     await Empleado.cerrarSesionesHuerfanas(empleado.id_empleado);
     const id_acceso = await Empleado.registrarEntrada(empleado.id_empleado);
 
-    const jti   = crypto.randomUUID();
+    // El token lleva la version vigente: si despues el usuario cierra sesion,
+    // `token_version` sube y este token deja de servir.
     const token = jwt.sign(
-      { id_empleado: empleado.id_empleado, id_rol: empleado.id_rol, jti },
+      { id_empleado: empleado.id_empleado, id_rol: empleado.id_rol, ver: empleado.token_version ?? 0 },
       process.env.JWT_SECRET,
       { expiresIn: "12h" }
     );
@@ -173,8 +186,13 @@ export const logout = async (req, res) => {
           );
           if (acceso && acceso.id_empleado !== payload.id_empleado)
             return res.status(403).json({ error: "No autorizado" });
-          if (payload?.jti && payload?.exp)
-            await revocarToken(payload.jti, payload.id_empleado, payload.exp);
+          /* Invalidacion del token sin tabla de lista negra: se sube la
+             generacion del empleado y todos los JWT emitidos antes quedan
+             inservibles. Cierra sesion en todos los dispositivos. */
+          await pool.query(
+            "UPDATE empleado SET token_version = token_version + 1 WHERE id_empleado = ?",
+            [payload.id_empleado]
+          );
         }
       } catch { /* token inválido o expirado — continuar sin revocar */ }
     }
@@ -252,6 +270,11 @@ export const updateEmpleadoAdmin = async (req, res) => {
   const idNum = parseInt(req.params.id, 10);
   if (isNaN(idNum) || idNum <= 0) return res.status(400).json({ error: "ID inválido" });
   const { nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password_nueva } = req.body;
+  // Defensa en profundidad: política de dominios corporativos (además de schemaUpdateEmpleadoAdmin).
+  if (email !== undefined) {
+    const errEmail = validarEmailCorporativo(email);
+    if (errEmail) return res.status(400).json({ error: errEmail });
+  }
   try {
     const empleado = await Empleado.findById(idNum);
     if (!empleado) return res.status(404).json({ error: "Empleado no encontrado" });
@@ -281,6 +304,9 @@ export const crearEmpleado = async (req, res) => {
     return res.status(400).json({ error: "Todos los campos son requeridos" });
   if (password.length < 8)
     return res.status(400).json({ error: "La contraseña debe tener al menos 8 caracteres" });
+  // Defensa en profundidad: política de dominios corporativos (además de schemaCrearEmpleado).
+  const errEmail = validarEmailCorporativo(email);
+  if (errEmail) return res.status(400).json({ error: errEmail });
   try {
     const hash = await bcrypt.hash(password, 12);
     const id = await Empleado.crear({ num_empleado, nombre, ap_paterno, ap_materno: ap_materno || "", email, password: hash, id_rol: parseInt(id_rol), id_departamento: parseInt(id_departamento), id_sucursal: id_sucursal ? parseInt(id_sucursal) : null });
@@ -310,6 +336,11 @@ export const actualizarPerfil = async (req, res) => {
     return res.status(403).json({ error: "No puedes modificar el perfil de otro usuario" });
   const { nombre, ap_paterno, ap_materno, email, password_actual, password_nueva } = req.body;
   const idNum = parseInt(id, 10);
+  // Defensa en profundidad: política de dominios corporativos (además de schemaActualizarPerfil).
+  if (email !== undefined) {
+    const errEmail = validarEmailCorporativo(email);
+    if (errEmail) return res.status(400).json({ error: errEmail });
+  }
   try {
     const empleado = await Empleado.findById(idNum);
     if (!empleado) return res.status(404).json({ error: "Usuario no encontrado" });
