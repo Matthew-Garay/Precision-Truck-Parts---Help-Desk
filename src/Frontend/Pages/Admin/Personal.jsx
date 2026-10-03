@@ -2,8 +2,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import { apiFetch } from "../../Config/api";
+import { emailCorporativoValido, DOMINIOS_PERMITIDOS } from "../../Config/email.js";
+import { evaluarPassword, passwordSeguro } from "../../Config/password.js";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
-import { X } from "lucide-react";
+import { X, Eye, EyeOff } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 const ORANGE  = "#F47920";
@@ -38,18 +40,6 @@ function Avatar({ nombre, foto, size = 48, isDark }) {
       <span style={{ fontSize: size * 0.33, fontWeight: 700, color: fg, letterSpacing: "-0.02em" }}>{iniciales || "?"}</span>
     </div>
   );
-}
-
-// ── Password strength ─────────────────────────────────────────────
-function passStrength(p) {
-  if (!p) return 0;
-  let s = 0;
-  if (p.length >= 6)  s++;
-  if (p.length >= 10) s++;
-  if (/[A-Z]/.test(p)) s++;
-  if (/[0-9]/.test(p)) s++;
-  if (/[^A-Za-z0-9]/.test(p)) s++;
-  return s;
 }
 
 // ── Tokens helper ─────────────────────────────────────────────────
@@ -90,9 +80,10 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
   const [form,   setForm]   = useState({ ...FORM_VACIO, ...(isEdit ? { ...empleado, password_nueva: "", id_sucursal: empleado.id_sucursal != null ? String(empleado.id_sucursal) : "", id_rol: String(empleado.id_rol ?? ""), id_departamento: String(empleado.id_departamento ?? "") } : {}) });
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState("");
-  const [strength, setStrength] = useState(0);
+  const [showPass, setShowPass] = useState(false);
 
-  useEffect(() => { setStrength(passStrength(form.password_nueva)); }, [form.password_nueva]);
+  // Política de contraseña compartida (misma que valida el backend)
+  const passEval = evaluarPassword(form.password_nueva);
 
   useEffect(() => {
     const fn = e => { if (e.key === "Escape") onCerrar(); };
@@ -120,18 +111,13 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
   const onFocus = e => { e.target.style.borderColor = borderFocus; e.target.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.10)"; e.target.style.background = isDark ? "rgba(255,255,255,0.07)" : "#fff"; };
   const onBlur  = e => { e.target.style.borderColor = tk.border; e.target.style.boxShadow = "none"; e.target.style.background = tk.inputBg; };
 
-  const validarPassword = (p) => {
-    if (p.length < 8)              return "La contraseña debe tener al menos 8 caracteres.";
-    if (!/[A-Z]/.test(p))          return "Debe contener al menos una mayúscula.";
-    if (!/[0-9]/.test(p))          return "Debe contener al menos un número.";
-    if (!/[^A-Za-z0-9]/.test(p))   return "Debe contener al menos un carácter especial (ej. .)";
-    return null;
-  };
+  const validarPassword = p => passwordSeguro(p);
 
   const guardar = async () => {
     if (!form.nombre.trim())     return setError("El nombre es requerido.");
     if (!form.ap_paterno.trim()) return setError("El apellido paterno es requerido.");
-    if (!form.email.trim())      return setError("El correo es requerido.");
+    const emailErr = emailCorporativoValido(form.email);
+    if (emailErr)                return setError(emailErr);
     const pass = form.password_nueva.trim();
     if (!isEdit && !pass)        return setError("La contraseña es requerida.");
     if (pass) {
@@ -148,9 +134,6 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
       setSaving(false);
     }
   };
-
-  const strColors = ["#dc2626", "#f59e0b", "#f59e0b", "#16a34a", "#16a34a"];
-  const strLabels = ["", "Débil", "Regular", "Buena", "Fuerte", "Muy fuerte"];
 
   return (
     <div
@@ -241,22 +224,52 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
             <Field htmlFor="fe-email" label="Correo electrónico" required textFaint={tk.textFaint}>
               <input id="fe-email" type="email" value={form.email}
                 onChange={e => set("email", e.target.value)}
-                placeholder="correo@empresa.com" style={inp} onFocus={onFocus} onBlur={onBlur} />
+                placeholder="usuario@dominio.com.mx" style={inp} onFocus={onFocus} onBlur={onBlur} />
+              <p style={{ fontSize: 10, color: tk.textFaint, marginTop: 4, lineHeight: 1.4 }}>
+                Dominios permitidos: {DOMINIOS_PERMITIDOS.map(d => `@${d}`).join(", ")}
+              </p>
             </Field>
 
             {/* Contraseña */}
             <Field htmlFor="fe-pass" label={isEdit ? "Nueva contraseña (opcional)" : "Contraseña"} required={!isEdit} textFaint={tk.textFaint}>
-              <input id="fe-pass" type="password" value={form.password_nueva}
-                onChange={e => set("password_nueva", e.target.value)}
-                placeholder={isEdit ? "Dejar vacío para no cambiar" : "Mín. 8 chars, mayúscula, número y símbolo"}
-                style={inp} onFocus={onFocus} onBlur={onBlur} />
-              {form.password_nueva && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                  <div style={{ flex: 1, height: 3, borderRadius: 99, background: isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb", overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${(strength / 5) * 100}%`, background: strColors[strength - 1] || "#dc2626", borderRadius: 99, transition: "width 0.2s" }} />
+              <div style={{ position: "relative" }}>
+                <input id="fe-pass" type={showPass ? "text" : "password"} value={form.password_nueva}
+                  onChange={e => set("password_nueva", e.target.value)}
+                  placeholder={isEdit ? "Dejar vacío para no cambiar" : "Mín. 8 chars, mayúscula, número y símbolo"}
+                  style={{ ...inp, paddingRight: "34px" }} onFocus={onFocus} onBlur={onBlur} />
+                {/* Ver la contraseña que está escribiendo el admin */}
+                <button type="button" onClick={() => setShowPass(v => !v)}
+                  aria-label={showPass ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  title={showPass ? "Ocultar" : "Mostrar"}
+                  style={{
+                    position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)",
+                    background: "none", border: "none", cursor: "pointer", padding: 0,
+                    display: "flex", alignItems: "center", color: tk.textFaint,
+                  }}>
+                  {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+
+              {/* Seguridad: barra + checklist en vivo */}
+              {!passEval.vacia && (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+                    <div style={{ flex: 1, height: 3, borderRadius: 99, background: isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${passEval.pct}%`, background: passEval.color, borderRadius: 99, transition: "width 0.2s, background 0.2s" }} />
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: passEval.color, flexShrink: 0 }}>{passEval.etiqueta}</span>
                   </div>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: strColors[strength - 1] || "#dc2626", flexShrink: 0 }}>{strLabels[strength]}</span>
-                </div>
+                  <ul style={{ listStyle: "none", margin: "6px 0 0", padding: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 8px" }}>
+                    {passEval.reglas.map(r => (
+                      <li key={r.id} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: 9.5, color: r.ok ? "#16a34a" : tk.textFaint }}>
+                        {r.ok
+                          ? <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                          : <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>}
+                        {r.texto}
+                      </li>
+                    ))}
+                  </ul>
+                </>
               )}
             </Field>
 

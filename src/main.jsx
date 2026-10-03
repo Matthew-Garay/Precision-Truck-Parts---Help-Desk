@@ -50,6 +50,7 @@ const PrintSolicitudPage  = lazy(() => import('./Frontend/Pages/PrintSolicitudPa
 const PrintReportePage    = lazy(() => import('./Frontend/Pages/PrintReportePage'))
 const PrintInventarioPage = lazy(() => import('./Frontend/Pages/PrintInventarioPage'))
 const PrintHistorialPage  = lazy(() => import('./Frontend/Pages/PrintHistorialPage'))
+const PrintEntradasPage   = lazy(() => import('./Frontend/Pages/PrintEntradasPage'))
 import { ToastProvider } from './Frontend/Components/Feedback.jsx'
 import { ThemeProvider } from './Frontend/Config/ThemeContext.jsx'
 import { useTheme } from './Frontend/Config/themeContext.js'
@@ -174,6 +175,7 @@ function App() {
       <Route path="/print/reporte"           element={getUsuario() ? <Suspense fallback={null}><PrintReportePage /></Suspense>   : <Navigate to="/login" replace />} />
       <Route path="/print/inventario"         element={getUsuario() ? <Suspense fallback={null}><PrintInventarioPage /></Suspense> : <Navigate to="/login" replace />} />
       <Route path="/print/historial/:id"       element={getUsuario() ? <Suspense fallback={null}><PrintHistorialPage /></Suspense>  : <Navigate to="/login" replace />} />
+      <Route path="/print/entradas"            element={getUsuario() ? <Suspense fallback={null}><PrintEntradasPage /></Suspense> : <Navigate to="/login" replace />} />
 
       {/* Raíz → redirige según sesión */}
       <Route path="/" element={<Navigate to={(() => {

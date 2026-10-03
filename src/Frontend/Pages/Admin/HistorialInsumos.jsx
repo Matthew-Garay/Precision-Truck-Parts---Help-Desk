@@ -463,7 +463,7 @@ export default function HistorialInsumos({ T }) {
               <table className="w-full border-collapse" style={{ minWidth: "860px" }}>
                 <thead className="sticky top-0 z-10">
                   <tr style={{ background: isDark ? "#1c2030" : T.surfaceAlt }}>
-                    {["Folio", "Empleado / Área", "Sucursal", "Prioridad", "Estatus", "Insumos", "Piezas", "Fecha", ""].map((col, i) => (
+                    {["Folio", "Empleado / Área", "Sucursal", "Prioridad", "Estatus", "Insumos", "Piezas", "Pedidos autorizados", "Fecha", ""].map((col, i) => (
                       <th key={i} className="text-left px-2 py-1.5 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
                         style={{ color: T.textMuted, borderBottom: `1px solid ${T.border}` }}>
                         {col}
@@ -473,7 +473,7 @@ export default function HistorialInsumos({ T }) {
                 </thead>
                 <tbody>
                   {solicitudes.length === 0 ? (
-                    <tr><td colSpan={9}>
+                    <tr><td colSpan={10}>
                       <div className="flex flex-col items-center justify-center py-12 gap-2">
                         <Inbox size={22} style={{ color: T.textFaint }} />
                         <p className="text-xs font-bold" style={{ color: T.textMuted }}>
@@ -509,6 +509,29 @@ export default function HistorialInsumos({ T }) {
                         </td>
                         <td className="px-2 py-1.5 text-[11px]" style={{ color: T.textMuted }}>{s.total_insumos ?? "-"}</td>
                         <td className="px-2 py-1.5 text-[11px]" style={{ color: T.textMuted }}>{s.total_piezas ?? "-"}</td>
+                        {/* Pedidos autorizados: piezas que el admin aprobó */}
+                        <td className="px-2 py-1.5">
+                          {(() => {
+                            const aut = Number(s.total_autorizadas) || 0;
+                            const ped = Number(s.total_piezas) || 0;
+                            const sinAutorizar = s.estatus === "En proceso";
+                            const color = aut === 0
+                              ? T.textFaint
+                              : aut < ped ? "#d97706" : "#16a34a";
+                            return (
+                              <span className="flex flex-col items-start leading-tight">
+                                <span className="text-[11px] font-bold" style={{ color }} title="Piezas autorizadas por el administrador">
+                                  {sinAutorizar ? "—" : aut}
+                                </span>
+                                {!sinAutorizar && aut > 0 && (
+                                  <span className="text-[9px]" style={{ color: T.textFaint }}>
+                                    de {s.insumos_autorizados ?? 0}/{s.total_insumos ?? 0} insumos
+                                  </span>
+                                )}
+                              </span>
+                            );
+                          })()}
+                        </td>
                         <td className="px-2 py-1.5 text-[10px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmt(s.fecha)}</td>
                         <td className="px-2 py-1.5">
                           <button onClick={() => setSolicitudVer(s)}

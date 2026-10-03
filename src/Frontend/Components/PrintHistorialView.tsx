@@ -1,6 +1,6 @@
 import {
   Badge, PageHeader, PageFooter, Section, DataGrid, ReporteTable, Firma,
-  ESTATUS_META, fmt, nowFechaGen,
+  PageSize, ESTATUS_META, fmt, nowFechaGen,
 } from "./PrintShared";
 
 interface Acceso {
@@ -105,7 +105,7 @@ export default function PrintHistorialView({ data }: { data: HistorialData }) {
       <span style={{ fontSize: "7.5pt", fontWeight: 600 }}>
         {a.fecha_salida ? fmtMin(durMin(a.fecha_entrada, a.fecha_salida)) : "—"}
       </span>,
-      <span style={{ fontSize: "7.5pt", fontWeight: 700, color: activa ? "#15803D" : "#475569" }}>
+      <span style={{ fontSize: "7.5pt", fontWeight: 700, color: activa ? "var(--pr-accent)" : "var(--pr-muted)" }}>
         {activa ? "Activa" : "Cerrada"}
       </span>,
     ];
@@ -113,7 +113,8 @@ export default function PrintHistorialView({ data }: { data: HistorialData }) {
 
   return (
     <div className="pr-root" data-ready="true">
-
+      {/* Carta vertical: este documento cabe en una hoja tamaño carta */}
+      <PageSize />
       <PageHeader
         titulo="Historial de Accesos al Sistema"
         subtitulo="Departamento de Soporte Técnico"
@@ -130,12 +131,12 @@ export default function PrintHistorialView({ data }: { data: HistorialData }) {
         <div style={{
           display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8,
           padding: "6px 10px", marginBottom: 10,
-          border: "1px solid #cccccc", background: "#f5f5f5",
+          border: "1px solid var(--pr-border)", background: "var(--pr-light)",
         }}>
-          <span style={{ flex: 1, fontSize: "9pt", fontWeight: "bold", color: "#000" }}>
+          <span style={{ flex: 1, fontSize: "9pt", fontWeight: "bold", color: "var(--pr-ink)" }}>
             {nombreCompleto}
           </span>
-          <Badge label={empleado.estatus} icon={estatusMeta.icon} bg="#f5f5f5" color="#000" border="#cccccc" />
+          <Badge label={empleado.estatus} icon={estatusMeta.icon} bg="var(--pr-light)" color="#000" border="var(--pr-border)" />
           <span style={{ fontSize: "7.5pt", color: "#444" }}>Período: {periodo}</span>
         </div>
 
@@ -153,7 +154,7 @@ export default function PrintHistorialView({ data }: { data: HistorialData }) {
 
         {/* Resumen narrativo — igual que "Resolución y Comentarios" en ticket */}
         <Section title="Resumen de Actividad del Período">
-          <div style={{ borderLeft: "3px solid #cccccc", paddingLeft: 10 }}>
+          <div style={{ borderLeft: "3px solid var(--pr-border)", paddingLeft: 10 }}>
             <div
               className="pr-rich-text"
               dangerouslySetInnerHTML={{

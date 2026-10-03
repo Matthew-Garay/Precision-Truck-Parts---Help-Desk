@@ -1,5 +1,5 @@
 import {
-  PageHeader, PageFooter, ReporteTable,
+  PageHeader, PageFooter, PageSize, ReporteTable,
   PRIO_META, ESTATUS_META, nowFechaGen,
   Stars, fmt,
 } from "./PrintShared";
@@ -23,6 +23,8 @@ interface InsumoRow {
   nombre_empleado: string;
   nombre_departamento: string;
   nombre_sucursal?: string | null;
+  nombre_sucursal_origen?: string | null;
+  nombre_sucursal_destino?: string | null;
   prioridad: string;
   estatus: string;
   total_insumos?: number | null;
@@ -116,6 +118,10 @@ function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; period
         return { nombre: nombre ?? "", qty: qty ?? "1", aprobado: aprobado !== "0", imagen_url: imagen_url || null };
       });
 
+  /* Cuantas solicitudes del reporte ya tienen ruta autorizada: si el periodo
+     abarca folios anteriores a la captura de la ruta, la columna sale vacia. */
+  const conRuta = datos.filter(s => s.nombre_sucursal_origen || s.nombre_sucursal_destino).length;
+
   const rows = datos.map(s => {
     const items = parseItems(s.items_detalle);
     return [
@@ -125,6 +131,18 @@ function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; period
         <div style={{ fontSize: "6.5pt", color: "var(--pr-muted)" }}>{s.nombre_departamento || "—"}</div>
       </div>,
       <span style={{ fontSize: "7pt", color: "var(--pr-muted)" }}>{s.nombre_sucursal || "—"}</span>,
+      // Ruta del material elegida por el administrador (origen → destino)
+      <span style={{ fontSize: "7pt", lineHeight: 1.35 }}>
+        {s.nombre_sucursal_origen || s.nombre_sucursal_destino ? (
+          <>
+            <span style={{ fontWeight: 700, color: "var(--pr-ink)" }}>{s.nombre_sucursal_origen ?? "—"}</span>
+            <span style={{ color: "var(--pr-faint)" }}> → </span>
+            <span style={{ fontWeight: 700, color: "var(--pr-ink)" }}>{s.nombre_sucursal_destino ?? "—"}</span>
+          </>
+        ) : (
+          <span style={{ color: "var(--pr-faint)", fontStyle: "italic" }}>Sin definir</span>
+        )}
+      </span>,
       <span style={{ fontSize: "7pt", color: "var(--pr-ink)" }}>{s.prioridad}</span>,
       <span style={{ fontSize: "7pt", color: "var(--pr-ink)" }}>{s.estatus}</span>,
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -151,12 +169,14 @@ function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; period
         metaRows={[
           { label: "Período",   value: periodo },
           { label: "Registros", value: datos.length, mono: true },
+          { label: "Con ruta",  value: `${conRuta} de ${datos.length}`, mono: true },
           { label: "Generado",  value: fechaGen },
         ]}
       />
       <ReporteTable
-        headers={["Folio", "Empleado / Área", "Sucursal", "Prioridad", "Estatus", "Insumos solicitados", "Fecha"]}
+        headers={["Folio", "Empleado / Área", "Sucursal", "Ruta del material", "Prioridad", "Estatus", "Insumos solicitados", "Fecha"]}
         rows={rows}
+        colWidths={["68px", "130px", "92px", "150px", "52px", "58px", "auto", "62px"]}
       />
       <PageFooter right={`Reporte de Insumos · ${fechaGen}`} />
     </>
@@ -179,7 +199,7 @@ function VistaRendimiento({ datos, periodo, fechaGen }: { datos: RendimientoRow[
   if (datos.length === 0) return (
     <>
       {header}
-      <p style={{ textAlign: "center", color: "#94a3b8", fontSize: "8pt", fontStyle: "italic", margin: "32px 0" }}>
+      <p style={{ textAlign: "center", color: "var(--pr-faint)", fontSize: "8pt", fontStyle: "italic", margin: "32px 0" }}>
         Sin registros en el período seleccionado.
       </p>
       <PageFooter right={`Rendimiento por Técnico · ${fechaGen}`} />
@@ -191,24 +211,24 @@ function VistaRendimiento({ datos, periodo, fechaGen }: { datos: RendimientoRow[
     padding: "5px 8px", fontSize: "5.5pt", fontWeight: 900,
     textTransform: "uppercase" as const, letterSpacing: "0.12em",
     color: "rgba(255,255,255,0.85)", whiteSpace: "nowrap" as const,
-    textAlign: "center" as const, background: "#1e293b",
+    textAlign: "center" as const, background: "var(--pr-ink)",
   };
   const thLeft: React.CSSProperties = { ...th, textAlign: "left" as const };
   const td: React.CSSProperties = {
     padding: "7px 8px", fontSize: "8pt", fontWeight: 700,
-    color: "#0f172a", textAlign: "center" as const,
-    verticalAlign: "middle" as const, borderBottom: "1px solid #e2e8f0",
+    color: "var(--pr-ink)", textAlign: "center" as const,
+    verticalAlign: "middle" as const, borderBottom: "1px solid var(--pr-border)",
   };
   const tdLeft: React.CSSProperties = { ...td, textAlign: "left" as const, minWidth: 150 };
   const thSep: React.CSSProperties = { ...th, borderLeft: "2px solid rgba(255,255,255,0.15)" };
-  const tdSep: React.CSSProperties = { ...td, borderLeft: "2px solid #e2e8f0" };
+  const tdSep: React.CSSProperties = { ...td, borderLeft: "2px solid var(--pr-border)" };
 
   /* barra de progreso inline */
   const PctBar = ({ pct }: { pct: number }) => (
     <div style={{ marginTop: 3, height: 3, borderRadius: 2,
-      background: "#e2e8f0", overflow: "hidden" as const, width: "100%" }}>
+      background: "var(--pr-border)", overflow: "hidden" as const, width: "100%" }}>
       <div style={{ height: "100%", width: `${Math.min(100, pct)}%`,
-        background: "#0f172a", borderRadius: 2 }} />
+        background: "var(--pr-ink)", borderRadius: 2 }} />
     </div>
   );
 
@@ -216,44 +236,44 @@ function VistaRendimiento({ datos, periodo, fechaGen }: { datos: RendimientoRow[
     const tasa   = r.total_atendidos > 0 ? Math.round((r.resueltos / r.total_atendidos) * 100) : 0;
     const slaPct = r.resueltos > 0 ? Math.round((r.resueltos_a_tiempo / r.resueltos) * 100) : 0;
     const calif  = Number(r.calificacion_promedio ?? 0);
-    const rowBg  = i % 2 === 0 ? "#fff" : "#f8fafc";
+    const rowBg  = i % 2 === 0 ? "#fff" : "var(--pr-surface)";
     return (
       <tr key={i} style={{ background: rowBg }}>
         {/* Técnico — acento naranja de marca */}
         <td style={{ ...tdLeft, background: rowBg,
-          borderLeft: "3px solid #F47920", paddingLeft: 10 }}>
+          borderLeft: "3px solid var(--pr-accent)", paddingLeft: 10 }}>
           <div style={{ fontSize: "5pt", fontWeight: 700, textTransform: "uppercase" as const,
-            letterSpacing: "0.16em", color: "#94a3b8", marginBottom: 2 }}>
+            letterSpacing: "0.16em", color: "var(--pr-faint)", marginBottom: 2 }}>
             Técnico &nbsp;·&nbsp; #{String(i + 1).padStart(2, "0")}
           </div>
-          <div style={{ fontSize: "9.5pt", fontWeight: 900, color: "#0f172a",
+          <div style={{ fontSize: "9.5pt", fontWeight: 900, color: "var(--pr-ink)",
             letterSpacing: "-0.01em", lineHeight: 1.2, marginBottom: 3 }}>
             {r.nombre_tecnico}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <span style={{ fontSize: "5.5pt", color: "#64748b", fontWeight: 600 }}>
-              En proceso: <strong style={{ color: "#0f172a" }}>{r.en_proceso_activos}</strong>
+            <span style={{ fontSize: "5.5pt", color: "var(--pr-muted)", fontWeight: 600 }}>
+              En proceso: <strong style={{ color: "var(--pr-ink)" }}>{r.en_proceso_activos}</strong>
             </span>
-            <span style={{ fontSize: "5.5pt", color: "#64748b", fontWeight: 600 }}>
-              Cancelados: <strong style={{ color: "#0f172a" }}>{r.tickets_cancelados}</strong>
+            <span style={{ fontSize: "5.5pt", color: "var(--pr-muted)", fontWeight: 600 }}>
+              Cancelados: <strong style={{ color: "var(--pr-ink)" }}>{r.tickets_cancelados}</strong>
             </span>
           </div>
         </td>
         {/* Volumen */}
         <td style={{ ...td, background: rowBg }}>
           <div>{r.total_atendidos}</div>
-          <div style={{ fontSize: "5.5pt", color: "#94a3b8", fontWeight: 600, marginTop: 1 }}>
+          <div style={{ fontSize: "5.5pt", color: "var(--pr-faint)", fontWeight: 600, marginTop: 1 }}>
             {r.en_proceso_activos > 0 ? `${r.en_proceso_activos} activos` : "sin activos"}
           </div>
         </td>
         <td style={{ ...td, background: rowBg }}>
           <div>{r.resueltos}</div>
-          <div style={{ fontSize: "5.5pt", color: "#94a3b8", fontWeight: 600, marginTop: 1 }}>
+          <div style={{ fontSize: "5.5pt", color: "var(--pr-faint)", fontWeight: 600, marginTop: 1 }}>
             {r.alta_prioridad_resueltos > 0 ? `${r.alta_prioridad_resueltos} alta prior.` : "—"}
           </div>
         </td>
-        <td style={{ ...td, background: rowBg, color: "#475569" }}>{r.no_resueltos}</td>
-        <td style={{ ...td, background: rowBg, color: "#475569" }}>{r.tickets_cancelados}</td>
+        <td style={{ ...td, background: rowBg, color: "var(--pr-muted)" }}>{r.no_resueltos}</td>
+        <td style={{ ...td, background: rowBg, color: "var(--pr-muted)" }}>{r.tickets_cancelados}</td>
         {/* Eficiencia */}
         <td style={{ ...tdSep, background: rowBg }}>
           <div>{tasa}%</div>
@@ -263,15 +283,15 @@ function VistaRendimiento({ datos, periodo, fechaGen }: { datos: RendimientoRow[
           <div>{slaPct}%</div>
           <PctBar pct={slaPct} />
         </td>
-        <td style={{ ...td, background: rowBg, color: "#475569" }}>{r.alta_prioridad_resueltos}</td>
+        <td style={{ ...td, background: rowBg, color: "var(--pr-muted)" }}>{r.alta_prioridad_resueltos}</td>
         {/* Tiempos */}
         <td style={{ ...tdSep, background: rowBg }}>
           {r.promedio_horas != null ? `${r.promedio_horas}h` : "—"}
         </td>
-        <td style={{ ...td, background: rowBg, color: "#475569" }}>
+        <td style={{ ...td, background: rowBg, color: "var(--pr-muted)" }}>
           {r.min_horas != null ? `${r.min_horas}h` : "—"}
         </td>
-        <td style={{ ...td, background: rowBg, color: "#475569" }}>
+        <td style={{ ...td, background: rowBg, color: "var(--pr-muted)" }}>
           {r.max_horas != null ? `${r.max_horas}h` : "—"}
         </td>
         {/* Satisfacción */}
@@ -281,12 +301,12 @@ function VistaRendimiento({ datos, periodo, fechaGen }: { datos: RendimientoRow[
                 <Stars n={Math.round(calif)} size={7} />
                 <span style={{ fontSize: "7.5pt", fontWeight: 800 }}>{calif.toFixed(1)}</span>
               </span>
-            : <span style={{ color: "#94a3b8" }}>—</span>}
+            : <span style={{ color: "var(--pr-faint)" }}>—</span>}
         </td>
-        <td style={{ ...td, background: rowBg, color: "#475569", fontSize: "7.5pt" }}>
+        <td style={{ ...td, background: rowBg, color: "var(--pr-muted)", fontSize: "7.5pt" }}>
           {r.total_calificaciones}
           {r.pct_calificados != null &&
-            <div style={{ fontSize: "6pt", color: "#94a3b8", fontWeight: 600 }}>{r.pct_calificados}%</div>}
+            <div style={{ fontSize: "6pt", color: "var(--pr-faint)", fontWeight: 600 }}>{r.pct_calificados}%</div>}
         </td>
       </tr>
     );
@@ -299,29 +319,29 @@ function VistaRendimiento({ datos, periodo, fechaGen }: { datos: RendimientoRow[
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "auto" as const }}>
           <thead>
             {/* Fila de grupos */}
-            <tr style={{ background: "#0f172a" }}>
-              <th style={{ ...thLeft, background: "#0f172a", borderBottom: "1px solid rgba(255,255,255,0.08)" }} rowSpan={2}>
+            <tr style={{ background: "var(--pr-ink)" }}>
+              <th style={{ ...thLeft, background: "var(--pr-ink)", borderBottom: "1px solid rgba(255,255,255,0.08)" }} rowSpan={2}>
                 Técnico
               </th>
-              <th style={{ ...th, background: "#0f172a", borderBottom: "1px solid rgba(255,255,255,0.08)",
+              <th style={{ ...th, background: "var(--pr-ink)", borderBottom: "1px solid rgba(255,255,255,0.08)",
                 borderLeft: "1px solid rgba(255,255,255,0.08)" }} colSpan={4}>
                 Volumen
               </th>
-              <th style={{ ...th, background: "#0f172a", borderBottom: "1px solid rgba(255,255,255,0.08)",
+              <th style={{ ...th, background: "var(--pr-ink)", borderBottom: "1px solid rgba(255,255,255,0.08)",
                 borderLeft: "2px solid rgba(255,255,255,0.15)" }} colSpan={3}>
                 Eficiencia
               </th>
-              <th style={{ ...th, background: "#0f172a", borderBottom: "1px solid rgba(255,255,255,0.08)",
+              <th style={{ ...th, background: "var(--pr-ink)", borderBottom: "1px solid rgba(255,255,255,0.08)",
                 borderLeft: "2px solid rgba(255,255,255,0.15)" }} colSpan={3}>
                 Tiempos
               </th>
-              <th style={{ ...th, background: "#0f172a", borderBottom: "1px solid rgba(255,255,255,0.08)",
+              <th style={{ ...th, background: "var(--pr-ink)", borderBottom: "1px solid rgba(255,255,255,0.08)",
                 borderLeft: "2px solid rgba(255,255,255,0.15)" }} colSpan={2}>
                 Satisfacción
               </th>
             </tr>
             {/* Fila de columnas */}
-            <tr style={{ background: "#1e293b" }}>
+            <tr style={{ background: "var(--pr-ink)" }}>
               <th style={{ ...thSep }}>Atendidos</th>
               <th style={th}>Resueltos</th>
               <th style={th}>No res.</th>
@@ -349,6 +369,7 @@ export default function PrintReporteListaView({ payload }: { payload: ReportePay
   const isLandscape = true;
   return (
     <div className={`pr-root${isLandscape ? " pr-landscape" : ""}`} data-ready="true">
+      <PageSize landscape />
       <div className="pr-content">
         {payload.tipo === "incidencias" && <VistaIncidencias  datos={payload.datos as TicketRow[]}      periodo={payload.periodo} fechaGen={fechaGen} nombreEmpleado={payload.nombreEmpleado} />}
         {payload.tipo === "insumos"     && <VistaInsumos      datos={payload.datos as InsumoRow[]}      periodo={payload.periodo} fechaGen={fechaGen} />}
