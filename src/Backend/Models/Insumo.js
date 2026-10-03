@@ -7,7 +7,7 @@
  *
  * Columnas de la tabla insumo:
  *   id_insumo, num_serie, nombre, descripcion, marca, modelo,
- *   stock, estado, id_categoria, proveedor, imagen_url
+ *   stock, estado, id_categoria, imagen_url
  *
  * Campo calculado "disponibilidad" (no almacenado en BD):
  *   Se deriva del valor de stock en cada consulta SELECT mediante CASE WHEN:
@@ -69,7 +69,7 @@ const Insumo = {
     const [rows] = await pool.query(
       `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion,
               i.marca, i.modelo, i.stock, i.estado,
-              i.id_categoria, i.proveedor, i.imagen_url,
+              i.id_categoria, i.imagen_url,
               c.nombre_categoria,
               ${DISPONIBILIDAD_EXPR}
        FROM insumo i
@@ -82,7 +82,7 @@ const Insumo = {
   getDisponibles: async () => {
     const [rows] = await pool.query(
       `SELECT i.id_insumo, i.nombre, i.descripcion, i.marca, i.modelo,
-              i.stock, i.estado, i.id_categoria, i.proveedor, i.imagen_url,
+              i.stock, i.estado, i.id_categoria, i.imagen_url,
               c.nombre_categoria,
               ${DISPONIBILIDAD_EXPR}
        FROM insumo i
@@ -93,11 +93,13 @@ const Insumo = {
     return rows;
   },
 
-  crear: async ({ num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, proveedor, imagen_url }) => {
-    const [r] = await pool.query(
+  // conn: conexion opcional con transaccion activa (para escribir el movimiento
+  //       en la misma transaccion que el alta del insumo).
+  crear: async ({ num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, imagen_url }, conn = pool) => {
+    const [r] = await conn.query(
       `INSERT INTO insumo
-         (num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, proveedor, imagen_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, imagen_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         num_serie   || null,
         nombre,
@@ -107,21 +109,20 @@ const Insumo = {
         stock,
         estado,
         id_categoria,
-        proveedor   || null,
         imagen_url  || null,
       ]
     );
     return r.insertId;
   },
 
-  actualizar: async (id, { num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, proveedor, imagen_url }) => {
+  actualizar: async (id, { num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, imagen_url }, conn = pool) => {
     // Si imagen_url no viene en el body (undefined), no sobreescribir la foto existente.
     const imgSql  = imagen_url !== undefined ? ", imagen_url=?" : "";
     const imgVals = imagen_url !== undefined ? [imagen_url || null] : [];
-    const [r] = await pool.query(
+    const [r] = await conn.query(
       `UPDATE insumo
           SET num_serie=?, nombre=?, descripcion=?, marca=?, modelo=?,
-              stock=?, estado=?, id_categoria=?, proveedor=?${imgSql}
+              stock=?, estado=?, id_categoria=?${imgSql}
         WHERE id_insumo=?`,
       [
         num_serie   || null,
@@ -132,7 +133,6 @@ const Insumo = {
         stock,
         estado,
         id_categoria,
-        proveedor   || null,
         ...imgVals,
         id,
       ]

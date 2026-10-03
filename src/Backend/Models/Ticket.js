@@ -154,7 +154,26 @@ const Ticket = {
     return { rows, total };
   },
 
-  actualizar: async (id_ticket, { comentarios, estatus, id_resuelto_por }) => {
+  /**
+   * registrarCambio
+   *   Inserta una fila en `ticket_historial` con el antes/despues de un campo.
+   *   Nunca lanza error: el historial es informativo y no debe tumbar la
+   *   operacion principal (que ya se confirmo en la base).
+   */
+  registrarCambio: async (id_ticket, id_empleado, campo_cambiado, valor_anterior, valor_nuevo) => {
+    const norm = v => (v === null || v === undefined || v === "" ? null : String(v));
+    try {
+      await pool.query(
+        `INSERT INTO ticket_historial (id_ticket, id_empleado, campo_cambiado, valor_anterior, valor_nuevo)
+         VALUES (?, ?, ?, ?, ?)`,
+        [id_ticket, id_empleado ?? null, campo_cambiado, norm(valor_anterior), norm(valor_nuevo)]
+      );
+    } catch (err) {
+      console.warn("[ticket_historial] no se pudo registrar el cambio:", err.message);
+    }
+  },
+
+  actualizar: async (id_ticket, { comentarios, estatus, id_resuelto_por, actor = null }) => {
     const ESTATUS_PERMITIDOS = new Set(["En proceso", "Resuelto", "No Resuelto", "Cancelado"]);
     if (!ESTATUS_PERMITIDOS.has(estatus)) throw new Error("Estatus no válido");
 
@@ -188,6 +207,12 @@ const Ticket = {
     const [result] = await pool.query(sql, params);
     if (result.affectedRows === 0) return null;
 
+    /* Historial de cambios: queda registro de quien movio el estatus y de cuando */
+    if (anterior.estatus !== estatus)
+      await Ticket.registrarCambio(id_ticket, actor, "estatus", anterior.estatus, estatus);
+    if (esCerrado && id_resuelto_por)
+      await Ticket.registrarCambio(id_ticket, actor, "tecnico", null, id_resuelto_por);
+
     const [rows] = await pool.query(
       `SELECT t.estatus, t.fecha_resuelto,
               TRIM(CONCAT(e.nombre,' ',e.ap_paterno,IF(e.ap_materno IS NOT NULL AND e.ap_materno != '',CONCAT(' ',e.ap_materno),''))) AS resuelto_por
@@ -199,7 +224,13 @@ const Ticket = {
     return rows[0] || null;
   },
 
-  editarPorUsuario: async (id_ticket, { titulo, descripcion, prioridad, id_categoria, estatus, comentarios }) => {
+  editarPorUsuario: async (id_ticket, { titulo, descripcion, prioridad, id_categoria, estatus, comentarios, actor = null }) => {
+    // Valores previos para dejar el antes/despues en `ticket_historial`
+    const [[prev]] = await pool.query(
+      `SELECT titulo, prioridad, estatus FROM ticket WHERE id_ticket = ? LIMIT 1`,
+      [id_ticket]
+    );
+
     // Solo "En proceso" es editable por usuario — nunca "Cancelado" (eso va por cancelar())
     const sets = ["titulo = ?", "descripcion = ?", "prioridad = ?", "id_categoria = ?"];
     const vals = [titulo, descripcion, prioridad, id_categoria];
@@ -213,7 +244,15 @@ const Ticket = {
       `UPDATE ticket SET ${sets.join(", ")} WHERE id_ticket = ? AND estatus IN ('En proceso')`,
       vals
     );
-    return result.affectedRows > 0;
+    if (result.affectedRows === 0) return false;
+
+    if (prev) {
+      if (prev.titulo !== titulo)      await Ticket.registrarCambio(id_ticket, actor, "titulo",    prev.titulo,    titulo);
+      if (prev.prioridad !== prioridad) await Ticket.registrarCambio(id_ticket, actor, "prioridad", prev.prioridad, prioridad);
+      if (estatus === "En proceso" && prev.estatus !== estatus)
+        await Ticket.registrarCambio(id_ticket, actor, "estatus", prev.estatus, estatus);
+    }
+    return true;
   },
 
   guardarCalificacion: async (id_ticket, calificacion) => {
