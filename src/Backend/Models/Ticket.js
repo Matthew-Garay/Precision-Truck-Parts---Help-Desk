@@ -341,6 +341,8 @@ const Ticket = {
     );
 
     // Tickets por departamento
+    // IMPORTANTE: se excluye "Soporte Técnico": ese equipo ATIENDE incidencias,
+    // no las solicita, por lo que no debe aparecer como solicitante en el reporte.
     const [porDepartamento] = await pool.query(
       `SELECT d.nombre_departamento AS departamento,
               COUNT(*) AS total,
@@ -348,6 +350,7 @@ const Ticket = {
        FROM ticket t
        LEFT JOIN empleado e ON t.id_empleado = e.id_empleado
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       WHERE d.id_departamento IS NULL OR d.id_departamento <> 2
        GROUP BY d.id_departamento, d.nombre_departamento
        ORDER BY total DESC`
     );

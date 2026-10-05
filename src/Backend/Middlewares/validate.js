@@ -64,7 +64,7 @@
  *
  *   schemaInsumo
  *     Valida todos los campos de un insumo del inventario incluyendo estado
- *     (enum: Excelente, Bueno, Regular, Malo) y stock como entero >= 0.
+ *     (enum: Excelente, Bueno, Regular, Malo, Dañado) y stock como entero >= 0.
  *     Los campos de texto opcionales (num_serie, descripcion, marca, modelo)
  *     que se dejen en blanco se guardan automaticamente como "N/A".
  */
@@ -302,7 +302,7 @@ export const schemaEntradaInsumo = z.object({
   id_solicitud: z.number({ coerce: true }).int().positive().nullish(),
 });
 
-// Schema para guardar la RUTA DEL MATERIAL de una solicitud (solo admin).
+// Schema para guardar la RUTA DEL MATERIAL de una solicitud (Soporte o admin).
 // Ambas sucursales son obligatorias y deben ser distintas.
 export const schemaRutaSolicitud = z.object({
   id_sucursal_origen:  z.number({ coerce: true }).int().positive({ message: "Selecciona la sucursal de origen" }),
@@ -321,6 +321,19 @@ export const schemaItemsSolicitud = z.object({
   })).min(1, "Debe incluir al menos un ítem").max(100),
   id_sucursal_origen:  z.number({ coerce: true }).int().positive().nullish(),
   id_sucursal_destino: z.number({ coerce: true }).int().positive().nullish(),
+});
+
+
+/**
+ * Observacion de Soporte Tecnico o Administracion sobre un insumo pedido.
+ * Se admite cadena vacia: eso borra la observacion existente (y su autor).
+ */
+export const schemaObservacionItem = z.object({
+  observaciones: z
+    .string()
+    .trim()
+    .max(500, "La observacion no puede superar 500 caracteres")
+    .default(""),
 });
 
 
@@ -362,7 +375,7 @@ export const schemaInsumo = z.object({
   marca:        textoNA(100),
   modelo:       textoNA(100),
   stock:        z.number({ coerce: true }).int().min(0),
-  estado:       z.enum(["Excelente", "Bueno", "Regular", "Malo"]),
+  estado:       z.enum(["Excelente", "Bueno", "Regular", "Malo", "Dañado"]),
   id_categoria: z.number({ coerce: true }).int().positive(),
   imagen_url:   z.string().trim().max(255).optional().nullable().default(null),
 });

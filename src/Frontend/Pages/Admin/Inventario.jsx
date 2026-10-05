@@ -27,9 +27,10 @@ const ESTADO_META = {
   Bueno:     { color: "#2563eb" },
   Regular:   { color: "#d97706" },
   Malo:      { color: "#dc2626" },
+  Dañado:    { color: "#7f1d1d" },
 };
 
-const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo"];
+const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo", "Dañado"];
 
 const CAT_PALETTES = [
   { color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
@@ -528,7 +529,7 @@ async function exportarExcel(datos) {
   const IMG_ROW_H = 52;
   const IMG_SIZE  = 38;
 
-  const ESTADO_COLORS = { Excelente: "FF15803D", Bueno: "FF2563EB", Regular: "FFA16207", Malo: "FFB91C1C" };
+  const ESTADO_COLORS = { Excelente: "FF15803D", Bueno: "FF2563EB", Regular: "FFA16207", Malo: "FFB91C1C", "Dañado": "FF7F1D1D" };
 
   for (let idx = 0; idx < datos.length; idx++) {
     const i      = datos[idx];
@@ -871,7 +872,8 @@ export default function Inventario() {
   const sinStock       = insumos.filter(i => (i.stock ?? 0) === 0).length;
   const criticos       = stockBajo + sinStock;
   const estadoBueno    = insumos.filter(i => i.estado === "Excelente" || i.estado === "Bueno").length;
-  const estadoMalo     = insumos.filter(i => i.estado === "Malo" || i.estado === "Regular").length;
+  // Regular, Malo y Dañado cuentan como estado deficiente para la tasa de salud.
+  const estadoMalo     = insumos.filter(i => i.estado === "Malo" || i.estado === "Regular" || i.estado === "Dañado").length;
   const tasaSalud      = insumos.length > 0 ? Math.round((estadoBueno / insumos.length) * 100) : 0;
 
   // Entradas: paginación del servidor

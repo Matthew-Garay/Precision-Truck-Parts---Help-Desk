@@ -5,12 +5,13 @@ import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
 import ModalDetalleInsumo from "../../Components/Inventario/ModalDetalleInsumo";
 
-const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo"];
+const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo", "Dañado"];
 const ESTADO_META = {
   Excelente: { color: "#16a34a", bg: "rgba(22,163,74,0.12)",   border: "rgba(22,163,74,0.3)"   },
   Bueno:     { color: "#3b82f6", bg: "rgba(59,130,246,0.12)",  border: "rgba(59,130,246,0.3)"  },
   Regular:   { color: "#ca8a04", bg: "rgba(202,138,4,0.12)",   border: "rgba(202,138,4,0.3)"   },
   Malo:      { color: "#dc2626", bg: "rgba(220,38,38,0.12)",   border: "rgba(220,38,38,0.3)"   },
+  Dañado:    { color: "#7f1d1d", bg: "rgba(127,29,29,0.12)",   border: "rgba(127,29,29,0.3)"   },
 };
 const ESTADO_FALLBACK = { color: "#94a3b8", bg: "rgba(148,163,184,0.12)", border: "rgba(148,163,184,0.3)" };
 
@@ -241,7 +242,7 @@ export default function VistaInsumos({ T }) {
   const hayFiltros = filtros.busqueda || filtros.estado !== "Todos" || filtros.categoria !== "Todos";
   const limpiar    = () => setFiltros({ busqueda: "", estado: "Todos", categoria: "Todos" });
 
-  const estadoMalo    = insumos.filter(i => i.estado === "Malo").length;
+  const estadoMalo    = insumos.filter(i => i.estado === "Malo" || i.estado === "Dañado").length;
   const estadoRegular = insumos.filter(i => i.estado === "Regular").length;
 
   return (
