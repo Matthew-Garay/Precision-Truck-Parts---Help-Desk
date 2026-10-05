@@ -70,6 +70,7 @@ import pool      from "../Config/db.js";
 import path      from "path";
 import fs        from "fs";
 import { INSUMOS_DIR } from "../Middlewares/uploadInsumos.js";
+import { esSoporteOAdmin } from "../Middlewares/authMiddleware.js";
 
 const isProd = () => process.env.NODE_ENV === "production";
 const errDetalle = (err) => isProd() ? {} : { detalle: err.message };
@@ -203,6 +204,16 @@ export const getSolicitudById = async (req, res) => {
     // El stock por item es dato interno: no se entrega al rol Usuario.
     if (id_rol !== 1 && Array.isArray(solicitud.detalle))
       solicitud.detalle.forEach(d => delete d.stock);
+    // La ruta del material (de que sucursal sale el material y a la que
+    // llega) es logistica interna: la ven Administracion y Soporte Tecnico
+    // (misma regla que las observaciones). Se elimina de la respuesta para
+    // que el resto del personal tampoco la reciba.
+    if (!(await esSoporteOAdmin(req.usuario))) {
+      delete solicitud.id_sucursal_origen;
+      delete solicitud.id_sucursal_destino;
+      delete solicitud.nombre_sucursal_origen;
+      delete solicitud.nombre_sucursal_destino;
+    }
     res.json(solicitud);
   } catch (err) {
     res.status(500).json({ error: "Error al obtener solicitud", ...errDetalle(err) });
@@ -225,6 +236,14 @@ export const getSolicitudByFolio = async (req, res) => {
     // El stock por item es dato interno: no se entrega al rol Usuario.
     if (id_rol !== 1 && Array.isArray(solicitud.detalle))
       solicitud.detalle.forEach(d => delete d.stock);
+    // La ruta del material es logistica interna: la ven Administracion y
+    // Soporte Tecnico (misma regla que las observaciones).
+    if (!(await esSoporteOAdmin(req.usuario))) {
+      delete solicitud.id_sucursal_origen;
+      delete solicitud.id_sucursal_destino;
+      delete solicitud.nombre_sucursal_origen;
+      delete solicitud.nombre_sucursal_destino;
+    }
     res.json(solicitud);
   } catch (err) {
     res.status(500).json({ error: "Error al obtener solicitud", ...errDetalle(err) });
@@ -373,6 +392,73 @@ export const aprobarItemsSolicitud = async (req, res) => {
   }
 };
 
+
+/**
+ * guardarObservacionItem
+ *
+ * Registra o borra la observacion que Soporte Tecnico o Administracion
+ * escriben sobre un insumo de la solicitud. Es distinta de la `descripcion`
+ * que escribe el solicitante: esta es la respuesta de quien revisa el pedido
+ * ("este filtro ya se agotó, pide el alternativo", "salió del lote nuevo").
+ *
+ * Ruta: PATCH /api/solicitudes/:id/items/:id_item/observaciones
+ * Permiso: requireSoporteOAdmin (administradores o depto. Soporte Tecnico).
+ */
+export const guardarObservacionItem = async (req, res) => {
+  const id      = parseInt(req.params.id, 10);
+  const id_item = parseInt(req.params.id_item, 10);
+  const texto   = String(req.body.observaciones ?? "").trim();
+  const autor   = req.usuario.id_empleado;
+
+  if (!Number.isInteger(id) || !Number.isInteger(id_item))
+    return res.status(400).json({ error: "Identificadores inválidos" });
+
+  try {
+    // El item debe pertenecer a la solicitud de la ruta. Sin esta comprobacion
+    // un usuario autorizado podria escribir sobre el insumo de otra solicitud
+    // indicando su id.
+    const [[item]] = await pool.query(
+      `SELECT id_solicitud_insumo FROM solicitud_insumo
+        WHERE id_solicitud_insumo = ? AND id_solicitud = ? LIMIT 1`,
+      [id_item, id]
+    );
+    if (!item)
+      return res.status(404).json({ error: "Ese insumo no pertenece a la solicitud" });
+
+    // Texto vacio = borrar. Se limpian tambien autor y fecha para no dejar
+    // rastro de quien escribio algo que ya no existe.
+    if (texto) {
+      await pool.query(
+        `UPDATE solicitud_insumo
+            SET observaciones = ?, observaciones_por = ?, observaciones_fecha = NOW()
+          WHERE id_solicitud_insumo = ?`,
+        [texto, autor, id_item]
+      );
+    } else {
+      await pool.query(
+        `UPDATE solicitud_insumo
+            SET observaciones = NULL, observaciones_por = NULL, observaciones_fecha = NULL
+          WHERE id_solicitud_insumo = ?`,
+        [id_item]
+      );
+    }
+
+    const [[emp]] = await pool.query(
+      "SELECT nombre, ap_paterno FROM empleado WHERE id_empleado = ? LIMIT 1", [autor]
+    );
+    res.json({
+      ok: true,
+      observaciones: texto || null,
+      observaciones_por: texto ? autor : null,
+      observaciones_fecha: texto ? new Date() : null,
+      observaciones_autor: texto
+        ? `${emp?.nombre ?? ""} ${emp?.ap_paterno ?? ""}`.trim()
+        : "",
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Error al guardar la observación", ...errDetalle(err) });
+  }
+};
 
 export const actualizarEstatusSolicitud = async (req, res) => {
   const id          = parseInt(req.params.id);

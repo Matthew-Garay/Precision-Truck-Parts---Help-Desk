@@ -8,7 +8,7 @@ import { apiFetch, API_ROUTES } from "../../Config/api";
 import { useToast } from "../Feedback";
 
 const ORANGE      = "#F47920";
-const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo"];
+const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo", "Dañado"];
 
 const INSUMO_VACIO = {
   num_serie: "", nombre: "", descripcion: "", marca: "",

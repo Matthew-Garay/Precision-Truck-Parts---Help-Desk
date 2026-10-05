@@ -8,6 +8,7 @@ const ESTADO_META = {
   Bueno:     { color: "#2563eb", bg: "rgba(37,99,235,0.08)",  border: "rgba(37,99,235,0.20)" },
   Regular:   { color: "#d97706", bg: "rgba(217,119,6,0.08)",  border: "rgba(217,119,6,0.20)" },
   Malo:      { color: "#dc2626", bg: "rgba(220,38,38,0.08)",  border: "rgba(220,38,38,0.20)" },
+  Dañado:    { color: "#7f1d1d", bg: "rgba(127,29,29,0.08)",  border: "rgba(127,29,29,0.20)" },
 };
 const DISP_META = {
   Disponible:   { color: "#16a34a", bg: "rgba(22,163,74,0.08)",  border: "rgba(22,163,74,0.20)" },

@@ -39,14 +39,15 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { csrfProtection } from "../Middlewares/security.js";
-import { requireAuth, requireAdmin } from "../Middlewares/authMiddleware.js";
-import { validate, schemaCrearSolicitud, schemaActualizarEstatusSolicitud, schemaInsumo, schemaEntradaInsumo, schemaItemsSolicitud, schemaRutaSolicitud } from "../Middlewares/validate.js";
+import { requireAuth, requireAdmin, requireSoporteOAdmin } from "../Middlewares/authMiddleware.js";
+import { validate, schemaCrearSolicitud, schemaActualizarEstatusSolicitud, schemaInsumo, schemaEntradaInsumo, schemaItemsSolicitud, schemaRutaSolicitud, schemaObservacionItem } from "../Middlewares/validate.js";
 import {
   getInsumos, getInventario, getInsumosStockBajo, crearSolicitud, getSolicitudesByEmpleado,
   getSolicitudById, getSolicitudByFolio, getAllSolicitudes, getSolicitudesPendientes,
   actualizarEstatusSolicitud, aprobarItemsSolicitud, crearInsumo, actualizarInsumo,
   eliminarInsumo, getReporteSolicitudes, subirFotoInsumo, getMetricasSolicitudes,
-  registrarEntradaInsumo, guardarRutaSolicitud, getMovimientosInventario, getMovimientosInsumo, getMovimientosSolicitud
+  registrarEntradaInsumo, guardarRutaSolicitud, getMovimientosInventario, getMovimientosInsumo, getMovimientosSolicitud,
+  guardarObservacionItem
 } from "../Controllers/solicitudesController.js";
 import { uploadInsumo } from "../Middlewares/uploadInsumos.js";
 
@@ -86,7 +87,12 @@ router.post("/insumos/:id/entrada", requireAdmin, validate(schemaEntradaInsumo),
 router.get("/movimientos",        requireAdmin, getMovimientosInventario);
 router.patch("/:id/estatus",  requireAdmin, validate(schemaActualizarEstatusSolicitud), actualizarEstatusSolicitud);
 router.patch("/:id/items",    requireAdmin, validate(schemaItemsSolicitud), aprobarItemsSolicitud);
-router.patch("/:id/ruta",     requireAdmin, validate(schemaRutaSolicitud), guardarRutaSolicitud);
+// Observaciones de Soporte Tecnico o Administracion sobre cada insumo pedido.
+// No usa requireAdmin: el personal de Soporte Tecnico tambien puede escribir.
+// Antes que /:id/items por ser mas especifica; Express no lo confundiria con
+// /:id/items porque el numero de segmentos es distinto.
+router.patch("/:id/items/:id_item/observaciones", requireSoporteOAdmin, validate(schemaObservacionItem), guardarObservacionItem);
+router.patch("/:id/ruta",     requireSoporteOAdmin, validate(schemaRutaSolicitud), guardarRutaSolicitud);
 router.get("/:id/movimientos", requireAdmin, getMovimientosSolicitud);
 
 // ── Rutas de usuario autenticado ──────────────────────────────
