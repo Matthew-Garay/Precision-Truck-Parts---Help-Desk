@@ -336,7 +336,8 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
             <div className="px-2 pb-1 flex flex-col gap-0.5">
               {(() => {
                 const conteo = {};
-                sl.forEach(t => { if (t.nombre_departamento) conteo[t.nombre_departamento] = (conteo[t.nombre_departamento]||0)+1; });
+                // "Soporte Técnico" no cuenta: ese equipo atiende, no solicita.
+                sl.forEach(t => { if (t.nombre_departamento && t.nombre_departamento !== "Soporte Técnico") conteo[t.nombre_departamento] = (conteo[t.nombre_departamento]||0)+1; });
                 const top = Object.entries(conteo).sort((a,b)=>b[1]-a[1]).slice(0,3);
                 const maxN = top[0]?.[1]||1;
                 const rankColors = [T.orange,"#3b82f6","#8b5cf6"];

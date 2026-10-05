@@ -530,6 +530,81 @@ const MIGRACIONES = [
       );
     },
   },
+  {
+    id: "025_observaciones_por_insumo",
+    // Observaciones que Soporte Tecnico o Administradores escriben sobre cada
+    // insumo de una solicitud ("este filtro ya se agotó, pide el alternativo").
+    // Son distintas de `descripcion`, que es el texto que escribe el solicitante.
+    // Se guarda quien las escribio y cuando, para que quede trazabilidad.
+    sql: `
+      ALTER TABLE solicitud_insumo
+        ADD COLUMN IF NOT EXISTS observaciones      TEXT    NULL,
+        ADD COLUMN IF NOT EXISTS observaciones_por  INT     NULL,
+        ADD COLUMN IF NOT EXISTS observaciones_fecha DATETIME NULL`,
+    fallback: async (conn) => {
+      const [[{ existe }]] = await conn.query(
+        `SELECT COUNT(*) AS existe FROM information_schema.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'solicitud_insumo'
+            AND COLUMN_NAME = 'observaciones'`
+      );
+      if (existe > 0) return;
+
+      await conn.query(
+        `ALTER TABLE solicitud_insumo
+           ADD COLUMN observaciones      TEXT    NULL,
+           ADD COLUMN observaciones_por  INT     NULL,
+           ADD COLUMN observaciones_fecha DATETIME NULL`
+      );
+
+      // La FK se agrega aparte: MySQL no admite ADD CONSTRAINT IF NOT EXISTS y
+      // falla si ya existe, pero solo se llega aqui con la columna recien creada.
+      const [[{ fk }]] = await conn.query(
+        `SELECT COUNT(*) AS fk FROM information_schema.TABLE_CONSTRAINTS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'solicitud_insumo'
+            AND CONSTRAINT_NAME = 'fk_solicitud_insumo_obs_por'`
+      );
+      if (fk === 0)
+        await conn.query(
+          `ALTER TABLE solicitud_insumo
+             ADD CONSTRAINT fk_solicitud_insumo_obs_por
+             FOREIGN KEY (observaciones_por) REFERENCES empleado(id_empleado)
+             ON DELETE SET NULL`
+        );
+    },
+  },
+  {
+    id: "026_estado_insumo_danado",
+    // Agrega "Dañado" al estado del insumo. MySQL no admite ALTER ... ADD VALUE
+    // en un ENUM, asi que hay que redeclarar la columna completa. Se conservan
+    // NULL, DEFAULT y la colacion originales para no tocar los datos existentes.
+    // El caracter se escribe como \u00f1 para que el valor que llega a MySQL sea
+    // exactamente "Dañado" (utf8mb4) sin depender de la codificacion del archivo.
+    // CHARACTER SET/COLLATE va justo despues del tipo: MySQL no lo acepta tras
+    // DEFAULT NULL.
+    sql: `
+      ALTER TABLE insumo
+        MODIFY COLUMN estado ENUM('Excelente','Bueno','Regular','Malo','Da\u00f1ado')
+               CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+               NULL DEFAULT NULL`,
+    fallback: async (conn) => {
+      const [[{ columna }]] = await conn.query(
+        `SELECT COLUMN_TYPE AS columna FROM information_schema.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'insumo' AND COLUMN_NAME = 'estado'`
+      );
+      if (String(columna).includes("'Da\u00f1ado'")) return;
+
+      await conn.query(
+        `ALTER TABLE insumo
+           MODIFY COLUMN estado ENUM('Excelente','Bueno','Regular','Malo','Da\u00f1ado')
+                  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+                  NULL DEFAULT NULL`
+      );
+    },
+  },
+
 ];
 
 async function run() {

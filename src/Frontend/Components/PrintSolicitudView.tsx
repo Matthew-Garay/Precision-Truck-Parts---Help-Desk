@@ -2,6 +2,7 @@ import {
   PageFooter, PageSize, Firma,
   PRIO_META, fmt, nowFechaGen,
 } from "./PrintShared";
+import { getUsuario } from "../Config/session";
 
 interface DetalleItem {
   id_solicitud_insumo: number;
@@ -185,6 +186,15 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
   const rutaOrigen  = solicitud.nombre_sucursal_origen?.trim()  || null;
   const rutaDestino = solicitud.nombre_sucursal_destino?.trim() || null;
 
+  // La ruta del material (de donde sale y a donde llega el material) es
+  // logistica interna: en la hoja solo la imprimen Administracion y Soporte
+  // Tecnico (mismo criterio que la API). El resto del personal no debe verla;
+  // el backend ademas la omite de la respuesta.
+  const DEPTO_SOPORTE = 2;
+  const sesion = getUsuario();
+  const veRuta = sesion?.id_rol === 1
+    || Number(sesion?.id_departamento) === DEPTO_SOPORTE;
+
   return (
     <div className="pr-root pr-solicitud" data-ready="true">
       {/* Carta vertical: este documento cabe en una hoja tamaño carta */}
@@ -208,18 +218,20 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
           <span className="pr-doc-folio">{solicitud.folio_solicitud}</span>
           <span className="pr-doc-gen">Generado {fechaGen}</span>
 
-          {/* Ruta del material — siempre visible. Si el administrador aún no la
-              define se imprime "Por definir" para que quede a la vista. */}
-          <div className="pr-doc-ruta">
-            <span className="pr-doc-ruta-label">Ruta del material</span>
-            {rutaOrigen || rutaDestino ? (
-              <span className="pr-doc-ruta-val">
-                {rutaOrigen ?? "—"} → {rutaDestino ?? "—"}
-              </span>
-            ) : (
-              <span className="pr-doc-ruta-val">Por definir</span>
-            )}
-          </div>
+          {/* Ruta del material — la imprimen Administracion y Soporte Tecnico.
+              Si aun no se define se muestra "Por definir". */}
+          {veRuta && (
+            <div className="pr-doc-ruta">
+              <span className="pr-doc-ruta-label">Ruta del material</span>
+              {rutaOrigen || rutaDestino ? (
+                <span className="pr-doc-ruta-val">
+                  {rutaOrigen ?? "—"} → {rutaDestino ?? "—"}
+                </span>
+              ) : (
+                <span className="pr-doc-ruta-val">Por definir</span>
+              )}
+            </div>
+          )}
         </div>
       </header>
 

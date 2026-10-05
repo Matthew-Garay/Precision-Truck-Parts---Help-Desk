@@ -81,7 +81,8 @@ const Empleado = {
     const [rows] = await pool.query(
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
               e.email, e.password, e.foto, e.estatus, e.id_rol, e.id_departamento,
-              e.id_sucursal, d.nombre_departamento, s.nombre_sucursal
+              e.id_sucursal, e.token_version,
+              d.nombre_departamento, s.nombre_sucursal
        FROM empleado e
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
        LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal

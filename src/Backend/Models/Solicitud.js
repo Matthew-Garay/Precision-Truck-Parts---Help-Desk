@@ -161,6 +161,8 @@ const Solicitud = {
               si.cantidad_aprobada,
               si.aprobado,
               si.descripcion AS justificacion,
+              si.observaciones, si.observaciones_por, si.observaciones_fecha,
+              IFNULL(CONCAT(obs.nombre,' ',obs.ap_paterno),'') AS observaciones_autor,
               i.id_insumo, IFNULL(i.nombre,'[Insumo eliminado]') AS nombre,
               i.marca, i.modelo, i.num_serie, IFNULL(i.stock,0) AS stock, i.estado,
               i.imagen_url, i.descripcion, i.id_categoria,
@@ -168,6 +170,7 @@ const Solicitud = {
        FROM solicitud_insumo si
        LEFT JOIN insumo i ON si.id_insumo = i.id_insumo
        LEFT JOIN categoria c ON i.id_categoria = c.id_categoria
+       LEFT JOIN empleado obs ON si.observaciones_por = obs.id_empleado
        WHERE si.id_solicitud = ?`,
       [id_solicitud]
     );

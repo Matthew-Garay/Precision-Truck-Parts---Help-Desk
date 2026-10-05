@@ -69,3 +69,53 @@ export function requireAdmin(req, res, next) {
     return res.status(403).json({ error: "Acceso restringido a administradores" });
   next();
 }
+
+/**
+ * ID del departamento que puede escribir observaciones de insumos.
+ * Vive en `departamento` (no en `rol`): el sistema solo tiene Administrador y
+ * Usuario, y "Soporte Tecnico" es un departamento. Si se renombra o cambia el
+ * id hay que actualizar esta constante.
+ */
+export const DEPARTAMENTO_SOPORTE = 2;
+
+/**
+ * esSoporteOAdmin
+ *
+ * Devuelve true si el empleado es administrador (rol 1) o pertenece al
+ * departamento Soporte Tecnico. Define quien comparte las capacidades que van
+ * mas alla de `requireAdmin`: observaciones de insumos y ruta del material.
+ *
+ * El JWT solo lleva {id_empleado, id_rol, ver}; el departamento NO viaja en el
+ * token, asi que se consulta en cada llamada. Es lo correcto: si alguien cambia
+ * de departamento, el permiso cambia de inmediato en lugar de esperar a que
+ * expire el token. Si la consulta falla se devuelve false: nunca se concede
+ * un permiso por error.
+ */
+export async function esSoporteOAdmin({ id_empleado, id_rol } = {}) {
+  if (id_rol === 1) return true;              // admin: no hace falta consultar
+  if (!id_empleado) return false;
+  try {
+    const [[emp]] = await pool.query(
+      "SELECT id_departamento FROM empleado WHERE id_empleado = ? LIMIT 1",
+      [id_empleado]
+    );
+    return emp?.id_departamento === DEPARTAMENTO_SOPORTE;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * requireSoporteOAdmin
+ *
+ * Deja pasar a los administradores (rol 1) y a los empleados del departamento
+ * Soporte Tecnico. Se usa para las observaciones de insumos y para la ruta del
+ * material, dos operaciones que no encajan en `requireAdmin` porque las usa
+ * tambien el personal de soporte.
+ */
+export async function requireSoporteOAdmin(req, res, next) {
+  if (await esSoporteOAdmin(req.usuario)) return next();
+  return res.status(403).json({
+    error: "Solo Soporte Técnico o administradores pueden realizar esta acción",
+  });
+}
