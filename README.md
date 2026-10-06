@@ -1,780 +1,219 @@
-# Precision Truck Parts - HelpDesk
+﻿# Precision Truck Parts - HelpDesk
 
-**Sistema integral de gestion de tickets de soporte tecnico, solicitudes de insumos, control de inventario, acceso a manuales tecnicos y seguimiento de incidencias para Precision Truck Parts, Parts and Accesories, S.A de C.V.**
+Sistema de tickets, solicitudes de insumos y control de inventario desarrollado
+para Precision Truck Parts, Parts and Accesories, S.A. de C.V. En resumen: los
+empleados reportan fallas de computo y piden insumos, el area de soporte los
+atiende desde un solo lugar, y la administracion ve inventario, manuales
+tecnicos e historial de todo lo que ha pasado.
 
----
-
-## Descripcion del Sistema
-
-Precision Truck Parts - HelpDesk es una plataforma empresarial integral desarrollada para la gestion eficiente de soporte tecnico, control de inventario, administracion de manuales tecnicos y seguimiento de incidencias. El sistema permite a los empleados reportar problemas tecnicos, solicitar insumos, consultar manuales de procedimientos y acceder a historiales de acceso, todo en un entorno seguro y centralizado.
-
-### Funcionalidades Principales
-
-**Gestion de Tickets de Soporte**
-
-- Creacion, edicion y eliminacion de tickets de soporte tecnico
-- Asignacion de tickets a tecnicos especializados
-- Seguimiento en tiempo real con notificaciones via Socket.io
-- Sistema de comentarios y carga de evidencias (imagenes y videos)
-- Estados de ticket: En proceso, Resuelto, No Resuelto, Cancelado
-- Sistema de prioridades: Baja, Media, Alta, Urgente
-- Calificacion del servicio con escala de 1 a 5 estrellas
-- Cierre automatico de tickets vencidos (SLA de 48 horas)
-- Alertas automaticas de SLA y tickets sin atender
-
-**Gestion de Manuales Tecnicos**
-
-- Subida y administracion de manuales PDF
-- Visor de PDF integrado con navegacion por paginas
-- Generacion automatica de portadas en miniatura
-- Busqueda y filtrado por categorias
-- Descarga de manuales
-- Subida masiva de manuales (hasta 20 archivos simultaneamente)
-- Vista en grid y lista para mejor navegacion
-
-**Gestion de Insumos e Inventario**
-
-- Catalogo completo de insumos disponibles
-- Sistema de solicitudes de insumos por empleados
-- Aprobacion individual de items por administradores
-- Control de stock con descuento automatico
-- Alertas de stock critico (agotado y bajo)
-- Historial completo de solicitudes
-- Generacion de reportes en PDF y Excel
-
-**Gestion de Empleados y Accesos**
-
-- Registro y administracion de empleados
-- Asignacion de roles: Administrador y Usuario
-- Control de acceso basado en roles (RBAC)
-- Perfiles de usuario personalizables con foto
-- Historial completo de accesos al sistema
-- Recuperacion de contrasena por correo electronico
-- Sesiones seguras con JWT (12 horas de vigencia)
-
-**Reportes y Estadisticas**
-
-- Reportes de tickets por periodo
-- Estadisticas de actividad y rendimiento
-- Graficos de desempeno por tecnico
-- Exportacion de datos a Excel y PDF
-- Paginas de impresion dedicadas
-- Filtros avanzados por fecha, categoria y tecnico
-
-**Seguridad**
-
-- Autenticacion con JWT (12 horas de vigencia)
-- Encriptacion de contrasenas con bcryptjs (12 rounds)
-- Configuracion CORS restrictiva
-- Rate limiting para prevenir ataques de fuerza bruta
-- Validacion de datos con Zod
-- Headers de seguridad HTTP con Helmet
-- Proteccion CSRF en formularios
-- Proteccion contra path traversal
-- Revocacion de tokens al cerrar sesion
-- Registro de historial de accesos
+El sistema tiene dos roles: administrador y usuario. El usuario crea tickets,
+adjunta evidencias, consulta manuales y solicita insumos. El administrador
+atiende los tickets, aprueba solicitudes, controla el stock y da de alta
+empleados y categorias. Los tickets se van cerrando solos a las 48 horas si
+nadie los resuelve, y el sistema manda alertas cuando eso esta por pasar.
+Sobre la tecnologia: Express con Node.js en el backend, React con Vite en el
+frontend, MySQL como base de datos y Socket.io para las notificaciones en
+tiempo real. Las contrasenas se guardan con bcrypt, los accesos con JWT de 12
+horas, y la validacion de datos esta hecha con Zod.
 
 ---
 
 ## Requisitos
 
-### Minimos
-
-- **Node.js**: v18.0.0 o superior
-- **npm**: v9.0.0 o superior
-- **MySQL**: v8.0 o superior
-- **Git**: v2.0 o superior
-
-### Recomendados
-
-- **Visual Studio Code**: Editor de codigo
-- **Postman**: Para pruebas de API
-- **MySQL Workbench**: Gestor de base de datos
-
----
-
-## Tabla de Contenidos
-
-- [Caracteristicas](#caracteristicas)
-- [Requisitos](#requisitos)
-- [Instalacion](#instalacion)
-- [Configuracion](#configuracion)
-- [Uso](#uso)
-- [Estructura del Proyecto](#estructura-del-proyecto)
-- [Documentacion](#documentacion)
-- [API](#api)
-- [Solucion de Problemas](#solucion-de-problemas)
-- [Contribuir](#contribuir)
-- [Licencia](#licencia)
-
----
-
-## Caracteristicas
-
-### Gestion de Tickets
-
-- Crear, editar y eliminar tickets de soporte
-- Asignar tickets a tecnicos
-- Seguimiento en tiempo real con Socket.io
-- Comentarios y evidencias adjuntas
-- Estados: En proceso, Resuelto, No Resuelto, Cancelado
-- Prioridades: Baja, Media, Alta, Urgente
-- Calificacion del servicio (1 a 5 estrellas)
-- Cierre automatico de tickets vencidos (SLA de 48 horas)
-- Alertas de SLA y tickets sin atender
-
-### Gestion de Manuales
-
-- Subir y gestionar manuales PDF
-- Visor de PDF integrado
-- Generacion automatica de portadas
-- Busqueda y filtrado por categoria
-- Descarga de manuales
-- Subida masiva de manuales (hasta 20 archivos)
-
-### Gestion de Insumos
-
-- Catalogo de insumos disponibles
-- Solicitudes de insumos
-- Aprobacion individual de items
-- Control de stock con descuento automatico
-- Alertas de stock critico
-- Historial de solicitudes
-
-### Gestion de Empleados
-
-- Crear y gestionar empleados
-- Asignar roles (Admin, Usuario)
-- Control de acceso basado en roles (RBAC)
-- Perfiles de usuario personalizables
-- Historial de accesos al sistema
-- Recuperacion de contrasena por correo
-
-### Reportes y Estadisticas
-
-- Reportes de tickets por periodo
-- Estadisticas de actividad
-- Graficos de desempeno por tecnico
-- Exportacion a Excel y PDF
-- Paginas de impresion dedicadas
-
-### Seguridad
-
-- Autenticacion con JWT (12 horas de vigencia)
-- Encriptacion de contrasenas (bcryptjs, 12 rounds)
-- CORS configurado
-- Rate limiting
-- Validacion de datos con Zod
-- Headers de seguridad (Helmet)
-- Proteccion CSRF
-- Proteccion contra path traversal
-- Revocacion de tokens al cerrar sesion
-
----
-
-## Requisitos
-
-### Minimos
-
-- **Node.js**: v18.0.0 o superior
-- **npm**: v9.0.0 o superior
-- **MySQL**: v8.0 o superior
-- **Git**: v2.0 o superior
-
-### Recomendados
-
-- **Visual Studio Code**: Editor de codigo
-- **Postman**: Para pruebas de API
-- **MySQL Workbench**: Gestor de base de datos
+- Node.js 18 o superior
+- MySQL 8 o superior
+- npm 9 o superior
 
 ---
 
 ## Instalacion
 
-### 1. Clonar el Repositorio
-
 ```bash
 git clone https://github.com/Matthew-Garay/Precision-Truck-Parts---Help-Desk.git
 cd PrecisionTrucks_HelpDesk
-```
-
-### 2. Instalar Dependencias
-
-```bash
 npm install
 ```
 
-### 3. Configurar Variables de Entorno
+Copia el archivo de ejemplo de variables de entorno y llenalo con tus datos:
 
 ```bash
-# Copiar archivo de ejemplo
 cp .env.example .env
-
-# Editar .env con tus valores
-nano .env
 ```
 
-**Variables necesarias:**
+Las variables que hacen falta:
 
 ```env
-# Servidor
 PORT=3001
 NODE_ENV=development
 
-# Base de datos
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=tu_contrasena
 DB_NAME=precision_helpdesk
 
-# JWT
 JWT_SECRET=tu_secreto_de_64_caracteres_aleatorios
 
-# Email (Gmail)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=tu_correo@gmail.com
 SMTP_PASS=xxxx xxxx xxxx xxxx
 
-# Frontend
 CORS_ORIGIN=http://localhost:5173
 APP_URL=http://localhost:5173
 ```
 
-### 4. Crear Base de Datos
+Despues crea la base de datos con el esquema que viene en `docs/database.sql`:
 
 ```bash
-# Opcion 1: Usando MySQL CLI
 mysql -u root -p < docs/database.sql
-
-# Opcion 2: Usando MySQL Workbench
-# Abrir docs/database.sql y ejecutar
 ```
 
-### 5. Iniciar la Aplicacion
+Y arranca:
 
 ```bash
-# Desarrollo (Frontend + Backend)
 npm run dev:all
-
-# O en terminales separadas:
-# Terminal 1 - Frontend
-npm run dev
-
-# Terminal 2 - Backend
-npm run server
 ```
 
-**URLs de acceso:**
+O en dos terminales (`npm run dev` en una para el frontend y `npm run server`
+en otra para el backend). Quedan disponibles el frontend en
+http://localhost:5173 y la API en http://localhost:3001.
 
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:3001
+### Correo para recuperacion de contrasenas
 
----
-
-## Configuracion
-
-### Configuracion de Email (Gmail)
-
-1. Habilitar "Contrasenas de aplicacion":
-
-- Ir a https://myaccount.google.com/security
-- Activar "Verificacion en dos pasos"
-- Generar "Contrasena de aplicacion"
-- Copiar contrasena en `.env` como `SMTP_PASS`
-
-### Configuracion de Base de Datos
-
-```bash
-# Crear base de datos
-mysql -u root -p
-CREATE DATABASE precision_helpdesk;
-USE precision_helpdesk;
-SOURCE docs/database.sql;
-```
-
-### Configuracion de Almacenamiento
-
-Las carpetas de almacenamiento deben tener permisos correctos:
-
-```bash
-# Linux/Mac
-chmod 755 storage/
-chmod 755 storage/Manuales/
-chmod 755 storage/Evidencias_Tickets/
-chmod 755 storage/Fotos\ de\ Perfil/
-chmod 755 storage/Insumos/
-chmod 755 storage/Portadas/
-
-# Windows (ejecutar como administrador)
-icacls "storage" /grant:r "%USERNAME%:F" /t
-```
+Si usas Gmail, en https://myaccount.google.com/security activa la verificacion
+en dos pasos y genera una contrasena de aplicacion; esa es la que va en
+`SMTP_PASS`, no la de tu cuenta. Con cualquier otro proveedor SMTP solo cambias
+las tres lineas de `SMTP_*`.
 
 ---
 
 ## Uso
 
-### Acceso Inicial
+Para el primer arranque:
 
-1. **URL**: http://localhost:5173
-2. **Usuario**: admin@precisiontrucks.com
-3. **Contrasena**: Admin123!@#
+- URL: http://localhost:5173
+- Usuario: admin@precisiontrucks.com
+- Contrasena: Admin123!@#
 
-### Crear Primer Ticket
+Cambiar esa contrasena antes de ponerlo en produccion.
 
-1. Iniciar sesion
-2. Ir a **Nuevo Reporte**
-3. Completar formulario:
+Un ticket se crea desde **Nuevo Reporte**: titulo, descripcion del problema,
+categoria, prioridad y hasta 8 archivos de evidencia (capturas, videos). Los
+tickets aparecen con estado *En proceso*, *Resuelto*, *No Resuelto* o
+*Cancelado*, y prioridad Baja, Media, Alta o Urgente. Al cerrarlos el usuario
+los califica de 1 a 5 estrellas.
 
-- Titulo: Descripcion breve
-- Descripcion: Detalles del problema
-- Categoria: Seleccionar categoria
-- Prioridad: Seleccionar prioridad
-- Evidencias: Adjuntar archivos (opcional, maximo 8)
-
-4. Hacer clic en **Crear Ticket**
-
-### Subir Manual PDF
-
-1. Ir a **Manuales de Incidencias** (solo admin)
-2. Hacer clic en **Subir Manual**
-3. Seleccionar archivo PDF
-4. Completar informacion:
-
-- Nombre del manual
-- Descripcion
-- Categoria
-
-5. Hacer clic en **Subir**
+Los manuales en PDF se suben desde **Manuales de Incidencias** (solo
+administrador). El sistema genera una portada en miniatura de cada uno, los
+ordena por categoria y permite buscarlos y descargarlos.
 
 ---
 
-## Estructura del Proyecto
+## Estructura
 
 ```
 PrecisionTrucks_HelpDesk/
-|-- docs/ Documentacion
-| |-- README.md Indice de documentacion
-| |-- database.sql Script de BD
-| |-- ScrumFlujo.puml Diagrama Scrum
-| |-- profesional/ Documentacion profesional
-| | `-- DOCUMENTACION_PROFESIONAL.md
-| |-- tecnica/ Documentacion tecnica
-| | |-- ARQUITECTURA.md
-| | |-- 3.5_DesarrolloTecnico.md
-| | |-- DiccionarioDatos.md
-| | |-- ESTRUCTURA_PROYECTO.md
-| | |-- DOCUMENTACION_INTERNA.md
-| | |-- IEEE830_REQUERIMIENTOS.md
-| | `-- PruebasYValidacion.md
-| |-- operacion/ Operacion y despliegue
-| | |-- DESPLIEGUE.md
-| | |-- SOLUCION_PDFS.md
-| `-- manuales_residencia/ Manuales de la residencia
-|    |-- MANUAL_DE_USO.md
-|    `-- MANUAL_DE_MANTENIMIENTO.md
-|
-|-- src/ Codigo fuente
-| |-- Backend/ Servidor Node.js/Express
-| | |-- server.js Punto de entrada
-| | |-- Config/ Configuracion
-| | |-- Models/ Modelos de datos
-| | |-- Controllers/ Logica de negocio
-| | |-- Routes/ Rutas API
-| | |-- Middlewares/ Middlewares
-| | |-- Workers/ Tareas programadas
-| | `-- utils/ Funciones auxiliares
-| |
-| `-- Frontend/ Aplicacion React
-| |-- Components/ Componentes React
-| |-- Pages/ Paginas principales
-| |-- Config/ Configuracion del cliente
-| `-- Styles/ Estilos CSS
-|
-|-- public/ Archivos estaticos
-| `-- assets/ Imagenes y recursos
-|
-|-- storage/ Almacenamiento de archivos
-| |-- Manuales/ PDFs de manuales
-| |-- Evidencias_Tickets/ Imagenes de tickets
-| |-- Fotos de Perfil/ Fotos de empleados
-| |-- Insumos/ Imagenes de insumos
-| `-- Portadas/ Portadas de PDFs
-|
-|-- package.json Dependencias
-|-- .env.example Variables de entorno
-|-- vite.config.js Configuracion de Vite
-`-- README.md Este archivo
+|-- docs/          documentacion, esquema SQL y manuales
+|-- src/Backend/   servidor Express (server.js, Controllers, Models, Routes)
+|-- src/Frontend/  aplicacion React (Pages, Components, Config)
+|-- public/        archivos estaticos
+|-- storage/       PDFs, evidencias y fotos de perfil que suben los usuarios
+|-- package.json
+`-- .env.example
 ```
 
-**Para mas detalles**: Ver [ESTRUCTURA_PROYECTO.md](docs/tecnica/ESTRUCTURA_PROYECTO.md)
+El detalle de cada carpeta esta en
+[docs/tecnica/ESTRUCTURA_PROYECTO.md](docs/tecnica/ESTRUCTURA_PROYECTO.md).
 
 ---
 
 ## Documentacion
 
-### Indice de Documentacion
+Todo lo documental esta en `docs/`, empezando por
+[docs/README.md](docs/README.md) que sirve de indice. Lo mas consultado:
 
-| Documento                        | Descripcion                              |
-| -------------------------------- | ---------------------------------------- |
-| [docs/README.md](docs/README.md) | Indice completo de toda la documentacion |
-
-### Documentacion Profesional
-
-| Documento                                                                     | Descripcion                                    |
-| ----------------------------------------------------------------------------- | ---------------------------------------------- |
-| [DOCUMENTACION_PROFESIONAL.md](docs/profesional/DOCUMENTACION_PROFESIONAL.md) | Documentacion profesional integral del sistema |
-
-### Documentacion Tecnica
-
-| Documento                                                           | Descripcion                             |
-| ------------------------------------------------------------------- | --------------------------------------- |
-| [Arquitectura.md](docs/tecnica/ARQUITECTURA.md)                     | Diagrama y descripcion de arquitectura  |
-| [3.5_DesarrolloTecnico.md](docs/tecnica/3.5_DesarrolloTecnico.md)   | Stack tecnologico y decisiones tecnicas |
-| [DiccionarioDatos.md](docs/tecnica/DiccionarioDatos.md)             | Descripcion de tablas y campos          |
-| [IEEE830_Requerimientos.md](docs/tecnica/IEEE830_REQUERIMIENTOS.md) | Especificacion de requerimientos        |
-| [PruebasYValidacion.md](docs/tecnica/PruebasYValidacion.md)         | Plan de pruebas                         |
-
-### Operacion y Despliegue
-
-| Documento                                                                           | Descripcion                          |
-| ----------------------------------------------------------------------------------- | ------------------------------------ |
-| [Despliegue.md](docs/operacion/DESPLIEGUE.md)                                       | Guia de despliegue en produccion     |
-| [SOLUCION_PDFS.md](docs/operacion/SOLUCION_PDFS.md)                                 | Solucion de problemas con PDFs       |
-| [MANUAL_DE_MANTENIMIENTO.md](docs/manuales_residencia/MANUAL_DE_MANTENIMIENTO.md) | Manual de mantenimiento del software |
-
-### Guias de Usuario
-
-| Guia                                                             | Descripcion                        |
-| ---------------------------------------------------------------- | ---------------------------------- |
-| [MANUAL_DE_USO.md](docs/manuales_residencia/MANUAL_DE_USO.md) | Manual completo de uso del sistema |
-
-### Documentacion Interna
-
-| Documento                                                         | Descripcion                           |
-| ----------------------------------------------------------------- | ------------------------------------- |
-| [ESTRUCTURA_PROYECTO.md](docs/tecnica/ESTRUCTURA_PROYECTO.md)     | Estructura de carpetas y archivos     |
-| [DOCUMENTACION_INTERNA.md](docs/tecnica/DOCUMENTACION_INTERNA.md) | Estandares de documentacion de codigo |
+| Documento | Para que sirve |
+|---|---|
+| [ARQUITECTURA.md](docs/tecnica/ARQUITECTURA.md) | Diagrama y descripcion de la arquitectura |
+| [DiccionarioDatos.md](docs/tecnica/DiccionarioDatos.md) | Tablas y campos de la base de datos |
+| [IEEE830_REQUERIMIENTOS.md](docs/tecnica/IEEE830_REQUERIMIENTOS.md) | Especificacion de requerimientos |
+| [DESPLIEGUE.md](docs/operacion/DESPLIEGUE.md) | Guia de despliegue en produccion |
+| [MANUAL_DE_USO.md](docs/manuales_residencia/MANUAL_DE_USO.md) | Manual de uso para los empleados |
+| [MANUAL_DE_MANTENIMIENTO.md](docs/manuales_residencia/MANUAL_DE_MANTENIMIENTO.md) | Mantenimiento del software |
 
 ---
 
 ## API
 
-### Autenticacion
+Todas las rutas piden el token de sesion en la cabecera
+`Authorization: Bearer {token}`, salvo el login.
 
 ```bash
-# Login
 POST /api/auth/login
-Content-Type: application/json
-
-{
- "email": "usuario@precisiontrucks.com",
- "password": "contrasena"
-}
-
-# Respuesta
-{
- "token": "eyJhbGciOiJIUzI1NiIs...",
- "usuario": {
- "id_empleado": 1,
- "nombre": "Juan Perez",
- "email": "usuario@precisiontrucks.com",
- "rol": "usuario"
- }
-}
+{"email": "usuario@precisiontrucks.com", "password": "contrasena"}
 ```
-
-### Tickets
 
 ```bash
-# Listar tickets (solo admin)
-GET /api/tickets
-Authorization: Bearer {token}
+POST /api/tickets            # crear ticket
+GET  /api/tickets            # listar (solo admin)
+PATCH /api/tickets/:id       # cambiar estado o resolver (solo admin)
 
-# Crear ticket
-POST /api/tickets
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
- "titulo": "Impresora no funciona",
- "descripcion": "La impresora HP no imprime",
- "prioridad": "Alta",
- "id_categoria": 1
-}
-
-# Obtener detalles
-GET /api/tickets/:id
-Authorization: Bearer {token}
-
-# Actualizar ticket (solo admin)
-PATCH /api/tickets/:id
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
- "estatus": "Resuelto",
- "comentarios": "Se reinstalo el driver",
- "id_resuelto_por": 2
-}
+POST /api/solicitudes        # pedir insumos
+GET  /api/manuales           # listar manuales
+POST /api/manuales           # subir manual (solo admin, multipart)
 ```
 
-### Solicitudes
-
-```bash
-# Crear solicitud de insumos
-POST /api/solicitudes
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
- "prioridad": "Media",
- "id_empleado": 1,
- "insumos": [
- { "id_insumo": 1, "cantidad": 2 }
- ]
-}
-```
-
-### Manuales
-
-```bash
-# Listar manuales
-GET /api/manuales
-Authorization: Bearer {token}
-
-# Subir manual (solo admin)
-POST /api/manuales
-Authorization: Bearer {token}
-Content-Type: multipart/form-data
-
-archivo: [archivo PDF]
-nombre: "Manual de Instalacion"
-descripcion: "Guia de instalacion del producto"
-id_categoria: 1
-```
-
-**Para documentacion completa de API**: Ver [DOCUMENTACION_PROFESIONAL.md](docs/DOCUMENTACION_PROFESIONAL.md#16-documentacion-de-la-api)
+La documentacion completa, con todos los parametros y respuestas, esta en la
+seccion 16 de
+[DOCUMENTACION_PROFESIONAL.md](docs/profesional/DOCUMENTACION_PROFESIONAL.md).
 
 ---
 
-## Solucion de Problemas
+## Solucion de problemas
 
-### PDFs no se visualizan
-
-**Problema**: Los manuales no cargan en el visor
-
-**Soluciones**:
-
-1. **Verificar archivos existen**:
-
-```bash
-ls -la storage/Manuales/
-```
-
-2. **Verificar permisos**:
-
-```bash
-chmod 644 storage/Manuales/*
-```
-
-3. **Regenerar portadas**:
+**Los manuales en PDF no cargan en el visor.** Revisa que los archivos existan
+con `ls -la storage/Manuales/`, que tengan permisos de lectura y regenera las
+portadas con:
 
 ```bash
 node src/Backend/scripts/generarPortadasExistentes.js
 ```
 
-4. **Limpiar cache del navegador**:
+Si todo esta bien, limpia la cache del navegador (`Ctrl+Shift+Delete`); muchas
+veces es eso.
 
-- Presionar `Ctrl+Shift+Delete`
-- Seleccionar "Todos los tiempos"
-- Hacer clic en "Limpiar datos"
+**No conecta con la base de datos.** Comprueba que MySQL este corriendo
+(`services.msc` en Windows, `systemctl status mysql` en Linux) y que las
+credenciales de `.env` coincidan con las reales.
 
-5. **Verificar CORS**:
+**No llegan los correos de recuperacion de contrasena.** En la mayoria de los
+casos es que se puso la contrasena de Gmail en lugar de la contrasena de
+aplicacion. El resto: revisa `SMTP_*` en `.env`.
 
-- Revisar consola del navegador (F12)
-- Buscar errores de CORS
-- Verificar `.env` CORS_ORIGIN
+**Va lento.** Primero limpia la cache del navegador. Si sigue lento, optimiza
+las tablas mas consultadas:
 
-### Error de conexion a BD
-
-**Problema**: "Cannot connect to database"
-
-**Soluciones**:
-
-1. **Verificar MySQL esta corriendo**:
-
-```bash
-# Linux/Mac
-sudo systemctl status mysql
-
-# Windows
-services.msc (buscar MySQL)
-```
-
-2. **Verificar credenciales en `.env`**:
-
-```env
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=tu_contrasena
-```
-
-3. **Reiniciar servidor**:
-
-```bash
-npm run server
-```
-
-### Emails no se envian
-
-**Problema**: Recuperacion de contrasena no funciona
-
-**Soluciones**:
-
-1. **Para Gmail**:
-
-- Habilitar "Contrasenas de aplicacion"
-- Usar contrasena de aplicacion en `.env`
-
-2. **Verificar credenciales SMTP**:
-
-```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=tu_correo@gmail.com
-SMTP_PASS=xxxx xxxx xxxx xxxx
-```
-
-### Rendimiento lento
-
-**Problema**: El sistema esta lento
-
-**Soluciones**:
-
-1. **Limpiar cache**:
-
-```bash
-# En el navegador
-Ctrl+Shift+Delete
-```
-
-2. **Optimizar BD**:
-
-```bash
-mysql -u root -p precision_helpdesk
+```sql
 OPTIMIZE TABLE ticket;
 OPTIMIZE TABLE solicitud;
 ```
 
-3. **Aumentar memoria Node.js**:
+---
 
-```bash
-NODE_OPTIONS=--max-old-space-size=4096 npm run server
-```
+## Desarrollo
+
+El flujo es el habitual: fork, rama con `git checkout -b feature/lo-que-seas`,
+commit con mensaje descriptivo y pull request. El codigo se valida con ESLint y
+las funciones se documentan con JSDoc.
+
+Reportar errores en [Issues](https://github.com/Matthew-Garay/Precision-Truck-Parts---Help-Desk/issues)
+con los pasos para reproducirlos y capturas si es posible.
 
 ---
 
-## Contribuir
+## Autor
 
-### Pasos para Contribuir
+Matthew Garay - desarrollo principal.
 
-1. **Fork el repositorio**
-
-```bash
-git clone https://github.com/tu-usuario/Precision-Truck-Parts---Help-Desk.git
-```
-
-2. **Crear rama de feature**
-
-```bash
-git checkout -b feature/nueva-funcionalidad
-```
-
-3. **Hacer cambios y commit**
-
-```bash
-git add .
-git commit -m "Agregar nueva funcionalidad"
-```
-
-4. **Push a la rama**
-
-```bash
-git push origin feature/nueva-funcionalidad
-```
-
-5. **Crear Pull Request**
-
-- Ir a GitHub
-- Hacer clic en "New Pull Request"
-- Describir cambios
-- Esperar revision
-
-### Estandares de Codigo
-
-- Usar ESLint para validar codigo
-- Seguir convenciones de nombres
-- Documentar funciones con JSDoc
-- Escribir tests para nuevas funcionalidades
-- Mantener cobertura de tests > 80%
-
----
-
-## Licencia
-
-Este proyecto esta bajo la licencia MIT. Ver [LICENSE](LICENSE) para mas detalles.
-
----
-
-## Soporte
-
-### Contacto
-
-- **Email**: soporte@precisiontrucks.com
-- **Telefono**: +1-XXX-XXX-XXXX
-- **Horario**: Lunes a Viernes, 8:00 AM - 5:00 PM
-
-### Reportar Bugs
-
-1. Ir a [Issues](https://github.com/Matthew-Garay/Precision-Truck-Parts---Help-Desk/issues)
-2. Hacer clic en "New Issue"
-3. Describir el problema detalladamente
-4. Incluir pasos para reproducir
-5. Adjuntar capturas de pantalla si es posible
-
----
-
-## Autores
-
-- **Matthew Garay** - Desarrollador Principal
-- **Equipo de PrecisionTrucks** - Contribuidores
-
----
-
-## Agradecimientos
-
-- [Express.js](https://expressjs.com/) - Framework web
-- [React](https://react.dev/) - Libreria de UI
-- [MySQL](https://www.mysql.com/) - Base de datos
-- [Socket.io](https://socket.io/) - Comunicacion en tiempo real
-- [Tailwind CSS](https://tailwindcss.com/) - Framework CSS
-
----
-
-## Estado del Proyecto
-
-- Version 1.0.0 - Lanzamiento inicial
-- En desarrollo activo
-- Mejoras continuas
-
----
-
-**Ultima actualizacion**: Agosto 2026
-**Version**: 1.0.0
-
----
-
-[Ir al Repositorio](https://github.com/Matthew-Garay/Precision-Truck-Parts---Help-Desk)
+Para mas dudas: soporte@precisiontrucks.com
