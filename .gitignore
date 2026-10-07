@@ -122,10 +122,10 @@ backups/
 
 # Dump de la base de datos guardado junto a la documentacion. Es el mismo
 # caso que backups/: trae los INSERT de la tabla `empleado` con nombres,
-# correos y hashes de contrasena reales. El esquema vive en docs/database.sql,
-# que si se versiona.
-docs/database.utf8.sql
-docs/*.utf8.sql
+# correos y hashes de contrasena reales. El esquema vive en
+# docs/MYSQL Database/database.sql, que si se versiona.
+docs/**/*.utf8.sql
+docs/MYSQL Database/database.utf8.sql
 
 # ── Copias de respaldo de codigo ───────────────────────────────────────
 *.bak

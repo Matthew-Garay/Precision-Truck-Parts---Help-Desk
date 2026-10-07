@@ -689,14 +689,14 @@ export function PanelDerecho({ T, nombre, departamento, sucursal, foto, tickets 
 
         {/* -- PERFIL -- */}
         <div className="flex-shrink-0 px-3.5 py-4" style={{ borderBottom: `1px solid ${T.border}` }}>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-center text-center gap-2">
             <div className="flex-shrink-0 rounded-full overflow-hidden"
               style={{ width: "40px", height: "40px", border: `2px solid ${T.surface}`, outline: `2px solid ${T.orange}`, background: T.bg, boxShadow: `0 0 0 3px ${isDark ? "rgba(244,121,32,0.15)" : "rgba(244,121,32,0.1)"}` }}>
               {foto
                 ? <img src={foto} alt="perfil" className="w-full h-full object-cover" />
                 : <div className="w-full h-full flex items-center justify-center"><User size={16} style={{ color: T.textFaint }} /></div>}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="w-full min-w-0">
               <p className="text-[11.5px] font-bold leading-tight truncate" style={{ color: T.text }} title={nombre || ""}>
                 {nombre || "—"}
               </p>
@@ -707,12 +707,12 @@ export function PanelDerecho({ T, nombre, departamento, sucursal, foto, tickets 
                 {sucursal || "—"}
               </p>
             </div>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold self-center"
+              style={{ background: isDark ? "rgba(22,163,74,0.18)" : "#f0fdf4", color: "#16a34a", border: `1px solid rgba(22,163,74,0.3)` }}>
+              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#16a34a", flexShrink: 0 }} />
+              Activo
+            </span>
           </div>
-          <span className="inline-flex items-center gap-1 mt-2.5 px-2 py-0.5 rounded-full text-[9px] font-semibold"
-            style={{ background: isDark ? "rgba(22,163,74,0.18)" : "#f0fdf4", color: "#16a34a", border: `1px solid rgba(22,163,74,0.3)` }}>
-            <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#16a34a", flexShrink: 0 }} />
-            Activo
-          </span>
         </div>
 
         {/* -- RELOJ -- */}

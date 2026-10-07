@@ -302,6 +302,44 @@ export const schemaEntradaInsumo = z.object({
   id_solicitud: z.number({ coerce: true }).int().positive().nullish(),
 });
 
+// Schema para registrar una SALIDA INTERNA manual de insumos (uso interno).
+// Descuenta stock en transacción y deja el movimiento con el folio SAL-XXXX
+// en el motivo. Los campos libres (destino, responsable, etc.) viajan dentro
+// del motivo estructurado, sin migración de BD.
+// TODO EL FORMATO ES EDITABLE: el usuario llena fecha, solicitante, destino,
+// responsable y motivo. La fecha NO se toma del servidor: es la fecha que el
+// usuario escribe en la hoja de salida (fecha real del movimiento físico).
+// Acepta UNA salida (id_insumo + cantidad) o VARIAS (items[]); el controller
+// normaliza ambos formatos al mismo flujo multi-renglón.
+export const schemaSalidaInsumo = z.object({
+  id_insumo: z.number({ coerce: true }).int().positive().nullish(),
+  cantidad:  z.number({ coerce: true }).int().min(1, "La cantidad debe ser al menos 1").max(100000).nullish(),
+  items: z.array(z.object({
+    id_insumo: z.number({ coerce: true }).int().positive(),
+    cantidad:  z.number({ coerce: true }).int().min(1, "La cantidad debe ser al menos 1").max(100000),
+  })).min(1, "Debe incluir al menos un insumo").max(100).nullish(),
+  destino:     z.string().trim().max(200).optional().nullable().default(null),
+  responsable: z.string().trim().max(200).optional().nullable().default(null),
+  motivo:      z.string().trim().max(500).optional().nullable().default(null),
+  // Fecha manual de la salida (YYYY-MM-DD). Opcional: si no viene, se usa hoy.
+  fecha: z.string().trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida (usa YYYY-MM-DD)")
+    .refine((s) => { const d = new Date(`${s}T00:00:00`); return !Number.isNaN(d.getTime()); }, "Fecha inválida")
+    .optional().nullable().default(null),
+  // Quien entrega / solicitante interno (texto libre, se imprime en la hoja).
+  solicitante: z.string().trim().max(200).optional().nullable().default(null),
+  // Formato 100% editable con listas: cada campo también acepta el ID elegido
+  // de su lista (empleados / sucursales). El controlador resuelve el ID a
+  // nombre para guardarlo en el motivo estructurado. El texto libre se
+  // conserva por compatibilidad con hojas viejas.
+  id_destino:          z.number({ coerce: true }).int().positive().optional().nullable().default(null),
+  id_sucursal_destino: z.number({ coerce: true }).int().positive().optional().nullable().default(null),
+  id_responsable:      z.number({ coerce: true }).int().positive().optional().nullable().default(null),
+  id_solicitante:      z.number({ coerce: true }).int().positive().optional().nullable().default(null),
+}).refine(
+  (d) => (Array.isArray(d.items) && d.items.length > 0) || (d.id_insumo && d.cantidad),
+  { message: "Debe incluir al menos un insumo con su cantidad", path: ["items"] }
+);
 // Schema para guardar la RUTA DEL MATERIAL de una solicitud (Soporte o admin).
 // Ambas sucursales son obligatorias y deben ser distintas.
 export const schemaRutaSolicitud = z.object({
