@@ -803,29 +803,27 @@ export default function Login({ onLogin }) {
                 onClick={() => { window.location.href = `${API_BASE}/api/auth/zoho/login`; }}
                 aria-label="Iniciar sesión con Zoho"
                 style={{
-                  marginTop: "14px",
+                  marginTop: "4px",
                   width: "100%",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: "clamp(8px, 2.5vw, 14px)",
-                  padding: "clamp(11px, 3vw, 16px) 16px",
-                  borderRadius: "6px",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                  padding: "9px 16px",
+                  borderRadius: "4px",
                   border: "1px solid #CBD5E1",
                   background: "#fff",
                   color: "#0F172A",
-                  fontSize: "clamp(13px, 3.2vw, 15px)", fontWeight: 700,
+                  fontSize: "13px", fontWeight: 600,
                   cursor: "pointer",
                   transition: "all 0.15s",
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = "#F8FAFC"; e.currentTarget.style.borderColor = "#E04E39"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#CBD5E1"; }}
               >
-                <svg
-                  style={{ width: "clamp(24px, 6vw, 34px)", height: "clamp(24px, 6vw, 34px)", flexShrink: 0 }}
-                  viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <circle cx="12" cy="12" r="10" stroke="#E04E39" strokeWidth="2"/>
-                  <path d="M7 15.5c1.2-3.2 3-5.4 6.2-6.7L8 8.5" stroke="#E04E39" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <circle cx="12" cy="12" r="1.6" fill="#E04E39"/>
-                </svg>
-                Iniciar sesión con Zoho
+                Iniciar sesión con
+                <img
+                  src="/assets/img/zoho-logo.svg"
+                  alt="Zoho"
+                  style={{ height: "16px", width: "auto", flexShrink: 0 }}
+                />
               </button>
 
               {/* Divider + Footer */}
