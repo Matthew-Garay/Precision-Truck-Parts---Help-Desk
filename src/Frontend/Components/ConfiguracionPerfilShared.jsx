@@ -49,6 +49,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
   const [passConf,   setPassConf]   = useState("");
   const [showNueva, setShowNueva] = useState(false);
   const [showConf,  setShowConf]  = useState(false);
+  const [showActual, setShowActual] = useState(false);
 
   // Política de contraseña: se evalúa en vivo con cada tecla
   const evaluacion = evaluarPassword(passNueva);
@@ -280,11 +281,17 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             <div style={{ display: "grid", gridTemplateColumns: "14px 140px 1fr", alignItems: "baseline", gap: "10px", padding: "8px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}` }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isDark ? "rgba(255,255,255,0.22)" : "#c0c9d6"} strokeWidth="2" style={{ marginTop: "1px" }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0" }}>Contraseña Actual</span>
-              <input
-                style={{ ...inp, fontSize: "14px", color: T.text, WebkitTextFillColor: T.text, caretColor: T.text, opacity: 1 }}
-                type="text" value={passActual || ""} disabled readOnly
-                autoComplete="off" spellCheck={false} placeholder="Contraseña actual"
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  style={{ ...inp, paddingRight: "36px", fontSize: "14px", opacity: 1,
+                    color: showActual ? T.text : "#9ca3af",
+                    WebkitTextFillColor: showActual ? T.text : "#9ca3af",
+                    caretColor: T.text }}
+                  type={showActual ? "text" : "password"} value={passActual || ""} readOnly
+                  autoComplete="off" spellCheck={false} placeholder="Contraseña actual"
+                />
+                <EyeBtn show={showActual} onToggle={() => setShowActual(s => !s)} textFaint={T.textFaint} />
+              </div>
             </div>
 
             {/* Nueva Contraseña */}

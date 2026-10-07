@@ -605,6 +605,25 @@ const MIGRACIONES = [
     },
   },
 
+  {
+    id: "027_insumo_activo",
+    // Baja lógica de insumos: 1 = activo (default), 0 = inhabilitado.
+    // Los inhabilitados se ocultan de Salidas/solicitudes pero se conservan
+    // para el historial. El borrado físico sigue existiendo (DELETE) solo
+    // cuando no hay movimientos ni solicitudes que lo referencien.
+    sql: `ALTER TABLE insumo ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1`,
+    fallback: async (conn) => {
+      const [[{ cnt }]] = await conn.query(
+        `SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME   = 'insumo'
+           AND COLUMN_NAME  = 'activo'`
+      );
+      if (cnt === 0)
+        await conn.query(`ALTER TABLE insumo ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1`);
+    },
+  },
+
 ];
 
 async function run() {

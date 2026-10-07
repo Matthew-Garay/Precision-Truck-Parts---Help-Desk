@@ -40,6 +40,7 @@ import './Frontend/Styles/login.css'
 import './Frontend/Styles/design-system.css'
 import './orientation.css'
 import Login            from './Frontend/Pages/login'
+import ZohoCallbackPage  from './Frontend/Pages/ZohoCallbackPage'
 import AdminDashboard   from './Frontend/Pages/Admin/Dashboard'
 import UsuarioDashboard from './Frontend/Pages/Usuario/Dashboard'
 import API_BASE, { setToken, clearSession, apiFetch } from './Frontend/Config/api'
@@ -51,6 +52,7 @@ const PrintReportePage    = lazy(() => import('./Frontend/Pages/PrintReportePage
 const PrintInventarioPage = lazy(() => import('./Frontend/Pages/PrintInventarioPage'))
 const PrintHistorialPage  = lazy(() => import('./Frontend/Pages/PrintHistorialPage'))
 const PrintEntradasPage   = lazy(() => import('./Frontend/Pages/PrintEntradasPage'))
+const PrintSalidaPage     = lazy(() => import('./Frontend/Pages/PrintSalidaPage'))
 import { ToastProvider } from './Frontend/Components/Feedback.jsx'
 import { ThemeProvider } from './Frontend/Config/ThemeContext.jsx'
 import { useTheme } from './Frontend/Config/themeContext.js'
@@ -163,6 +165,16 @@ function App() {
         }} />
       } />
 
+      {/* Callback del login con Zoho: el backend redirige con la sesión en el fragmento */}
+      <Route path="/login/zoho" element={
+        <ZohoCallbackPage onLogin={(u, idAcceso, token) => {
+          setUsuario(u)
+          if (idAcceso) setIdAcceso(idAcceso)
+          if (token) setToken(token)
+          navigate(u.rol === 'admin' ? '/admin/dashboard' : '/usuario/dashboard', { replace: true })
+        }} />
+      } />
+
       {/* Admin - un solo componente persistente para todas las sub-rutas */}
       <Route path="/admin/*" element={<RutaAdmin onLogout={handleLogout} onUsuarioActualizado={handleUsuarioActualizado} usuarioActual={usuarioActual} />} />
 
@@ -176,6 +188,7 @@ function App() {
       <Route path="/print/inventario"         element={getUsuario() ? <Suspense fallback={null}><PrintInventarioPage /></Suspense> : <Navigate to="/login" replace />} />
       <Route path="/print/historial/:id"       element={getUsuario() ? <Suspense fallback={null}><PrintHistorialPage /></Suspense>  : <Navigate to="/login" replace />} />
       <Route path="/print/entradas"            element={getUsuario() ? <Suspense fallback={null}><PrintEntradasPage /></Suspense> : <Navigate to="/login" replace />} />
+      <Route path="/print/salida"              element={getUsuario() ? <Suspense fallback={null}><PrintSalidaPage /></Suspense>   : <Navigate to="/login" replace />} />
 
       {/* Raíz → redirige según sesión */}
       <Route path="/" element={<Navigate to={(() => {

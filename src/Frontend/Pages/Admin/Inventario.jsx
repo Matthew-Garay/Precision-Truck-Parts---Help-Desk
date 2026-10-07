@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import {
   Package, AlertTriangle, BarChart3,
-  Inbox, Plus, Pencil, RefreshCw, Layers, Eye,
+  Inbox, Plus, Pencil, RefreshCw, Layers, Eye, Ban, Trash2,
   CheckCircle2, Activity, Download, FileSpreadsheet, FileText,
-  ArrowDownToLine, History,
+  ArrowDownToLine, ArrowUpFromLine, History,
 } from "lucide-react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -15,6 +15,8 @@ import { useToast }      from "../../Components/Feedback";
 import ModalInsumo       from "../../Components/Inventario/ModalInsumo";
 import ModalDetalleInsumo   from "../../Components/Inventario/ModalDetalleInsumo";
 import ModalEntradaInsumo   from "../../Components/Inventario/ModalEntradaInsumo";
+import ModalSalidaInsumo    from "../../Components/Inventario/ModalSalidaInsumo";
+import { getUsuario } from "../../Config/session";
 import { useTheme }      from "../../Config/themeContext.js";
 
 // ── Paleta ────────────────────────────────────────────────────────
@@ -144,7 +146,7 @@ function KpiCard({ label, value, sub, icon: Icon, color, highlight = false, pct 
 // ── Tabla ────────────────────────────────────────────────────────
 const COLS = ["", "Nombre", "Categoría", "Estado", "Stock", "Acciones"];
 
-function DataTable({ rows, onEdit, onDetail, onEntrada, onHistorial }) {
+function DataTable({ rows, onEdit, onDetail, onEntrada, onHistorial, onEliminar, onCambiarActivo }) {
   const [hoverRow, setHoverRow] = useState(null);
   const { T } = useTheme();
 
@@ -159,12 +161,12 @@ function DataTable({ rows, onEdit, onDetail, onEntrada, onHistorial }) {
   return (
     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", tableLayout: "fixed", minWidth: "520px" }}>
       <colgroup>
-        <col style={{ width: "44px" }} />
-        <col style={{ width: "38%" }} />
-        <col style={{ width: "22%" }} />
-        <col style={{ width: "14%" }} />
-        <col style={{ width: "16%" }} />
-        <col style={{ width: "132px" }} />
+        <col style={{ width: "36px" }} />
+        <col style={{ width: "42%" }} />
+        <col style={{ width: "18%" }} />
+        <col style={{ width: "11%" }} />
+        <col style={{ width: "13%" }} />
+        <col style={{ width: "108px" }} />
       </colgroup>
       <thead>
         <tr>{COLS.map(c => <th key={c} style={th}>{c}</th>)}</tr>
@@ -174,7 +176,7 @@ function DataTable({ rows, onEdit, onDetail, onEntrada, onHistorial }) {
           const isHover = hoverRow === row.id_insumo;
           const stockColor = (row.stock ?? 0) === 0 ? "#dc2626" : (row.stock ?? 0) <= 3 ? "#d97706" : "#16a34a";
           const td = {
-            padding: "5px 10px",
+            padding: "3px 8px",
             borderBottom: `1px solid ${T.border}`,
             background: isHover ? T.surfaceHover : T.surface,
             transition: "background 0.1s",
@@ -187,20 +189,20 @@ function DataTable({ rows, onEdit, onDetail, onEntrada, onHistorial }) {
               onMouseLeave={() => setHoverRow(null)}
             >
               {/* Imagen */}
-              <td style={{ ...td, padding: "4px 4px 4px 10px" }}>
+              <td style={{ ...td, padding: "2px 2px 2px 8px" }}>
                 {row.imagen_url
-                  ? <img src={row.imagen_url} alt="" style={{ width: "26px", height: "26px", borderRadius: "4px", objectFit: "cover", border: `1px solid ${T.border}`, display: "block" }} />
-                  : <div style={{ width: "26px", height: "26px", borderRadius: "4px", background: T.surfaceAlt, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <Package size={11} style={{ color: T.textFaint }} />
+                  ? <img src={row.imagen_url} alt="" style={{ width: "22px", height: "22px", borderRadius: "4px", objectFit: "cover", border: `1px solid ${T.border}`, display: "block" }} />
+                  : <div style={{ width: "22px", height: "22px", borderRadius: "4px", background: T.surfaceAlt, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Package size={10} style={{ color: T.textFaint }} />
                     </div>
                 }
               </td>
               {/* Nombre */}
               <td style={{ ...td }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <div style={{ width: "2px", height: "20px", borderRadius: "2px", background: ESTADO_META[row.estado]?.color ?? SLATE[400], flexShrink: 0 }} />
+                  <div style={{ width: "2px", height: "18px", borderRadius: "2px", background: ESTADO_META[row.estado]?.color ?? SLATE[400], flexShrink: 0 }} />
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: "13px", fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: "12px", fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {row.nombre}
                     </div>
                     {(row.marca || row.modelo) && (
@@ -232,7 +234,7 @@ function DataTable({ rows, onEdit, onDetail, onEntrada, onHistorial }) {
               </td>
               {/* Acciones */}
               <td style={{ ...td }}>
-                <div style={{ display: "flex", gap: "3px" }}>
+                <div style={{ display: "flex", gap: "3px", flexWrap: "wrap" }}>
                   <IconBtn onClick={() => onEntrada(row)} title="Registrar entrada de material" hoverColor={TEAL.base} hoverBg={TEAL.light}>
                     <ArrowDownToLine size={12} />
                   </IconBtn>
@@ -245,7 +247,22 @@ function DataTable({ rows, onEdit, onDetail, onEntrada, onHistorial }) {
                   <IconBtn onClick={() => onHistorial(row)} title="Ver entradas de este insumo" hoverColor="#6366f1" hoverBg="#eef2ff">
                     <History size={12} />
                   </IconBtn>
+                  {/* Inhabilitar / habilitar: baja lógica, conserva el historial */}
+                  <IconBtn
+                    onClick={() => onCambiarActivo?.(row)}
+                    title={Number(row.activo ?? 1) === 0 ? "Habilitar insumo" : "Inhabilitar insumo"}
+                    hoverColor={Number(row.activo ?? 1) === 0 ? "#16a34a" : "#d97706"}
+                    hoverBg={Number(row.activo ?? 1) === 0 ? "#ecfdf5" : "#fffbeb"}>
+                    {Number(row.activo ?? 1) === 0 ? <CheckCircle2 size={12} /> : <Ban size={12} />}
+                  </IconBtn>
+                  {/* Eliminar: borrado físico, solo si no tiene historial */}
+                  <IconBtn onClick={() => onEliminar?.(row)} title="Eliminar insumo" hoverColor="#dc2626" hoverBg="#fef2f2">
+                    <Trash2 size={12} />
+                  </IconBtn>
                 </div>
+                {Number(row.activo ?? 1) === 0 && (
+                  <div style={{ fontSize: "9px", fontWeight: 800, color: "#d97706", marginTop: 2 }}>INHABILITADO</div>
+                )}
               </td>
             </tr>
           );
@@ -700,6 +717,8 @@ export default function Inventario() {
   const [modal,      setModal]      = useState(null);
   const [detalle,    setDetalle]    = useState(null);
   const [entrada,    setEntrada]    = useState(null);
+  const [salida,     setSalida]     = useState(null); // true = hoja de salida interna abierta
+  const [confirmar,  setConfirmar]  = useState(null); // { tipo: "eliminar"|"activo", row, busy }
   // ── Vista "Entradas" (entradas de material) ──
   const [vista,      setVista]      = useState("insumos");
   const [movs,       setMovs]       = useState([]);
@@ -782,6 +801,35 @@ export default function Inventario() {
     setModal(null);
   };
 
+  // Eliminar (borrado físico) e inhabilitar/habilitar (baja lógica).
+  const ejecutarConfirmado = async () => {
+    if (!confirmar?.row) return;
+    const { tipo, row } = confirmar;
+    setConfirmar(c => ({ ...c, busy: true }));
+    try {
+      if (tipo === "eliminar") {
+        const r = await apiFetch(`/api/solicitudes/insumos/${row.id_insumo}`, { method: "DELETE" });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d?.error || `Error ${r.status} al eliminar`);
+        setInsumos(prev => prev.filter(i => i.id_insumo !== row.id_insumo));
+        toast.success(`Insumo "${row.nombre}" eliminado`);
+      } else {
+        const nuevo = Number(row.activo ?? 1) === 0;
+        const r = await apiFetch(API_ROUTES.INSUMO_ACTIVO(row.id_insumo), {
+          method: "PATCH", body: JSON.stringify({ activo: nuevo }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d?.error || `Error ${r.status} al cambiar estado`);
+        setInsumos(prev => prev.map(i => i.id_insumo === row.id_insumo ? { ...i, activo: nuevo ? 1 : 0 } : i));
+        toast.success(nuevo ? `Insumo "${row.nombre}" habilitado` : `Insumo "${row.nombre}" inhabilitado`);
+      }
+      setConfirmar(null);
+    } catch (err) {
+      toast.error(err.message || "No se pudo completar la acción");
+      setConfirmar(c => ({ ...c, busy: false }));
+    }
+  };
+
   // Ver las entradas de un insumo puntual → pestaña Entradas con filtro id_insumo
   const verEntradasInsumo = (row) => {
     setMovFiltros({ q: "", fecha_inicio: "", fecha_fin: "", id_insumo: row.id_insumo });
@@ -835,6 +883,29 @@ export default function Inventario() {
     }
   };
 
+  // ── Salida interna: guarda el formato que trae el modal y abre la hoja para llenar/firmar
+  const salidaGuardada = (d, form) => {
+    setSalida(null);
+    cargarInventario(false);
+    cargarEntradas();
+    try {
+      const u = getUsuario() ?? {};
+      const registrado = [u.nombre, u.ap_paterno, u.ap_materno].filter(Boolean).join(" ").trim();
+      sessionStorage.setItem("print_salida_datos", JSON.stringify({
+        folio:     d.folio,
+        fecha:     new Date().toISOString(),
+        rows:      Array.isArray(d.movimientos) ? d.movimientos : [],
+        destino:     form?.destino || "",
+        responsable: form?.responsable || "",
+        motivo:      form?.motivo || "",
+        registrado_por: registrado,
+      }));
+      abrirImpresion("/print/salida");
+    } catch {
+      toast.error("Salida registrada, pero no se pudo abrir la hoja de impresión");
+    }
+  };
+
   const catOpts      = ["Todos", ...Array.from(new Set(insumos.map(i => i.nombre_categoria).filter(Boolean)))];
   const camposFiltro = [
     { key: "busqueda",  label: "Búsqueda Rápida", type: "search", placeholder: "Nombre, marca, modelo…" },
@@ -858,10 +929,12 @@ export default function Inventario() {
     if (filtros.categoria !== "Todos" && i.nombre_categoria !== filtros.categoria) return false;
     if (filtros.stock === "Con stock" && !(i.stock > 0))  return false;
     if (filtros.stock === "Sin stock" &&   i.stock > 0)   return false;
+    if (filtros.activo === "Activos" && Number(i.activo ?? 1) === 0) return false;
+    if (filtros.activo === "Inhabilitados" && Number(i.activo ?? 1) !== 0) return false;
     return true;
   });
 
-  const hayFiltros    = filtros.busqueda || filtros.estado !== "Todos" || filtros.categoria !== "Todos" || filtros.stock !== "Todos";
+  const hayFiltros    = filtros.busqueda || filtros.estado !== "Todos" || filtros.categoria !== "Todos" || filtros.stock !== "Todos" || filtros.activo !== "Todos";
   const totalPaginas  = Math.max(1, Math.ceil(filtrados.length / pageSize));
   const paginaActual  = Math.min(pagina, totalPaginas);
   const filasPagina   = filtrados.slice((paginaActual - 1) * pageSize, paginaActual * pageSize);
@@ -918,6 +991,21 @@ export default function Inventario() {
             {syncing && <RefreshCw size={11} style={{ color: TEAL.base, animation: "spin 1s linear infinite" }} />}
             {vista === "insumos" && <BtnExportar datos={filtrados} filtros={etiquetasInsumos} T={T} />}
             {vista === "entradas" && <BtnExportar vista="entradas" onPdf={exportarEntradasPDF} T={T} />}
+            <button
+              onClick={() => setSalida(true)}
+              title="Registrar salida interna de insumos (uso interno)"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "6px",
+                padding: "8px 14px", borderRadius: "6px", border: "none",
+                background: ORANGE.base, color: "#fff",
+                fontSize: "11px", fontWeight: 600, cursor: "pointer",
+                transition: "opacity 0.15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+              onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+            >
+              <ArrowUpFromLine size={14} /> Salida
+            </button>
             {vista === "insumos" && (
               <button
                 onClick={() => setModal({})}
@@ -973,7 +1061,7 @@ export default function Inventario() {
             campos={camposFiltro}
             valores={filtros}
             onChange={(k, v) => { setFiltros(p => ({ ...p, [k]: v })); setPagina(1); }}
-            onLimpiar={() => { setFiltros({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos" }); setPagina(1); }}
+            onLimpiar={() => { setFiltros({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos", activo: "Todos" }); setPagina(1); }}
             T={T}
           />
         ) : (
@@ -1055,7 +1143,9 @@ export default function Inventario() {
                 </p>
               </div>
             ) : (
-              <DataTable rows={filasPagina} onEdit={setModal} onDetail={setDetalle} onEntrada={setEntrada} onHistorial={verEntradasInsumo} />
+              <DataTable rows={filasPagina} onEdit={setModal} onDetail={setDetalle} onEntrada={setEntrada} onHistorial={verEntradasInsumo}
+                onEliminar={row => setConfirmar({ tipo: "eliminar", row, busy: false })}
+                onCambiarActivo={row => setConfirmar({ tipo: "activo", row, busy: false })} />
             )}
           </div>
           {/* Paginación — siempre visible, dentro del card */}
@@ -1110,6 +1200,57 @@ export default function Inventario() {
           onClose={() => setEntrada(null)}
           onSaved={() => { setEntrada(null); cargarInventario(false); cargarEntradas(); }}
           T={T} />
+      )}
+      {salida !== null && (
+        <ModalSalidaInsumo insumos={insumos}
+          onClose={() => setSalida(null)}
+          onSaved={salidaGuardada}
+          T={T} />
+      )}
+
+      {/* Confirmar eliminar / inhabilitar / habilitar */}
+      {confirmar?.row && (
+        <div role="dialog" aria-modal="true"
+          onMouseDown={e => { if (e.target === e.currentTarget && !confirmar.busy) setConfirmar(null); }}
+          style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ width: "min(420px, 100%)", background: T.surface, borderRadius: "10px",
+            border: `1px solid ${T.border}`, boxShadow: "0 20px 60px rgba(0,0,0,0.35)", overflow: "hidden" }}>
+            <div style={{ padding: "14px 18px", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 10 }}>
+              {confirmar.tipo === "eliminar"
+                ? <Trash2 size={16} style={{ color: "#dc2626" }} />
+                : <Ban size={16} style={{ color: "#d97706" }} />}
+              <strong style={{ fontSize: 13, color: T.text }}>
+                {confirmar.tipo === "eliminar" ? "Eliminar insumo"
+                  : Number(confirmar.row.activo ?? 1) === 0 ? "Habilitar insumo" : "Inhabilitar insumo"}
+              </strong>
+            </div>
+            <div style={{ padding: "14px 18px", fontSize: 12, color: T.textMuted, lineHeight: 1.6 }}>
+              {confirmar.tipo === "eliminar" ? (
+                <>¿Eliminar <strong style={{ color: T.text }}>“{confirmar.row.nombre}”</strong> del catálogo?
+                Solo se puede si no tiene solicitudes activas ni movimientos. Si tiene historial, inhabilítalo en su lugar.</>
+              ) : Number(confirmar.row.activo ?? 1) === 0 ? (
+                <>¿Habilitar <strong style={{ color: T.text }}>“{confirmar.row.nombre}”</strong>? Volverá a aparecer en Salidas y solicitudes.</>
+              ) : (
+                <>¿Inhabilitar <strong style={{ color: T.text }}>“{confirmar.row.nombre}”</strong>? Se ocultará de Salidas y solicitudes, pero se conserva su historial.</>
+              )}
+            </div>
+            <div style={{ padding: "10px 18px", borderTop: `1px solid ${T.border}`, background: T.surfaceAlt,
+              display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button type="button" disabled={confirmar.busy} onClick={() => setConfirmar(null)}
+                style={{ padding: "6px 16px", borderRadius: 6, fontSize: 12, fontWeight: 600, background: "transparent",
+                  border: `1px solid ${T.border}`, color: T.textMuted, cursor: "pointer" }}>
+                Cancelar
+              </button>
+              <button type="button" disabled={confirmar.busy} onClick={ejecutarConfirmado}
+                style={{ padding: "6px 18px", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", color: "#fff",
+                  background: confirmar.tipo === "eliminar" ? "#dc2626" : "#d97706",
+                  cursor: confirmar.busy ? "not-allowed" : "pointer", opacity: confirmar.busy ? 0.6 : 1 }}>
+                {confirmar.busy ? "Procesando…" : confirmar.tipo === "eliminar" ? "Eliminar" : Number(confirmar.row.activo ?? 1) === 0 ? "Habilitar" : "Inhabilitar"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

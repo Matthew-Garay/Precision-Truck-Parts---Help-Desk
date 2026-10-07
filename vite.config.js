@@ -25,6 +25,11 @@ import tailwindcss from '@tailwindcss/vite'
 
 const BACKEND_URL = process.env.VITE_BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`
 const FRONTEND_PORT = parseInt(process.env.VITE_PORT || '5173', 10)
+// IP FIJA del proyecto: 192.168.31.124 — no cambiar.
+// Vite escucha en 0.0.0.0 (todas las interfaces) para que `npm run all`
+// arranque siempre aunque Windows cambie la IP por DHCP.
+// La URL canónica del proyecto sigue siendo http://192.168.31.124:5173
+const FRONTEND_HOST = '0.0.0.0'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -48,8 +53,9 @@ export default defineConfig({
     },
   },
   server: {
-    host: true,
+    host: FRONTEND_HOST,
     port: FRONTEND_PORT,
+    strictPort: true,
     allowedHosts: 'all',
     proxy: {
       '/api':       { target: BACKEND_URL, changeOrigin: true },

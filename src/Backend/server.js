@@ -60,6 +60,7 @@ import { createServer }  from "http";
 import { networkInterfaces } from "os";
 import { Server }        from "socket.io";
 import cors              from "cors";
+import cookieParser      from "cookie-parser";
 import compression       from "compression";
 import helmet            from "helmet";
 import jwt               from "jsonwebtoken";
@@ -218,6 +219,8 @@ app.use(helmet({
 }));
 app.use(cors({ origin: CORS_ORIGINS, credentials: true }));
 app.use((_req, res, next) => { res.setHeader("ngrok-skip-browser-warning", "1"); next(); });
+// Lee cookies (state OAuth de Zoho) antes de cualquier ruta
+app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
