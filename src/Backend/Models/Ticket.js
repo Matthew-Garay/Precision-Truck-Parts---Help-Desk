@@ -534,7 +534,8 @@ const Ticket = {
               TRIM(CONCAT(e.nombre, ' ', e.ap_paterno, IF(e.ap_materno IS NOT NULL AND e.ap_materno != '', CONCAT(' ', e.ap_materno), ''))) AS nombre_empleado,
               d.nombre_departamento,
               s.nombre_sucursal,
-              TRIM(CONCAT(r.nombre, ' ', r.ap_paterno, IF(r.ap_materno IS NOT NULL AND r.ap_materno != '', CONCAT(' ', r.ap_materno), ''))) AS resuelto_por
+              TRIM(CONCAT(r.nombre, ' ', r.ap_paterno, IF(r.ap_materno IS NOT NULL AND r.ap_materno != '', CONCAT(' ', r.ap_materno), ''))) AS resuelto_por,
+              TRIM(CONCAT(r.nombre, ' ', r.ap_paterno)) AS resuelto_por_np
        ${BASE_JOINS}
        ${WHERE}
        ORDER BY t.fecha_subido DESC

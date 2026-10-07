@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useLayoutEffect } from "react";
-import { apiFetch } from "../Config/api.js";
+import API_BASE, { apiFetch } from "../Config/api.js";
 import { COLORS, RADIUS, BG_IMAGE, BG_OVERLAY, DIAGONAL, INPUT_FOCUS, INPUT_BLUR } from "../Config/DesignSystem";
 import { EyeIcon, EyeOffIcon } from "../Components/Icons";
 import { emailCorporativoValido } from "../Config/email.js";
@@ -464,6 +464,22 @@ export default function Login({ onLogin }) {
     setTimeout(() => setShakeCard(false), 600);
   }, []);
 
+  // Error devuelto por el backend tras un callback de Zoho fallido
+  // (?zoho_error=...): se muestra y se limpia de la URL.
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const zohoErr = q.get("zoho_error");
+      if (zohoErr) {
+        setError(zohoErr);
+        triggerShake();
+        q.delete("zoho_error");
+        const resto = q.toString();
+        window.history.replaceState(null, "", window.location.pathname + (resto ? `?${resto}` : ""));
+      }
+    } catch { /* URL inválida, ignorar */ }
+  }, [triggerShake]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canSubmit) return;
@@ -771,6 +787,46 @@ export default function Login({ onLogin }) {
                   )}
                 </button>
               </form>
+
+              {/* Divisor "o continúa con" */}
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "16px" }}>
+                <div style={{ flex: 1, height: "1px", background: "#E2E8F0" }} />
+                <span style={{ color: "#94A3B8", fontSize: "10px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                  o continúa con
+                </span>
+                <div style={{ flex: 1, height: "1px", background: "#E2E8F0" }} />
+              </div>
+
+              {/* Login con Zoho — flujo server-based: el backend redirige a Zoho */}
+              <button
+                type="button"
+                onClick={() => { window.location.href = `${API_BASE}/api/auth/zoho/login`; }}
+                aria-label="Iniciar sesión con Zoho"
+                style={{
+                  marginTop: "14px",
+                  width: "100%",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "clamp(8px, 2.5vw, 14px)",
+                  padding: "clamp(11px, 3vw, 16px) 16px",
+                  borderRadius: "6px",
+                  border: "1px solid #CBD5E1",
+                  background: "#fff",
+                  color: "#0F172A",
+                  fontSize: "clamp(13px, 3.2vw, 15px)", fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#F8FAFC"; e.currentTarget.style.borderColor = "#E04E39"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#CBD5E1"; }}
+              >
+                <svg
+                  style={{ width: "clamp(24px, 6vw, 34px)", height: "clamp(24px, 6vw, 34px)", flexShrink: 0 }}
+                  viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" stroke="#E04E39" strokeWidth="2"/>
+                  <path d="M7 15.5c1.2-3.2 3-5.4 6.2-6.7L8 8.5" stroke="#E04E39" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx="12" cy="12" r="1.6" fill="#E04E39"/>
+                </svg>
+                Iniciar sesión con Zoho
+              </button>
 
               {/* Divider + Footer */}
               <div style={{ borderTop: "1px solid #E2E8F0", marginTop: "16px", paddingTop: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>

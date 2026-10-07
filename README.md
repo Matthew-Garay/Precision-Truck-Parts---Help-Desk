@@ -114,7 +114,7 @@ ordena por categoria y permite buscarlos y descargarlos.
 
 ```
 PrecisionTrucks_HelpDesk/
-|-- docs/          documentacion, esquema SQL y manuales
+|-- docs/          scripts SQL de la base de datos (MySQL)
 |-- src/Backend/   servidor Express (server.js, Controllers, Models, Routes)
 |-- src/Frontend/  aplicacion React (Pages, Components, Config)
 |-- public/        archivos estaticos
@@ -123,24 +123,16 @@ PrecisionTrucks_HelpDesk/
 `-- .env.example
 ```
 
-El detalle de cada carpeta esta en
-[docs/tecnica/ESTRUCTURA_PROYECTO.md](docs/tecnica/ESTRUCTURA_PROYECTO.md).
-
 ---
 
 ## Documentacion
 
-Todo lo documental esta en `docs/`, empezando por
-[docs/README.md](docs/README.md) que sirve de indice. Lo mas consultado:
+La documentacion de la base de datos (MySQL) esta en `docs/MYSQL Database/`:
 
 | Documento | Para que sirve |
 |---|---|
-| [ARQUITECTURA.md](docs/tecnica/ARQUITECTURA.md) | Diagrama y descripcion de la arquitectura |
-| [DiccionarioDatos.md](docs/tecnica/DiccionarioDatos.md) | Tablas y campos de la base de datos |
-| [IEEE830_REQUERIMIENTOS.md](docs/tecnica/IEEE830_REQUERIMIENTOS.md) | Especificacion de requerimientos |
-| [DESPLIEGUE.md](docs/operacion/DESPLIEGUE.md) | Guia de despliegue en produccion |
-| [MANUAL_DE_USO.md](docs/manuales_residencia/MANUAL_DE_USO.md) | Manual de uso para los empleados |
-| [MANUAL_DE_MANTENIMIENTO.md](docs/manuales_residencia/MANUAL_DE_MANTENIMIENTO.md) | Mantenimiento del software |
+| [database.sql](docs/MYSQL%20Database/database.sql) | Script de creacion de la base de datos |
+| [database.utf8.sql](docs/MYSQL%20Database/database.utf8.sql) | Volcado completo con codificacion UTF-8 |
 
 ---
 
@@ -164,9 +156,8 @@ GET  /api/manuales           # listar manuales
 POST /api/manuales           # subir manual (solo admin, multipart)
 ```
 
-La documentacion completa, con todos los parametros y respuestas, esta en la
-seccion 16 de
-[DOCUMENTACION_PROFESIONAL.md](docs/profesional/DOCUMENTACION_PROFESIONAL.md).
+La documentacion completa, con todos los parametros y respuestas, esta en los
+controladores y rutas de `src/Backend/`.
 
 ---
 

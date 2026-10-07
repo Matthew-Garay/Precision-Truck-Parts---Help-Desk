@@ -563,7 +563,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                       </td>
 
                       <td className="px-2 py-1.5 text-[11px]" style={{ color:t.resuelto_por?T.text:T.textFaint }}>
-                        {t.resuelto_por?t.resuelto_por.split(" ").filter(Boolean).slice(0,2).join(" "):"-"}
+                        {t.resuelto_por?(t.resuelto_por_np||t.resuelto_por.split(" ").filter(Boolean).slice(0,2).join(" ")):"-"}
                       </td>
 
                       <td className="px-2 py-1.5 text-[10px] whitespace-nowrap" style={{ color:T.textMuted }}>{fmt(t.fecha_subido)}</td>

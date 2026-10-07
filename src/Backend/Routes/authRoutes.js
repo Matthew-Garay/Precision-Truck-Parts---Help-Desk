@@ -21,6 +21,16 @@
  *   POST /reset-password
  *     Rate limit: 5 intentos por 15 minutos por IP.
  *
+ *   GET /zoho/login
+ *     Inicia el login con Zoho: genera `state` en cookie httpOnly y redirige
+ *     al authorization endpoint (scopes openid email profile).
+ *     Rate limit: 20 intentos por 15 minutos por IP.
+ *
+ *   GET /zoho/callback
+ *     Zoho redirige aquí con ?code=...&state=.... Valida el state, intercambia
+ *     el code por tokens, empata el email con `empleado` (debe existir y estar
+ *     activo) y redirige al frontend con el JWT interno. Sin auto-altas.
+ *
  * Rutas protegidas (requieren JWT valido via requireAuth):
  *
  *   PUT  /perfil/:id          - actualiza perfil del propio empleado
@@ -49,6 +59,7 @@ import {
   subirFotoEmpleado, uploadFoto, refreshToken
 } from "../Controllers/authController.js";
 import { solicitarRecuperacion, verificarCodigo, resetPassword } from "../Controllers/resetController.js";
+import { zohoLogin, zohoCallback } from "../Controllers/zohoController.js";
 
 const router = Router();
 router.use(csrfProtection);
@@ -97,6 +108,22 @@ router.post("/logout", logoutLimiter, validate(schemaLogout), logout);
 
 // Renovar JWT — requiere token válido en Authorization
 router.post("/refresh-token", requireAuth, refreshToken);
+
+// Login con Zoho (OIDC server-based) — rutas GET públicas:
+// Zoho redirige el navegador aquí sin headers; el callback valida `state`
+// en cookie httpOnly y emite el JWT interno igual que POST /login.
+router.get(
+  "/zoho/login",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Demasiados intentos. Intenta en 15 minutos." },
+  }),
+  zohoLogin
+);
+router.get("/zoho/callback", zohoCallback);
 
 // Rutas protegidas
 router.use(requireAuth);

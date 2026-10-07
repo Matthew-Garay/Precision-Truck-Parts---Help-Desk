@@ -40,13 +40,13 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { csrfProtection } from "../Middlewares/security.js";
 import { requireAuth, requireAdmin, requireSoporteOAdmin } from "../Middlewares/authMiddleware.js";
-import { validate, schemaCrearSolicitud, schemaActualizarEstatusSolicitud, schemaInsumo, schemaEntradaInsumo, schemaItemsSolicitud, schemaRutaSolicitud, schemaObservacionItem } from "../Middlewares/validate.js";
+import { validate, schemaCrearSolicitud, schemaActualizarEstatusSolicitud, schemaInsumo, schemaEntradaInsumo, schemaSalidaInsumo, schemaItemsSolicitud, schemaRutaSolicitud, schemaObservacionItem } from "../Middlewares/validate.js";
 import {
   getInsumos, getInventario, getInsumosStockBajo, crearSolicitud, getSolicitudesByEmpleado,
   getSolicitudById, getSolicitudByFolio, getAllSolicitudes, getSolicitudesPendientes,
   actualizarEstatusSolicitud, aprobarItemsSolicitud, crearInsumo, actualizarInsumo,
-  eliminarInsumo, getReporteSolicitudes, subirFotoInsumo, getMetricasSolicitudes,
-  registrarEntradaInsumo, guardarRutaSolicitud, getMovimientosInventario, getMovimientosInsumo, getMovimientosSolicitud,
+  eliminarInsumo, cambiarActivoInsumo, getReporteSolicitudes, subirFotoInsumo, getMetricasSolicitudes,
+  registrarEntradaInsumo, registrarSalidaInsumo, guardarRutaSolicitud, getMovimientosInventario, getMovimientosInsumo, getMovimientosSolicitud,
   guardarObservacionItem
 } from "../Controllers/solicitudesController.js";
 import { uploadInsumo } from "../Middlewares/uploadInsumos.js";
@@ -82,6 +82,9 @@ router.post("/insumos",           requireAdmin, validate(schemaInsumo), crearIns
 router.put("/insumos/:id",        requireAdmin, validate(schemaInsumo), actualizarInsumo);
 router.post("/insumos/:id/foto",  requireAdmin, ...uploadInsumo.single("foto"), subirFotoInsumo);
 router.delete("/insumos/:id",     requireAdmin, eliminarInsumo);
+router.patch("/insumos/:id/activo", requireAdmin, cambiarActivoInsumo);
+// Salida interna manual — descuenta stock y deja el movimiento (uso interno)
+router.post("/salidas", requireAdmin, validate(schemaSalidaInsumo), registrarSalidaInsumo);
 // Entrada de material al inventario — suma stock y deja el movimiento
 router.post("/insumos/:id/entrada", requireAdmin, validate(schemaEntradaInsumo), registrarEntradaInsumo);
 router.get("/movimientos",        requireAdmin, getMovimientosInventario);

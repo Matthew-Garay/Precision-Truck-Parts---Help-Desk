@@ -145,6 +145,19 @@ export const crearSolicitud = async (req, res) => {
     if (!item.id_insumo || !item.cantidad || item.cantidad < 1)
       return res.status(400).json({ error: "Cada insumo debe tener id y cantidad válida" });
   }
+  // Los inhabilitados no se pueden pedir ni en solicitudes ni en salidas.
+  // Si la columna `activo` aún no existe (migración 027 pendiente), se omite.
+  try {
+    const ids = [...new Set(insumos.map(i => parseInt(i.id_insumo, 10)).filter(Number.isFinite))];
+    if (ids.length) {
+      const [off] = await pool.query(
+        `SELECT nombre FROM insumo WHERE id_insumo IN (?) AND activo = 0 LIMIT 1`,
+        [ids]
+      );
+      if (off.length)
+        return res.status(409).json({ error: `El insumo "${off[0].nombre}" está inhabilitado` });
+    }
+  } catch { /* sin columna activo o error: el flujo normal continúa */ }
   try {
     const result = await Solicitud.crear({ prioridad, id_empleado: parseInt(id_empleado), insumos, descripcion: String(descripcion).trim() });
     const emp = await Empleado.getResumen(parseInt(id_empleado));
@@ -887,11 +900,47 @@ export const eliminarInsumo = async (req, res) => {
     );
     if (total > 0)
       return res.status(409).json({ error: "No se puede eliminar: el insumo tiene solicitudes activas pendientes" });
+    // Ni movimientos de kardex: borrarlo rompería el historial de entradas/salidas.
+    const [[{ movs }]] = await pool.query(
+      `SELECT COUNT(*) AS movs FROM movimiento_inventario WHERE id_insumo = ?`,
+      [id]
+    );
+    if (movs > 0)
+      return res.status(409).json({ error: "No se puede eliminar: el insumo tiene movimientos registrados. Inhabilítalo en su lugar." });
     const ok = await Insumo.eliminar(id);
     if (!ok) return res.status(404).json({ error: "Insumo no encontrado" });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Error al eliminar insumo", ...errDetalle(err) });
+  }
+};
+
+/**
+ * cambiarActivoInsumo
+ * PATCH /api/solicitudes/insumos/:id/activo   (solo admin)
+ *
+ * Baja lógica: { activo: true|false } (también acepta 1/0).
+ * Inhabilitar (false) oculta el insumo de Salidas y solicitudes sin borrar
+ * el historial. Habilitar (true) lo devuelve a los listados operativos.
+ */
+export const cambiarActivoInsumo = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id) || id <= 0)
+      return res.status(400).json({ error: "ID de insumo inválido" });
+    let { activo } = req.body ?? {};
+    if (activo === 1 || activo === "1" || activo === "true") activo = true;
+    if (activo === 0 || activo === "0" || activo === "false") activo = false;
+    if (typeof activo !== "boolean")
+      return res.status(422).json({ error: "Datos inválidos", errores: [{ campo: "activo", mensaje: "Debe ser verdadero o falso" }] });
+    const ok = await Insumo.cambiarActivo(id, activo);
+    if (!ok) return res.status(404).json({ error: "Insumo no encontrado" });
+    try {
+      getIO().to("admins").emit("inventario:movimiento", { tipo: activo ? "Insumo habilitado" : "Insumo inhabilitado", id_insumo: id });
+    } catch {}
+    res.json({ ok: true, id_insumo: id, activo });
+  } catch (err) {
+    res.status(500).json({ error: "Error al cambiar el estado del insumo", ...errDetalle(err) });
   }
 };
 /**
@@ -955,6 +1004,148 @@ export const registrarEntradaInsumo = async (req, res) => {
     res.json({ ok: true, ...resultado });
   } catch (err) {
     res.status(500).json({ error: "Error al registrar la entrada de material", ...errDetalle(err) });
+  }
+};
+
+/**
+ * registrarSalidaInsumo
+ * POST /api/solicitudes/salidas   (solo admin)
+ *
+ * Registra una SALIDA INTERNA manual de insumos (uso interno, sin solicitud):
+ * descuenta stock en transacción y deja un movimiento tipo 'Salida' por cada
+ * renglón en `movimiento_inventario`. Todo lo que el admin escribe en la hoja
+ * (destino, responsable, motivo libre) viaja dentro del campo `motivo`
+ * estructurado, sin migración de BD:
+ *   "[SAL-20250115-0003] Uso interno · Destino: Taller · Recibe: Juan · <motivo>"
+ *
+ * Acepta un renglón ({ id_insumo, cantidad }) o varios ({ items: [...] }).
+ * Falla con 409 si algún renglón pide más stock del disponible; en ese caso
+ * NO descuenta nada (rollback total).
+ */
+export const registrarSalidaInsumo = async (req, res) => {
+  const { id_insumo, cantidad, items, destino, responsable, motivo, fecha, solicitante,
+    id_destino, id_responsable, id_solicitante, id_sucursal_destino } = req.body;
+  const renglones = Array.isArray(items) && items.length > 0
+    ? items.map(r => ({ id_insumo: parseInt(r.id_insumo, 10), cantidad: parseInt(r.cantidad, 10) }))
+    : [{ id_insumo: parseInt(id_insumo, 10), cantidad: parseInt(cantidad, 10) }];
+
+  if (renglones.some(r => !Number.isFinite(r.id_insumo) || r.id_insumo <= 0 || !Number.isFinite(r.cantidad) || r.cantidad <= 0))
+    return res.status(400).json({ error: "Cada renglón debe traer insumo y cantidad válidos" });
+
+  // Un mismo insumo puede repetirse en la hoja: se consolidan cantidades
+  const consolidado = new Map();
+  for (const r of renglones)
+    consolidado.set(r.id_insumo, (consolidado.get(r.id_insumo) || 0) + r.cantidad);
+  const lista = [...consolidado.entries()].map(([id_insumo, cantidad]) => ({ id_insumo, cantidad }));
+
+  const idAdmin = req.usuario?.id_empleado ?? null;
+
+  try {
+    const conn = await pool.getConnection();
+    let resultado = null;
+    try {
+      await conn.beginTransaction();
+
+      // FECHA MANUAL del formato: es la fecha real del movimiento físico que
+      // el usuario escribe en la hoja (no la del servidor). El folio usa esa
+      // misma fecha para que hoja y consecutivo coincidan. Si no viene (hojas
+      // viejas), se usa hoy.
+      const f = String(fecha ?? "").trim();
+      const base = /^\d{4}-\d{2}-\d{2}$/.test(f) ? new Date(`${f}T12:00:00`) : new Date();
+      const ymd = `${base.getFullYear()}${String(base.getMonth() + 1).padStart(2, "0")}${String(base.getDate()).padStart(2, "0")}`;
+      const ymdSql = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}-${String(base.getDate()).padStart(2, "0")}`;
+      const [[{ n }]] = await conn.query(
+        `SELECT COUNT(*) AS n FROM movimiento_inventario WHERE tipo = 'Salida' AND DATE(fecha) = ? FOR UPDATE`,
+        [ymdSql]
+      );
+      const folio = `SAL-${ymd}-${String((Number(n) || 0) + 1).padStart(4, "0")}`;
+
+      // Los campos del formato pueden venir como texto libre (hojas viejas) o
+      // como IDs de las listas (empleados/sucursales): se resuelven a nombre.
+      const nombreEmpleado = async (id) => {
+        if (!Number.isFinite(parseInt(id, 10))) return null;
+        const [[e]] = await conn.query(
+          `SELECT CONCAT(nombre, ' ', ap_paterno, ' ', IFNULL(ap_materno, '')) AS n FROM empleado WHERE id_empleado = ? LIMIT 1`,
+          [parseInt(id, 10)]
+        );
+        return e?.n?.replace(/\s+/g, " ").trim() || null;
+      };
+      const nombreSucursal = async (id) => {
+        if (!Number.isFinite(parseInt(id, 10))) return null;
+        const [[s]] = await conn.query(`SELECT nombre_sucursal AS n FROM sucursal WHERE id_sucursal = ? LIMIT 1`, [parseInt(id, 10)]);
+        return s?.n?.trim() || null;
+      };
+      const destinoTxt     = String(destino ?? "").trim() || await nombreSucursal(id_destino ?? id_sucursal_destino) || "";
+      const responsableTxt = String(responsable ?? "").trim() || await nombreEmpleado(id_responsable) || "";
+      const solicitanteTxt = String(solicitante ?? "").trim() || await nombreEmpleado(id_solicitante) || "";
+
+      const prefijo = [`[${folio}] Uso interno`,
+        destinoTxt     ? `Destino: ${destinoTxt}` : null,
+        responsableTxt ? `Recibe: ${responsableTxt}` : null,
+        solicitanteTxt ? `Entrega: ${solicitanteTxt}` : null,
+        motivo?.trim()      ? motivo.trim() : null,
+      ].filter(Boolean).join(" · ");
+      const motivoMov = prefijo || `[${folio}] Uso interno`;
+
+      const movs = [];
+      for (const { id_insumo: idIns, cantidad: cant } of lista) {
+        // `activo` puede no existir si aún no se corre la migración 027:
+        // en ese caso se asume activo y la baja lógica simplemente no aplica.
+        let ins;
+        try {
+          [[ins]] = await conn.query(
+            "SELECT id_insumo, nombre, marca, modelo, stock, activo FROM insumo WHERE id_insumo = ? FOR UPDATE", [idIns]
+          );
+        } catch {
+          [[ins]] = await conn.query(
+            "SELECT id_insumo, nombre, marca, modelo, stock FROM insumo WHERE id_insumo = ? FOR UPDATE", [idIns]
+          );
+        }
+        if (!ins) {
+          await conn.rollback();
+          return res.status(404).json({ error: `Insumo ${idIns} no encontrado` });
+        }
+        if (Number(ins.activo) === 0) {
+          await conn.rollback();
+          return res.status(409).json({ error: `El insumo "${ins.nombre}" está inhabilitado` });
+        }
+        const stock_anterior = ins.stock ?? 0;
+        if (stock_anterior < cant) {
+          await conn.rollback();
+          return res.status(409).json({
+            error: `Stock insuficiente en "${ins.nombre}": hay ${stock_anterior}, piden ${cant}`,
+          });
+        }
+        const stock_nuevo = stock_anterior - cant;
+        await conn.query("UPDATE insumo SET stock = ? WHERE id_insumo = ?", [stock_nuevo, idIns]);
+        const id_movimiento = await MovimientoInventario.registrar(conn, {
+          id_insumo: idIns,
+          tipo:   "Salida",
+          cantidad: cant,
+          stock_anterior,
+          stock_nuevo,
+          id_empleado: idAdmin,
+          motivo:      motivoMov,
+        });
+        movs.push({ id_movimiento, id_insumo: idIns, nombre_insumo: ins.nombre, marca: ins.marca ?? null, modelo: ins.modelo ?? null, cantidad: cant, stock_anterior, stock_nuevo });
+      }
+
+      await conn.commit();
+      resultado = { folio, total_renglones: movs.length, movimientos: movs };
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+
+    try {
+      getIO().to("admins").emit("inventario:movimiento", { tipo: "Salida", ...resultado });
+    } catch {}
+
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    res.status(500).json({ error: "Error al registrar la salida de insumos", ...errDetalle(err) });
   }
 };
 
