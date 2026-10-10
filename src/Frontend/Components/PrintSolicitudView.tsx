@@ -200,6 +200,15 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
       {/* Carta vertical: este documento cabe en una hoja tamaño carta */}
       <PageSize />
 
+      {/* Firmas iguales a la salida interna: área amplia para sello/pluma. */}
+      <style>{`
+        .pr-solicitud .pr-signature-area { height: 96px; border-bottom: none; }
+        .pr-solicitud .pr-solicitud-firmas .pr-signature:first-child .pr-signature-area { height: 150px; }
+        .pr-solicitud .pr-signature { width: 42%; }
+        .pr-solicitud .pr-signature-line { width: 100%; height: 1px; background: var(--pr-ink); }
+        .pr-solicitud .pr-solicitud-firmas { margin-top: 40px; padding-top: 24px; align-items: flex-end; }
+      `}</style>
+
       {/* Encabezado: logo a la izquierda, título y folio a la derecha.
           La ruta del material va debajo del título, discreta, sin mezclarse
           con el estatus. */}
@@ -278,15 +287,15 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
 
         <InsumosTable items={solicitud.detalle} cerrado={cerrado} justificacionGeneral={solicitud.justificacion ?? null} />
 
-        <div className="pr-two-col pr-firmas" style={{ marginTop: 26 }}>
-          <div>
-            <div className="pr-doc-h2">Estado de la solicitud</div>
-            <EstadoSolicitud estatus={solicitud.estatus} fechaSolicitud={fechaSol} />
-          </div>
-          <div>
-            <div className="pr-doc-h2">Firma del solicitante</div>
-            <Firma nombre={solicitud.nombre_empleado} rol="Solicitante" />
-          </div>
+        <div className="pr-doc-h2">
+          Estado de la solicitud
+        </div>
+        <EstadoSolicitud estatus={solicitud.estatus} fechaSolicitud={fechaSol} />
+
+        {/* Firmas iguales a la salida interna: Quien recibe (solicitante) / Quien entrega (se llena a mano). */}
+        <div className="pr-solicitud-firmas" style={{ display: "flex", justifyContent: "space-around", gap: 24, padding: "0 14px 6px" }}>
+          <Firma nombre={solicitud.nombre_empleado} rol="Quien recibe" />
+          <Firma nombre="" rol="Quien entrega" />
         </div>
 
       </div>
