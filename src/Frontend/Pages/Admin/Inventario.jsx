@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import {
   Package, AlertTriangle, BarChart3,
-  Inbox, Plus, Pencil, RefreshCw, Layers, Eye, Ban, Trash2,
+  Inbox, Plus, RefreshCw, Layers, Eye, Pencil, Ban, Trash2,
   CheckCircle2, Activity, Download, FileSpreadsheet, FileText,
-  ArrowDownToLine, ArrowUpFromLine, History,
+  ArrowDownToLine, ArrowUpFromLine, History, MoreVertical,
 } from "lucide-react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -87,14 +87,14 @@ function IconBtn({ onClick, title, children, hoverColor = "#2563eb", hoverBg = "
   const { T } = useTheme();
   return (
     <button
-      onClick={onClick} title={title}
+      onClick={onClick} title={title} aria-label={title}
       onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)}
       style={{
-        width: "28px", height: "28px", borderRadius: "4px", border: `1px solid ${h ? "transparent" : T.border}`,
+        width: "24px", height: "24px", borderRadius: "5px", border: `1px solid ${h ? "transparent" : T.border}`,
         background: h ? hoverBg : "transparent",
         color: h ? hoverColor : T.textFaint,
         display: "inline-flex", alignItems: "center", justifyContent: "center",
-        cursor: "pointer", transition: "all 0.12s", flexShrink: 0,
+        cursor: "pointer", transition: "all 0.12s", flexShrink: 0, padding: 0,
       }}
     >
       {children}
@@ -146,7 +146,7 @@ function KpiCard({ label, value, sub, icon: Icon, color, highlight = false, pct 
 // ── Tabla ────────────────────────────────────────────────────────
 const COLS = ["", "Nombre", "Categoría", "Estado", "Stock", "Acciones"];
 
-function DataTable({ rows, onEdit, onDetail, onEntrada, onHistorial, onEliminar, onCambiarActivo }) {
+function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHistorial, onGestionar }) {
   const [hoverRow, setHoverRow] = useState(null);
   const { T } = useTheme();
 
@@ -163,10 +163,10 @@ function DataTable({ rows, onEdit, onDetail, onEntrada, onHistorial, onEliminar,
       <colgroup>
         <col style={{ width: "36px" }} />
         <col style={{ width: "42%" }} />
-        <col style={{ width: "18%" }} />
+        <col style={{ width: "16%" }} />
         <col style={{ width: "11%" }} />
         <col style={{ width: "13%" }} />
-        <col style={{ width: "108px" }} />
+        <col style={{ width: "150px" }} />
       </colgroup>
       <thead>
         <tr>{COLS.map(c => <th key={c} style={th}>{c}</th>)}</tr>
@@ -197,9 +197,13 @@ function DataTable({ rows, onEdit, onDetail, onEntrada, onHistorial, onEliminar,
                     </div>
                 }
               </td>
-              {/* Nombre */}
+              {/* Nombre — clic: abre el detalle del insumo */}
               <td style={{ ...td }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <div
+                  onClick={() => onDetail?.(row)}
+                  title={`Ver detalle de ${row.nombre}`}
+                  style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}
+                >
                   <div style={{ width: "2px", height: "18px", borderRadius: "2px", background: ESTADO_META[row.estado]?.color ?? SLATE[400], flexShrink: 0 }} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: "12px", fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -234,30 +238,26 @@ function DataTable({ rows, onEdit, onDetail, onEntrada, onHistorial, onEliminar,
               </td>
               {/* Acciones */}
               <td style={{ ...td }}>
-                <div style={{ display: "flex", gap: "3px", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: "3px", flexWrap: "nowrap", alignItems: "center" }}>
                   <IconBtn onClick={() => onEntrada(row)} title="Registrar entrada de material" hoverColor={TEAL.base} hoverBg={TEAL.light}>
                     <ArrowDownToLine size={12} />
                   </IconBtn>
-                  <IconBtn onClick={() => onEdit(row)} title="Editar" hoverColor={ORANGE.base} hoverBg={ORANGE.light}>
-                    <Pencil size={12} />
+                  {/* Salida manual: mismo lugar que Entrada, con este insumo precargado */}
+                  <IconBtn onClick={() => onSalida?.(row)} title="Registrar salida manual de material" hoverColor={ORANGE.base} hoverBg={ORANGE.light}>
+                    <ArrowUpFromLine size={12} />
                   </IconBtn>
                   <IconBtn onClick={() => onDetail(row)} title="Ver detalle" hoverColor="#2563eb" hoverBg="#eff6ff">
                     <Eye size={12} />
                   </IconBtn>
+                  <IconBtn onClick={() => onEditar?.(row)} title="Editar insumo" hoverColor="#0d9488" hoverBg="#f0fdfa">
+                    <Pencil size={12} />
+                  </IconBtn>
                   <IconBtn onClick={() => onHistorial(row)} title="Ver entradas de este insumo" hoverColor="#6366f1" hoverBg="#eef2ff">
                     <History size={12} />
                   </IconBtn>
-                  {/* Inhabilitar / habilitar: baja lógica, conserva el historial */}
-                  <IconBtn
-                    onClick={() => onCambiarActivo?.(row)}
-                    title={Number(row.activo ?? 1) === 0 ? "Habilitar insumo" : "Inhabilitar insumo"}
-                    hoverColor={Number(row.activo ?? 1) === 0 ? "#16a34a" : "#d97706"}
-                    hoverBg={Number(row.activo ?? 1) === 0 ? "#ecfdf5" : "#fffbeb"}>
-                    {Number(row.activo ?? 1) === 0 ? <CheckCircle2 size={12} /> : <Ban size={12} />}
-                  </IconBtn>
-                  {/* Eliminar: borrado físico, solo si no tiene historial */}
-                  <IconBtn onClick={() => onEliminar?.(row)} title="Eliminar insumo" hoverColor="#dc2626" hoverBg="#fef2f2">
-                    <Trash2 size={12} />
+                  {/* Un solo botón: abrirá el panel para Inhabilitar/Habilitar o Eliminar */}
+                  <IconBtn onClick={() => onGestionar?.(row)} title="Inhabilitar o eliminar insumo" hoverColor="#dc2626" hoverBg="#fef2f2">
+                    <MoreVertical size={12} />
                   </IconBtn>
                 </div>
                 {Number(row.activo ?? 1) === 0 && (
@@ -272,12 +272,13 @@ function DataTable({ rows, onEdit, onDetail, onEntrada, onHistorial, onEliminar,
   );
 }
 
-// ── Entradas de material: tabla de ingresos al inventario ──────────
+// ── Entradas / Salidas de material: tabla de movimientos del inventario ──
 const COLS_ENTRADAS = ["Fecha", "Insumo", "Cantidad", "Stock", "Registró", "Motivo"];
 
-function EntradasTable({ rows }) {
+function EntradasTable({ rows, tipo = "Entrada" }) {
   const [hoverRow, setHoverRow] = useState(null);
   const { T } = useTheme();
+  const esSalida = tipo === "Salida";
 
   const th = {
     padding: "6px 10px", fontSize: "10px", fontWeight: 700,
@@ -355,8 +356,8 @@ function EntradasTable({ rows }) {
                   </div>
                 )}
               </td>
-              <td style={{ ...td, fontWeight: 800, fontVariantNumeric: "tabular-nums", color: "#16a34a" }}>
-                +{m.cantidad}
+              <td style={{ ...td, fontWeight: 800, fontVariantNumeric: "tabular-nums", color: esSalida ? "#dc2626" : "#16a34a" }}>
+                {esSalida ? `-${m.cantidad}` : `+${m.cantidad}`}
               </td>
               <td style={{ ...td, fontSize: "11px", color: T.textMuted, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
                 {m.stock_anterior ?? 0} → {m.stock_nuevo ?? 0}
@@ -719,6 +720,7 @@ export default function Inventario() {
   const [entrada,    setEntrada]    = useState(null);
   const [salida,     setSalida]     = useState(null); // true = hoja de salida interna abierta
   const [confirmar,  setConfirmar]  = useState(null); // { tipo: "eliminar"|"activo", row, busy }
+  const [gestionar,  setGestionar]  = useState(null); // row → panel "Inhabilitar o eliminar" (un solo botón)
   // ── Vista "Entradas" (entradas de material) ──
   const [vista,      setVista]      = useState("insumos");
   const [movs,       setMovs]       = useState([]);
@@ -756,13 +758,14 @@ export default function Inventario() {
       .finally(() => { setLoading(false); setSyncing(false); });
   };
 
-  // Entradas de material — GET /api/solicitudes/movimientos (admin)
-  const cargarEntradas = () => {
+  // ── Movimientos de material — GET /api/solicitudes/movimientos (admin)
+  // `tipo` = "Entrada" | "Salida". Misma tabla, filtros y paginación.
+  const cargarMovimientos = (tipo = "Entrada") => {
     setMovLoading(true);
     const p = new URLSearchParams({
       page:  String(movPagina),
       limit: String(movPageSize),
-      tipo:  "Entrada",
+      tipo,
     });
     if (movFiltros.q?.trim())    p.set("q", movFiltros.q.trim());
     if (movFiltros.fecha_inicio) p.set("fecha_inicio", movFiltros.fecha_inicio);
@@ -778,21 +781,26 @@ export default function Inventario() {
       .finally(() => setMovLoading(false));
   };
 
+  // Compat: los llamados viejos siguen funcionando (pestaña Entradas).
+  const cargarEntradas = () => cargarMovimientos("Entrada");
+  // Tipo activo según la pestaña: "entradas" -> Entrada, "salidas" -> Salida.
+  const tipoMovActivo = vista === "salidas" ? "Salida" : "Entrada";
+
   useEffect(() => {
     cargarInventario(true);
     apiFetch("/api/categorias?tipo=insumo").then(r => r.json()).then(d => setCategorias(Array.isArray(d) ? d : [])).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cargar las entradas al entrar a la pestaña Entradas o al cambiar filtros/página
+  // Cargar los movimientos al entrar a Entradas (la pestaña Salidas es solo para CREAR salidas)
   useEffect(() => {
     if (vista !== "entradas") return;
-    cargarEntradas();
+    cargarMovimientos("Entrada");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vista, movPagina, movPageSize, movFiltros]);
 
   useAutoRefresh(() => {
-    if (vista === "entradas") cargarEntradas();
+    if (vista === "entradas") cargarMovimientos("Entrada");
     else cargarInventario(false);
   }, 30000);
 
@@ -830,17 +838,28 @@ export default function Inventario() {
     }
   };
 
-  // Ver las entradas de un insumo puntual → pestaña Entradas con filtro id_insumo
-  const verEntradasInsumo = (row) => {
+  // Ver los movimientos de un insumo puntual → pestaña Entradas/Salidas con filtro id_insumo
+  const verMovimientosInsumo = (row, destino = "entradas") => {
     setMovFiltros({ q: "", fecha_inicio: "", fecha_fin: "", id_insumo: row.id_insumo });
     setMovInsumo(row.nombre);
     setMovPagina(1);
-    setVista("entradas");
+    setVista(destino);
   };
+  const verEntradasInsumo = (row) => verMovimientosInsumo(row, "entradas");
+  const verSalidasInsumo  = (row) => verMovimientosInsumo(row, "salidas");
   const limpiarInsumo = () => {
     setMovFiltros(p => ({ ...p, id_insumo: "" }));
     setMovInsumo(null);
     setMovPagina(1);
+  };
+  // Al cambiar de pestaña Entradas <-> Salidas se resetea página y filtro por insumo
+  const cambiarVistaMov = (id) => {
+    setMovFiltros({ q: "", fecha_inicio: "", fecha_fin: "", id_insumo: "" });
+    setMovInsumo(null);
+    setMovPagina(1);
+    setVista(id);
+    // Entrar a "Salidas" abre DIRECTO el modal de salida (sin pantalla intermedia).
+    if (id === "salidas") setSalida(true);
   };
 
   // Etiquetas de los filtros activos de la pestaña Insumos (para la hoja impresa)
@@ -850,15 +869,17 @@ export default function Inventario() {
   if (filtros.categoria && filtros.categoria !== "Todos")  etiquetasInsumos.push(`Categoría: ${filtros.categoria}`);
   if (filtros.stock && filtros.stock !== "Todos")          etiquetasInsumos.push(`Stock: ${filtros.stock}`);
 
-  // Hoja de la pestaña Entradas: trae TODAS las entradas con los filtros actuales.
+  // Hoja de Entradas/Salidas: trae TODOS los movimientos del tipo actual con los filtros.
   // El backend limita a 500 registros por petición → se pagina en bloques de 500.
-  const exportarEntradasPDF = async () => {
+  // Usa la misma vista de impresión de entradas (PrintEntradasPage) con título dinámico.
+  const exportarMovimientosPDF = async (tipo = "Entrada") => {
+    const esSalida = tipo === "Salida";
     try {
       const BLOQUE = 500;
       const MAX    = 20000; // tope de seguridad
       let rows = [], total = 0, page = 1, chunk = [];
       do {
-        const p = new URLSearchParams({ page: String(page), limit: String(BLOQUE), tipo: "Entrada" });
+        const p = new URLSearchParams({ page: String(page), limit: String(BLOQUE), tipo });
         if (movFiltros.q?.trim())    p.set("q", movFiltros.q.trim());
         if (movFiltros.fecha_inicio) p.set("fecha_inicio", movFiltros.fecha_inicio);
         if (movFiltros.fecha_fin)    p.set("fecha_fin", movFiltros.fecha_fin);
@@ -876,18 +897,23 @@ export default function Inventario() {
       if (movFiltros.fecha_inicio || movFiltros.fecha_fin) etiquetas.push(`Periodo: ${movFiltros.fecha_inicio || "…"} al ${movFiltros.fecha_fin || "…"}`);
       if (movInsumo)                                       etiquetas.push(`Insumo: ${movInsumo}`);
 
-      sessionStorage.setItem("print_entradas_datos", JSON.stringify({ rows, filtros: etiquetas, total }));
+      sessionStorage.setItem("print_entradas_datos", JSON.stringify({ rows, filtros: etiquetas, total, tipo }));
       abrirImpresion("/print/entradas");
     } catch {
-      toast.error("No se pudo generar la hoja de entradas");
+      toast.error(esSalida ? "No se pudo generar la hoja de salidas" : "No se pudo generar la hoja de entradas");
     }
   };
+  // Compat: los llamados viejos siguen funcionando (pestaña Entradas).
+  const exportarEntradasPDF = () => exportarMovimientosPDF("Entrada");
 
   // ── Salida interna: guarda el formato que trae el modal y abre la hoja para llenar/firmar
   const salidaGuardada = (d, form) => {
     setSalida(null);
+    // Si la salida se hizo desde la pestaña "Salidas", regresamos al catálogo
+    // para no volver a mostrar la pantalla intermedia.
+    if (vista === "salidas") setVista("insumos");
     cargarInventario(false);
-    cargarEntradas();
+    if (vista === "entradas") cargarMovimientos("Entrada");
     try {
       const u = getUsuario() ?? {};
       const registrado = [u.nombre, u.ap_paterno, u.ap_materno].filter(Boolean).join(" ").trim();
@@ -898,6 +924,10 @@ export default function Inventario() {
         destino:     form?.destino || "",
         responsable: form?.responsable || "",
         motivo:      form?.motivo || "",
+        solicitante: form?.solicitante || "",
+        solicitante_puesto:   form?.solicitante_puesto || "",
+        solicitante_sucursal: form?.solicitante_sucursal || "",
+        solicitante_num:      form?.solicitante_num || "",
         registrado_por: registrado,
       }));
       abrirImpresion("/print/salida");
@@ -914,7 +944,7 @@ export default function Inventario() {
     { key: "stock",     label: "Stock",            type: "select", opts: ["Todos", "Con stock", "Sin stock"] },
   ];
 
-  // Filtros de la pestaña "Entradas"
+  // Filtros de las pestañas "Entradas" / "Salidas" (misma barra)
   const camposFiltroE = [
     { key: "q",            label: "Búsqueda", type: "search", placeholder: "Insumo, motivo, folio…", debounce: 300 },
     { key: "fecha_inicio", label: "Desde",    type: "date" },
@@ -961,24 +991,65 @@ export default function Inventario() {
 
         {/* ── Page Header ───────────────────────────────────────── */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", flexWrap: "wrap" }}>
-          {/* Tabs: Insumos / Entradas */}
+          {/* Tabs: Insumos / Entradas / Salidas */}
           <div style={{ display: "flex", gap: "4px" }}>
             {[
               { id: "insumos",  label: "Insumos",  Icon: Package },
               { id: "entradas", label: "Entradas", Icon: ArrowDownToLine },
+              { id: "salidas",  label: "Salidas",  Icon: ArrowUpFromLine },
             ].map(({ id, label, Icon }) => {
               const activa = vista === id;
+              const esRojo = id === "salidas";
+              const esVerde = id === "entradas";
+              if (esRojo) {
+                return (
+                  <button
+                    key={id}
+                    onClick={() => cambiarVistaMov(id)}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: "5px",
+                      padding: "7px 14px", borderRadius: "6px", cursor: "pointer",
+                      fontSize: "11px", fontWeight: 700, transition: "all 0.15s",
+                      border: activa ? "1px solid #dc2626" : "1px solid rgba(220,38,38,0.45)",
+                      background: activa ? "#dc2626" : "transparent",
+                      color: activa ? "#fff" : (T.isDark ? "#f87171" : "#dc2626"),
+                    }}
+                  >
+                    <Icon size={13} /> {label}
+                  </button>
+                );
+              }
+              if (esVerde) {
+                return (
+                  <button
+                    key={id}
+                    onClick={() => cambiarVistaMov(id)}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: "5px",
+                      padding: "7px 14px", borderRadius: "6px", cursor: "pointer",
+                      fontSize: "11px", fontWeight: 700, transition: "all 0.15s",
+                      border: activa ? "1px solid #16a34a" : "1px solid rgba(22,163,74,0.45)",
+                      background: activa ? "#16a34a" : "transparent",
+                      color: activa ? "#fff" : (T.isDark ? "#4ade80" : "#16a34a"),
+                    }}
+                  >
+                    <Icon size={13} /> {label}
+                  </button>
+                );
+              }
+              const colorActivo = TEAL.base;
+              const fondoActivo = T.isDark ? "rgba(13,148,136,0.18)" : TEAL.light;
               return (
                 <button
                   key={id}
-                  onClick={() => setVista(id)}
+                  onClick={() => (id === "entradas" || id === "salidas" ? cambiarVistaMov(id) : setVista(id))}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: "5px",
                     padding: "7px 14px", borderRadius: "6px", cursor: "pointer",
                     fontSize: "11px", fontWeight: 700, transition: "all 0.15s",
-                    border: `1px solid ${activa ? TEAL.base : T.border}`,
-                    background: activa ? (T.isDark ? "rgba(13,148,136,0.18)" : TEAL.light) : "transparent",
-                    color: activa ? TEAL.base : T.textMuted,
+                    border: `1px solid ${activa ? colorActivo : T.border}`,
+                    background: activa ? fondoActivo : "transparent",
+                    color: activa ? colorActivo : T.textMuted,
                   }}
                 >
                   <Icon size={13} /> {label}
@@ -991,21 +1062,8 @@ export default function Inventario() {
             {syncing && <RefreshCw size={11} style={{ color: TEAL.base, animation: "spin 1s linear infinite" }} />}
             {vista === "insumos" && <BtnExportar datos={filtrados} filtros={etiquetasInsumos} T={T} />}
             {vista === "entradas" && <BtnExportar vista="entradas" onPdf={exportarEntradasPDF} T={T} />}
-            <button
-              onClick={() => setSalida(true)}
-              title="Registrar salida interna de insumos (uso interno)"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: "6px",
-                padding: "8px 14px", borderRadius: "6px", border: "none",
-                background: ORANGE.base, color: "#fff",
-                fontSize: "11px", fontWeight: 600, cursor: "pointer",
-                transition: "opacity 0.15s",
-              }}
-              onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
-              onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-            >
-              <ArrowUpFromLine size={14} /> Salida
-            </button>
+            {/* Pestaña Salidas: el listado vive en Historial de Insumos; el
+                botón para HACER la salida queda solo en el panel central. */}
             {vista === "insumos" && (
               <button
                 onClick={() => setModal({})}
@@ -1064,7 +1122,7 @@ export default function Inventario() {
             onLimpiar={() => { setFiltros({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos", activo: "Todos" }); setPagina(1); }}
             T={T}
           />
-        ) : (
+        ) : vista === "entradas" ? (
           <FiltrosToolbar
             campos={camposFiltroE}
             valores={movFiltros}
@@ -1073,7 +1131,7 @@ export default function Inventario() {
             loading={movLoading}
             T={T}
           />
-        )}
+        ) : null}
 
         {/* ── Tabla principal ───────────────────────────────────── */}
         <div style={{ background: T.surface, borderRadius: "8px", border: `1px solid ${T.border}`, boxShadow: T.shadowSm, overflow: "hidden", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
@@ -1086,18 +1144,20 @@ export default function Inventario() {
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <Layers size={14} style={{ color: TEAL.base }} />
               <span style={{ fontSize: "11px", fontWeight: 700, color: T.text }}>
-                {vista === "insumos" ? "Catálogo de Insumos" : "Entradas de material"}
+                {vista === "insumos" ? "Catálogo de Insumos" : vista === "salidas" ? "Registrar salida de material" : "Entradas de material"}
               </span>
-              <span style={{
-                fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "99px",
-                background: T.isDark ? "rgba(13,148,136,0.18)" : "#f0fdfa",
-                color: "#0d9488",
-                border: T.isDark ? "1px solid rgba(13,148,136,0.35)" : "1px solid #99f6e4",
-              }}>
-                {vista === "insumos"
-                  ? `${filtrados.length} registro${filtrados.length !== 1 ? "s" : ""}`
-                  : `${movTotal} entrada${movTotal !== 1 ? "s" : ""}`}
-              </span>
+              {vista !== "salidas" && (
+                <span style={{
+                  fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "99px",
+                  background: T.isDark ? "rgba(13,148,136,0.18)" : "#f0fdfa",
+                  color: "#0d9488",
+                  border: T.isDark ? "1px solid rgba(13,148,136,0.35)" : "1px solid #99f6e4",
+                }}>
+                  {vista === "insumos"
+                    ? `${filtrados.length} registro${filtrados.length !== 1 ? "s" : ""}`
+                    : `${movTotal} entrada${movTotal !== 1 ? "s" : ""}`}
+                </span>
+              )}
               {vista === "entradas" && movInsumo && (
                 <button onClick={limpiarInsumo} title="Quitar filtro por insumo"
                   style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", cursor: "pointer", background: T.isDark ? "rgba(37,99,235,0.18)" : "#eff6ff", color: "#2563eb", border: T.isDark ? "1px solid rgba(37,99,235,0.40)" : "1px solid #bfdbfe" }}>
@@ -1112,7 +1172,11 @@ export default function Inventario() {
 
           {/* Contenido */}
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "auto" }}>
-            {vista === "entradas" ? (
+            {vista === "salidas" ? (
+              /* La pestaña "Salidas" abre DIRECTO el modal de salida (no lista nada).
+                 El modal se dispara en cambiarVistaMov; no hay pantalla intermedia. */
+              null
+            ) : vista === "entradas" ? (
               movLoading && movs.length === 0 ? (
                 <div style={{ display: "flex", justifyContent: "center", padding: "64px 0" }}>
                   <RefreshCw size={24} style={{ color: TEAL.base, animation: "spin 1s linear infinite" }} />
@@ -1127,7 +1191,7 @@ export default function Inventario() {
                   </p>
                 </div>
               ) : (
-                <EntradasTable rows={movs} />
+                <EntradasTable rows={movs} tipo={tipoMovActivo} />
               )
             ) : loading ? (
               <div style={{ display: "flex", justifyContent: "center", padding: "64px 0" }}>
@@ -1143,9 +1207,10 @@ export default function Inventario() {
                 </p>
               </div>
             ) : (
-              <DataTable rows={filasPagina} onEdit={setModal} onDetail={setDetalle} onEntrada={setEntrada} onHistorial={verEntradasInsumo}
-                onEliminar={row => setConfirmar({ tipo: "eliminar", row, busy: false })}
-                onCambiarActivo={row => setConfirmar({ tipo: "activo", row, busy: false })} />
+              <DataTable rows={filasPagina} onDetail={setDetalle} onEditar={row => setModal(row)} onEntrada={setEntrada}
+                onSalida={(row) => setSalida({ id_insumo: row.id_insumo, nombre: row.nombre })}
+                onHistorial={verEntradasInsumo}
+                onGestionar={row => setGestionar(row)} />
             )}
           </div>
           {/* Paginación — siempre visible, dentro del card */}
@@ -1198,14 +1263,58 @@ export default function Inventario() {
       {entrada !== null && (
         <ModalEntradaInsumo insumo={entrada}
           onClose={() => setEntrada(null)}
-          onSaved={() => { setEntrada(null); cargarInventario(false); cargarEntradas(); }}
+          onSaved={() => { setEntrada(null); cargarInventario(false); cargarMovimientos(vista === "salidas" ? "Salida" : "Entrada"); }}
           T={T} />
       )}
       {salida !== null && (
         <ModalSalidaInsumo insumos={insumos}
-          onClose={() => setSalida(null)}
+          insumoInicial={typeof salida === "object" ? salida?.id_insumo : null}
+          onClose={() => { setSalida(null); if (vista === "salidas") setVista("insumos"); }}
           onSaved={salidaGuardada}
           T={T} />
+      )}
+
+      {/* Gestionar insumo: en la tabla hay UN solo botón (⋮) y aquí se elige qué hacer */}
+      {gestionar && (
+        <div role="dialog" aria-modal="true"
+          onMouseDown={e => { if (e.target === e.currentTarget) setGestionar(null); }}
+          style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ width: "min(450px, 100%)", background: T.surface, borderRadius: "10px",
+            border: `1px solid ${T.border}`, boxShadow: "0 20px 60px rgba(0,0,0,0.35)", overflow: "hidden" }}>
+            <div style={{ padding: "14px 18px", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 10 }}>
+              <MoreVertical size={16} style={{ color: T.textMuted }} />
+              <strong style={{ fontSize: 13, color: T.text }}>Gestionar insumo</strong>
+            </div>
+            <div style={{ padding: "14px 18px", fontSize: 12, color: T.textMuted, lineHeight: 1.6 }}>
+              ¿Qué quieres hacer con <strong style={{ color: T.text }}>“{gestionar.nombre}”</strong>?
+              <ul style={{ margin: "8px 0 0", paddingLeft: "18px" }}>
+                <li><strong style={{ color: T.text }}>Inhabilitar/Habilitar:</strong> baja lógica — se oculta de Salidas y solicitudes conservando su historial.</li>
+                <li><strong style={{ color: T.text }}>Eliminar:</strong> borra el insumo (solo es posible si no tiene solicitudes ni movimientos).</li>
+              </ul>
+            </div>
+            <div style={{ padding: "10px 18px", borderTop: `1px solid ${T.border}`, background: T.surfaceAlt,
+              display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+              <button type="button" onClick={() => setGestionar(null)}
+                style={{ padding: "6px 16px", borderRadius: 6, fontSize: 12, fontWeight: 600, background: "transparent",
+                  border: `1px solid ${T.border}`, color: T.textMuted, cursor: "pointer" }}>
+                Cancelar
+              </button>
+              <button type="button"
+                onClick={() => { setConfirmar({ tipo: "activo", row: gestionar, busy: false }); setGestionar(null); }}
+                style={{ padding: "6px 16px", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", color: "#fff",
+                  background: Number(gestionar.activo ?? 1) === 0 ? "#16a34a" : "#d97706", cursor: "pointer" }}>
+                {Number(gestionar.activo ?? 1) === 0 ? "Habilitar" : "Inhabilitar"}
+              </button>
+              <button type="button"
+                onClick={() => { setConfirmar({ tipo: "eliminar", row: gestionar, busy: false }); setGestionar(null); }}
+                style={{ padding: "6px 16px", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", color: "#fff",
+                  background: "#dc2626", cursor: "pointer" }}>
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Confirmar eliminar / inhabilitar / habilitar */}

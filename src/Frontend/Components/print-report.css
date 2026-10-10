@@ -5,22 +5,22 @@
 /* ── TOKENS ─────────────────────────────────────────────────────── */
 /* ══════════════════════════════════════════════════════════════════
    TOKENS — identidad Precision Truck Parts
-   Negro (rombo + "TRUCK PARTS" en negro) + naranja de la marca + grises.
-   El naranja es el ÚNICO color de acento: se usa en folio, cifras clave y
-   marcadores. Todo lo demás es negro o gris.
+   Documento estrictamente en BLANCO Y NEGRO: tinta negra sobre papel
+   blanco, sin grises ni colores. La jerarquía se logra con tamaño, peso
+   y mayúsculas; la estructura, con reglas y bordes negros.
    ══════════════════════════════════════════════════════════════════ */
 :root {
   --pr-ink:    #000000;   /* negro del rombo */
-  --pr-muted:  #3F3F3F;
-  --pr-faint:  #6E6E6E;
-  --pr-border: #D5D5D5;
-  --pr-hair:   #ECECEC;
-  --pr-light:  #F5F5F5;
-  --pr-surface: #FAFAFA;
+  --pr-muted:  #000000;
+  --pr-faint:  #000000;
+  --pr-border: #000000;
+  --pr-hair:   #000000;
+  --pr-light:  #ffffff;
+  --pr-surface: #ffffff;
   --pr-white:  #ffffff;
   --pr-navy:   #000000;   /* alias: los encabezados son en negro, no azul */
-  --pr-accent: #E8621A;   /* naranja "TRUCK PARTS" */
-  --pr-accent-ink: rgba(232, 98, 26, 0.10);
+  --pr-accent: #000000;   /* negro: sin color de acento */
+  --pr-accent-ink: rgba(0, 0, 0, 0.10);
 }
 
 /* ── PRINT ──────────────────────────────────────────────────────── */
@@ -343,18 +343,19 @@
 }
 
 .pr-section-title {
-  font-size: 7pt;
-  font-weight: bold;
+  font-size: 8.5pt;
+  font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.04em;
   color: var(--pr-ink);
+  margin-bottom: 4px;
 }
 
 .pr-section-body {
-  padding: 8px 10px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
   background: var(--pr-white);
 }
 
@@ -572,7 +573,7 @@
 
 .pr-pill--solid  { background: var(--pr-ink);   border-color: var(--pr-ink);   color: #fff; }
 .pr-pill--accent { color: var(--pr-accent);    border-color: var(--pr-accent); }
-.pr-pill--quiet  { color: var(--pr-faint);      border-color: #E5E7EB; }
+.pr-pill--quiet  { color: var(--pr-faint);      border-color: #000000; }
 
 /* Tabla de insumos: sin imagenes, sin bordes verticales, solo hairlines */
 .pr-items-table {
@@ -597,7 +598,7 @@
 .pr-items-table tbody td {
   padding: 7px 8px 7px 0;
   vertical-align: top;
-  border-bottom: 1px solid #E5E7EB;   /* gris muy tenue, solo horizontal */
+  border-bottom: 1px solid #000000;   /* gris muy tenue, solo horizontal */
   border-left: none;
   border-right: none;
   line-height: 1.35;
@@ -676,19 +677,22 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 8px;
 }
 
 .pr-signature-area {
   width: 100%;
-  height: 40px;
+  height: 56px;
   border-bottom: 1px solid var(--pr-border);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
-.pr-signature-line { width: 90px; height: 1px; background: var(--pr-ink); margin-bottom: 3px; }
+.pr-signature-line { width: 120px; height: 1px; background: var(--pr-ink); margin-bottom: 6px; }
 .pr-signature-name { font-size: 8pt; font-weight: bold; color: var(--pr-ink); }
 .pr-signature-role { font-size: 6.5pt; color: var(--pr-muted); }
+
+/* ── SPACING: más aire entre secciones ── */
+.pr-section { margin-bottom: 22px !important; }
 
 /* ══════════════════════════════════════════════════════════════════
    GALERÍA
@@ -741,15 +745,15 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 20px;
-  background: #1e293b;
-  border-bottom: 2px solid #E8621A;
+  background: #000000;
+  border-bottom: 2px solid #000000;
   gap: 12px;
 }
 
 .pr-toolbar-title {
   font-size: 12px;
   font-weight: 700;
-  color: rgba(255,255,255,0.75);
+  color: #ffffff;
   letter-spacing: 0.04em;
 }
 
@@ -763,11 +767,11 @@
 }
 .pr-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.pr-btn--primary { background: #E8621A; color: #fff; }
+.pr-btn--primary { background: #ffffff; color: #000000; }
 .pr-btn--outline {
   background: transparent;
-  color: rgba(255,255,255,0.65);
-  border: 1px solid rgba(255,255,255,0.2);
+  color: #ffffff;
+  border: 1px solid #ffffff;
 }
 
 @media print {
@@ -778,7 +782,7 @@
    PREVIEW EN PANTALLA
 ══════════════════════════════════════════════════════════════════ */
 body, body.print-preview {
-  background: #e5e7eb;
+  background: #ffffff;
   margin: 0;
   padding: 0;
   /* Evitar scroll horizontal que desajusta el formato */
@@ -861,7 +865,7 @@ body, body.print-preview {
   white-space: nowrap;
   border-bottom: 1px solid var(--pr-ink);
 }
-.pr-insumos-table tbody tr:nth-child(even) { background: #fcfcfc; }
+.pr-insumos-table tbody tr:nth-child(even) { background: #ffffff; }
 .pr-insumos-table tbody tr:nth-child(odd)  { background: var(--pr-white); }
 .pr-insumos-table tbody td {
   padding: 5px 6px;
@@ -1196,11 +1200,11 @@ body, body.print-preview {
   border-bottom: 1px solid var(--pr-ink);
   white-space: nowrap;
 }
-.pr-reporte-table-wrap tbody tr:nth-child(even) { background: #f7f7f7; }
+.pr-reporte-table-wrap tbody tr:nth-child(even) { background: #ffffff; }
 .pr-reporte-table-wrap tbody td {
   padding: 4px 6px;
   vertical-align: top;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid #000000;
   word-break: break-word;
   overflow-wrap: break-word;
   line-height: 1.35;

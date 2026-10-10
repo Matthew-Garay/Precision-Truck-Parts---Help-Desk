@@ -6,6 +6,11 @@ import ModalDetalleInsumo from "../../Components/Inventario/ModalDetalleInsumo";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
 import VistaSolicitud from "./VistaSolicitud";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
+import {
+  agruparSalidas, coincideFiltrosSalida, abrirHojaSalida,
+  traerSalidasMiSucursal, traerSolicitudesEmpleado,
+} from "../../Config/salidasHistorial";
+import ModalSalidaView from "../../Components/ModalSalidaView";
 
 const PRIORITY_OPTIONS = [
   { value: "Urgente", label: "Urgente", color: "#dc2626", bg: "rgba(220,38,38,0.10)", border: "rgba(220,38,38,0.30)" },
@@ -411,6 +416,20 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   const [filtrosSol,      setFiltrosSol]      = useState({ busqueda: "", estatus: "Todos", prioridad: "Todos" });
   const [cargandoSol,     setCargandoSol]     = useState(false);
   const [solicitudVer,    setSolicitudVer]    = useState(null);
+  const [modalSalida,     setModalSalida]     = useState(null);
+
+  // Abre el modal de la salida cuando este panel (u otro) emita el evento
+  // "abrir-salida" (emitido por abrirHojaSalida en salidasHistorial.js,
+  // que ya no abre ventanas emergentes).
+  useEffect(() => {
+    const onAbrirSalida = (e) => {
+      setModalSalida(e.detail);
+    };
+    window.addEventListener("abrir-salida", onAbrirSalida);
+    return () => window.removeEventListener("abrir-salida", onAbrirSalida);
+  }, []);
+
+  const cerrarModalSalida = () => setModalSalida(null);
   const [statsGlobal, setStatsGlobal] = useState(() => ({
     total: 0, enProceso: 0, aceptados: 0, rechazados: 0,
     totalPiezas: 0,
@@ -547,8 +566,8 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   const activePriority = PRIORITY_OPTIONS.find(p => p.value === priority);
 
   const PCOLOR_SOL        = { Urgente: "#dc2626", Alta: "#ea580c", Media: "#ca8a04", Baja: "#16a34a" };
-  const ESTATUS_COLOR_SOL = { "En proceso": "#d97706", Aceptado: "#16a34a", Rechazado: "#dc2626" };
-  const ESTATUS_BG_SOL    = { "En proceso": T.isDark ? "rgba(217,119,6,0.13)" : "#fef3c7", Aceptado: T.isDark ? "rgba(22,163,74,0.13)" : "#dcfce7", Rechazado: T.isDark ? "rgba(220,38,38,0.13)" : "#fee2e2" };
+  const ESTATUS_COLOR_SOL = { "En proceso": "#d97706", Aceptado: "#16a34a", Rechazado: "#dc2626", Entregado: "#0d9488" };
+  const ESTATUS_BG_SOL    = { "En proceso": T.isDark ? "rgba(217,119,6,0.13)" : "#fef3c7", Aceptado: T.isDark ? "rgba(22,163,74,0.13)" : "#dcfce7", Rechazado: T.isDark ? "rgba(220,38,38,0.13)" : "#fee2e2", Entregado: T.isDark ? "rgba(13,148,136,0.13)" : "#ccfbf1" };
   const fmtSol = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
   const camposFiltroSol = [
     { key: "busqueda",  label: "Búsqueda Rápida", type: "search", placeholder: "Folio...", debounce: 300 },
@@ -556,20 +575,37 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
     { key: "prioridad", label: "Prioridad",        type: "select", opts: ["Todos", "Urgente", "Alta", "Media", "Baja"] },
   ];
 
+  // La lista mezcla mis solicitudes (SOL-) y las salidas manuales hechas a
+  // MI sucursal (SAL-): se traen completas y se paginan en cliente para
+  // ordenarlas juntas por fecha. Los filtros de estatus/prioridad/búsqueda
+  // NO los aplica el endpoint de empleado, así que se aplican aquí.
   const cargarSolicitudes = useCallback((f = filtrosSolRef.current, p = 1, l = 25) => {
     if (!usuario?.id_empleado) return;
     setCargandoSol(true);
-    const qs = new URLSearchParams({ limit: l, page: p });
-    if (f.busqueda)                             qs.set("busqueda", f.busqueda);
-    if (f.estatus   && f.estatus   !== "Todos") qs.set("estatus",  f.estatus);
-    if (f.prioridad && f.prioridad !== "Todos") qs.set("prioridad",f.prioridad);
-    apiFetch(`/api/solicitudes/empleado/${usuario.id_empleado}?${qs}`)
-      .then(r => r.json())
-      .then(d => {
-        const lista = Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [];
-        setSolicitudes(lista);
-        if (d?.total != null) { setSolTotal(d.total); setSolPages(d.pages || Math.max(1, Math.ceil(d.total / l))); }
-        else { setSolTotal(lista.length); setSolPages(1); }
+    Promise.all([
+      traerSolicitudesEmpleado(usuario.id_empleado).catch(() => []),
+      traerSalidasMiSucursal().catch(() => []),
+    ])
+      .then(([sols, movs]) => {
+        const q = String(f.busqueda || "").trim().toLowerCase();
+        const filtradas = sols.filter(s => {
+          if (q) {
+            const heno = [s.folio_solicitud, s.insumos_nombres, s.nombre_empleado]
+              .filter(Boolean).join(" ").toLowerCase();
+            if (!heno.includes(q)) return false;
+          }
+          if (f.estatus   && f.estatus   !== "Todos" && s.estatus   !== f.estatus)   return false;
+          if (f.prioridad && f.prioridad !== "Todos" && s.prioridad !== f.prioridad) return false;
+          return true;
+        });
+        const salidas = agruparSalidas(movs).filter(g => coincideFiltrosSalida(g, f));
+        const combo = [...filtradas, ...salidas]
+          .sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
+        const total = combo.length;
+        const ini = (p - 1) * l;
+        setSolicitudes(combo.slice(ini, ini + l));
+        setSolTotal(total);
+        setSolPages(Math.max(1, Math.ceil(total / l)));
       })
       .catch(() => {})
       .finally(() => setCargandoSol(false));
@@ -819,12 +855,12 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                       <p className="text-xs font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "No hay solicitudes"}</p>
                     </div>
                   : solicitudes.map(s => (
-                    <div key={s.id_solicitud}
+                    <div key={s.id_solicitud ?? s.id_salida}
                       className="rounded-xl p-3 flex flex-col gap-2 cursor-pointer active:scale-[0.98] transition-all"
                       style={{ background: T.isDark ? "rgba(255,255,255,0.04)" : T.surfaceAlt, border: `1px solid ${T.border}` }}
-                      onClick={() => setSolicitudVer(s)}>
+                      onClick={() => (s.es_salida ? abrirHojaSalida(s) : setSolicitudVer(s))}>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-[11px] font-black" style={{ color: T.orange }}>{s.folio_solicitud}</span>
+                        <span className="font-mono text-[11px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
                           style={{ background: ESTATUS_BG_SOL[s.estatus], color: ESTATUS_COLOR_SOL[s.estatus] }}>
                           {s.estatus}
@@ -869,12 +905,12 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                       : solicitudes.map((s, i) => {
                           const bgRow = i % 2 === 0 ? (T.isDark ? "#141720" : T.surface) : (T.isDark ? "#1c2030" : T.surfaceAlt);
                           return (
-                            <tr key={s.id_solicitud} className="cursor-pointer transition-colors"
+                            <tr key={s.id_solicitud ?? s.id_salida} className="cursor-pointer transition-colors"
                               style={{ background: bgRow, borderBottom: `1px solid ${T.border}` }}
                               onMouseEnter={e => e.currentTarget.style.background = T.isDark ? "rgba(244,121,32,0.05)" : "rgba(244,121,32,0.03)"}
                               onMouseLeave={e => e.currentTarget.style.background = bgRow}
-                              onClick={() => setSolicitudVer(s)}>
-                              <td className="px-3 py-2 font-mono text-[10px] font-bold" style={{ color: T.orange }}>{s.folio_solicitud}</td>
+                              onClick={() => (s.es_salida ? abrirHojaSalida(s) : setSolicitudVer(s))}>
+                              <td className="px-3 py-2 font-mono text-[10px] font-bold" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</td>
                               <td className="px-3 py-2 text-[11px]" style={{ maxWidth: 220 }}>
                                 <span className="block truncate" style={{ color: T.text }}>
                                   {s.insumos_nombres || "—"}
@@ -895,10 +931,10 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                               </td>
                               <td className="px-3 py-2 text-[11px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmtSol(s.fecha)}</td>
                               <td className="px-3 py-2">
-                                <button onClick={e => { e.stopPropagation(); setSolicitudVer(s); }}
+                                <button onClick={e => { e.stopPropagation(); if (s.es_salida) abrirHojaSalida(s); else setSolicitudVer(s); }}
                                   className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-all hover:brightness-110 active:scale-95"
                                   style={{ color: T.orange, background: "rgba(244,121,32,0.08)", border: "1px solid rgba(244,121,32,0.2)" }}>
-                                  <Eye size={10} /> Ver
+                                  <Eye size={10} /> {s.es_salida ? "Hoja" : "Ver"}
                                 </button>
                               </td>
                             </tr>
@@ -1368,6 +1404,13 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
         />
       )}
 
+      {modalSalida && (
+        <ModalSalidaView
+          payload={modalSalida}
+          T={T}
+          onClose={() => setModalSalida(null)}
+        />
+      )}
       {insumoDetalle && (
         <ModalDetalleInsumo insumo={insumoDetalle} onClose={() => setInsumoDetalle(null)} T={T} />
       )}

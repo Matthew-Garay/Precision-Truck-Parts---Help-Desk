@@ -46,7 +46,7 @@ import {
   getSolicitudById, getSolicitudByFolio, getAllSolicitudes, getSolicitudesPendientes,
   actualizarEstatusSolicitud, aprobarItemsSolicitud, crearInsumo, actualizarInsumo,
   eliminarInsumo, cambiarActivoInsumo, getReporteSolicitudes, subirFotoInsumo, getMetricasSolicitudes,
-  registrarEntradaInsumo, registrarSalidaInsumo, guardarRutaSolicitud, getMovimientosInventario, getMovimientosInsumo, getMovimientosSolicitud,
+  registrarEntradaInsumo, registrarSalidaInsumo, guardarRutaSolicitud, getMovimientosInventario, getMovimientosInsumo, getMovimientosSolicitud, getSalidasMiSucursal,
   guardarObservacionItem
 } from "../Controllers/solicitudesController.js";
 import { uploadInsumo } from "../Middlewares/uploadInsumos.js";
@@ -88,6 +88,8 @@ router.post("/salidas", requireAdmin, validate(schemaSalidaInsumo), registrarSal
 // Entrada de material al inventario — suma stock y deja el movimiento
 router.post("/insumos/:id/entrada", requireAdmin, validate(schemaEntradaInsumo), registrarEntradaInsumo);
 router.get("/movimientos",        requireAdmin, getMovimientosInventario);
+// Salidas de la sucursal del usuario autenticado (historial de insumos del rol Usuario)
+router.get("/movimientos/mis-salidas", getSalidasMiSucursal);
 router.patch("/:id/estatus",  requireAdmin, validate(schemaActualizarEstatusSolicitud), actualizarEstatusSolicitud);
 router.patch("/:id/items",    requireAdmin, validate(schemaItemsSolicitud), aprobarItemsSolicitud);
 // Observaciones de Soporte Tecnico o Administracion sobre cada insumo pedido.

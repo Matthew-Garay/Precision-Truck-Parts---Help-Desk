@@ -9,6 +9,15 @@ export default function PrintSalidaPage() {
   const [payload, setPayload] = useState<SalidaPayload | null>(null);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
+  // La vista previa debe verse BLANCA como documento (no gris del tema de la app).
+  // Se fuerza el fondo del body al entrar y se restaura al salir.
+  useEffect(() => {
+    const prev = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = "#ffffff";
+    return () => { document.body.style.backgroundColor = prev; };
+  }, []);
+
+
 
   useEffect(() => {
     try {
@@ -28,6 +37,10 @@ export default function PrintSalidaPage() {
         motivo:         parsed.motivo ?? null,
         // Compatibilidad: el modal nuevo manda "solicitante" como quien entrega.
         registrado_por: parsed.registrado_por ?? parsed.solicitante ?? null,
+        solicitante:    parsed.solicitante ?? null,
+        solicitante_puesto:   parsed.solicitante_puesto ?? null,
+        solicitante_sucursal: parsed.solicitante_sucursal ?? null,
+        solicitante_num:      parsed.solicitante_num ?? null,
       });
     } catch {
       setError("Error al leer los datos de la salida.");
