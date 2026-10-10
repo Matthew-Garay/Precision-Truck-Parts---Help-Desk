@@ -137,7 +137,7 @@ export default function PrintHistorialView({ data }: { data: HistorialData }) {
             {nombreCompleto}
           </span>
           <Badge label={empleado.estatus} icon={estatusMeta.icon} bg="var(--pr-light)" color="#000" border="var(--pr-border)" />
-          <span style={{ fontSize: "7.5pt", color: "#444" }}>Período: {periodo}</span>
+          <span style={{ fontSize: "7.5pt", color: "#000000" }}>Período: {periodo}</span>
         </div>
 
         {/* Datos del empleado — sin Rol, con Sucursal */}

@@ -1019,7 +1019,6 @@ export default function Personal({ T }) {
             { label: "Total empleados", val: empleados.length,     color: "#3b82f6", bgL: "#eff6ff", bgD: "#0f1f3d" },
             { label: "Activos",         val: activos,              color: "#16a34a", bgL: "#f0fdf4", bgD: "#071a0e" },
             { label: "Inactivos",       val: inactivos,            color: "#94a3b8", bgL: "#f8fafc", bgD: "#1a1f2e" },
-            { label: "Departamentos",   val: departamentos.length, color: "#F7941E", bgL: "#fff7ed", bgD: "#2d1200" },
           ].map(s => (
             <div key={s.label} style={{ borderRadius: 8, padding: "10px 14px", background: isDark ? s.bgD : s.bgL, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}` }}>
               <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: isDark ? "rgba(255,255,255,0.4)" : "#6b7280", margin: 0 }}>{s.label}</p>
