@@ -205,7 +205,7 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
           con el estatus. */}
       <header className="pr-doc-hdr">
         <div className="pr-doc-brand">
-          <img src="/assets/img/log.png" alt="Precision Truck Parts" className="pr-doc-logo" />
+          <img src="/assets/img/logo negro.png" alt="Precision Truck Parts" className="pr-doc-logo" />
           <div className="pr-doc-company">
             Precision Truck Parts, Parts and Accesories, S.A de C.V.
             <br />

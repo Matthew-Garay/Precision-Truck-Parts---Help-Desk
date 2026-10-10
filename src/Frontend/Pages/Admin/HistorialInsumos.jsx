@@ -7,10 +7,14 @@ import FiltrosToolbar from "../../Components/FiltrosToolbar";
 import { useCardStyles } from "../../Components/Card";
 import VistaSolicitud from "../Usuario/VistaSolicitud";
 import ModalReporte from "../../Components/ModalReporte";
+import {
+  agruparSalidas, coincideFiltrosSalida, abrirHojaSalida,
+  traerSalidasManualesAdmin, traerSolicitudesAdmin,
+} from "../../Config/salidasHistorial";
 
 const PCOLOR = { Urgente: "#dc2626", Alta: "#ea580c", Media: "#ca8a04", Baja: "#16a34a" };
-const ESTATUS_COLOR = { Resuelto: "#16a34a", Pendiente: "#3b82f6", "En proceso": "#d97706", Aceptado: "#16a34a", Rechazado: "#dc2626" };
-const ESTATUS_BG    = { Resuelto: "rgba(22,163,74,0.13)", Pendiente: "rgba(59,130,246,0.13)", "En proceso": "rgba(217,119,6,0.13)", Aceptado: "rgba(22,163,74,0.13)", Rechazado: "rgba(220,38,38,0.13)" };
+const ESTATUS_COLOR = { Resuelto: "#16a34a", Pendiente: "#3b82f6", "En proceso": "#d97706", Aceptado: "#16a34a", Rechazado: "#dc2626", Entregado: "#0d9488" };
+const ESTATUS_BG    = { Resuelto: "rgba(22,163,74,0.13)", Pendiente: "rgba(59,130,246,0.13)", "En proceso": "rgba(217,119,6,0.13)", Aceptado: "rgba(22,163,74,0.13)", Rechazado: "rgba(220,38,38,0.13)", Entregado: "rgba(13,148,136,0.13)" };
 
 const fmt = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
 
@@ -32,6 +36,7 @@ export default function HistorialInsumos({ T }) {
   const [generando,    setGenerando]    = useState(false);
   const [cargando,     setCargando]     = useState(false);
   const [solicitudVer, setSolicitudVer] = useState(null);
+
   const [metricas,     setMetricas]     = useState({ total: 0, pendientes: 0, resueltos: 0, rechazados: 0 });
 
   const filtrosRef = useRef(filtros);
@@ -55,22 +60,26 @@ export default function HistorialInsumos({ T }) {
     return qs;
   };
 
+  // La lista mezcla solicitudes (SOL-) y salidas manuales (SAL-): el backend
+  // pagina cada fuente por separado, así que se traen completas y se paginan
+  // en cliente para poder ordenarlas juntas por fecha.
   const cargar = useCallback((f, p = 1, l = LIMIT) => {
     setCargando(true);
     const qs = buildQs(f);
-    qs.set("limit", l); qs.set("page", p);
-    apiFetch(`/api/solicitudes?${qs}`)
-      .then(r => r.json())
-      .then(d => {
-        const lista = Array.isArray(d?.data) ? d.data : [];
-        setSolicitudes(lista);
-        if (typeof d?.total === "number") {
-          setTotalCount(d.total);
-          setPages(d.pages || Math.max(1, Math.ceil(d.total / l)));
-        } else {
-          setTotalCount(lista.length);
-          setPages(1);
-        }
+    qs.set("limit", "2000"); qs.set("page", "1");
+    Promise.all([
+      traerSolicitudesAdmin(qs.toString()).catch(() => []),
+      traerSalidasManualesAdmin().catch(() => []),
+    ])
+      .then(([sols, movs]) => {
+        const salidas = agruparSalidas(movs).filter(g => coincideFiltrosSalida(g, f));
+        const combo = [...sols, ...salidas]
+          .sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
+        const total = combo.length;
+        const ini = (p - 1) * l;
+        setSolicitudes(combo.slice(ini, ini + l));
+        setTotalCount(total);
+        setPages(Math.max(1, Math.ceil(total / l)));
       })
       .catch(() => {})
       .finally(() => setCargando(false));
@@ -123,6 +132,41 @@ export default function HistorialInsumos({ T }) {
       datos    = await r.json();
       if (!Array.isArray(datos)) datos = [];
     } catch (e) { console.error("[generarReporte insumos]", e); datos = []; }
+
+    // Mezclar las SALIDAS MANUALES (SAL-) del mismo período: la API de reporte
+    // solo cubre solicitudes (SOL-), así que las salidas se traen y se mapean
+    // al mismo formato de renglón para que salgan juntas en la hoja.
+    try {
+      // Igual que la tabla: agrupar los movimientos crudos por folio (SAL-…)
+      // para obtener .folio / .rows / .entrega / .destino y armar bien la fila.
+      const salidas = agruparSalidas(await traerSalidasManualesAdmin());
+      const enRango = salidas.filter(s => {
+        const f = String(s.fecha ?? "").slice(0, 10);
+        return f >= fecha_inicio && f <= fecha_fin;
+      });
+      const salidasRows = enRango.map(s => {
+        const rows = s.rows || [];
+        const [origen, destino] = String(s.destino || "").split(" → ");
+        return {
+          folio_solicitud: s.folio,
+          fecha: s.fecha,
+          estatus: "Entregado",
+          prioridad: s.prioridad && s.prioridad !== "—" ? s.prioridad : "Media",
+          nombre_empleado: s.entrega || s.nombre_empleado || "",
+          nombre_departamento: s.registrado_por ? `Registró: ${s.registrado_por}` : "Salida manual",
+          nombre_sucursal: s.nombre_sucursal || destino || s.destino || "",
+          nombre_sucursal_origen: origen || null,
+          nombre_sucursal_destino: destino || null,
+          total_insumos: rows.length,
+          total_piezas: rows.reduce((a, r) => a + (Number(r.cantidad) || 0), 0),
+          detalle_insumos: rows.map(r => `${r.nombre_insumo || ""} x${r.cantidad ?? 0}`).join(", "),
+          items_detalle: rows.map(r => `${r.nombre_insumo || ""}|${r.cantidad ?? 0}|1|${r.imagen_url || ""}`).join(";;"),
+          es_salida: true,
+        };
+      });
+      datos = datos.concat(salidasRows).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    } catch (e) { console.error("[generarReporte salidas]", e); }
+
     setGenerando(false);
     setModalReporte(false);
     const fmtDate = d => new Date(d + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
@@ -370,12 +414,12 @@ export default function HistorialInsumos({ T }) {
                     const eBg    = ESTATUS_BG[s.estatus]    || "rgba(148,163,184,0.13)";
                     const eColor = ESTATUS_COLOR[s.estatus] || T.textMuted;
                     return (
-                      <div key={s.id_solicitud}
+                      <div key={s.id_solicitud ?? s.id_salida}
                         className="rounded-xl p-3 flex flex-col gap-2 active:scale-[0.98] transition-all cursor-pointer"
                         style={{ background: isDark ? "rgba(255,255,255,0.04)" : T.surfaceAlt, border: `1px solid ${T.border}` }}
-                        onClick={() => setSolicitudVer(s)}>
+                        onClick={() => (s.es_salida ? abrirHojaSalida(s) : setSolicitudVer(s))}>
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono text-[11px] font-black" style={{ color: T.orange }}>{s.folio_solicitud}</span>
+                          <span className="font-mono text-[11px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: eBg, color: eColor }}>{s.estatus}</span>
                         </div>
                         <p className="text-xs font-semibold leading-snug" style={{ color: T.text }}>{s.nombre_empleado || "-"}</p>
@@ -423,12 +467,12 @@ export default function HistorialInsumos({ T }) {
                     const eBg    = ESTATUS_BG[s.estatus]    || "rgba(148,163,184,0.13)";
                     const eColor = ESTATUS_COLOR[s.estatus] || T.textMuted;
                     return (
-                      <tr key={s.id_solicitud}
+                      <tr key={s.id_solicitud ?? s.id_salida}
                         style={{ background: bgRow, borderBottom: `1px solid ${T.border}` }}
                         onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(244,121,32,0.05)" : "rgba(244,121,32,0.03)"}
                         onMouseLeave={e => e.currentTarget.style.background = bgRow}>
                         <td className="px-2 py-1.5">
-                          <span className="font-mono text-[10px] font-black" style={{ color: T.orange }}>{s.folio_solicitud}</span>
+                          <span className="font-mono text-[10px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
                         </td>
                         <td className="px-2 py-1.5" style={{ maxWidth: "160px" }}>
                           <span className="block truncate text-[11px] font-semibold" style={{ color: T.text }}>{s.nombre_empleado || "-"}</span>
@@ -445,10 +489,10 @@ export default function HistorialInsumos({ T }) {
                         </td>
                         <td className="px-2 py-1.5 text-[10px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmt(s.fecha)}</td>
                         <td className="px-2 py-1.5">
-                          <button onClick={() => setSolicitudVer(s)}
+                          <button onClick={() => (s.es_salida ? abrirHojaSalida(s) : setSolicitudVer(s))}
                             className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all hover:brightness-110 active:scale-95"
                             style={{ background: "rgba(244,121,32,0.08)", color: T.orange, border: "1px solid rgba(244,121,32,0.2)" }}>
-                            Ver
+                            {s.es_salida ? "Hoja" : "Ver"}
                           </button>
                         </td>
                       </tr>
@@ -463,7 +507,7 @@ export default function HistorialInsumos({ T }) {
               <table className="w-full border-collapse" style={{ minWidth: "860px" }}>
                 <thead className="sticky top-0 z-10">
                   <tr style={{ background: isDark ? "#1c2030" : T.surfaceAlt }}>
-                    {["Folio", "Empleado / Área", "Sucursal", "Prioridad", "Estatus", "Insumos", "Piezas", "Pedidos autorizados", "Fecha", ""].map((col, i) => (
+                    {["Folio", "Empleado / Área", "Sucursal", "Prioridad", "Estatus", "Insumos", "Piezas", "Autorizados", "Fecha", ""].map((col, i) => (
                       <th key={i} className="text-left px-2 py-1.5 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
                         style={{ color: T.textMuted, borderBottom: `1px solid ${T.border}` }}>
                         {col}
@@ -486,12 +530,12 @@ export default function HistorialInsumos({ T }) {
                     const eBg    = ESTATUS_BG[s.estatus]    || "rgba(148,163,184,0.13)";
                     const eColor = ESTATUS_COLOR[s.estatus] || T.textMuted;
                     return (
-                      <tr key={s.id_solicitud}
+                      <tr key={s.id_solicitud ?? s.id_salida}
                         style={{ background: bgRow, borderBottom: `1px solid ${T.border}` }}
                         onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(244,121,32,0.05)" : "rgba(244,121,32,0.03)"}
                         onMouseLeave={e => e.currentTarget.style.background = bgRow}>
                         <td className="px-2 py-1.5">
-                          <span className="font-mono text-[10px] font-black" style={{ color: T.orange }}>{s.folio_solicitud}</span>
+                          <span className="font-mono text-[10px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
                         </td>
                         <td className="px-2 py-1.5">
                           <span className="block text-[11px] font-semibold" style={{ color: T.text }}>{s.nombre_empleado || "-"}</span>
@@ -514,7 +558,7 @@ export default function HistorialInsumos({ T }) {
                           {(() => {
                             const aut = Number(s.total_autorizadas) || 0;
                             const ped = Number(s.total_piezas) || 0;
-                            const sinAutorizar = s.estatus === "En proceso";
+                            const sinAutorizar = s.es_salida || s.estatus === "En proceso";
                             const color = aut === 0
                               ? T.textFaint
                               : aut < ped ? "#d97706" : "#16a34a";
@@ -534,10 +578,10 @@ export default function HistorialInsumos({ T }) {
                         </td>
                         <td className="px-2 py-1.5 text-[10px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmt(s.fecha)}</td>
                         <td className="px-2 py-1.5">
-                          <button onClick={() => setSolicitudVer(s)}
+                          <button onClick={() => (s.es_salida ? abrirHojaSalida(s) : setSolicitudVer(s))}
                             className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all hover:brightness-110 active:scale-95"
                             style={{ background: "rgba(244,121,32,0.08)", color: T.orange, border: "1px solid rgba(244,121,32,0.2)" }}>
-                            Ver
+                            {s.es_salida ? "Hoja" : "Ver"}
                           </button>
                         </td>
                       </tr>
@@ -584,5 +628,7 @@ export default function HistorialInsumos({ T }) {
       />
     )}
     </>
-  );
+  )
 }
+
+

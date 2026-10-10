@@ -10,24 +10,24 @@ export interface BadgeMeta { bg: string; color: string; border: string; icon?: s
 
 /* ── Catálogos de colores ───────────────────────────────────────── */
 /* ── Catálogos de color ───────────────────────────────────────────────
-   Identidad Precision Truck Parts: negro + gris + un único acento naranja.
+   Documento en BLANCO Y NEGRO: el estado/prioridad se comunica con la
    Sin íconos ni checks: el estado se comunica solo con la etiqueta de
-   texto. La prioridad NO se codifica con color (verde/rojo/ámbar) ni con
-   símbolos: el naranja queda reservado EXCLUSIVAMENTE para "Urgente". */
+   etiqueta y con chips sólidos o contorneados. Sin color ni íconos:
+   "Urgente" y "Resuelto" se distinguen con chip sólido en negro puro. */
 export const PRIO_META: Record<string, BadgeMeta & { label: string }> = {
-  Urgente: { label: "URGENTE", bg: "#ffffff", color: "#E8621A", border: "#E8621A" },
+  Urgente: { label: "URGENTE", bg: "#000000", color: "#ffffff", border: "#000000" },
   Alta:    { label: "ALTA",    bg: "#ffffff", color: "#000000", border: "#000000" },
-  Media:   { label: "MEDIA",   bg: "#ffffff", color: "#6E6E6E", border: "#D5D5D5" },
-  Baja:    { label: "BAJA",    bg: "#ffffff", color: "#6E6E6E", border: "#D5D5D5" },
+  Media:   { label: "MEDIA",   bg: "#ffffff", color: "#000000", border: "#000000" },
+  Baja:    { label: "BAJA",    bg: "#ffffff", color: "#000000", border: "#000000" },
 };
 
 export const ESTATUS_META: Record<string, BadgeMeta> = {
-  "Resuelto":    { bg: "#ffffff", color: "#000000", border: "#000000" },
-  "En proceso":  { bg: "#ffffff", color: "#6E6E6E", border: "#D5D5D5" },
-  "Pendiente":   { bg: "#ffffff", color: "#6E6E6E", border: "#D5D5D5" },
+  "Resuelto":    { bg: "#000000", color: "#ffffff", border: "#000000" },
+  "En proceso":  { bg: "#ffffff", color: "#000000", border: "#000000" },
+  "Pendiente":   { bg: "#ffffff", color: "#000000", border: "#000000" },
   "No Resuelto": { bg: "#ffffff", color: "#000000", border: "#000000" },
-  "Rechazado":   { bg: "#ffffff", color: "#6E6E6E", border: "#D5D5D5" },
-  "Cancelado":   { bg: "#ffffff", color: "#6E6E6E", border: "#D5D5D5" },
+  "Rechazado":   { bg: "#ffffff", color: "#000000", border: "#000000" },
+  "Cancelado":   { bg: "#ffffff", color: "#000000", border: "#000000" },
 };
 
 /* ── Helpers de formato ─────────────────────────────────────────── */
@@ -81,7 +81,7 @@ export function Stars({ n, size = 13 }: { n: number; size?: number }) {
       {[1,2,3,4,5].map(i => (
         <svg key={i} width={size} height={size} viewBox="0 0 24 24"
           fill={i <= n ? "#000000" : "none"}
-          stroke={i <= n ? "#000000" : "#aaaaaa"}
+          stroke="#000000"
           strokeWidth="1.5">
           <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
         </svg>
@@ -91,16 +91,17 @@ export function Stars({ n, size = 13 }: { n: number; size?: number }) {
 }
 
 /* ── PageHeader ─────────────────────────────────────────────────── */
-export function PageHeader({ titulo, subtitulo, dept, metaRows }: {
+export function PageHeader({ titulo, subtitulo, dept, metaRows, logoSrc = "/assets/img/logo negro.png" }: {
   titulo: string;
   subtitulo?: string;
   dept?: string;
   metaRows: { label: string; value: React.ReactNode; mono?: boolean }[];
+  logoSrc?: string;
 }) {
   return (
     <header className="pr-page-header">
       <div className="pr-header-logo">
-        <img src="/assets/img/log.png" alt="Precision Truck Parts" className="pr-logo-img" />
+        <img src={logoSrc} alt="Precision Truck Parts" className="pr-logo-img" />
       </div>
       <div className="pr-header-center">
         {titulo    && <span className="pr-header-doc">{titulo}</span>}
@@ -239,8 +240,8 @@ export function Firma({ nombre, rol }: { nombre: string; rol: string }) {
 /* ── LoadingPrint / ErrorPrint (estados de página) ──────────────── */
 export function LoadingPrint() {
   return (
-    <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", padding: 48, display: "flex", alignItems: "center", gap: 14, color: "#6B7280", fontSize: 14 }}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8621A" strokeWidth="2.5" strokeLinecap="round"
+    <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", padding: 48, display: "flex", alignItems: "center", gap: 14, color: "#000000", fontSize: 14 }}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000000" strokeWidth="2.5" strokeLinecap="round"
         style={{ flexShrink: 0, animation: "pr-spin 0.9s linear infinite" }}>
         <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
       </svg>
@@ -252,10 +253,10 @@ export function LoadingPrint() {
 
 export function ErrorPrint({ message }: { message: string }) {
   return (
-    <div style={{ fontFamily: "sans-serif", padding: 40, color: "#DC2626", display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ fontFamily: "sans-serif", padding: 40, color: "#000000", display: "flex", flexDirection: "column", gap: 8 }}>
       <strong style={{ fontSize: 15 }}>No se pudo cargar el reporte</strong>
-      <span style={{ fontSize: 13, color: "#6B7280" }}>{message}</span>
-      <span style={{ fontSize: 12, color: "#9CA3AF", marginTop: 4 }}>
+      <span style={{ fontSize: 13, color: "#000000" }}>{message}</span>
+      <span style={{ fontSize: 12, color: "#000000", marginTop: 4 }}>
         Verifica que la sesión siga activa y vuelve a intentarlo.
       </span>
     </div>

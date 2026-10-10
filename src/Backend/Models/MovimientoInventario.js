@@ -42,11 +42,11 @@ const SELECT_JOIN = `
          m.id_sucursal_origen, m.id_sucursal_destino, m.id_solicitud,
          m.id_empleado, m.motivo, m.fecha,
          m.id_insumo,
-         i.nombre AS nombre_insumo, i.marca, i.modelo, i.imagen_url,
+         i.nombre AS nombre_insumo, i.descripcion, i.marca, i.modelo, i.imagen_url,
          so.nombre_sucursal AS nombre_sucursal_origen,
          sd.nombre_sucursal AS nombre_sucursal_destino,
          s.folio_solicitud,
-         CONCAT(IFNULL(e.nombre,''), ' ', IFNULL(e.ap_paterno,'')) AS nombre_empleado
+         TRIM(CONCAT(IFNULL(e.nombre,''), ' ', IFNULL(e.ap_paterno,''), ' ', IFNULL(e.ap_materno,''))) AS nombre_empleado
   FROM movimiento_inventario m
   LEFT JOIN insumo    i  ON m.id_insumo           = i.id_insumo
   LEFT JOIN sucursal  so ON m.id_sucursal_origen  = so.id_sucursal
@@ -96,13 +96,17 @@ const MovimientoInventario = {
   },
 
   listar: async ({
-    page = 1, limit = 50, tipo, id_insumo, id_sucursal,
-    folio, q, fecha_inicio, fecha_fin,
+    page = 1, limit = 50, tipo, id_insumo, id_sucursal, id_sucursal_destino,
+    manuales, folio, q, fecha_inicio, fecha_fin,
   } = {}) => {
     const where = [];
     const params = [];
     if (tipo)         { where.push("m.tipo = ?");                          params.push(tipo); }
     if (id_insumo)    { where.push("m.id_insumo = ?");                     params.push(id_insumo); }
+    // Salidas MANUALES (sin solicitud) y/o salidas hacia una sucursal concreta:
+    // es lo que usa el historial del rol Usuario ("salidas de mi sucursal").
+    if (id_sucursal_destino) { where.push("m.id_sucursal_destino = ?");    params.push(id_sucursal_destino); }
+    if (manuales)      { where.push("m.id_solicitud IS NULL"); }
     if (folio)        { where.push("s.folio_solicitud LIKE ?");            params.push(`%${folio}%`); }
     if (q)            { const like = `%${q}%`;
                         where.push(`(i.nombre LIKE ? OR i.marca LIKE ? OR i.modelo LIKE ?

@@ -73,10 +73,27 @@ import { z } from "zod";
 /**
  * Middleware factory: valida req.body contra un schema Zod.
  * Si falla devuelve 422 con los errores detallados.
+ *
+ * ANTES de validar se limpian los strings vacíos ("" -> null) de forma
+ * recursiva. Esto era la CAUSA RAÍZ del "Datos inválidos" que el modal de
+ * salidas devolvía siempre: un <select>/<input> sin elegir manda "" y
+ * Zod lo trataba como un número 0 o como una fecha con formato inválido,
+ * rechazando toda la petición aunque el resto del payload estuviera bien.
  */
+const vaciosANull = (v) => {
+  if (v === "") return null;
+  if (Array.isArray(v)) return v.map(vaciosANull);
+  if (v && typeof v === "object" && !(v instanceof Date)) {
+    const o = {};
+    for (const k of Object.keys(v)) o[k] = vaciosANull(v[k]);
+    return o;
+  }
+  return v;
+};
+
 export function validate(schema) {
   return (req, res, next) => {
-    const result = schema.safeParse(req.body ?? {});
+    const result = schema.safeParse(vaciosANull(req.body ?? {}));
     if (!result.success) {
       const errores = (result.error?.issues ?? []).map(e => ({
         campo:   e.path.join("."),
@@ -321,13 +338,27 @@ export const schemaSalidaInsumo = z.object({
   destino:     z.string().trim().max(200).optional().nullable().default(null),
   responsable: z.string().trim().max(200).optional().nullable().default(null),
   motivo:      z.string().trim().max(500).optional().nullable().default(null),
-  // Fecha manual de la salida (YYYY-MM-DD). Opcional: si no viene, se usa hoy.
+  // Fecha manual de la salida. Acepta SOLO fecha (YYYY-MM-DD) o fecha con
+  // hora (YYYY-MM-DDTHH:MM o YYYY-MM-DD HH:MM) porque el formato nuevo
+  // captura también la hora del movimiento físico.
   fecha: z.string().trim()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida (usa YYYY-MM-DD)")
-    .refine((s) => { const d = new Date(`${s}T00:00:00`); return !Number.isNaN(d.getTime()); }, "Fecha inválida")
+    .regex(/^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?$/,
+      "Fecha inválida (usa AAAA-MM-DD o AAAA-MM-DD HH:MM)")
+    .refine((s) => {
+      const d = new Date(s.replace(" ", "T").replace(/(T\d{2}:\d{2})$/, "$1:00"));
+      return !Number.isNaN(d.getTime());
+    }, "Fecha inválida")
     .optional().nullable().default(null),
   // Quien entrega / solicitante interno (texto libre, se imprime en la hoja).
   solicitante: z.string().trim().max(200).optional().nullable().default(null),
+  // ── Formato nuevo ─────────────────────────────────────────────────
+  // Ruta del material: sucursales de origen y destino (lo que antes era
+  // un simple campo libre "destino").
+  id_sucursal_origen:  z.number({ coerce: true }).int().positive().optional().nullable().default(null),
+  // Justificación / motivo que escribe quien captura la salida.
+  justificacion: z.string().trim().max(2000).optional().nullable().default(null),
+  // Prioridad del movimiento (mismo catálogo que las solicitudes).
+  prioridad: z.enum(["Urgente", "Alta", "Media", "Baja"]).optional().nullable().default(null),
   // Formato 100% editable con listas: cada campo también acepta el ID elegido
   // de su lista (empleados / sucursales). El controlador resuelve el ID a
   // nombre para guardarlo en el motivo estructurado. El texto libre se

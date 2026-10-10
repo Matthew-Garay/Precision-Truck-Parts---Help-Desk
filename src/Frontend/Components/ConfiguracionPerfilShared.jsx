@@ -181,30 +181,11 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
         <div className="rounded-2xl overflow-hidden" style={card}>
           <div className="px-5 py-5 flex items-center gap-4"
             style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}` }}>
-            <div className="relative flex-shrink-0">
+            <div className="flex-shrink-0">
               <div className="flex items-center justify-center rounded-2xl font-black overflow-hidden"
                 style={{ width: "72px", height: "72px", background: isDark ? "#1e2330" : T.surfaceAlt, border: `2px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`, color: isDark ? "rgba(255,255,255,0.7)" : T.textMuted, fontSize: "24px" }}>
-                {foto ? <img src={foto} alt="perfil" className="w-full h-full object-cover" /> : (iniciales || <User size={28} style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textFaint }} />)}
+                {iniciales || <User size={28} style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textFaint }} />}
               </div>
-              <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-all hover:brightness-110 active:scale-95"
-                style={{ background: T.orange, boxShadow: "0 2px 8px rgba(244,121,32,0.5)", border: `2px solid ${isDark ? "#141720" : T.surface}` }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
-                </svg>
-                <input type="file" accept="image/*" className="hidden" onChange={e => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = ev => setCropSrc(ev.target.result);
-                  reader.readAsDataURL(file);
-                  e.target.value = "";
-                }} />
-              </label>
-              {subiendoFoto && (
-                <div className="absolute inset-0 rounded-2xl flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}>
-                  <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                </div>
-              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-black text-base leading-tight" style={{ color: T.text }}>{nombreCompleto || "-"}</p>
@@ -276,23 +257,6 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
 
           {/* Body */}
           <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: "14px" }}>
-
-            {/* Contraseña Actual */}
-            <div style={{ display: "grid", gridTemplateColumns: "14px 140px 1fr", alignItems: "baseline", gap: "10px", padding: "8px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}` }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isDark ? "rgba(255,255,255,0.22)" : "#c0c9d6"} strokeWidth="2" style={{ marginTop: "1px" }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0" }}>Contraseña Actual</span>
-              <div style={{ position: "relative" }}>
-                <input
-                  style={{ ...inp, paddingRight: "36px", fontSize: "14px", opacity: 1,
-                    color: showActual ? T.text : "#9ca3af",
-                    WebkitTextFillColor: showActual ? T.text : "#9ca3af",
-                    caretColor: T.text }}
-                  type={showActual ? "text" : "password"} value={passActual || ""} readOnly
-                  autoComplete="off" spellCheck={false} placeholder="Contraseña actual"
-                />
-                <EyeBtn show={showActual} onToggle={() => setShowActual(s => !s)} textFaint={T.textFaint} />
-              </div>
-            </div>
 
             {/* Nueva Contraseña */}
             <div style={{ display: "grid", gridTemplateColumns: "14px 140px 1fr", alignItems: "baseline", gap: "10px", padding: "8px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}` }}>

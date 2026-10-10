@@ -19,6 +19,7 @@ export interface EntradasPayload {
   rows: MovRow[];
   filtros?: string[];
   total?: number;
+  tipo?: string;
 }
 
 /* Solo hay entradas de material: sin columna de tipo ni de ruta */
@@ -47,17 +48,21 @@ export default function PrintEntradasView({ payload }: { payload: EntradasPayloa
   const rows    = payload?.rows ?? [];
   const filtros = payload?.filtros ?? [];
   const total   = Number(payload?.total) || rows.length;
+  const esSalida = payload?.tipo === "Salida";
+  const titulo   = esSalida ? "Salidas de material" : "Entradas de material";
+  const sing     = esSalida ? "salida" : "entrada";
+  const plur     = esSalida ? "salidas" : "entradas";
 
   const now      = new Date();
   const fechaGen = nowFechaGen();
-  const folioDoc = `ENT-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const folioDoc = `${esSalida ? "SAL" : "ENT"}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   return (
     <div className="pr-root pr-landscape" data-ready="true">
       <PageSize landscape />
 
       <PageHeader
-        titulo="Entradas de material"
+        titulo={titulo}
         subtitulo="Departamento de Soporte Técnico"
         metaRows={[
           { label: "Folio",     value: folioDoc, mono: true },
@@ -70,8 +75,8 @@ export default function PrintEntradasView({ payload }: { payload: EntradasPayloa
 
         <section className="pr-inv-section">
           <div className="pr-inv-section-hdr">
-            <span className="pr-inv-section-title">Entradas de material</span>
-            <span className="pr-inv-section-count">{rows.length} entrada{rows.length !== 1 ? "s" : ""}</span>
+            <span className="pr-inv-section-title">{titulo}</span>
+            <span className="pr-inv-section-count">{rows.length} {rows.length !== 1 ? plur : sing}</span>
           </div>
 
           {/* Filtros activos — los mismos que muestra la barra en pantalla */}
@@ -103,7 +108,7 @@ export default function PrintEntradasView({ payload }: { payload: EntradasPayloa
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={6} style={{ padding: 20, textAlign: "center", color: "var(--pr-faint)", fontStyle: "italic", fontSize: "7.5pt" }}>
-                    Sin entradas con los filtros actuales.
+                    {esSalida ? "Sin salidas con los filtros actuales." : "Sin entradas con los filtros actuales."}
                   </td>
                 </tr>
               ) : rows.map((m) => {
@@ -128,7 +133,7 @@ export default function PrintEntradasView({ payload }: { payload: EntradasPayloa
                       )}
                     </td>
                     <td className="pr-inv-td" style={{ fontWeight: 900, fontSize: "8.5pt", color: "var(--pr-accent)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
-                      +{m.cantidad ?? 0}
+                      {esSalida ? "-" : "+"}{m.cantidad ?? 0}
                     </td>
                     <td className="pr-inv-td" style={{ fontSize: "7pt", color: "var(--pr-muted)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
                       {m.stock_anterior ?? 0} → {m.stock_nuevo ?? 0}
@@ -154,14 +159,14 @@ export default function PrintEntradasView({ payload }: { payload: EntradasPayloa
 
           {/* Pie de totales */}
           <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 10px", borderTop: "1px solid var(--pr-border)", background: "var(--pr-light)", fontSize: "6.5pt", fontWeight: 700, color: "var(--pr-muted)" }}>
-            <span>Total: {rows.length} entrada{rows.length !== 1 ? "s" : ""}</span>
+            <span>Total: {rows.length} {rows.length !== 1 ? plur : sing}</span>
             <span>Registros: {total > rows.length ? `${rows.length} de ${total}` : rows.length}</span>
           </div>
         </section>
 
       </div>
 
-      <PageFooter right={`Entradas de material · Folio ${folioDoc} · ${fechaGen}`} />
+      <PageFooter right={`${titulo} · Folio ${folioDoc} · ${fechaGen}`} />
 
     </div>
   );

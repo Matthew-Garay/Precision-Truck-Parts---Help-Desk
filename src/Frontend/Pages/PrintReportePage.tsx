@@ -55,8 +55,8 @@ export function abrirReporteLista(payload: ReportePayload): void {
     const aviso = document.createElement("div");
     aviso.style.cssText =
       "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;" +
-      "background:#1D1D1B;color:#fff;padding:12px 20px;border-radius:10px;" +
-      "font-size:13px;font-weight:700;border-left:4px solid #F47920;" +
+      "background:#000000;color:#fff;padding:12px 20px;border-radius:10px;" +
+      "font-size:13px;font-weight:700;border-left:4px solid #ffffff;" +
       "box-shadow:0 4px 20px rgba(0,0,0,0.4);";
     aviso.textContent = "El navegador bloqueó la ventana emergente. Permite las ventanas emergentes para este sitio e intenta de nuevo.";
     document.body.appendChild(aviso);

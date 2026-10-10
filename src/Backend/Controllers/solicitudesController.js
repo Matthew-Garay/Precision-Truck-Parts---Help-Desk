@@ -1024,7 +1024,8 @@ export const registrarEntradaInsumo = async (req, res) => {
  */
 export const registrarSalidaInsumo = async (req, res) => {
   const { id_insumo, cantidad, items, destino, responsable, motivo, fecha, solicitante,
-    id_destino, id_responsable, id_solicitante, id_sucursal_destino } = req.body;
+    id_destino, id_responsable, id_solicitante, id_sucursal_origen, id_sucursal_destino,
+    justificacion, prioridad } = req.body;
   const renglones = Array.isArray(items) && items.length > 0
     ? items.map(r => ({ id_insumo: parseInt(r.id_insumo, 10), cantidad: parseInt(r.cantidad, 10) }))
     : [{ id_insumo: parseInt(id_insumo, 10), cantidad: parseInt(cantidad, 10) }];
@@ -1046,12 +1047,16 @@ export const registrarSalidaInsumo = async (req, res) => {
     try {
       await conn.beginTransaction();
 
-      // FECHA MANUAL del formato: es la fecha real del movimiento físico que
-      // el usuario escribe en la hoja (no la del servidor). El folio usa esa
-      // misma fecha para que hoja y consecutivo coincidan. Si no viene (hojas
-      // viejas), se usa hoy.
+      // FECHA MANUAL del formato: es la fecha y hora reales del movimiento
+      // físico que el usuario escribe en la hoja (no la del servidor). El
+      // folio usa esa misma fecha para que hoja y consecutivo coincidan.
+      // Acepta "YYYY-MM-DD" (hojas viejas) o "YYYY-MM-DDTHH:MM" (formato nuevo).
       const f = String(fecha ?? "").trim();
-      const base = /^\d{4}-\d{2}-\d{2}$/.test(f) ? new Date(`${f}T12:00:00`) : new Date();
+      const soloFecha = (f.match(/^\d{4}-\d{2}-\d{2}/) || [])[0] || "";
+      const tieneHora = /[T ]\d{2}:\d{2}/.test(f);
+      const base = /^\d{4}-\d{2}-\d{2}$/.test(soloFecha)
+        ? new Date(tieneHora ? f.replace(" ", "T") : `${soloFecha}T12:00:00`)
+        : new Date();
       const ymd = `${base.getFullYear()}${String(base.getMonth() + 1).padStart(2, "0")}${String(base.getDate()).padStart(2, "0")}`;
       const ymdSql = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}-${String(base.getDate()).padStart(2, "0")}`;
       const [[{ n }]] = await conn.query(
@@ -1075,18 +1080,58 @@ export const registrarSalidaInsumo = async (req, res) => {
         const [[s]] = await conn.query(`SELECT nombre_sucursal AS n FROM sucursal WHERE id_sucursal = ? LIMIT 1`, [parseInt(id, 10)]);
         return s?.n?.trim() || null;
       };
+      // Detalles del SOLICITANTE (quién pide el material): puesto/área,
+      // sucursal y número de empleado. Viajan dentro del motivo para que la
+      // hoja de salida y el historial puedan mostrarlos sin columna extra.
+      const detalleSolicitante = async (id) => {
+        const idn = parseInt(id, 10);
+        if (!Number.isFinite(idn)) return null;
+        const [[e]] = await conn.query(
+          `SELECT e.num_empleado AS num,
+                  COALESCE(d.nombre_departamento, r.nombre_rol) AS puesto,
+                  s.nombre_sucursal AS sucursal
+           FROM empleado e
+           LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+           LEFT JOIN rol r          ON e.id_rol          = r.id_rol
+           LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal
+           WHERE e.id_empleado = ? LIMIT 1`,
+          [idn]
+        );
+        if (!e) return null;
+        return {
+          puesto:   (e.puesto   || "").trim() || null,
+          sucursal: (e.sucursal || "").trim() || null,
+          num:      (e.num      || "").trim() || null,
+        };
+      };
       const destinoTxt     = String(destino ?? "").trim() || await nombreSucursal(id_destino ?? id_sucursal_destino) || "";
+      const origenTxt      = await nombreSucursal(id_sucursal_origen) || "";
       const responsableTxt = String(responsable ?? "").trim() || await nombreEmpleado(id_responsable) || "";
       const solicitanteTxt = String(solicitante ?? "").trim() || await nombreEmpleado(id_solicitante) || "";
+      const detSol          = id_solicitante ? await detalleSolicitante(id_solicitante) : null;
+      const justTxt        = String(justificacion ?? "").trim() || String(motivo ?? "").trim();
+      const prioTxt        = String(prioridad ?? "").trim();
+      const rutaTxt        = [origenTxt, destinoTxt].filter(Boolean).join(" → ");
 
       const prefijo = [`[${folio}] Uso interno`,
-        destinoTxt     ? `Destino: ${destinoTxt}` : null,
+        rutaTxt       ? `Ruta: ${rutaTxt}` : null,
+        destinoTxt && !origenTxt ? `Destino: ${destinoTxt}` : null,
+        tieneHora ? `Hora: ${String(f).slice(11, 16)}` : null,
+        prioTxt       ? `Prioridad: ${prioTxt}` : null,
         responsableTxt ? `Recibe: ${responsableTxt}` : null,
         solicitanteTxt ? `Entrega: ${solicitanteTxt}` : null,
-        motivo?.trim()      ? motivo.trim() : null,
+        detSol?.puesto   ? `Puesto: ${detSol.puesto}` : null,
+        detSol?.sucursal ? `SucSol: ${detSol.sucursal}` : null,
+        detSol?.num      ? `NumEmp: ${detSol.num}` : null,
+        justTxt       ? `Justificación: ${justTxt}` : null,
       ].filter(Boolean).join(" · ");
-      const motivoMov = prefijo || `[${folio}] Uso interno`;
+      // La columna `motivo` es VARCHAR(500): nunca debe rebasarla.
+      const motivoMov = (prefijo || `[${folio}] Uso interno`).slice(0, 500);
 
+      // La ruta del material queda registrada en el movimiento para que la
+      // sucursal de destino pueda ver estas salidas en SU historial.
+      const idSucOrigen  = toPosId(id_sucursal_origen);
+      const idSucDestino = toPosId(id_destino ?? id_sucursal_destino);
       const movs = [];
       for (const { id_insumo: idIns, cantidad: cant } of lista) {
         // `activo` puede no existir si aún no se corre la migración 027:
@@ -1094,11 +1139,11 @@ export const registrarSalidaInsumo = async (req, res) => {
         let ins;
         try {
           [[ins]] = await conn.query(
-            "SELECT id_insumo, nombre, marca, modelo, stock, activo FROM insumo WHERE id_insumo = ? FOR UPDATE", [idIns]
+            "SELECT id_insumo, nombre, descripcion, marca, modelo, stock, activo, imagen_url FROM insumo WHERE id_insumo = ? FOR UPDATE", [idIns]
           );
         } catch {
           [[ins]] = await conn.query(
-            "SELECT id_insumo, nombre, marca, modelo, stock FROM insumo WHERE id_insumo = ? FOR UPDATE", [idIns]
+            "SELECT id_insumo, nombre, descripcion, marca, modelo, stock, imagen_url FROM insumo WHERE id_insumo = ? FOR UPDATE", [idIns]
           );
         }
         if (!ins) {
@@ -1125,9 +1170,11 @@ export const registrarSalidaInsumo = async (req, res) => {
           stock_anterior,
           stock_nuevo,
           id_empleado: idAdmin,
+          id_sucursal_origen:  idSucOrigen,
+          id_sucursal_destino: idSucDestino,
           motivo:      motivoMov,
         });
-        movs.push({ id_movimiento, id_insumo: idIns, nombre_insumo: ins.nombre, marca: ins.marca ?? null, modelo: ins.modelo ?? null, cantidad: cant, stock_anterior, stock_nuevo });
+        movs.push({ id_movimiento, id_insumo: idIns, nombre_insumo: ins.nombre, descripcion: ins.descripcion ?? null, marca: ins.marca ?? null, modelo: ins.modelo ?? null, imagen_url: ins.imagen_url ?? null, cantidad: cant, stock_anterior, stock_nuevo });
       }
 
       await conn.commit();
@@ -1230,6 +1277,44 @@ export const getMovimientosInventario = async (req, res) => {
     res.json({ rows, total });
   } catch (err) {
     res.status(500).json({ error: "Error al obtener los movimientos de inventario", ...errDetalle(err) });
+  }
+};
+
+/**
+ * getSalidasMiSucursal
+ * GET /api/solicitudes/movimientos/mis-salidas   (cualquier rol autenticado)
+ *
+ * Salidas de material destinadas A LA SUCURSAL del usuario que hace la
+ * petición (se resuelve desde su token / empleado, nunca se acepta un id por
+ * query para que nadie pueda ver salidas de otra sucursal).
+ *
+ * Así el Historial de Insumos del rol Usuario (Sucursal) puede mostrar las
+ * mismas salidas que ve Administración, filtradas por su sucursal.
+ */
+export const getSalidasMiSucursal = async (req, res) => {
+  try {
+    const u = req.usuario ?? {};
+    let id_sucursal = toPosId(u.id_sucursal);
+    if (!id_sucursal && u.id_empleado) {
+      const [[emp]] = await pool.query(
+        "SELECT id_sucursal FROM empleado WHERE id_empleado = ? LIMIT 1",
+        [u.id_empleado]
+      );
+      id_sucursal = toPosId(emp?.id_sucursal);
+    }
+    if (!id_sucursal) return res.json({ rows: [], total: 0 });
+
+    const q = req.query ?? {};
+    const { rows, total } = await MovimientoInventario.listar({
+      page:  Math.max(parseInt(q.page) || 1, 1),
+      limit: Math.min(Math.max(parseInt(q.limit) || 100, 1), 500),
+      tipo:  "Salida",
+      id_sucursal_destino: id_sucursal,
+      q: typeof q.q === "string" && q.q.trim() ? q.q.trim().slice(0, 100) : undefined,
+    });
+    res.json({ rows, total });
+  } catch (err) {
+    res.status(500).json({ error: "Error al obtener las salidas de la sucursal", ...errDetalle(err) });
   }
 };
 

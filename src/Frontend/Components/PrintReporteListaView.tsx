@@ -92,6 +92,7 @@ function VistaIncidencias({ datos, periodo, fechaGen, nombreEmpleado }: { datos:
       <PageHeader
         titulo="Reporte de Incidencias Técnicas"
         subtitulo="Departamento de Soporte Técnico"
+        logoSrc="/assets/img/log.png"
         metaRows={[
           { label: "Período",    value: periodo },
           { label: "Registros", value: datos.length, mono: true },
@@ -149,7 +150,7 @@ function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; period
         {items.length > 0 ? items.map((it, j) => (
           <div key={j} style={{ display: "flex", alignItems: "center", gap: 4 }}>
             {it.imagen_url
-              ? <img src={it.imagen_url} alt={it.nombre} style={{ width: 22, height: 22, objectFit: "cover", borderRadius: 2, border: "1px solid #ccc", flexShrink: 0 }} />
+              ? <img src={it.imagen_url} alt={it.nombre} style={{ width: 22, height: 22, objectFit: "cover", borderRadius: 2, border: "1px solid #000000", flexShrink: 0 }} />
               : <div style={{ width: 22, height: 22, flexShrink: 0 }} />}
             <span style={{ fontSize: "6.5pt", color: "var(--pr-ink)" }}>{it.nombre} · x{it.qty} · {it.aprobado ? "Aprobado" : "Rechazado"}</span>
           </div>
@@ -166,6 +167,7 @@ function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; period
       <PageHeader
         titulo="Reporte de Solicitudes de Insumos"
         subtitulo="Departamento de Soporte Técnico"
+        logoSrc="/assets/img/log.png"
         metaRows={[
           { label: "Período",   value: periodo },
           { label: "Registros", value: datos.length, mono: true },
@@ -188,6 +190,7 @@ function VistaRendimiento({ datos, periodo, fechaGen }: { datos: RendimientoRow[
     <PageHeader
       titulo="Reporte de Rendimiento por Técnico"
       subtitulo="Departamento de Soporte Técnico"
+      logoSrc="/assets/img/log.png"
       metaRows={[
         { label: "Período",  value: periodo },
         { label: "Técnicos", value: datos.length, mono: true },
@@ -210,7 +213,7 @@ function VistaRendimiento({ datos, periodo, fechaGen }: { datos: RendimientoRow[
   const th: React.CSSProperties = {
     padding: "5px 8px", fontSize: "5.5pt", fontWeight: 900,
     textTransform: "uppercase" as const, letterSpacing: "0.12em",
-    color: "rgba(255,255,255,0.85)", whiteSpace: "nowrap" as const,
+    color: "#ffffff", whiteSpace: "nowrap" as const,
     textAlign: "center" as const, background: "var(--pr-ink)",
   };
   const thLeft: React.CSSProperties = { ...th, textAlign: "left" as const };
@@ -226,7 +229,7 @@ function VistaRendimiento({ datos, periodo, fechaGen }: { datos: RendimientoRow[
   /* barra de progreso inline */
   const PctBar = ({ pct }: { pct: number }) => (
     <div style={{ marginTop: 3, height: 3, borderRadius: 2,
-      background: "var(--pr-border)", overflow: "hidden" as const, width: "100%" }}>
+      background: "#ffffff", overflow: "hidden" as const, width: "100%" }}>
       <div style={{ height: "100%", width: `${Math.min(100, pct)}%`,
         background: "var(--pr-ink)", borderRadius: 2 }} />
     </div>

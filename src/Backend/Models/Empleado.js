@@ -250,13 +250,14 @@ const Empleado = {
   },
 
   updateAdmin: async (id, campos) => {
-    const { nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password, foto } = campos;
+    const { nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password, foto, num_empleado } = campos;
     // id_sucursal puede ser null (quitar sucursal) o un número, pero si no viene en campos no se toca
     const sucursalEnviada = Object.prototype.hasOwnProperty.call(campos, "id_sucursal");
     if (sucursalEnviada) {
       await pool.query(
         `UPDATE empleado
-         SET nombre          = COALESCE(?, nombre),
+         SET num_empleado     = COALESCE(?, num_empleado),
+             nombre          = COALESCE(?, nombre),
              ap_paterno      = COALESCE(?, ap_paterno),
              ap_materno      = COALESCE(?, ap_materno),
              email           = COALESCE(?, email),
@@ -267,14 +268,15 @@ const Empleado = {
              password        = COALESCE(?, password),
              foto            = COALESCE(?, foto)
          WHERE id_empleado = ?`,
-        [nombre ?? null, ap_paterno ?? null, ap_materno ?? null, email ?? null,
+        [num_empleado ?? null, nombre ?? null, ap_paterno ?? null, ap_materno ?? null, email ?? null,
          id_rol ?? null, id_departamento ?? null, id_sucursal ?? null,
          estatus ?? null, password ?? null, foto ?? null, id]
       );
     } else {
       await pool.query(
         `UPDATE empleado
-         SET nombre          = COALESCE(?, nombre),
+         SET num_empleado     = COALESCE(?, num_empleado),
+             nombre          = COALESCE(?, nombre),
              ap_paterno      = COALESCE(?, ap_paterno),
              ap_materno      = COALESCE(?, ap_materno),
              email           = COALESCE(?, email),
@@ -284,7 +286,7 @@ const Empleado = {
              password        = COALESCE(?, password),
              foto            = COALESCE(?, foto)
          WHERE id_empleado = ?`,
-        [nombre ?? null, ap_paterno ?? null, ap_materno ?? null, email ?? null,
+        [num_empleado ?? null, nombre ?? null, ap_paterno ?? null, ap_materno ?? null, email ?? null,
          id_rol ?? null, id_departamento ?? null,
          estatus ?? null, password ?? null, foto ?? null, id]
       );

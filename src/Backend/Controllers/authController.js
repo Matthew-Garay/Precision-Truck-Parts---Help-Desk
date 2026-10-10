@@ -269,7 +269,7 @@ export const getRoles = async (req, res) => {
 export const updateEmpleadoAdmin = async (req, res) => {
   const idNum = parseInt(req.params.id, 10);
   if (isNaN(idNum) || idNum <= 0) return res.status(400).json({ error: "ID inválido" });
-  const { nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password_nueva } = req.body;
+  const { nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password_nueva, num_empleado } = req.body;
   // Defensa en profundidad: política de dominios corporativos (además de schemaUpdateEmpleadoAdmin).
   if (email !== undefined) {
     const errEmail = validarEmailCorporativo(email);
@@ -280,6 +280,7 @@ export const updateEmpleadoAdmin = async (req, res) => {
     if (!empleado) return res.status(404).json({ error: "Empleado no encontrado" });
     const passwordHash = (password_nueva && password_nueva.trim()) ? await bcrypt.hash(password_nueva.trim(), 12) : undefined;
     await Empleado.updateAdmin(idNum, {
+      num_empleado:     num_empleado && String(num_empleado).trim() ? String(num_empleado).trim() : undefined,
       nombre:          nombre          || undefined,
       ap_paterno:      ap_paterno      || undefined,
       ap_materno:      ap_materno      !== undefined ? ap_materno : undefined,
