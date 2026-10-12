@@ -37,8 +37,8 @@ Está dirigido al personal interno de la empresa (empleados y administradores de
 - **Base de datos:** MySQL 8
 - **Tiempo real:** Socket.io
 - **Seguridad:** bcryptjs, jsonwebtoken, Zod, Helmet, express-rate-limit
-- **Archivos/PDF:** Multer, pdfjs-dist, canvas, sharp, jspdf
-- **Reportes:** exceljs, xlsx-js-style
+- **Archivos/PDF:** Multer, pdfjs-dist, canvas, sharp
+- **Reportes:** exceljs
 
 ## Requisitos previos
 
@@ -86,7 +86,7 @@ APP_URL=http://localhost:5173
 Crea la base de datos con el esquema incluido:
 
 ```bash
-mysql -u root -p < docs/database.sql
+mysql -u root -p < "docs/MYSQL Database/database.utf8.sql"
 ```
 
 Arranca todo (frontend + backend):
@@ -114,12 +114,15 @@ Un ticket se crea desde **Nuevo Reporte**: título, descripción, categoría, pr
 
 ```
 PrecisionTrucks_HelpDesk/
-├── docs/          # Scripts SQL de la base de datos (MySQL)
-├── src/Backend/   # Servidor Express (server.js, Controllers, Models, Routes)
-├── src/Frontend/  # Aplicación React (Pages, Components, Config)
-├── public/        # Archivos estáticos
-├── storage/       # PDFs, evidencias y fotos de perfil subidas
-├── scripts/       # Scripts de mantenimiento (respaldar, migraciones)
+├── docs/                    # Documentación técnica y esquema MySQL
+│   └── MYSQL Database/      # database.utf8.sql, dump_schema.mjs, schema_dump.txt
+├── src/Backend/             # Servidor Express (server.js, Controllers, Models, Routes, Middlewares, utils)
+├── src/Frontend/            # Aplicación React (Pages, Components, Config, Styles)
+├── public/                  # Archivos estáticos (assets/img)
+├── storage/                 # Evidencias, insumos y manuales subidos (regenerable)
+├── scripts/                 # Scripts de mantenimiento (liberar-puertos.ps1)
+├── respaldar.ps1            # Copia de seguridad de la BD + storage
+├── restaurar.ps1            # Restauración de una copia
 ├── .env.example
 ├── package.json
 └── README.md

@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useCallback } from "react";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
 import { apiFetch } from "../../Config/api";
@@ -7,11 +7,10 @@ import { evaluarPassword, passwordSeguro } from "../../Config/password.js";
 import FiltrosToolbar from "../../Components/FiltrosToolbar";
 import { X, Eye, EyeOff } from "lucide-react";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "";
 const ORANGE  = "#F47920";
 
 // ── Avatar ────────────────────────────────────────────────────────
-function Avatar({ nombre, foto, size = 48, isDark }) {
+function Avatar({ nombre, size = 48, isDark }) {
   const partes = (nombre || "").split(" ").filter(Boolean);
   const iniciales = partes.slice(0, 2).map(p => p[0]?.toUpperCase() || "").join("");
   const colores = [
@@ -23,17 +22,6 @@ function Avatar({ nombre, foto, size = 48, isDark }) {
   const [light, dark] = colores[idx];
   const bg = isDark ? dark : light + "22";
   const fg = isDark ? light : light;
-
-  if (foto) {
-    const rel = foto.startsWith("/storage/") ? foto : `/storage/${foto}`;
-    const src = foto.startsWith("http") ? foto : `${API_URL}${rel.split("/").map(encodeURIComponent).join("/")}`;
-    return (
-      <div style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: `2px solid ${fg}44` }}>
-        <img src={src} alt={nombre} style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          onError={e => { e.target.style.display = "none"; e.target.parentElement.innerHTML = `<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:${bg};font-size:${size*0.33}px;font-weight:700;color:${fg}">${iniciales||"?"}</span>`; }} />
-      </div>
-    );
-  }
 
   return (
     <div style={{ width: size, height: size, borderRadius: "50%", background: bg, border: `2px solid ${fg}44`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -383,8 +371,13 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
   const [desde,      setDesde]      = useState("");
   const [hasta,      setHasta]      = useState("");
   const [tipoFiltro, setTipoFiltro] = useState("todos");
+  const [pagina,     setPagina]     = useState(1);
+  const [pageSize,   setPageSize]   = useState(20);
 
   const nombre = `${empleado.nombre} ${empleado.ap_paterno}`.trim();
+
+  // Volver a la página 1 cuando cambian los filtros o el empleado consultado
+  useEffect(() => { setPagina(1); }, [desde, hasta, tipoFiltro, empleado.id_empleado]);
 
   useEffect(() => {
     apiFetch(`/api/auth/accesos/${empleado.id_empleado}`)
@@ -428,6 +421,12 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
     if (hasta) { const h = new Date(hasta); h.setHours(23,59,59,999); if (new Date(a.fecha_entrada) > h) return false; }
     return true;
   });
+
+  // Paginación del historial
+  const totalPaginas    = Math.max(1, Math.ceil(filtrados.length / pageSize));
+  const paginaActual    = Math.min(pagina, totalPaginas);
+  const registrosPagina = filtrados.slice((paginaActual - 1) * pageSize, paginaActual * pageSize);
+  const irPagina        = p => { if (p >= 1 && p <= totalPaginas) setPagina(p); };
 
   const exportarCSV = () => {
     const filas = [["Entrada","Salida","Duración","Estado"], ...filtrados.map(a => [fmt(a.fecha_entrada), fmt(a.fecha_salida), duracion(a.fecha_entrada, a.fecha_salida)||"-", a.fecha_salida?"Cerrada":"Activa"])];
@@ -581,10 +580,10 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
               <p style={{ fontSize: 13, fontWeight: 600, color: tk.textMuted, margin: 0 }}>Sin registros</p>
               <p style={{ fontSize: 11, color: tk.textFaint, margin: 0 }}>Ajusta el rango o los filtros</p>
             </div>
-          ) : filtrados.map((a, i) => {
+          ) : registrosPagina.map((a, i) => {
             const dur = duracion(a.fecha_entrada, a.fecha_salida);
             return (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: `1px solid ${tk.border}` }}>
+              <div key={a.id_acceso ?? i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: `1px solid ${tk.border}` }}>
                 <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: a.fecha_salida ? "#94a3b8" : "#22c55e", boxShadow: a.fecha_salida ? "none" : "0 0 0 3px rgba(34,197,94,0.2)" }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -600,9 +599,29 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
         </div>
 
         {/* Footer */}
-        <div style={{ padding: "10px 18px", borderTop: `1px solid ${tk.border}`, background: tk.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-          <span style={{ fontSize: 11, color: tk.textFaint }}>{filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ padding: "10px 18px", borderTop: `1px solid ${tk.border}`, background: tk.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
+          <span style={{ fontSize: 11, color: tk.textFaint }}>
+            {filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}
+            {totalPaginas > 1 && ` · mostrando ${((paginaActual - 1) * pageSize) + 1}–${Math.min(paginaActual * pageSize, filtrados.length)}`}
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            {/* Paginación */}
+            <button onClick={() => irPagina(paginaActual - 1)} disabled={paginaActual <= 1}
+              style={{ padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: paginaActual <= 1 ? "not-allowed" : "pointer", border: `1px solid ${tk.border}`, background: tk.surface, color: tk.textMuted, opacity: paginaActual <= 1 ? 0.4 : 1 }}>
+              ‹
+            </button>
+            <span style={{ fontSize: 11, color: tk.textMuted, minWidth: 44, textAlign: "center" }}>{paginaActual} / {totalPaginas}</span>
+            <button onClick={() => irPagina(paginaActual + 1)} disabled={paginaActual >= totalPaginas}
+              style={{ padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: paginaActual >= totalPaginas ? "not-allowed" : "pointer", border: `1px solid ${tk.border}`, background: tk.surface, color: tk.textMuted, opacity: paginaActual >= totalPaginas ? 0.4 : 1 }}>
+              ›
+            </button>
+            <select
+              value={pageSize}
+              onChange={e => { setPageSize(parseInt(e.target.value, 10)); setPagina(1); }}
+              style={{ padding: "3px 6px", borderRadius: 6, border: `1px solid ${tk.border}`, background: tk.surface, color: tk.textMain, fontSize: 11, colorScheme: isDark ? "dark" : "light" }}>
+              {[10, 20, 50].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <span style={{ width: 1, height: 16, background: tk.border, margin: "0 2px" }} />
             <button onClick={exportarCSV} disabled={filtrados.length === 0}
               style={{ padding: "5px 12px", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, opacity: filtrados.length === 0 ? 0.4 : 1, background: "transparent", border: `1px solid ${tk.border}`, borderRadius: 6, cursor: filtrados.length === 0 ? "not-allowed" : "pointer", color: tk.textMuted, transition: "all 0.12s" }}
               onMouseEnter={e => { if (filtrados.length > 0) { e.currentTarget.style.borderColor = tk.textMuted; e.currentTarget.style.color = tk.textMain; }}}
@@ -701,93 +720,9 @@ function SortIcon({ dir }) {
   );
 }
 
-// ── Lightbox Foto ─────────────────────────────────────────────────
-function LightboxFoto({ src, nombre, onCerrar, isDark }) {
-  useEffect(() => {
-    const fn = (e) => { if (e.key === "Escape") onCerrar(); };
-    document.addEventListener("keydown", fn);
-    return () => document.removeEventListener("keydown", fn);
-  }, [onCerrar]);
-
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, []);
-
-  const border = isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0";
-
-  return (
-    <div
-      role="presentation"
-      style={{
-        position: "fixed", inset: 0, zIndex: 9999,
-        background: isDark ? "rgba(0,0,0,0.80)" : "rgba(15,23,42,0.75)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "24px",
-        animation: "lbFade 0.15s ease",
-      }}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onCerrar(); }}
-    >
-      <style>{`@keyframes lbFade{from{opacity:0}to{opacity:1}} @keyframes lbSlide{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}`}</style>
-      <div
-        role="dialog"
-        aria-modal="true"
-        style={{
-          position: "relative", maxWidth: 520, width: "100%",
-          background: isDark ? "#161B22" : "#ffffff",
-          border: `1px solid ${border}`,
-          borderRadius: "10px", overflow: "hidden",
-          boxShadow: isDark
-            ? "0 16px 40px rgba(0,0,0,0.60), 0 1px 0 rgba(255,255,255,0.04) inset"
-            : "0 16px 40px rgba(15,23,42,0.18)",
-          animation: "lbSlide 0.18s ease",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Banda acento */}
-        <div style={{ height: "2px", background: ORANGE, borderRadius: "10px 10px 0 0" }} />
-        {/* Header */}
-        <div style={{
-          padding: "12px 16px",
-          borderBottom: `1px solid ${border}`,
-          display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
-        }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>Empleado</p>
-            {nombre && <p style={{ margin: "2px 0 0", fontSize: "13px", fontWeight: 700, color: isDark ? "#e2e8f0" : "#1a202c", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</p>}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
-            <img
-              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
-              alt="Precision Trucks"
-              style={{ height: "26px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
-            />
-            <button
-              onClick={onCerrar}
-              style={{ width: "26px", height: "26px", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${border}`, borderRadius: "6px", cursor: "pointer", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0", transition: "all 0.12s" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = isDark ? "#8b949e" : "#64748b"; e.currentTarget.style.color = isDark ? "#e2e8f0" : "#1a202c"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = isDark ? "rgba(255,255,255,0.30)" : "#a0aec0"; }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-        </div>
-        {/* Imagen */}
-        <div style={{ padding: "16px", background: isDark ? "#0d1117" : "#f8fafc" }}>
-          <img
-            src={src} alt={nombre}
-            style={{ width: "100%", maxHeight: "70vh", objectFit: "contain", borderRadius: "6px", display: "block" }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Tabla de Empleados ────────────────────────────────────────────
 function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleEstatus }) {
-  const [lightbox, setLightbox] = useState(null);
   const [sort, setSort] = useState({ col: "nombre", dir: "asc" });
   const [pagina,   setPagina]   = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -832,7 +767,9 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
     color: T.textMuted,
     background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt,
     borderBottom: `2px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`,
+    boxShadow: `inset 0 -2px 0 ${isDark ? "rgba(255,255,255,0.08)" : T.border}`,
     userSelect: "none",
+    position: "sticky", top: 0, zIndex: 2,
   };
 
   const tdS = {
@@ -844,8 +781,9 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
   };
 
   return (
-    <div style={{ borderRadius: 10, overflow: "hidden", background: T.surface, border: `1px solid ${T.border}`, boxShadow: isDark ? "0 1px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.05)" }}>
-      <div style={{ overflowX: "auto" }}>
+    <div style={{ borderRadius: 10, overflow: "hidden", background: T.surface, border: `1px solid ${T.border}`, boxShadow: isDark ? "0 1px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+      {/* Scroll interno de filas: la página no se mueve, el encabezado queda fijo */}
+      <div style={{ overflowX: "auto", overflowY: "auto", flex: 1, minHeight: 0 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
           <thead>
             <tr>
@@ -866,9 +804,6 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
               const nombre = `${emp.nombre} ${emp.ap_paterno} ${emp.ap_materno || ""}`.trim();
               const activo = emp.estatus === "Activo";
               const rowBg  = i % 2 === 0 ? (isDark ? "transparent" : T.surface) : (isDark ? "rgba(255,255,255,0.015)" : T.surfaceAlt);
-              const fotoSrc = emp.foto
-                ? (emp.foto.startsWith("http") ? emp.foto : `${API_URL}${(emp.foto.startsWith("/storage/") ? emp.foto : `/storage/${emp.foto}`).split("/").map(encodeURIComponent).join("/")}`)
-                : null;
 
               return (
                 <tr key={emp.id_empleado}
@@ -879,11 +814,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
                   {/* Empleado */}
                   <td style={tdS}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div
-                        onClick={fotoSrc ? () => setLightbox({ src: fotoSrc, nombre }) : undefined}
-                        style={{ cursor: fotoSrc ? "zoom-in" : "default", flexShrink: 0 }}>
-                        <Avatar nombre={nombre} foto={emp.foto} size={30} isDark={isDark} />
-                      </div>
+                      <Avatar nombre={nombre} size={30} isDark={isDark} />
                       <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                         <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: activo ? "#22c55e" : "#94a3b8", boxShadow: activo ? "0 0 0 2.5px rgba(34,197,94,0.2)" : "none" }} />
                         <span style={{ fontSize: 13, fontWeight: 600, color: T.text, whiteSpace: "nowrap" }}>{nombre}</span>
@@ -936,36 +867,33 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
         </table>
       </div>
 
-      {/* Footer tabla + paginación — siempre visible y fijo al fondo */}
-      <div style={{ padding: "8px 12px", borderTop: `1px solid ${T.border}`, background: isDark ? "rgba(255,255,255,0.02)" : T.surfaceAlt, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8, position: "sticky", bottom: 0, zIndex: 5 }}>
-        <span style={{ fontSize: 11, color: T.textFaint }}>
+      {/* Footer tabla + paginación — mismo estilo que Historial de Insumos */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2" style={{ borderTop: `1px solid ${T.border}`, background: isDark ? "rgba(255,255,255,0.02)" : T.surfaceAlt, flexShrink: 0 }}>
+        <span className="text-[11px]" style={{ color: T.textFaint }}>
           {sorted.length} empleado{sorted.length !== 1 ? "s" : ""}
           {totalPaginas > 1 && ` · mostrando ${((paginaActual - 1) * pageSize) + 1}–${Math.min(paginaActual * pageSize, sorted.length)}`}
         </span>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <button
-            disabled={paginaActual <= 1}
-            onClick={() => irPagina(paginaActual - 1)}
-            style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: paginaActual <= 1 ? "not-allowed" : "pointer", border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.textMuted, opacity: paginaActual <= 1 ? 0.4 : 1 }}>
+        <div className="flex items-center gap-2">
+          <button disabled={paginaActual <= 1} onClick={() => irPagina(paginaActual - 1)}
+            className="px-2 py-1 rounded border text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ borderColor: T.border, background: T.surfaceAlt, color: T.text }}>
             ‹ Ant
           </button>
-          <span style={{ fontSize: 11, color: T.textMuted, minWidth: 54, textAlign: "center" }}>{paginaActual} / {totalPaginas}</span>
-          <button
-            disabled={paginaActual >= totalPaginas}
-            onClick={() => irPagina(paginaActual + 1)}
-            style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: paginaActual >= totalPaginas ? "not-allowed" : "pointer", border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.textMuted, opacity: paginaActual >= totalPaginas ? 0.4 : 1 }}>
+          <span className="text-[11px] px-1" style={{ color: T.textMuted }}>{paginaActual} / {totalPaginas}</span>
+          <button disabled={paginaActual >= totalPaginas} onClick={() => irPagina(paginaActual + 1)}
+            className="px-2 py-1 rounded border text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ borderColor: T.border, background: T.surfaceAlt, color: T.text }}>
             Sig ›
           </button>
-          <label style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>Mostrar</label>
+          <label className="text-[10px]" style={{ color: T.textMuted }}>Mostrar</label>
           <select
             value={pageSize}
             onChange={e => { setPageSize(parseInt(e.target.value, 10)); setPagina(1); }}
-            style={{ padding: "3px 6px", borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 11 }}>
+            className="text-[11px]" style={{ padding: "3px 6px", borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.text }}>
             {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
       </div>
-      {lightbox && <LightboxFoto src={lightbox.src} nombre={lightbox.nombre} onCerrar={() => setLightbox(null)} isDark={isDark} />}
     </div>
   );
 }
@@ -1080,7 +1008,7 @@ export default function Personal({ T }) {
         </FiltrosToolbar>
 
         {/* Contenido */}
-        <div style={{ marginTop: 10, flex: 1, minHeight: 0, overflowY: "auto", paddingBottom: 24 }}>
+        <div style={{ marginTop: 10, flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {loading ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "80px 0" }}>
               <svg className="animate-spin" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>

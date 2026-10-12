@@ -16,7 +16,7 @@ import RendimientoTecnicos from "./RendimientoTecnicos";
 import { apiFetch, API_ROUTES } from "../../Config/api";
 import { useTheme } from "../../Config/themeContext.js";
 import { useAutoRefresh } from "../../Config/useAutoRefresh";
-import { SeccionEstadisticas, SeccionMetricas, KanbanBoard, PanelDerecho } from "../../Components/DashboardShared.jsx";
+import { SeccionEstadisticas, SeccionMetricas, SeccionInsumos, KanbanBoard, PanelDerecho } from "../../Components/DashboardShared.jsx";
 import CampanaNotificaciones from "../../Components/CampanaNotificaciones.jsx";
 import { useTicketNotification } from "../../Config/useTicketNotification.js";
 
@@ -92,6 +92,7 @@ function DashboardContent({ T, usuario, tickets = [], solicitudes = [], metricas
       <div className="flex-shrink-0" style={{ padding: "var(--content-pt) var(--content-px) 0" }}>
         <SeccionMetricas T={T} metricas={metricas} />
         <SeccionEstadisticas T={T} tickets={tickets} solicitudes={solicitudes} />
+        <SeccionInsumos T={T} />
       </div>
       <div className="flex-shrink-0" style={{ padding: "4px var(--content-px) 10px" }}>
         <KanbanBoard T={T} tickets={tickets} solicitudes={solicitudes} onVerTicket={onVerTicket} onVerSolicitud={onVerSolicitud} inline />
@@ -357,7 +358,6 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
 
       {/* Panel derecho solo en xl+ */}
       <PanelDerecho T={T} nombre={nombreCompleto} departamento={departamento} sucursal={sucursal}
-        foto={usuario.foto ? `/storage/${usuario.foto}` : null}
         tickets={tickets}
         etiquetaRol="Activo" />
     </div>

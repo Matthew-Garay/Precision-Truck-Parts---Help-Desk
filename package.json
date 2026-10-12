@@ -13,7 +13,6 @@
     "preall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/liberar-puertos.ps1",
     "all": "npm run dev:all",
     "probar:correo": "node --import ./src/Backend/load-env.js src/Backend/scripts/probar-correo.js",
-    "migrate": "node --import ./src/Backend/load-env.js src/Backend/scripts/migrate.js",
     "respaldar": "powershell -ExecutionPolicy Bypass -File respaldar.ps1"
   },
   "dependencies": {
@@ -31,8 +30,6 @@
     "file-type": "^22.0.1",
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
-    "jspdf": "^4.2.1",
-    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.12.0",
     "multer": "^2.1.1",
     "mysql2": "^3.22.3",
@@ -44,8 +41,6 @@
     "sharp": "^0.35.3",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
-    "xlsx": "^0.18.5",
-    "xlsx-js-style": "^1.2.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -54,8 +49,7 @@
     "concurrently": "^10.0.3",
     "cross-env": "^7.0.3",
     "tailwindcss": "^4.1.7",
-    "vite": "^6.3.5",
-    "wait-on": "^9.0.10"
+    "vite": "^6.3.5"
   },
   "allowScripts": {
     "esbuild@0.25.12": true

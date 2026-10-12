@@ -70,8 +70,8 @@ const DISPONIBILIDAD_EXPR = `CASE
 
 const Insumo = {
 
-  // ¿La columna `activo` (baja lógica, migración 027) ya existe?
-  // Si aún no se corrió `npm run migrate`, las consultas siguen
+  // ¿La columna `activo` (baja lógica) ya existe en la tabla?
+  // Si la columna no existe, las consultas siguen
   // funcionando: se asume todo activo (=1).
   _tieneActivo: null,
   _tieneActivoCheck: async () => {
