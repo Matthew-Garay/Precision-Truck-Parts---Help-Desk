@@ -29,15 +29,16 @@
  *   Cada card es clicable y llama a onVerTicket u onVerSolicitud.
  *   Con inline=true se renderiza en un grid en lugar de scroll horizontal.
  *
- * PanelDerecho({ T, nombre, departamento, sucursal, foto, tickets })
+ * PanelDerecho({ T, nombre, departamento, sucursal, tickets })
  *   Panel lateral fijo visible en pantallas lg o mayores.
- *   Contiene foto de perfil con estado activo, reloj, estadisticas
+ *   Contiene indicador de estado activo, reloj, estadisticas
  *   personales con barra de tasa de resolucion y calendario mensual.
  */
-import { useState } from "react";
-import { User, Clock, CheckCircle2, Timer, Building2, BarChart2, Package, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { User, Clock, CheckCircle2, Timer, Building2, BarChart2, Package, TrendingUp, Boxes, Layers, TrendingDown, AlertTriangle } from "lucide-react";
 import { RelojFecha, Calendario } from "./RelojCalendario.jsx";
 import { useCardStyles } from "./Card";
+import { apiFetch, API_ROUTES } from "../Config/api";
 
 // -- TENDENCIA CHART (HTML puro, sin SVG, 100% responsive) ----
 function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
@@ -521,6 +522,131 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
   );
 }
 
+// -- SECCION INSUMOS (inventario) ----------------------------------------
+export function SeccionInsumos({ T }) {
+  const isDark = T.isDark;
+  const { card: cardStyle } = useCardStyles(T, "elevated");
+  const [insumos, setInsumos] = useState([]);
+  const [movimientos, setMovimientos] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let vivo = true;
+    Promise.all([
+      apiFetch(API_ROUTES.INVENTARIO).then(r => r.json()).catch(() => []),
+      apiFetch(`${API_ROUTES.MOVIMIENTOS_INSUMOS}?limit=500`).then(r => r.json()).catch(() => ({ rows: [] })),
+    ]).then(([inv, movs]) => {
+      if (!vivo) return;
+      setInsumos(Array.isArray(inv) ? inv : []);
+      setMovimientos(Array.isArray(movs?.rows) ? movs.rows : []);
+    }).finally(() => { if (vivo) setLoading(false); });
+    return () => { vivo = false; };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="mb-2 w-full">
+        <div className="rounded-xl px-4 py-4 flex items-center justify-center" style={cardStyle}>
+          <span className="text-xs font-semibold" style={{ color: T.textMuted }}>Cargando inventario...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const num = v => Number(v) || 0;
+  const total       = insumos.length;
+  const disponibles = insumos.filter(i => i.disponibilidad === "Disponible").length;
+  const stockBajo   = insumos.filter(i => i.disponibilidad === "Stock bajo").length;
+  const sinStock    = insumos.filter(i => i.disponibilidad === "Sin stock").length;
+  const unidades    = insumos.reduce((s, i) => s + num(i.stock), 0);
+
+  const disponibilidadData = [
+    { label: "Disponible", color: "#16a34a", valor: disponibles },
+    { label: "Stock bajo", color: "#ca8a04", valor: stockBajo },
+    { label: "Sin stock",  color: "#dc2626", valor: sinStock },
+  ];
+  const totalDisp = disponibilidadData.reduce((s, d) => s + d.valor, 0);
+
+  const movData = [
+    { label: "Entradas", color: "#16a34a", valor: movimientos.filter(m => m.tipo === "Entrada").length },
+    { label: "Salidas",  color: "#dc2626", valor: movimientos.filter(m => m.tipo === "Salida").length },
+    { label: "Ajustes",  color: "#3b82f6", valor: movimientos.filter(m => m.tipo === "Ajuste").length },
+  ];
+  const maxMov = Math.max(...movData.map(d => d.valor), 1);
+
+  const kpis = [
+    { label: "Total",      valor: total,      color: "#F47920", Icon: Boxes },
+    { label: "Unidades",   valor: unidades,   color: "#3b82f6", Icon: Layers },
+    { label: "Stock bajo", valor: stockBajo,  color: "#ca8a04", Icon: TrendingDown },
+    { label: "Sin stock",  valor: sinStock,   color: "#dc2626", Icon: AlertTriangle },
+  ];
+  return (
+    <div className="mb-2 w-full">
+      {/* KPIs compactos */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-2">
+        {kpis.map(({ label, valor, color, Icon }) => (
+          <div key={label} className="rounded-xl px-3 py-2 flex items-center gap-2.5" style={cardStyle}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: isDark ? `${color}22` : `${color}18` }}>
+              <Icon size={16} style={{ color }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[9px] font-black uppercase tracking-wider truncate" style={{ color: T.textFaint }}>{label}</p>
+              <p className="text-base font-black leading-none mt-0.5" style={{ color }}>{valor}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Dos graficas compactas en una fila */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {/* Disponibilidad */}
+        <div className="rounded-xl overflow-hidden flex items-center gap-3 px-3 py-2.5" style={cardStyle}>
+          <div className="flex-shrink-0"><GraficaPastel data={disponibilidadData} size={62} T={T} /></div>
+          <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+            <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>Disponibilidad</p>
+            {disponibilidadData.map((d, i) => {
+              const pct = totalDisp > 0 ? Math.round((d.valor / totalDisp) * 100) : 0;
+              return (
+                <div key={i} className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
+                    <span className="text-[11px] font-semibold truncate" style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{d.label}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className="text-[11px] font-black" style={{ color: d.color }}>{d.valor}</span>
+                    <span className="text-[9px] font-semibold" style={{ color: T.textFaint }}>({pct}%)</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Movimientos */}
+        <div className="rounded-xl overflow-hidden flex flex-col justify-center gap-1.5 px-3 py-2.5" style={cardStyle}>
+          <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>Movimientos</p>
+          {movData.map((d, i) => {
+            const pct = Math.round((d.valor / maxMov) * 100);
+            return (
+              <div key={i} className="flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold" style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{d.label}</span>
+                  <span className="text-[11px] font-black" style={{ color: d.color }}>{d.valor}</span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.border }}>
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${d.valor > 0 ? Math.max(pct, 8) : 0}%`, background: d.color }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // -- KANBAN BOARD --
 const PRIORIDADES = [
   { id: "Urgente", label: "Urgente", color: "#dc2626", bg: "#fee2e2", bgDark: "rgba(220,38,38,0.18)" },
@@ -669,8 +795,9 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
   );
 }
 
-export function PanelDerecho({ T, nombre, departamento, sucursal, foto, tickets = [], totalArea = 0, etiquetaRol = "Activo" }) {
+export function PanelDerecho({ T, nombre, departamento, sucursal, tickets = [], totalArea = 0, etiquetaRol = "Activo" }) {
   const isDark    = T.isDark;
+  const iniciales = (nombre || "").split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() || "").join("");
   const total     = tickets.length;
   const enProceso = tickets.filter(t => t.estatus === "En proceso").length;
   const resueltos = tickets.filter(t => t.estatus === "Resuelto").length;
@@ -701,10 +828,10 @@ export function PanelDerecho({ T, nombre, departamento, sucursal, foto, tickets 
         <div className="flex-shrink-0 px-3.5 py-4" style={{ borderBottom: `1px solid ${T.border}` }}>
           <div className="flex flex-col items-center text-center gap-2">
             <div className="flex-shrink-0 rounded-full overflow-hidden"
-              style={{ width: "40px", height: "40px", border: `2px solid ${T.surface}`, outline: `2px solid ${T.orange}`, background: T.bg, boxShadow: `0 0 0 3px ${isDark ? "rgba(244,121,32,0.15)" : "rgba(244,121,32,0.1)"}` }}>
-              {foto
-                ? <img src={foto} alt="perfil" className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex items-center justify-center"><User size={16} style={{ color: T.textFaint }} /></div>}
+              style={{ width: "40px", height: "40px", border: `2px solid ${T.surface}`, outline: `2px solid ${T.orange}`, background: isDark ? "rgba(244,121,32,0.18)" : "rgba(244,121,32,0.10)", boxShadow: `0 0 0 3px ${isDark ? "rgba(244,121,32,0.15)" : "rgba(244,121,32,0.1)"}` }}>
+              <div className="w-full h-full flex items-center justify-center" style={{ fontSize: "13px", fontWeight: 800, color: T.orange, letterSpacing: "-0.02em" }}>
+                {iniciales || <User size={16} style={{ color: T.textFaint }} />}
+              </div>
             </div>
             <div className="w-full min-w-0">
               <p className="text-[11.5px] font-bold leading-tight truncate" style={{ color: T.text }} title={nombre || ""}>
@@ -771,5 +898,4 @@ export function PanelDerecho({ T, nombre, departamento, sucursal, foto, tickets 
     </aside>
   );
 }
-
 

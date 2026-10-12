@@ -5,7 +5,7 @@
  *
  * FUNCIÓN PRINCIPAL: generarFolio(conn, tabla, campoFolio, prefijo)
  * ─────────────────────────────────────────────────────────────────
- * Genera un folio secuencial con formato <PREFIJO>-YYYYMM-NNN de forma
+ * Genera un folio secuencial con formato <PREFIJO>-YYYYMMDD-NNNN de forma
  * segura bajo alta concurrencia mediante bloqueo exclusivo FOR UPDATE.
  *
  * Estrategia anti-race-condition:
@@ -15,8 +15,8 @@
  *      leer el mismo rango hasta que la transacción actual haga COMMIT o
  *      ROLLBACK. Esto garantiza que dos conexiones simultáneas nunca lean
  *      el mismo "último número" y produzcan folios duplicados.
- *   3. El número secuencial (NNN) se reinicia automáticamente cada mes al
- *      cambiar el segmento YYYYMM del prefijo.
+ *   3. El número secuencial (NNNN) se reinicia automáticamente cada día al
+ *      cambiar el segmento YYYYMMDD del prefijo.
  *
  * Parámetros:
  *   @param {import('mysql2/promise').PoolConnection} conn
@@ -26,7 +26,7 @@
  *   @param {string} prefijo     Prefijo del folio         (ej. "PTP" | "SOL")
  *
  * Retorna:
- *   @returns {Promise<string>}  Folio generado, ej. "PTP-202507-001"
+ *   @returns {Promise<string>}  Folio generado, ej. \"PTP-20261006-0001\" / \"SAL-20261006-0001\"
  *
  * Uso en Ticket.js:
  *   import { generarFolio } from "../utils/helpers.js";
@@ -50,7 +50,8 @@ export async function generarFolio(conn, tabla, campoFolio, prefijo) {
   const ahora   = new Date();
   const anio    = ahora.getFullYear();
   const mes     = String(ahora.getMonth() + 1).padStart(2, "0");
-  const segmento = `${prefijo}-${anio}${mes}-`;
+  const dia     = String(ahora.getDate()).padStart(2, "0");
+  const segmento = `${prefijo}-${anio}${mes}${dia}-`;
 
   // FOR UPDATE: bloquea las filas del mes actual hasta el COMMIT del llamador.
   // CAST(...AS UNSIGNED) ordena numéricamente para obtener el último NNN real,
@@ -68,5 +69,5 @@ export async function generarFolio(conn, tabla, campoFolio, prefijo) {
   const ultimo = rows[0]?.[campoFolio];
   const num    = ultimo ? parseInt(ultimo.split("-").pop(), 10) + 1 : 1;
 
-  return `${segmento}${String(num).padStart(3, "0")}`;
+  return `${segmento}${String(num).padStart(4, "0")}`;
 }

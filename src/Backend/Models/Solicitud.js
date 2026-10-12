@@ -51,7 +51,7 @@ const Solicitud = {
       await conn.beginTransaction();
 
       // Delega al helper centralizado con bloqueo FOR UPDATE anti race-condition
-      const folio = await generarFolio(conn, "solicitud", "folio_solicitud", "SOL");
+      const folio = await generarFolio(conn, "solicitud", "folio_solicitud", "SAL");
 
       const [result] = await conn.query(
         `INSERT INTO solicitud (folio_solicitud, prioridad, id_empleado) VALUES (?, ?, ?)`,

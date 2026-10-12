@@ -90,7 +90,7 @@ function IconBtn({ onClick, title, children, hoverColor = "#2563eb", hoverBg = "
       onClick={onClick} title={title} aria-label={title}
       onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)}
       style={{
-        width: "24px", height: "24px", borderRadius: "5px", border: `1px solid ${h ? "transparent" : T.border}`,
+        width: "28px", height: "26px", borderRadius: "6px", border: `1px solid ${h ? "transparent" : T.border}`,
         background: h ? hoverBg : "transparent",
         color: h ? hoverColor : T.textFaint,
         display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -162,14 +162,14 @@ function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHistorial,
     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", tableLayout: "fixed", minWidth: "720px" }}>
       <colgroup>
         <col style={{ width: "40px" }} />
-        <col style={{ width: "34%" }} />
-        <col style={{ width: "18%" }} />
-        <col style={{ width: "12%" }} />
-        <col style={{ width: "12%" }} />
-        <col style={{ width: "150px" }} />
+        <col style={{ width: "32%" }} />
+        <col style={{ width: "17%" }} />
+        <col style={{ width: "11%" }} />
+        <col style={{ width: "11%" }} />
+        <col style={{ width: "188px" }} />
       </colgroup>
       <thead>
-        <tr>{COLS.map(c => <th key={c} style={th}>{c}</th>)}</tr>
+        <tr>{COLS.map((c, i) => <th key={c} style={{ ...th, ...(i === COLS.length - 1 ? { textAlign: "right" } : null) }}>{c}</th>)}</tr>
       </thead>
       <tbody>
         {rows.map((row) => {
@@ -238,26 +238,26 @@ function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHistorial,
               </td>
               {/* Acciones */}
               <td style={{ ...td }}>
-                <div style={{ display: "flex", gap: "3px", flexWrap: "nowrap", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: "4px", flexWrap: "nowrap", alignItems: "center", justifyContent: "flex-end" }}>
                   <IconBtn onClick={() => onEntrada(row)} title="Registrar entrada de material" hoverColor={TEAL.base} hoverBg={TEAL.light}>
-                    <ArrowDownToLine size={12} />
+                    <ArrowDownToLine size={13} />
                   </IconBtn>
                   {/* Salida manual: mismo lugar que Entrada, con este insumo precargado */}
                   <IconBtn onClick={() => onSalida?.(row)} title="Registrar salida manual de material" hoverColor={ORANGE.base} hoverBg={ORANGE.light}>
-                    <ArrowUpFromLine size={12} />
+                    <ArrowUpFromLine size={13} />
                   </IconBtn>
                   <IconBtn onClick={() => onDetail(row)} title="Ver detalle" hoverColor="#2563eb" hoverBg="#eff6ff">
-                    <Eye size={12} />
+                    <Eye size={13} />
                   </IconBtn>
                   <IconBtn onClick={() => onEditar?.(row)} title="Editar insumo" hoverColor="#0d9488" hoverBg="#f0fdfa">
-                    <Pencil size={12} />
+                    <Pencil size={13} />
                   </IconBtn>
                   <IconBtn onClick={() => onHistorial(row)} title="Ver entradas de este insumo" hoverColor="#6366f1" hoverBg="#eef2ff">
-                    <History size={12} />
+                    <History size={13} />
                   </IconBtn>
                   {/* Un solo botón: abrirá el panel para Inhabilitar/Habilitar o Eliminar */}
                   <IconBtn onClick={() => onGestionar?.(row)} title="Inhabilitar o eliminar insumo" hoverColor="#dc2626" hoverBg="#fef2f2">
-                    <MoreVertical size={12} />
+                    <MoreVertical size={13} />
                   </IconBtn>
                 </div>
                 {Number(row.activo ?? 1) === 0 && (

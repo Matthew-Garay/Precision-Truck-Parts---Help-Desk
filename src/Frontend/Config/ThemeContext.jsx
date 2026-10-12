@@ -29,6 +29,9 @@ import { ThemeContext } from "./themeContext.js";
 
 function applyTheme(isDark) {
   document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+  // Sincroniza el color de la barra de estado del navegador en móvil
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", isDark ? "#0D1117" : "#F8FAFC");
 }
 
 export function ThemeProvider({ children }) {

@@ -1,4 +1,4 @@
-# ════════════════════════════════════════════════
+﻿# ════════════════════════════════════════════════
 #   PrecisionTrucks HelpDesk — .gitignore
 #   Arquitectura: Monorepo (Vite + Express + MySQL)
 # ════════════════════════════════════════════════
@@ -29,13 +29,11 @@ src/Backend/Workers/reset_tokens.json.tmp
 
 # ── Storage (archivos subidos por usuarios) ──────
 storage/Evidencias_Tickets/*
-storage/Fotos de Perfil/*
 storage/Insumos/*
 storage/Manuales/*
 storage/_tmp_upload/*
 # Mantener estructura de carpetas
 !storage/Evidencias_Tickets/.gitkeep
-!storage/Fotos de Perfil/.gitkeep
 !storage/Insumos/.gitkeep
 !storage/Manuales/.gitkeep
 !storage/_tmp_upload/.gitkeep
@@ -117,7 +115,6 @@ ngrok.exe
 
 # ── Respaldos locales de la base de datos ──────────────────────────────
 # NUNCA versionar: contienen datos personales reales (nombres, correos,
-# hashes de contrasena y rutas de fotos) de los empleados.
 backups/
 
 # Dump de la base de datos guardado junto a la documentacion. Es el mismo
