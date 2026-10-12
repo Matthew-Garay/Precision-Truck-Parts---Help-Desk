@@ -159,13 +159,13 @@ function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHistorial,
   };
 
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", tableLayout: "fixed", minWidth: "520px" }}>
+    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", tableLayout: "fixed", minWidth: "720px" }}>
       <colgroup>
-        <col style={{ width: "36px" }} />
-        <col style={{ width: "42%" }} />
-        <col style={{ width: "16%" }} />
-        <col style={{ width: "11%" }} />
-        <col style={{ width: "13%" }} />
+        <col style={{ width: "40px" }} />
+        <col style={{ width: "34%" }} />
+        <col style={{ width: "18%" }} />
+        <col style={{ width: "12%" }} />
+        <col style={{ width: "12%" }} />
         <col style={{ width: "150px" }} />
       </colgroup>
       <thead>
@@ -854,12 +854,20 @@ export default function Inventario() {
   };
   // Al cambiar de pestaña Entradas <-> Salidas se resetea página y filtro por insumo
   const cambiarVistaMov = (id) => {
+    // "Salidas" es una ACCIÓN: abre el modal de salida SIN cambiar la vista de
+    // fondo, para que no aparezca la pantalla/tarjeta vacía "Registrar salida"
+    // detrás del modal. El usuario solo ve el modal.
+    if (id === "salidas") {
+      setMovFiltros({ q: "", fecha_inicio: "", fecha_fin: "", id_insumo: "" });
+      setMovInsumo(null);
+      setMovPagina(1);
+      setSalida(true);
+      return;
+    }
     setMovFiltros({ q: "", fecha_inicio: "", fecha_fin: "", id_insumo: "" });
     setMovInsumo(null);
     setMovPagina(1);
     setVista(id);
-    // Entrar a "Salidas" abre DIRECTO el modal de salida (sin pantalla intermedia).
-    if (id === "salidas") setSalida(true);
   };
 
   // Etiquetas de los filtros activos de la pestaña Insumos (para la hoja impresa)
@@ -909,9 +917,6 @@ export default function Inventario() {
   // ── Salida interna: guarda el formato que trae el modal y abre la hoja para llenar/firmar
   const salidaGuardada = (d, form) => {
     setSalida(null);
-    // Si la salida se hizo desde la pestaña "Salidas", regresamos al catálogo
-    // para no volver a mostrar la pantalla intermedia.
-    if (vista === "salidas") setVista("insumos");
     cargarInventario(false);
     if (vista === "entradas") cargarMovimientos("Entrada");
     try {
@@ -1269,7 +1274,7 @@ export default function Inventario() {
       {salida !== null && (
         <ModalSalidaInsumo insumos={insumos}
           insumoInicial={typeof salida === "object" ? salida?.id_insumo : null}
-          onClose={() => { setSalida(null); if (vista === "salidas") setVista("insumos"); }}
+          onClose={() => setSalida(null)}
           onSaved={salidaGuardada}
           T={T} />
       )}

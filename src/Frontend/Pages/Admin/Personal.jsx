@@ -789,6 +789,11 @@ function LightboxFoto({ src, nombre, onCerrar, isDark }) {
 function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleEstatus }) {
   const [lightbox, setLightbox] = useState(null);
   const [sort, setSort] = useState({ col: "nombre", dir: "asc" });
+  const [pagina,   setPagina]   = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Volver a la página 1 cuando cambia el orden o la cantidad de filas filtradas
+  useEffect(() => { setPagina(1); }, [sort.col, sort.dir, empleados.length]);
 
   const toggleSort = col => setSort(s => ({ col, dir: s.col === col && s.dir === "asc" ? "desc" : "asc" }));
 
@@ -804,6 +809,11 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
     const cmp = fn(a).localeCompare(fn(b), "es");
     return sort.dir === "asc" ? cmp : -cmp;
   });
+
+  const totalPaginas = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const paginaActual = Math.min(pagina, totalPaginas);
+  const filasPagina  = sorted.slice((paginaActual - 1) * pageSize, paginaActual * pageSize);
+  const irPagina     = p => { if (p >= 1 && p <= totalPaginas) setPagina(p); };
 
   const COLS = [
     { key: "nombre",   label: "Empleado",  sortable: true  },
@@ -852,7 +862,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
             </tr>
           </thead>
           <tbody>
-            {sorted.map((emp, i) => {
+            {filasPagina.map((emp, i) => {
               const nombre = `${emp.nombre} ${emp.ap_paterno} ${emp.ap_materno || ""}`.trim();
               const activo = emp.estatus === "Activo";
               const rowBg  = i % 2 === 0 ? (isDark ? "transparent" : T.surface) : (isDark ? "rgba(255,255,255,0.015)" : T.surfaceAlt);
@@ -926,9 +936,34 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
         </table>
       </div>
 
-      {/* Footer tabla */}
-      <div style={{ padding: "8px 16px", borderTop: `1px solid ${T.border}`, background: isDark ? "rgba(255,255,255,0.02)" : T.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-        <span style={{ fontSize: 11, color: T.textFaint }}>{empleados.length} empleado{empleados.length !== 1 ? "s" : ""}</span>
+      {/* Footer tabla + paginación — siempre visible y fijo al fondo */}
+      <div style={{ padding: "8px 12px", borderTop: `1px solid ${T.border}`, background: isDark ? "rgba(255,255,255,0.02)" : T.surfaceAlt, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8, position: "sticky", bottom: 0, zIndex: 5 }}>
+        <span style={{ fontSize: 11, color: T.textFaint }}>
+          {sorted.length} empleado{sorted.length !== 1 ? "s" : ""}
+          {totalPaginas > 1 && ` · mostrando ${((paginaActual - 1) * pageSize) + 1}–${Math.min(paginaActual * pageSize, sorted.length)}`}
+        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            disabled={paginaActual <= 1}
+            onClick={() => irPagina(paginaActual - 1)}
+            style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: paginaActual <= 1 ? "not-allowed" : "pointer", border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.textMuted, opacity: paginaActual <= 1 ? 0.4 : 1 }}>
+            ‹ Ant
+          </button>
+          <span style={{ fontSize: 11, color: T.textMuted, minWidth: 54, textAlign: "center" }}>{paginaActual} / {totalPaginas}</span>
+          <button
+            disabled={paginaActual >= totalPaginas}
+            onClick={() => irPagina(paginaActual + 1)}
+            style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: paginaActual >= totalPaginas ? "not-allowed" : "pointer", border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.textMuted, opacity: paginaActual >= totalPaginas ? 0.4 : 1 }}>
+            Sig ›
+          </button>
+          <label style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>Mostrar</label>
+          <select
+            value={pageSize}
+            onChange={e => { setPageSize(parseInt(e.target.value, 10)); setPagina(1); }}
+            style={{ padding: "3px 6px", borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 11 }}>
+            {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
       </div>
       {lightbox && <LightboxFoto src={lightbox.src} nombre={lightbox.nombre} onCerrar={() => setLightbox(null)} isDark={isDark} />}
     </div>

@@ -52,6 +52,44 @@ function DataRow({ icon: Icon, label, value, T, multiline = false, highlight }) 
   );
 }
 
+function SpecCard({ icon: Icon, label, value, isDark, mono = false }) {
+  if (!value && value !== 0) return null;
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: "9px",
+      padding: "10px 12px", borderRadius: "8px",
+      background: isDark ? "rgba(255,255,255,0.02)" : "#f8fafc",
+      border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#e8ecf0"}`,
+      minWidth: 0,
+    }}>
+      <div style={{
+        width: "28px", height: "28px", borderRadius: "7px", flexShrink: 0,
+        background: isDark ? "rgba(244,121,32,0.12)" : "rgba(244,121,32,0.09)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <Icon size={13} style={{ color: ORANGE }} />
+      </div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <p style={{
+          margin: 0, fontSize: "9px", fontWeight: 800, textTransform: "uppercase",
+          letterSpacing: "0.08em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0",
+        }}>
+          {label}
+        </p>
+        <p style={{
+          margin: "2px 0 0",
+          fontSize: mono ? "11px" : "13px", fontWeight: 600,
+          fontFamily: mono ? "'JetBrains Mono','Courier New',monospace" : "inherit",
+          color: isDark ? "#e2e8f0" : "#1a202c",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = false }) {
   const [imgError, setImgError] = useState(false);
   const [ampliar, setAmpliar] = useState(false);   // imagen en grande
@@ -87,6 +125,10 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
   const textMuted  = T?.textMuted ?? (isDark ? "#8b949e" : "#64748b");
   const textFaint  = T?.textFaint ?? (isDark ? "rgba(255,255,255,0.25)" : "#a0aec0");
 
+  // Color del stock según nivel (mismo criterio que la tabla de inventario)
+  const stockVal   = insumo.stock ?? 0;
+  const stockColor = stockVal === 0 ? "#dc2626" : stockVal <= 3 ? "#d97706" : "#16a34a";
+
   return (
     <div
       role="presentation"
@@ -108,7 +150,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
         role="dialog"
         aria-modal="true"
         style={{
-          width: "95%", maxWidth: "460px",
+          width: "95%", maxWidth: "560px",
           background: surface,
           border: `1px solid ${border}`,
           borderRadius: "10px",
@@ -220,51 +262,95 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
             </div>
           )}
 
-          <div style={{ padding: "16px 18px" }}>
+          <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: "16px" }}>
 
-            {/* Badges + stock */}
-            <div style={{
-              display: "flex", alignItems: "center",
-              justifyContent: "space-between", gap: "8px",
-              flexWrap: "wrap", marginBottom: "16px",
-            }}>
-              <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
-                {insumo.estado         && <Badge value={insumo.estado}         map={ESTADO_META} />}
-                {!ocultarStock && insumo.disponibilidad && <Badge value={insumo.disponibilidad} map={DISP_META}   />}
-                {insumo.nombre_categoria && (
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", gap: "4px",
-                    padding: "2px 9px", borderRadius: "99px", fontSize: "0.95rem", fontWeight: 600,
-                    background: isDark ? "rgba(244,121,32,0.10)" : "rgba(244,121,32,0.08)",
-                    color: ORANGE, border: `1px solid rgba(244,121,32,0.22)`,
-                  }}>
-                    <Tag size={9} />{insumo.nombre_categoria}
-                  </span>
-                )}
-              </div>
-
-
+            {/* ── Badges: estado / disponibilidad / categoría ── */}
+            <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
+              {insumo.estado && <Badge value={insumo.estado} map={ESTADO_META} />}
+              {!ocultarStock && insumo.disponibilidad && <Badge value={insumo.disponibilidad} map={DISP_META} />}
+              {insumo.nombre_categoria && (
+                <span style={{
+                  display: "inline-flex", alignItems: "center", gap: "4px",
+                  padding: "2px 9px", borderRadius: "99px", fontSize: "0.95rem", fontWeight: 600,
+                  background: isDark ? "rgba(244,121,32,0.10)" : "rgba(244,121,32,0.08)",
+                  color: ORANGE, border: `1px solid rgba(244,121,32,0.22)`,
+                }}>
+                  <Tag size={9} />{insumo.nombre_categoria}
+                </span>
+              )}
             </div>
 
-            {/* Datos */}
-            <DataRow icon={Package}   label="Nombre"       value={insumo.nombre}                 T={T} />
-            <DataRow icon={Layers}    label="Marca"        value={insumo.marca}                  T={T} />
-            <DataRow icon={Layers}    label="Modelo"       value={insumo.modelo}                 T={T} />
-            <DataRow icon={Hash}      label="N.º de serie" value={insumo.num_serie}               T={T} />
+            {/* ── Stock destacado (solo admin / cuando aplica) ── */}
             {!ocultarStock && insumo.stock != null && (
-              <DataRow
-                icon={BarChart2}
-                label="Stock"
-                value={insumo.stock != null ? `${insumo.stock} unidad${insumo.stock !== 1 ? "es" : ""}` : null}
-                T={T}
-                highlight={
-                  insumo.stock === 0 ? "#dc2626"
-                  : insumo.stock < 5 ? "#d97706"
-                  : "#16a34a"
-                }
-              />
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "12px 14px", borderRadius: "10px",
+                background: stockColor === "#dc2626"
+                  ? (isDark ? "rgba(220,38,38,0.08)" : "#fef2f2")
+                  : stockColor === "#d97706"
+                    ? (isDark ? "rgba(217,119,6,0.08)" : "#fffbeb")
+                    : (isDark ? "rgba(22,163,74,0.08)" : "#f0fdf4"),
+                border: `1px solid ${stockColor === "#dc2626"
+                  ? "rgba(220,38,38,0.25)"
+                  : stockColor === "#d97706"
+                    ? "rgba(217,119,6,0.25)"
+                    : "rgba(22,163,74,0.25)"}`,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <BarChart2 size={16} style={{ color: stockColor }} />
+                  <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: textMuted }}>
+                    Stock disponible
+                  </span>
+                </div>
+                <span style={{ fontSize: "22px", fontWeight: 800, color: stockColor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                  {insumo.stock}
+                  <span style={{ fontSize: "11px", fontWeight: 600, marginLeft: "3px", color: textMuted }}>
+                    unid.
+                  </span>
+                </span>
+              </div>
             )}
-            <DataRow icon={AlignLeft} label="Descripción"  value={insumo.descripcion?.trim() || null} T={T} multiline />
+
+            {/* ── Especificaciones (tarjetas) ── */}
+            {(insumo.marca || insumo.modelo || insumo.num_serie) && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                <SpecCard icon={Layers} label="Marca"        value={insumo.marca}    isDark={isDark} />
+                <SpecCard icon={Layers} label="Modelo"       value={insumo.modelo}   isDark={isDark} />
+                <SpecCard icon={Hash}   label="N.º de serie" value={insumo.num_serie} isDark={isDark} mono />
+              </div>
+            )}
+
+            {/* ── Descripción ── */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "6px" }}>
+                <AlignLeft size={12} style={{ color: ORANGE }} />
+                <span style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: textMuted }}>
+                  Descripción
+                </span>
+              </div>
+              {insumo.descripcion?.trim() ? (
+                <p style={{
+                  margin: 0, fontSize: "13px", lineHeight: "1.65",
+                  color: isDark ? "#cbd5e1" : "#475569",
+                  whiteSpace: "pre-wrap", wordBreak: "break-word",
+                  padding: "12px 14px", borderRadius: "8px",
+                  background: isDark ? "rgba(255,255,255,0.02)" : "#f8fafc",
+                  border: `1px solid ${border}`,
+                  borderLeft: `3px solid ${ORANGE}`,
+                }}>
+                  {insumo.descripcion.trim()}
+                </p>
+              ) : (
+                <p style={{
+                  margin: 0, fontSize: "12px", fontStyle: "italic",
+                  color: textFaint, padding: "12px 14px", borderRadius: "8px",
+                  background: isDark ? "rgba(255,255,255,0.015)" : "#fafbfc",
+                  border: `1px dashed ${border}`,
+                }}>
+                  Sin descripción registrada
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
