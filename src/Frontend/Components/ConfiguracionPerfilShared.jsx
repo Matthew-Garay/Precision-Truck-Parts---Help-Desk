@@ -6,16 +6,13 @@
  * y Usuario/ConfiguracionPerfil.jsx pasando el prop rol adecuado.
  *
  * Secciones:
- *   - Banner de perfil con foto editable, nombre, correo y departamento.
+ *   - Banner de perfil con nombre, correo y departamento.
  *   - Datos personales: nombre, apellidos y correo electronico.
  *   - Cambiar contrasena: campo de contrasena actual (de solo lectura,
  *     leido desde sessionStorage), nueva contrasena y confirmacion.
  *   - Historial de accesos: tabla paginada con fecha de entrada, salida
  *     y duracion de cada sesion. Los admins pueden filtrar por mes y anio.
  *     Boton para exportar el historial como PDF via generarPDFAccesos.
- *
- * La foto se edita mediante el flujo: seleccionar archivo -> ModalRecorte
- * para ajustar encuadre -> procesarYSubirFoto para subir al servidor.
  *
  * Los datos del empleado y el historial de accesos se recargan automaticamente
  * cada 30 segundos con setInterval.
@@ -32,7 +29,7 @@ import { User } from "lucide-react";
 import API, { apiFetch } from "../Config/api";
 import { emailCorporativoValido, DOMINIOS_PERMITIDOS } from "../Config/email.js";
 import { evaluarPassword, passwordSeguro } from "../Config/password.js";
-import { EyeBtn, ModalRecorte, usePerfilStyles, procesarYSubirFoto, generarPDFAccesos } from "./PerfilShared";
+import { EyeBtn, usePerfilStyles, generarPDFAccesos } from "./PerfilShared";
 
 export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActualizado, rol = "Usuario" }) {
   const isDark = T.isDark;
@@ -53,11 +50,6 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
 
   // Política de contraseña: se evalúa en vivo con cada tecla
   const evaluacion = evaluarPassword(passNueva);
-
-  const fotoUrl = f => f ? `/storage/${f}` : null;
-  const [foto,         setFoto]         = useState(fotoUrl(usuario.foto));
-  const [subiendoFoto, setSubiendoFoto] = useState(false);
-  const [cropSrc,      setCropSrc]      = useState(null);
 
   const [accesos,    setAccesos]    = useState([]);
   const [perfil,     setPerfil]     = useState(usuario);
@@ -610,27 +602,6 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
           </div>
         </div>
       </div>
-    )}
-
-    {cropSrc && (
-      <ModalRecorte src={cropSrc} isDark={isDark} T={T}
-        onCancelar={() => setCropSrc(null)}
-        onConfirmar={async crop => {
-          const src = cropSrc;
-          setCropSrc(null);
-          setSubiendoFoto(true);
-          try {
-            await procesarYSubirFoto(src, crop, usuario.id_empleado, rutaBD => {
-              setFoto(fotoUrl(rutaBD));
-              const u = JSON.parse(sessionStorage.getItem("usuario") || "{}");
-              const actualizado = { ...u, foto: rutaBD };
-              sessionStorage.setItem("usuario", JSON.stringify(actualizado));
-              onUsuarioActualizado?.(actualizado);
-            });
-          } catch (e) { console.error("Error subiendo foto:", e); }
-          finally { setSubiendoFoto(false); }
-        }}
-      />
     )}
     </>
   );

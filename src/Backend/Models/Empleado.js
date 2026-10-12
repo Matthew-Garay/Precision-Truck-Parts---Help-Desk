@@ -17,7 +17,7 @@
  *     compararlo en el proceso de cambio de contrasena.
  *
  *   updatePerfil(id, campos)
- *     Actualiza nombre, apellidos, email, password y foto del empleado.
+ *     Actualiza nombre, apellidos, email y password del empleado.
  *     Usa COALESCE en el SQL para que solo se sobreescriban los campos
  *     que se pasen con valor distinto de null o undefined.
  *     El SQL es completamente estatico, sin construccion dinamica de columnas.
@@ -80,7 +80,7 @@ const Empleado = {
   findByEmail: async (email) => {
     const [rows] = await pool.query(
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
-              e.email, e.password, e.foto, e.estatus, e.id_rol, e.id_departamento,
+              e.email, e.password, e.estatus, e.id_rol, e.id_departamento,
               e.id_sucursal, e.token_version,
               d.nombre_departamento, s.nombre_sucursal
        FROM empleado e
@@ -96,7 +96,7 @@ const Empleado = {
   findById: async (id) => {
     const [rows] = await pool.query(
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
-              e.email, e.foto, e.estatus, e.id_rol, e.id_departamento,
+              e.email, e.estatus, e.id_rol, e.id_departamento,
               e.id_sucursal, d.nombre_departamento, s.nombre_sucursal
        FROM empleado e
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
@@ -117,7 +117,7 @@ const Empleado = {
     return rows[0] || null;
   },
 
-  updatePerfil: async (id, { nombre, ap_paterno, ap_materno, email, password, foto }) => {
+  updatePerfil: async (id, { nombre, ap_paterno, ap_materno, email, password }) => {
     // SQL estático - sin construcción dinámica de nombres de columna
     await pool.query(
       `UPDATE empleado
@@ -125,17 +125,14 @@ const Empleado = {
            ap_paterno = COALESCE(?, ap_paterno),
            ap_materno = COALESCE(?, ap_materno),
            email      = COALESCE(?, email),
-           password   = COALESCE(?, password),
-           foto       = COALESCE(?, foto)
+           password   = COALESCE(?, password)
        WHERE id_empleado = ?`,
       [
         nombre      ?? null,
         ap_paterno  ?? null,
         ap_materno  ?? null,
         email       ?? null,
-        password    ?? null,
-        foto        ?? null,
-        id,
+        password    ?? null,        id,
       ]
     );
     cache.delMany(["empleados:all", `empleado:nombre:${id}`]);
@@ -186,7 +183,7 @@ const Empleado = {
     if (hit) return hit;
     const [rows] = await pool.query(
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
-              e.email, e.foto, e.estatus, e.id_rol, e.id_departamento, e.id_sucursal,
+              e.email, e.estatus, e.id_rol, e.id_departamento, e.id_sucursal,
               d.nombre_departamento, r.nombre_rol, s.nombre_sucursal
        FROM empleado e
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
@@ -250,7 +247,7 @@ const Empleado = {
   },
 
   updateAdmin: async (id, campos) => {
-    const { nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password, foto, num_empleado } = campos;
+    const { nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password, num_empleado } = campos;
     // id_sucursal puede ser null (quitar sucursal) o un número, pero si no viene en campos no se toca
     const sucursalEnviada = Object.prototype.hasOwnProperty.call(campos, "id_sucursal");
     if (sucursalEnviada) {
@@ -265,12 +262,11 @@ const Empleado = {
              id_departamento = COALESCE(?, id_departamento),
              id_sucursal     = ?,
              estatus         = COALESCE(?, estatus),
-             password        = COALESCE(?, password),
-             foto            = COALESCE(?, foto)
+             password        = COALESCE(?, password)
          WHERE id_empleado = ?`,
         [num_empleado ?? null, nombre ?? null, ap_paterno ?? null, ap_materno ?? null, email ?? null,
          id_rol ?? null, id_departamento ?? null, id_sucursal ?? null,
-         estatus ?? null, password ?? null, foto ?? null, id]
+         estatus ?? null, password ?? null, id]
       );
     } else {
       await pool.query(
@@ -283,12 +279,11 @@ const Empleado = {
              id_rol          = COALESCE(?, id_rol),
              id_departamento = COALESCE(?, id_departamento),
              estatus         = COALESCE(?, estatus),
-             password        = COALESCE(?, password),
-             foto            = COALESCE(?, foto)
+             password        = COALESCE(?, password)
          WHERE id_empleado = ?`,
         [num_empleado ?? null, nombre ?? null, ap_paterno ?? null, ap_materno ?? null, email ?? null,
          id_rol ?? null, id_departamento ?? null,
-         estatus ?? null, password ?? null, foto ?? null, id]
+         estatus ?? null, password ?? null, id]
       );
     }
     cache.delMany(["empleados:all", `empleado:nombre:${id}`]);

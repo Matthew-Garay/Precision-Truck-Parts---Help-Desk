@@ -396,7 +396,6 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
       </div>
 
       <PanelDerecho T={T} nombre={nombreCompleto} departamento={departamento} sucursal={usuario.sucursal || usuario.nombre_sucursal || "-"}
-        foto={usuario.foto ? `/storage/${usuario.foto}` : null}
         tickets={tickets} etiquetaRol="Usuario activo" />
     </div>
   );

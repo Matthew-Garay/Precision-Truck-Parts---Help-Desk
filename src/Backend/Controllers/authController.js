@@ -1,4 +1,4 @@
-/**
+﻿/**
  * authController.js
  *
  * Controlador encargado de la autenticacion de usuarios y la gestion
@@ -22,11 +22,6 @@
  *     Para cambiar la contrasena se requiere la contrasena actual correcta.
  *     Verifica que el id del parametro de ruta coincide con el id del JWT para
  *     impedir que un usuario modifique el perfil de otro.
- *
- *   subirFotoEmpleado
- *     Recibe una imagen procesada por el middleware uploadFoto, elimina la foto
- *     anterior del disco si existia, guarda la ruta relativa en la base de datos
- *     y retorna la nueva ruta para que el frontend actualice la interfaz.
  *
  *   getAllEmpleados
  *     Retorna la lista completa de empleados. Nunca incluye el campo password.
@@ -57,15 +52,9 @@
 import Empleado from "../Models/Empleado.js";
 import bcrypt   from "bcryptjs";
 import jwt      from "jsonwebtoken";
-import path     from "path";
-import fs       from "fs";
 import crypto   from "crypto";
 import pool     from "../Config/db.js";
-import { safeResolvePath } from "../Middlewares/security.js";
-import { uploadFoto, FOTOS_DIR, FOTOS_REL } from "../Middlewares/uploadFotos.js";
 import { validarEmailCorporativo } from "../Middlewares/validate.js";
-
-export { uploadFoto };
 
 const isProd = () => process.env.NODE_ENV === "production";
 const errDetalle = (err) => isProd() ? {} : { detalle: err.message };
@@ -88,27 +77,6 @@ export const refreshToken = async (req, res) => {
     res.json({ ok: true, token });
   } catch (err) {
     res.status(500).json({ error: "Error al renovar token", ...errDetalle(err) });
-  }
-};
-
-export const subirFotoEmpleado = async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
-  try {
-    if (!req.file) return res.status(400).json({ error: "No se recibió ninguna imagen" });
-    const emp = await Empleado.findById(id);
-    if (emp?.foto) {
-      const fotoBase = path.basename(emp.foto);
-      try {
-        const oldPath = safeResolvePath(FOTOS_DIR, fotoBase);
-        await fs.promises.unlink(oldPath);
-      } catch { /* ruta inválida o archivo ya no existe, ignorar */ }
-    }
-    const rutaBD = `${FOTOS_REL}/${req.file.filename}`;
-    await Empleado.updateAdmin(id, { foto: rutaBD });
-    res.json({ ok: true, foto: rutaBD });
-  } catch (err) {
-    res.status(500).json({ error: "Error al subir foto", ...errDetalle(err) });
   }
 };
 
@@ -153,7 +121,6 @@ export const login = async (req, res) => {
         ap_paterno:      empleado.ap_paterno,
         ap_materno:      empleado.ap_materno || "",
         email:           empleado.email,
-        foto:            empleado.foto || null,
         id_rol:          empleado.id_rol,
         rol:             empleado.id_rol === 1 ? "admin" : "usuario",
         departamento:    empleado.nombre_departamento,
@@ -366,7 +333,6 @@ export const actualizarPerfil = async (req, res) => {
         ap_paterno:      actualizado.ap_paterno,
         ap_materno:      actualizado.ap_materno || "",
         email:           actualizado.email,
-        foto:            actualizado.foto || null,
         id_rol:          actualizado.id_rol,
         rol:             actualizado.id_rol === 1 ? "admin" : "usuario",
         departamento:    actualizado.nombre_departamento,

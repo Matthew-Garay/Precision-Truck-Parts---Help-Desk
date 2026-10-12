@@ -25,8 +25,7 @@
  *    - express.json: parsea el cuerpo JSON con limite de 2 MB
  *
  * 5. Sirve archivos estaticos:
- *    - /storage : archivos de evidencias, manuales y fotos (bloquea .json y .env)
- *    - /fotos   : carpeta de fotos de perfil, requiere autenticacion JWT
+ *    - /storage : archivos de evidencias y manuales (bloquea .json y .env)
  *
  * 6. Registra todas las rutas de la API bajo los prefijos:
  *    /api/auth        - autenticacion, empleados y recuperacion de contrasena
@@ -240,9 +239,6 @@ app.use("/storage", (req, res, next) => {
   }
   next();
 }, express.static(path.resolve(__dirname, "../../storage")));
-
-// Las fotos de perfil requieren JWT valido para ser accedidas.
-app.use("/fotos", requireAuth, express.static(path.resolve(__dirname, "../../storage/Fotos de Perfil")));
 
 // -- Rutas ----------------------------------------------------
 app.get("/api/ping", (_req, res) => res.json({ status: "ok", message: "Servidor HelpDesk activo" }));

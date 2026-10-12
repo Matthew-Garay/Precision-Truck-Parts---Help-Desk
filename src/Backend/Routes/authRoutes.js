@@ -34,7 +34,6 @@
  * Rutas protegidas (requieren JWT valido via requireAuth):
  *
  *   PUT  /perfil/:id          - actualiza perfil del propio empleado
- *   POST /perfil/:id/foto     - sube foto de perfil del propio empleado
  *   GET  /accesos/:id         - historial de accesos (dueno o admin)
  *   GET  /departamentos       - catalogo de departamentos
  *   GET  /roles               - catalogo de roles
@@ -46,7 +45,6 @@
  *   GET  /empleados           - listado completo de empleados
  *   PUT  /empleados/:id       - edicion de cualquier empleado
  *   POST /empleados           - creacion de nuevo empleado
- *   POST /empleados/:id/foto  - el admin puede cambiar la foto de cualquier empleado
  */
 import { Router }    from "express";
 import rateLimit     from "express-rate-limit";
@@ -56,7 +54,7 @@ import { validate, schemaLogin, schemaLogout, schemaActualizarPerfil, schemaCrea
 import {
   login, logout, actualizarPerfil, getAccesos, getAllAccesos,
   getAllEmpleados, getEmpleadoById, getDepartamentos, getRoles, getSucursales, updateEmpleadoAdmin, crearEmpleado,
-  subirFotoEmpleado, uploadFoto, refreshToken
+  refreshToken
 } from "../Controllers/authController.js";
 import { solicitarRecuperacion, verificarCodigo, resetPassword } from "../Controllers/resetController.js";
 import { zohoLogin, zohoCallback } from "../Controllers/zohoController.js";
@@ -128,7 +126,6 @@ router.get("/zoho/callback", zohoCallback);
 // Rutas protegidas
 router.use(requireAuth);
 router.put("/perfil/:id",          validate(schemaActualizarPerfil), actualizarPerfil);
-router.post("/perfil/:id/foto",    ...uploadFoto.single("foto"), subirFotoEmpleado);
 router.get("/accesos/:id",         requireOwnerOrAdmin, getAccesos);
 router.get("/departamentos",       getDepartamentos);
 router.get("/sucursales",          getSucursales);
@@ -141,6 +138,5 @@ router.get("/accesos",             getAllAccesos);
 router.get("/empleados",           getAllEmpleados);
 router.put("/empleados/:id",       validate(schemaUpdateEmpleadoAdmin), updateEmpleadoAdmin);
 router.post("/empleados",          validate(schemaCrearEmpleado),       crearEmpleado);
-router.post("/empleados/:id/foto", ...uploadFoto.single("foto"), subirFotoEmpleado);
 
 export default router;

@@ -125,6 +125,9 @@
    Todo rem/em en el sistema hereda esta base automáticamente  */
 html {
   font-size: clamp(10px, 0.55vw + 0.2vh + 0.1vmin, 12.5px);
+  background-color: var(--ptp-neutral);
+  color-scheme: light;
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -135,6 +138,7 @@ body {
   background-color:        var(--ptp-neutral);
   -webkit-font-smoothing:  antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
 }
 
 /* ================================================================

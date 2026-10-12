@@ -193,7 +193,6 @@ export const zohoCallback = async (req, res) => {
       ap_paterno:      empleado.ap_paterno,
       ap_materno:      empleado.ap_materno || "",
       email:           empleado.email,
-      foto:            empleado.foto || null,
       id_rol:          empleado.id_rol,
       rol:             empleado.id_rol === 1 ? "admin" : "usuario",
       departamento:    empleado.nombre_departamento,
