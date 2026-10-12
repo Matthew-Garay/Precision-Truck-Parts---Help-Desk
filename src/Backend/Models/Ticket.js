@@ -335,14 +335,24 @@ const Ticket = {
     if (cached) return cached;
 
     // Tiempo promedio de resolución (en horas) de tickets resueltos
+    // IMPORTANTE: se excluye "Soporte Técnico" y "Auxiliar de Soporte Técnico":
+    // ese equipo ATIENDE las incidencias, no las reporta, por lo que no debe
+    // contaminar las métricas. Se filtra por NOMBRE (no por id) para que sea
+    // robusto ante renumeraciones de departamentos.
     const [[{ promedio_horas }]] = await pool.query(
-      `SELECT ROUND(AVG(TIMESTAMPDIFF(HOUR, fecha_subido, fecha_resuelto)), 1) AS promedio_horas
-       FROM ticket WHERE estatus = 'Resuelto' AND fecha_resuelto IS NOT NULL`
+      `SELECT ROUND(AVG(TIMESTAMPDIFF(HOUR, t.fecha_subido, t.fecha_resuelto)), 1) AS promedio_horas
+       FROM ticket t
+       LEFT JOIN empleado e ON t.id_empleado = e.id_empleado
+       LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       WHERE t.estatus = 'Resuelto' AND t.fecha_resuelto IS NOT NULL
+         AND (d.id_departamento IS NULL
+              OR d.nombre_departamento NOT IN ('Soporte Técnico', 'Auxiliar de Soporte Técnico'))`
     );
 
     // Tickets por departamento
-    // IMPORTANTE: se excluye "Soporte Técnico": ese equipo ATIENDE incidencias,
-    // no las solicita, por lo que no debe aparecer como solicitante en el reporte.
+    // IMPORTANTE: se excluye "Soporte Técnico" y "Auxiliar de Soporte Técnico":
+    // ese equipo ATIENDE incidencias, no las solicita, por lo que no debe
+    // aparecer como solicitante en el reporte.
     const [porDepartamento] = await pool.query(
       `SELECT d.nombre_departamento AS departamento,
               COUNT(*) AS total,
@@ -350,20 +360,26 @@ const Ticket = {
        FROM ticket t
        LEFT JOIN empleado e ON t.id_empleado = e.id_empleado
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
-       WHERE d.id_departamento IS NULL OR d.id_departamento <> 2
+       WHERE d.id_departamento IS NULL
+          OR d.nombre_departamento NOT IN ('Soporte Técnico', 'Auxiliar de Soporte Técnico')
        GROUP BY d.id_departamento, d.nombre_departamento
        ORDER BY total DESC`
     );
 
     // Tendencia mensual - últimos 6 meses
+    // IMPORTANTE: se excluye "Soporte Técnico" y "Auxiliar de Soporte Técnico", igual que las demás métricas.
     const [tendenciaRaw] = await pool.query(
-      `SELECT DATE_FORMAT(fecha_subido, '%Y-%m') AS mes,
+      `SELECT DATE_FORMAT(t.fecha_subido, '%Y-%m') AS mes,
               COUNT(*) AS total,
-              CAST(SUM(estatus = 'Resuelto') AS UNSIGNED) AS resueltos,
-              CAST(SUM(estatus = 'No Resuelto') AS UNSIGNED) AS no_resueltos,
-              CAST(SUM(estatus = 'En proceso') AS UNSIGNED) AS en_proceso
-       FROM ticket
-       WHERE fecha_subido >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+              CAST(SUM(t.estatus = 'Resuelto') AS UNSIGNED) AS resueltos,
+              CAST(SUM(t.estatus = 'No Resuelto') AS UNSIGNED) AS no_resueltos,
+              CAST(SUM(t.estatus = 'En proceso') AS UNSIGNED) AS en_proceso
+       FROM ticket t
+       LEFT JOIN empleado e ON t.id_empleado = e.id_empleado
+       LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       WHERE t.fecha_subido >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+         AND (d.id_departamento IS NULL
+              OR d.nombre_departamento NOT IN ('Soporte Técnico', 'Auxiliar de Soporte Técnico'))
        GROUP BY mes
        ORDER BY mes ASC`
     );
