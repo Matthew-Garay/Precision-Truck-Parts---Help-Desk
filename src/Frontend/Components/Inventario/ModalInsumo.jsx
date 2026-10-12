@@ -96,7 +96,9 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
     e?.preventDefault();
     if (!form.nombre.trim()) return setError("El nombre es requerido.");
     if (!form.id_categoria)  return setError("Selecciona una categoría.");
-    if (form.stock < 0)      return setError("El stock no puede ser negativo.");
+    // En edición el stock NO se puede modificar aquí: solo cambia por
+    // "Entrada de material". Se reenvía el valor actual para no alterarlo.
+    if (!isEdit && form.stock < 0) return setError("El stock no puede ser negativo.");
 
     setSaving(true);
     setError("");
@@ -154,6 +156,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
       <style>{`
         @keyframes miF { from{opacity:0} to{opacity:1} }
         @keyframes miS { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
+        input[readonly]{ cursor: not-allowed; }
       `}</style>
 
       <div
@@ -342,10 +345,18 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
 
             {/* Stock + Categoría */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              <Field htmlFor="fi-stock" label="Stock" required textFaint={textFaint}>
-                <input id="fi-stock" type="number" min={0} value={form.stock}
+              <Field htmlFor="fi-stock" label="Stock" required={!isEdit} textFaint={textFaint}>
+                <input id="fi-stock" type="number" min={0} value={isEdit ? Number(insumo?.stock ?? 0) : form.stock}
                   onChange={e => set("stock", e.target.value)}
-                  style={inp} onFocus={onFocus} onBlur={onBlur} />
+                  readOnly={isEdit}
+                  title={isEdit ? "El stock solo cambia con una Entrada de material" : undefined}
+                  style={{ ...inp, ...(isEdit ? { opacity: 0.65, cursor: "not-allowed" } : {}) }}
+                  onFocus={isEdit ? undefined : onFocus} onBlur={isEdit ? undefined : onBlur} />
+                {isEdit && (
+                  <span style={{ fontSize: 9.5, color: textFaint, marginTop: 1 }}>
+                    Solo se modifica con una “Entrada de material”
+                  </span>
+                )}
               </Field>
               <Field htmlFor="fi-cat" label="Categoría" required textFaint={textFaint}>
                 <select id="fi-cat" value={form.id_categoria}

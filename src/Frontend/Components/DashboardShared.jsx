@@ -385,7 +385,17 @@ export function SeccionMetricasUsuario({ T, tickets = [] }) {
 
 export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
   const isDark = T.isDark;
-  const total  = tickets.length;
+
+  // "Soporte Técnico" y "Auxiliar de Soporte Técnico" no cuentan en las
+  // estadísticas: ese equipo ATIENDE las incidencias, no las solicita.
+  // Solo se reflejan las demás áreas. (Mismo criterio que Ticket.getMetricas
+  // e HistorialIncidencias.) Se filtra por NOMBRE para ser robusto.
+  const DEPTOS_SOPORTE = ["Soporte Técnico", "Auxiliar de Soporte Técnico"];
+  const noSoporte = x => !DEPTOS_SOPORTE.includes(x.nombre_departamento);
+  const tk  = tickets.filter(noSoporte);
+  const sol = solicitudes.filter(noSoporte);
+
+  const total = tk.length;
 
   const prioridadData = [
     { label: "Urgente", color: "#dc2626", bg: "#fee2e2" },
@@ -394,14 +404,14 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
     { label: "Baja",    color: "#16a34a", bg: "#dcfce7" },
   ].map(p => ({
     ...p,
-    valor:   tickets.filter(t => t.prioridad === p.label).length,
-    insumos: solicitudes.filter(s => s.prioridad === p.label).length,
+    valor:   tk.filter(t => t.prioridad === p.label).length,
+    insumos: sol.filter(s => s.prioridad === p.label).length,
   }));
 
   const estatusData = [
-    { label: "Resuelto",    color: "#16a34a", valor: tickets.filter(t => t.estatus === "Resuelto").length },
-    { label: "En proceso",  color: "#ca8a04", valor: tickets.filter(t => t.estatus === "En proceso").length },
-    { label: "No Resuelto", color: "#ea580c", valor: tickets.filter(t => t.estatus === "No Resuelto").length },
+    { label: "Resuelto",    color: "#16a34a", valor: tk.filter(t => t.estatus === "Resuelto").length },
+    { label: "En proceso",  color: "#ca8a04", valor: tk.filter(t => t.estatus === "En proceso").length },
+    { label: "No Resuelto", color: "#ea580c", valor: tk.filter(t => t.estatus === "No Resuelto").length },
   ];
   const totalEstatus = estatusData.reduce((s, d) => s + d.valor, 0);
 
@@ -418,7 +428,7 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
         <div className="px-3 py-2 flex flex-col gap-1.5">
           {prioridadData.map((p, i) => {
             const totalFila = p.valor + p.insumos;
-            const pct = total > 0 ? Math.round((totalFila / (total + solicitudes.length)) * 100) : 0;
+            const pct = total > 0 ? Math.round((totalFila / (total + sol.length)) * 100) : 0;
             return (
               <div key={i} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
