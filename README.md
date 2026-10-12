@@ -1,32 +1,52 @@
-﻿# Precision Truck Parts - HelpDesk
+<div align="center">
 
-Sistema de tickets, solicitudes de insumos y control de inventario desarrollado
-para Precision Truck Parts, Parts and Accesories, S.A. de C.V. En resumen: los
-empleados reportan fallas de computo y piden insumos, el area de soporte los
-atiende desde un solo lugar, y la administracion ve inventario, manuales
-tecnicos e historial de todo lo que ha pasado.
+# 🛠️ Precision Truck Parts — HelpDesk
 
-El sistema tiene dos roles: administrador y usuario. El usuario crea tickets,
-adjunta evidencias, consulta manuales y solicita insumos. El administrador
-atiende los tickets, aprueba solicitudes, controla el stock y da de alta
-empleados y categorias. Los tickets se van cerrando solos a las 48 horas si
-nadie los resuelve, y el sistema manda alertas cuando eso esta por pasar.
-Sobre la tecnologia: Express con Node.js en el backend, React con Vite en el
-frontend, MySQL como base de datos y Socket.io para las notificaciones en
-tiempo real. Las contrasenas se guardan con bcrypt, los accesos con JWT de 12
-horas, y la validacion de datos esta hecha con Zod.
+**Sistema web de gestión de tickets de soporte técnico, solicitudes de insumos y control de inventario** para Precision Truck Parts, Parts and Accesories, S.A. de C.V.
+
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Express](https://img.shields.io/badge/Express-5-000000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com/)
+[![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=flat-square&logo=mysql&logoColor=white)]()
+[![Socket.io](https://img.shields.io/badge/Socket.io-Tiempo%20real-010101?style=flat-square&logo=socket.io&logoColor=white)](https://socket.io/)
+
+</div>
 
 ---
 
-## Requisitos
+## 📖 Descripción
 
-- Node.js 18 o superior
-- MySQL 8 o superior
-- npm 9 o superior
+Sistema integral de **tickets de soporte técnico, solicitudes de insumos y control de inventario**. Los empleados reportan fallas de cómputo y piden insumos; el área de soporte los atiende desde un solo lugar; y la administración consulta inventario, manuales técnicos e historial de todo lo que ha ocurrido, **en tiempo real** con notificaciones automáticas.
 
----
+Está dirigido al personal interno de la empresa (empleados y administradores de TI).
 
-## Instalacion
+## ✨ Características
+
+- **Dos roles:** *usuario* (crea tickets, adjunta evidencias, consulta manuales, solicita insumos) y *administrador* (atiende tickets, aprueba solicitudes, controla stock, da de alta empleados y categorías).
+- **Tickets con estados:** *En proceso*, *Resuelto*, *No Resuelto* y *Cancelado*, con prioridad Baja/Media/Alta/Urgente y calificación de 1 a 5 estrellas al cerrar.
+- **Auto-cierre a las 48 h** con alertas automáticas cuando un ticket está por vencer.
+- **Manuales en PDF:** portada en miniatura, orden por categoría, búsqueda y descarga.
+- **Inventario** con control de entradas y salidas de insumos.
+- **Notificaciones en tiempo real** con Socket.io.
+- **Seguridad:** contraseñas con bcrypt, sesiones JWT de 12 h, validación con Zod, Helmet y rate limiting.
+
+## 🛠️ Tecnologías utilizadas
+
+- **Frontend:** React 18, Vite 6, TailwindCSS 4, React Router 7
+- **Backend:** Node.js, Express 5
+- **Base de datos:** MySQL 8
+- **Tiempo real:** Socket.io
+- **Seguridad:** bcryptjs, jsonwebtoken, Zod, Helmet, express-rate-limit
+- **Archivos/PDF:** Multer, pdfjs-dist, canvas, sharp, jspdf
+- **Reportes:** exceljs, xlsx-js-style
+
+## 📋 Requisitos previos
+
+- **Node.js 18 o superior**
+- **npm 9 o superior**
+- **MySQL 8 o superior**
+
+## 🚀 Instalación
 
 ```bash
 git clone https://github.com/Matthew-Garay/Precision-Truck-Parts---Help-Desk.git
@@ -34,13 +54,13 @@ cd PrecisionTrucks_HelpDesk
 npm install
 ```
 
-Copia el archivo de ejemplo de variables de entorno y llenalo con tus datos:
+Copia el archivo de variables de entorno y llénalo:
 
 ```bash
 cp .env.example .env
 ```
 
-Las variables que hacen falta:
+Variables principales:
 
 ```env
 PORT=3001
@@ -63,148 +83,77 @@ CORS_ORIGIN=http://localhost:5173
 APP_URL=http://localhost:5173
 ```
 
-Despues crea la base de datos con el esquema que viene en `docs/database.sql`:
+Crea la base de datos con el esquema incluido:
 
 ```bash
 mysql -u root -p < docs/database.sql
 ```
 
-Y arranca:
+Arranca todo (frontend + backend):
 
 ```bash
 npm run dev:all
 ```
 
-O en dos terminales (`npm run dev` en una para el frontend y `npm run server`
-en otra para el backend). Quedan disponibles el frontend en
-http://localhost:5173 y la API en http://localhost:3001.
+O en dos terminales: `npm run dev` (frontend en http://localhost:5173) y `npm run server` (API en http://localhost:3001).
 
-### Correo para recuperacion de contrasenas
+### 💡 Correo de recuperación de contraseñas
 
-Si usas Gmail, en https://myaccount.google.com/security activa la verificacion
-en dos pasos y genera una contrasena de aplicacion; esa es la que va en
-`SMTP_PASS`, no la de tu cuenta. Con cualquier otro proveedor SMTP solo cambias
-las tres lineas de `SMTP_*`.
+Si usas Gmail, activa la **verificación en dos pasos** y genera una **contraseña de aplicación**; esa va en `SMTP_PASS` (no la de tu cuenta). Con cualquier otro SMTP solo cambia las líneas `SMTP_*`.
 
----
+## 🧪 Uso
 
-## Uso
-
-Para el primer arranque:
-
+**Primer arranque:**
 - URL: http://localhost:5173
-- Usuario: admin@precisiontrucks.com
-- Contrasena: Admin123!@#
+- Usuario: `admin@precisiontrucks.com`
+- Contraseña: `Admin123!@#` *(cámbiala antes de producción)*
 
-Cambiar esa contrasena antes de ponerlo en produccion.
+Un ticket se crea desde **Nuevo Reporte**: título, descripción, categoría, prioridad y hasta 8 evidencias. Los manuales se suben desde **Manuales de Incidencias** (solo administrador).
 
-Un ticket se crea desde **Nuevo Reporte**: titulo, descripcion del problema,
-categoria, prioridad y hasta 8 archivos de evidencia (capturas, videos). Los
-tickets aparecen con estado *En proceso*, *Resuelto*, *No Resuelto* o
-*Cancelado*, y prioridad Baja, Media, Alta o Urgente. Al cerrarlos el usuario
-los califica de 1 a 5 estrellas.
-
-Los manuales en PDF se suben desde **Manuales de Incidencias** (solo
-administrador). El sistema genera una portada en miniatura de cada uno, los
-ordena por categoria y permite buscarlos y descargarlos.
-
----
-
-## Estructura
+## 📂 Estructura del proyecto
 
 ```
 PrecisionTrucks_HelpDesk/
-|-- docs/          scripts SQL de la base de datos (MySQL)
-|-- src/Backend/   servidor Express (server.js, Controllers, Models, Routes)
-|-- src/Frontend/  aplicacion React (Pages, Components, Config)
-|-- public/        archivos estaticos
-|-- storage/       PDFs, evidencias y fotos de perfil que suben los usuarios
-|-- package.json
-`-- .env.example
+├── docs/          # Scripts SQL de la base de datos (MySQL)
+├── src/Backend/   # Servidor Express (server.js, Controllers, Models, Routes)
+├── src/Frontend/  # Aplicación React (Pages, Components, Config)
+├── public/        # Archivos estáticos
+├── storage/       # PDFs, evidencias y fotos de perfil subidas
+├── scripts/       # Scripts de mantenimiento (respaldar, migraciones)
+├── .env.example
+├── package.json
+└── README.md
 ```
 
----
+## 🔌 API (resumen)
 
-## Documentacion
-
-La documentacion de la base de datos (MySQL) esta en `docs/MYSQL Database/`:
-
-| Documento | Para que sirve |
-|---|---|
-| [database.sql](docs/MYSQL%20Database/database.sql) | Script de creacion de la base de datos |
-| [database.utf8.sql](docs/MYSQL%20Database/database.utf8.sql) | Volcado completo con codificacion UTF-8 |
-
----
-
-## API
-
-Todas las rutas piden el token de sesion en la cabecera
-`Authorization: Bearer {token}`, salvo el login.
+Todas las rutas piden el token en la cabecera `Authorization: Bearer {token}`, salvo el login.
 
 ```bash
-POST /api/auth/login
-{"email": "usuario@precisiontrucks.com", "password": "contrasena"}
+POST  /api/auth/login          # {"email": "...", "password": "..."}
+POST  /api/tickets             # crear ticket
+GET   /api/tickets             # listar (solo admin)
+PATCH /api/tickets/:id         # cambiar estado / resolver (solo admin)
+POST  /api/solicitudes         # pedir insumos
+GET   /api/manuales            # listar manuales
+POST  /api/manuales            # subir manual (solo admin, multipart)
 ```
 
-```bash
-POST /api/tickets            # crear ticket
-GET  /api/tickets            # listar (solo admin)
-PATCH /api/tickets/:id       # cambiar estado o resolver (solo admin)
+## 🛟 Solución de problemas
 
-POST /api/solicitudes        # pedir insumos
-GET  /api/manuales           # listar manuales
-POST /api/manuales           # subir manual (solo admin, multipart)
-```
+- **Los PDF no cargan en el visor:** verifica `storage/Manuales/` y regenera portadas con `node src/Backend/scripts/generarPortadasExistentes.js`; si todo está bien, limpia la caché del navegador.
+- **No conecta con la BD:** comprueba que MySQL corra y que las credenciales de `.env` coincidan.
+- **No llegan los correos:** suele ser la contraseña de Gmail normal en lugar de la de aplicación; revisa `SMTP_*`.
+- **Va lento:** `OPTIMIZE TABLE ticket;` y `OPTIMIZE TABLE solicitud;`.
 
-La documentacion completa, con todos los parametros y respuestas, esta en los
-controladores y rutas de `src/Backend/`.
+## 🤝 Desarrollo
 
----
+Flujo habitual: fork → rama `feature/...` → commit descriptivo → pull request. El código se valida con ESLint y se documenta con JSDoc. Reporta errores en [Issues](https://github.com/Matthew-Garay/Precision-Truck-Parts---Help-Desk/issues).
 
-## Solucion de problemas
+## 📜 Licencia
 
-**Los manuales en PDF no cargan en el visor.** Revisa que los archivos existan
-con `ls -la storage/Manuales/`, que tengan permisos de lectura y regenera las
-portadas con:
+Proyecto de uso interno empresarial; documentación y código sujetos a los términos del proyecto.
 
-```bash
-node src/Backend/scripts/generarPortadasExistentes.js
-```
+## ✍️ Autor
 
-Si todo esta bien, limpia la cache del navegador (`Ctrl+Shift+Delete`); muchas
-veces es eso.
-
-**No conecta con la base de datos.** Comprueba que MySQL este corriendo
-(`services.msc` en Windows, `systemctl status mysql` en Linux) y que las
-credenciales de `.env` coincidan con las reales.
-
-**No llegan los correos de recuperacion de contrasena.** En la mayoria de los
-casos es que se puso la contrasena de Gmail en lugar de la contrasena de
-aplicacion. El resto: revisa `SMTP_*` en `.env`.
-
-**Va lento.** Primero limpia la cache del navegador. Si sigue lento, optimiza
-las tablas mas consultadas:
-
-```sql
-OPTIMIZE TABLE ticket;
-OPTIMIZE TABLE solicitud;
-```
-
----
-
-## Desarrollo
-
-El flujo es el habitual: fork, rama con `git checkout -b feature/lo-que-seas`,
-commit con mensaje descriptivo y pull request. El codigo se valida con ESLint y
-las funciones se documentan con JSDoc.
-
-Reportar errores en [Issues](https://github.com/Matthew-Garay/Precision-Truck-Parts---Help-Desk/issues)
-con los pasos para reproducirlos y capturas si es posible.
-
----
-
-## Autor
-
-Matthew Garay - desarrollo principal.
-
-Para mas dudas: soporte@precisiontrucks.com
+**Matthew Garay** — desarrollo principal. Contacto: soporte@precisiontrucks.com
