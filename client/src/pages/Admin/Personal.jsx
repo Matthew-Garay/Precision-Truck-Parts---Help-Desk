@@ -877,13 +877,15 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
           <button disabled={paginaActual <= 1} onClick={() => irPagina(paginaActual - 1)}
             className="px-2 py-1 rounded border text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ borderColor: T.border, background: T.surfaceAlt, color: T.text }}>
-            ‹ Ant
+            Anterior
           </button>
-          <span className="text-[11px] px-1" style={{ color: T.textMuted }}>{paginaActual} / {totalPaginas}</span>
+          <span className="text-[11px] ml-2" style={{ color: T.textMuted }}>
+            Página {paginaActual} de {totalPaginas}
+          </span>
           <button disabled={paginaActual >= totalPaginas} onClick={() => irPagina(paginaActual + 1)}
             className="px-2 py-1 rounded border text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ borderColor: T.border, background: T.surfaceAlt, color: T.text }}>
-            Sig ›
+            Siguiente
           </button>
           <label className="text-[10px]" style={{ color: T.textMuted }}>Mostrar</label>
           <select
