@@ -62,7 +62,7 @@ Matriz de capacidades por perfil (S = permitido, N = denegado por API):
 
 Guardas de autorizacion en el backend: `requireAuth` (JWT), `requireAdmin` (id_rol = 1), `requireSoporteOAdmin` (rol 1 o departamento 2), `requireOwnerOrAdmin` y validas de propiedad en el controlador (dueno del ticket/solicitud o admin). Detalle en [api-routes.md](api-routes.md) y [security.md](security.md).
 
-Vistas de interfaz separadas por rol: `src/Frontend/Pages/Usuario/*` (reportes, historiales, solicitudes, manuales) y `src/Frontend/Pages/Admin/*` (dashboard, personal, inventario, rendimiento, vista de solicitud/ticket).
+Vistas de interfaz separadas por rol: `client/src/pages/Usuario/*` (reportes, historiales, solicitudes, manuales) y `client/src/pages/Admin/*` (dashboard, personal, inventario, rendimiento, vista de solicitud/ticket).
 
 ## Requisitos funcionales
 
@@ -100,7 +100,7 @@ Requisitos no funcionales asociados (RNF-01 a RNF-17): autenticacion, control de
 
 ## Tiempo real: Socket.io
 
-- El servidor HTTP de Express monta la instancia de Socket.io (`src/Backend/server.js`).
+- El servidor HTTP de Express monta la instancia de Socket.io (`server/server.js`).
 - Cada conexion debe presentar un JWT valido en `socket.handshake.auth.token`; sin token o con token invalido se rechaza la conexion.
 - Salas: `empleado_{id_empleado}` para el usuario autenticado y `admins` para id_rol = 1.
 - Los middlewares de Express no aplican a WebSockets: la verificacion ocurre una sola vez en el handshake.
@@ -117,7 +117,7 @@ Requisitos no funcionales asociados (RNF-01 a RNF-17): autenticacion, control de
 | `insumo:stock_critico` | admins | worker horario y primera conexion del dia |
 | `inventario:movimiento` | admins | entradas, salidas y altas/bajas de insumos |
 
-Tareas programadas (`src/Backend/Workers/scheduledJobs.js`): alertas de SLA cada 30 minutos; cierre de tickets vencidos (48 h), limpieza de sesiones huerfanas de `historial_acceso` (mas de 12 h sin fecha de salida), alertas de stock critico y tickets sin atender, todas cada hora. Los intervals usan `unref()` y existe un guard de solapamiento entre ejecuciones.
+Tareas programadas (`server/workers/scheduled-jobs.js`): alertas de SLA cada 30 minutos; cierre de tickets vencidos (48 h), limpieza de sesiones huerfanas de `historial_acceso` (mas de 12 h sin fecha de salida), alertas de stock critico y tickets sin atender, todas cada hora. Los intervals usan `unref()` y existe un guard de solapamiento entre ejecuciones.
 
 ## Patron cliente-servidor desacoplado
 

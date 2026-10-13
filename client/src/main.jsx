@@ -1,0 +1,228 @@
+/**
+ * main.jsx
+ *
+ * Punto de entrada del frontend de PrecisionTrucks HelpDesk.
+ * Monta el arbol de React en el elemento #root del index.html.
+ *
+ * Responsabilidades:
+ *
+ * 1. Proveedores globales:
+ *    - ThemeProvider  : gestiona el tema claro/oscuro y lo sincroniza con localStorage
+ *    - ToastProvider  : expone la API de toasts visuales a todo el arbol
+ *    - BrowserRouter  : provee el historial de navegacion del lado del cliente
+ *    - ErrorBoundary  : captura errores de renderizado y muestra pantalla de error
+ *
+ * 2. Rutas protegidas:
+ *    RutaAdmin  : redirige a /login si el usuario no tiene rol 'admin'
+ *    RutaUsuario: redirige a /login si el usuario no tiene rol 'usuario'
+ *
+ * 3. Arbol de rutas:
+ *    /login           - pantalla de autenticacion
+ *    /admin/*         - dashboard completo del administrador (componente persistente)
+ *    /usuario/*       - dashboard completo del usuario (componente persistente)
+ *    /                - redirige segun el rol almacenado en sessionStorage
+ *    /*               - cualquier ruta desconocida redirige a /login
+ *
+ * 4. Ciclo de sesion:
+ *    - Al montar, renueva el JWT via POST /api/auth/refresh-token para detectar
+ *      expiración despues de una recarga de pagina.
+ *    - Al cerrar la pestana (evento pagehide), envia el logout con navigator.sendBeacon
+ *      para cerrar la sesion del historial_acceso de forma no bloqueante.
+ *    - El logout manual muestra PantallaSalida durante 1.2 segundos antes de redirigir.
+ *
+ * 5. Favicon:
+ *    Se establece dinamicamente dentro de useEffect para evitar errores en entornos SSR.
+ */
+import { StrictMode, useState, useEffect, lazy, Suspense } from 'react'
+import { createRoot } from 'react-dom/client'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import './assets/login.css'
+import './assets/design-system.css'
+import './orientation.css'
+import Login            from './pages/Login.jsx'
+import ZohoCallbackPage  from './pages/ZohoCallbackPage.jsx'
+import AdminDashboard   from './pages/Admin/Dashboard.jsx'
+import UsuarioDashboard from './pages/Usuario/Dashboard.jsx'
+import API_BASE, { setToken, clearSession, apiFetch } from './services/api-client.js'
+import ErrorBoundary   from './components/ErrorBoundary.jsx'
+import PantallaSalida  from './components/PantallaSalida.jsx'
+const PrintTicketPage     = lazy(() => import('./pages/print/PrintTicketPage.jsx'))
+const PrintSolicitudPage  = lazy(() => import('./pages/print/PrintSolicitudPage.jsx'))
+const PrintReportePage    = lazy(() => import('./pages/print/PrintReportePage.jsx'))
+const PrintInventarioPage = lazy(() => import('./pages/print/PrintInventarioPage.jsx'))
+const PrintHistorialPage  = lazy(() => import('./pages/print/PrintHistorialPage.jsx'))
+const PrintEntradasPage   = lazy(() => import('./pages/print/PrintEntradasPage.jsx'))
+const PrintSalidaPage     = lazy(() => import('./pages/print/PrintSalidaPage.jsx'))
+import { ToastProvider } from './components/Feedback.jsx'
+import { ThemeProvider } from './context/theme-provider.jsx'
+import { useTheme } from './context/theme-context.js'
+import { getUsuario, setUsuario, setIdAcceso } from './utils/session.js'
+
+
+const useThemeCtx = useTheme
+
+// -- Rutas protegidas ------------------------------------------
+function RutaAdmin({ onLogout, onUsuarioActualizado, usuarioActual }) {
+  const u = getUsuario()
+  if (!u || u.rol !== 'admin') return <Navigate to="/login" replace />
+  return <AdminDashboard usuario={usuarioActual || u} onLogout={onLogout} onUsuarioActualizado={onUsuarioActualizado} />
+}
+
+function RutaUsuario({ onLogout, onUsuarioActualizado, usuarioActual }) {
+  const u = getUsuario()
+  if (!u || u.rol !== 'usuario') return <Navigate to="/login" replace />
+  return <UsuarioDashboard usuario={usuarioActual || u} onLogout={onLogout} onUsuarioActualizado={onUsuarioActualizado} />
+}
+
+// -- App raíz --------------------------------------------------
+function App() {
+  const navigate   = useNavigate()
+  const [saliendo, setSaliendo] = useState(false)
+  const [usuarioActual, setUsuarioActual] = useState(getUsuario)
+
+  // Fix #11: mover manipulación del favicon dentro de useEffect para evitar
+  // errores en entornos SSR/testing y respetar el ciclo de vida de React
+  useEffect(() => {
+    let link = document.querySelector("link[rel='icon']");
+    if (!link) {
+      link = document.createElement("link");
+      document.head.appendChild(link);
+    }
+    link.rel  = "icon";
+    link.type = "image/x-icon";
+    link.href = "/assets/img/logo.ico?v=2";
+  }, [])
+
+  // -- Rehidratar token al recargar la página ------------------
+  // El token ya fue rehidratado desde sessionStorage en api.js.
+  // Aqui solo lo renovamos contra el backend para detectar expiración.
+  useEffect(() => {
+    const u = getUsuario()
+    if (!u) return
+    apiFetch('/api/auth/refresh-token', { method: 'POST' })
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json()
+          if (data.token) setToken(data.token)
+        }
+        // Si falla (401), apiFetch ya llama clearSession() automáticamente
+      })
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleUsuarioActualizado = (nuevoUsuario) => {
+    setUsuario(nuevoUsuario)
+    setUsuarioActual(nuevoUsuario)
+  }
+
+  const handleLogout = () => {
+    setSaliendo(true)
+    const idAcceso = localStorage.getItem('id_acceso')
+    if (idAcceso) {
+      apiFetch('/api/auth/logout', {
+        method: 'POST',
+        body: { id_acceso: parseInt(idAcceso) },
+      }).catch(() => {})
+    }
+    setTimeout(() => {
+      clearSession()
+      setSaliendo(false)
+      navigate('/login', { replace: true })
+    }, 1200)
+  }
+
+  // Con persistencia en localStorage el cierre de pestaña NO termina la sesión.
+  // El logout solo ocurre de forma explícita (handleLogout) o por JWT expirado (401).
+  // El worker de sesiones huérfanas en el backend cierra historial_acceso ≥ 12h sin salida.
+  useEffect(() => {
+    const cerrarAlSalir = (e) => {
+      if (e.persisted) return  // bfcache — no es cierre real
+      const idAcceso = localStorage.getItem('id_acceso')
+      if (!idAcceso) return
+      navigator.sendBeacon(
+        `${API_BASE}/api/auth/logout`,
+        new Blob(
+          [JSON.stringify({ id_acceso: parseInt(idAcceso) })],
+          { type: 'application/json' }
+        )
+      )
+    }
+    window.addEventListener('pagehide', cerrarAlSalir)
+    return () => window.removeEventListener('pagehide', cerrarAlSalir)
+  }, [])
+
+  if (saliendo) return <PantallaSalida />
+
+  return (
+    <Routes>
+      <Route path="/login" element={
+        <Login onLogin={(u, idAcceso, token) => {
+          setUsuario(u)
+          if (idAcceso) setIdAcceso(idAcceso)
+          if (token) setToken(token)
+          navigate(u.rol === 'admin' ? '/admin/dashboard' : '/usuario/dashboard', { replace: true })
+        }} />
+      } />
+
+      {/* Callback del login con Zoho: el backend redirige con la sesión en el fragmento */}
+      <Route path="/login/zoho" element={
+        <ZohoCallbackPage onLogin={(u, idAcceso, token) => {
+          setUsuario(u)
+          if (idAcceso) setIdAcceso(idAcceso)
+          if (token) setToken(token)
+          navigate(u.rol === 'admin' ? '/admin/dashboard' : '/usuario/dashboard', { replace: true })
+        }} />
+      } />
+
+      {/* Admin - un solo componente persistente para todas las sub-rutas */}
+      <Route path="/admin/*" element={<RutaAdmin onLogout={handleLogout} onUsuarioActualizado={handleUsuarioActualizado} usuarioActual={usuarioActual} />} />
+
+      {/* Usuario - un solo componente persistente para todas las sub-rutas */}
+      <Route path="/usuario/*" element={<RutaUsuario onLogout={handleLogout} onUsuarioActualizado={handleUsuarioActualizado} usuarioActual={usuarioActual} />} />
+
+      {/* Rutas standalone para impresión — requieren sesión activa */}
+      <Route path="/print/ticket/:folio"    element={getUsuario() ? <Suspense fallback={null}><PrintTicketPage /></Suspense>    : <Navigate to="/login" replace />} />
+      <Route path="/print/solicitud/:folio" element={getUsuario() ? <Suspense fallback={null}><PrintSolicitudPage /></Suspense> : <Navigate to="/login" replace />} />
+      <Route path="/print/reporte"           element={getUsuario() ? <Suspense fallback={null}><PrintReportePage /></Suspense>   : <Navigate to="/login" replace />} />
+      <Route path="/print/inventario"         element={getUsuario() ? <Suspense fallback={null}><PrintInventarioPage /></Suspense> : <Navigate to="/login" replace />} />
+      <Route path="/print/historial/:id"       element={getUsuario() ? <Suspense fallback={null}><PrintHistorialPage /></Suspense>  : <Navigate to="/login" replace />} />
+      <Route path="/print/entradas"            element={getUsuario() ? <Suspense fallback={null}><PrintEntradasPage /></Suspense> : <Navigate to="/login" replace />} />
+      <Route path="/print/salida"              element={getUsuario() ? <Suspense fallback={null}><PrintSalidaPage /></Suspense>   : <Navigate to="/login" replace />} />
+
+      {/* Raíz → redirige según sesión */}
+      <Route path="/" element={<Navigate to={(() => {
+        const u = getUsuario()
+        return u?.rol === 'admin' ? '/admin/dashboard' : u?.rol === 'usuario' ? '/usuario/dashboard' : '/login'
+      })()} replace />} />
+
+      {/* Ruta desconocida → login */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  )
+}
+
+function Root() {
+  return (
+    <ThemeProvider>
+      <RootInner />
+    </ThemeProvider>
+  )
+}
+
+function RootInner() {
+  const { T } = useThemeCtx()
+  return (
+    <ToastProvider T={T}>
+      <App />
+    </ToastProvider>
+  )
+}
+
+createRoot(document.getElementById('root')).render(
+  <BrowserRouter>
+    <ErrorBoundary>
+      <Root />
+    </ErrorBoundary>
+  </BrowserRouter>
+)

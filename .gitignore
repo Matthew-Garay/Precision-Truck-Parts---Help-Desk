@@ -15,17 +15,20 @@ build/
 *.tsbuildinfo
 
 # ── Variables de entorno (NUNCA versionar) ───────
+# server/.env : credenciales MySQL, JWT_SECRET, SMTP. client/.env : VITE_*
 .env
 .env.local
 .env.*.local
 .env.production
 .env.staging
+server/.env
+client/.env
 
 # ── Estado en tiempo de ejecución ────────────────
-src/Backend/Workers/alert_state.json
-src/Backend/Workers/alert_state.json.tmp
-src/Backend/Workers/reset_tokens.json
-src/Backend/Workers/reset_tokens.json.tmp
+server/workers/alert_state.json
+server/workers/alert_state.json.tmp
+server/workers/reset_tokens.json
+server/workers/reset_tokens.json.tmp
 
 # ── Storage (archivos subidos por usuarios) ──────
 storage/Evidencias_Tickets/*

@@ -54,13 +54,16 @@ cd PrecisionTrucks_HelpDesk
 npm install
 ```
 
-Copia el archivo de variables de entorno y llénalo:
+El proyecto usa **npm workspaces**: `npm install` en la raíz instala las dependencias de `server/` y `client/` en un solo `node_modules/`.
+
+Copia los archivos de variables de entorno y rellénalos:
 
 ```bash
-cp .env.example .env
+cp server/.env.example server/.env
+cp client/.env.example client/.env
 ```
 
-Variables principales:
+Variables principales de `server/.env`:
 
 ```env
 PORT=3001
@@ -83,10 +86,19 @@ CORS_ORIGIN=http://localhost:5173
 APP_URL=http://localhost:5173
 ```
 
+Variables principales de `client/.env`:
+
+```env
+# Vacío en desarrollo: usa el proxy de Vite (evita CORS)
+VITE_API_URL=
+VITE_PORT=5173
+VITE_BACKEND_URL=http://localhost:3001
+```
+
 Crea la base de datos con el esquema incluido:
 
 ```bash
-mysql -u root -p < "docs/MYSQL Database/database.utf8.sql"
+mysql -u root -p < database/schema.sql
 ```
 
 Arranca todo (frontend + backend):
@@ -114,17 +126,45 @@ Un ticket se crea desde **Nuevo Reporte**: título, descripción, categoría, pr
 
 ```
 PrecisionTrucks_HelpDesk/
-├── docs/                    # Documentación técnica y esquema MySQL
-│   └── MYSQL Database/      # database.utf8.sql, dump_schema.mjs, schema_dump.txt
-├── src/Backend/             # Servidor Express (server.js, Controllers, Models, Routes, Middlewares, utils)
-├── src/Frontend/            # Aplicación React (Pages, Components, Config, Styles)
-├── public/                  # Archivos estáticos (assets/img)
+├── client/                  # Frontend React (Vite + Tailwind) — paquete npm propio
+│   ├── public/              # Archivos estáticos (assets/img)
+│   ├── src/
+│   │   ├── assets/          # CSS importado por main.jsx
+│   │   ├── components/      # Componentes React reutilizables (PascalCase)
+│   │   ├── pages/           # Vistas por rol (Admin/, Usuario/, print/)
+│   │   ├── context/         # ThemeContext y proveedores globales
+│   │   ├── hooks/           # Custom hooks (useAuth, useSocket, ...)
+│   │   ├── services/        # api-client.js (axios) y conectores externos
+│   │   ├── utils/           # Validaciones, formatos y helpers puros
+│   │   └── main.jsx         # Punto de entrada de la SPA
+│   ├── .env                 # Solo variables VITE_* (no se versiona)
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.js       # outDir ../dist para el contrato de deploy
+├── server/                  # Backend Express (paquete npm propio)
+│   ├── config/              # db.js (pool MySQL), mailer.js, zoho.js, constants.js
+│   ├── controllers/         # Lógica HTTP por recurso
+│   ├── middlewares/         # auth, validación, subida y manejo de errores
+│   ├── routes/              # Definición de endpoints bajo /api
+│   ├── services/            # Consultas MySQL y lógica de negocio (tickets, alertas, ...)
+│   ├── utils/               # Helpers puros (fechas, JWT, passwords, ...)
+│   ├── workers/             # Jobs programados (alertas SLA, cierre, limpieza)
+│   ├── scripts/             # Utilidades one-shot (probar-correo, ...)
+│   ├── .env                 # Variables del servidor (no se versiona)
+│   ├── load-env.js          # Carga de variables de entorno (--import)
+│   ├── server.js            # Punto de entrada: Express + Socket.io
+│   └── package.json
+├── database/                # Esquema SQL versionado
+│   ├── schema.sql           # Esquema MySQL completo (DDL)
+│   └── dump-schema.mjs      # Generador del esquema desde la BD viva
+├── docs/                    # Documentación técnica
 ├── storage/                 # Evidencias, insumos y manuales subidos (regenerable)
 ├── scripts/                 # Scripts de mantenimiento (liberar-puertos.ps1)
+├── dist/                    # Build de producción (generado por npm run build)
 ├── respaldar.ps1            # Copia de seguridad de la BD + storage
 ├── restaurar.ps1            # Restauración de una copia
-├── .env.example
-├── package.json
+├── package.json             # Orquestador de npm workspaces (dev, build, ...)
+├── railway.json             # Configuración de despliegue
 └── README.md
 ```
 
@@ -144,7 +184,7 @@ POST  /api/manuales            # subir manual (solo admin, multipart)
 
 ## Solución de problemas
 
-- **Los PDF no cargan en el visor:** verifica `storage/Manuales/` y regenera portadas con `node src/Backend/scripts/generarPortadasExistentes.js`; si todo está bien, limpia la caché del navegador.
+- **Los PDF no cargan en el visor:** verifica `storage/Manuales/` y regenera portadas con `node --import ./server/load-env.js server/scripts/generar-portadas-existentes.js`; si todo está bien, limpia la caché del navegador.
 - **No conecta con la BD:** comprueba que MySQL corra y que las credenciales de `.env` coincidan.
 - **No llegan los correos:** suele ser la contraseña de Gmail normal en lugar de la de aplicación; revisa `SMTP_*`.
 - **Va lento:** `OPTIMIZE TABLE ticket;` y `OPTIMIZE TABLE solicitud;`.

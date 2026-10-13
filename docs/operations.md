@@ -17,7 +17,7 @@ El proceso verifica al arrancar las variables criticas y termina con codigo 1 si
 
 ## Variables de entorno (.env)
 
-Archivo de referencia: `.env.example`. El backend carga el `.env` con `src/Backend/load-env.js` (`node --import ...`), por lo que el archivo funciona desde cualquier directorio de trabajo.
+Archivo de referencia: `server/.env.example` (variables del servidor) y `client/.env.example` (variables Vite). El backend carga el `.env` con `server/load-env.js` (`node --import ...`), por lo que el archivo funciona desde cualquier directorio de trabajo.
 
 | Variable | Obligatoria | Descripcion |
 | --- | --- | --- |
@@ -49,7 +49,7 @@ Archivo de referencia: `.env.example`. El backend carga el `.env` con `src/Backe
 | `npm run probar:correo` | Prueba de la configuracion SMTP |
 | `npm run respaldar` | Copia de seguridad (ver abajo) |
 
-Despliegue tipico en un solo equipo: `npm run build` una vez y despues `npm run server`; Express sirve `dist/` y resuelve cualquier ruta no-API con `index.html` (SPA). Healthchecks: `GET /api/ping` (publico) y `GET /api/health` (con token, expone pool, memoria y uptime). Existe ademas `railway.json` (Nixpacks: `npm install && npm run build`, arranque `node src/Backend/server.js`, healthcheck `/api/ping`) por si se usa esa plataforma.
+Despliegue tipico en un solo equipo: `npm run build` una vez y despues `npm run server`; Express sirve `dist/` y resuelve cualquier ruta no-API con `index.html` (SPA). Healthchecks: `GET /api/ping` (publico) y `GET /api/health` (con token, expone pool, memoria y uptime). Existe ademas `railway.json` (Nixpacks: `npm install && npm run build`, arranque `node --import ./server/load-env.js server/server.js`, healthcheck `/api/ping`) por si se usa esa plataforma.
 
 Tras un reinicio del proceso: las alertas de Socket.io deduplicadas se reconstruyen desde `Workers/alertState.js`; no hay estado en memoria que deba persistirse manualmente.
 
@@ -113,7 +113,7 @@ El usuario de MySQL del `.env` necesita los privilegios `SELECT, LOCK TABLES, TR
 
 - Los indices relevantes ya existen (ver [database.md](database.md)); antes de agregar indices nuevos medir con `EXPLAIN` sobre las consultas de listados paginados.
 - Los enums se amplian con `ALTER TABLE ... MODIFY COLUMN` cuidando conservar el default y la collacion de la tabla.
-- El esquema vivo debe regenerarse tras cada cambio: `node "docs/MYSQL Database/dump_schema.mjs" > "docs/MYSQL Database/schema_dump.txt"`.
+- El esquema vivo debe regenerarse tras cada cambio: `node database/dump-schema.mjs > database/schema-dump.txt`.
 - `historial_acceso` y `movimiento_inventario` crecen con el uso; ambos admiten poda por fecha una vez exportados los periodos exigidos por auditoria.
 
 ## Monitoreo operativo
