@@ -25,7 +25,7 @@
 
 ## Autorizacion
 
-Middlewares en `src/Backend/Middlewares/authMiddleware.js`:
+Middlewares en `server/middlewares/auth-middleware.js`:
 
 - `requireAuth`: exige Bearer valido; `401` si falta, es invalido o esta revocado.
 - `requireAdmin`: exige `id_rol === 1`; `403` en caso contrario.
