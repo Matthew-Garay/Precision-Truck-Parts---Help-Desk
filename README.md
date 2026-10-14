@@ -32,7 +32,25 @@ Está dirigido al personal interno de la empresa (empleados y administradores de
 - **Inventario** con control de entradas y salidas de insumos.
 - **Notificaciones en tiempo real** con Socket.io.
 - **Seguridad:** contraseñas con bcrypt, sesiones JWT de 12 h, validación con Zod, Helmet y rate limiting.
-- **Autenticación corporativa:** acceso con Zoho (OAuth server-based) para emparejar empleados y asignar roles.
+- **Seguridad corporativa:** acceso con Zoho (OAuth server-based) para emparejar empleados y asignar roles.
+
+## Inventario: permisos de visibilidad
+
+La tabla `insumo` tiene la columna `activo` (dentro de la `database/schema.sql`).
+El administrador (o Soporte Tecnico) puede **ocultar un insumo para los usuarios**
+sin eliminarlo: los insumos inhabilitados (`activo = 0`) desaparecen de los
+listados de solicitud y de las **Salidas internas**, pero se conservan en el
+historial, en los movimientos de kardex y siguen editables por admin/Soporte.
+
+- Los **administradores y Soporte Tecnico** ven todo el inventario, con stock y
+  la opción de Inhabilitar/Mostrar para todos.
+- El **rol Usuario** solo recibe los insumos con `stock > 0` y `activo = 1`; no
+  recibe el stock exacto ni la disponibilidad calculada (solo "Sin stock",
+  "Stock bajo" o "Disponible").
+
+Para ocultar un insumo desde el panel de Inventario (pestaña Insumos), se
+utiliza el menú `⋮` de cada fila y se elige **Inhabilitar**; **Mostrar para
+todos** lo devuelve al listado.
 
 ## Tecnologías utilizadas
 

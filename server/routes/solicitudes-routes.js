@@ -45,7 +45,7 @@ import {
   getInsumos, getInventario, getInsumosStockBajo, crearSolicitud, getSolicitudesByEmpleado,
   getSolicitudById, getSolicitudByFolio, getAllSolicitudes, getSolicitudesPendientes,
   actualizarEstatusSolicitud, aprobarItemsSolicitud, crearInsumo, actualizarInsumo,
-  eliminarInsumo, cambiarActivoInsumo, getReporteSolicitudes, subirFotoInsumo, getMetricasSolicitudes,
+  eliminarInsumo, cambiarActivoInsumo, getInsumosForUser, getReporteSolicitudes, subirFotoInsumo, getMetricasSolicitudes,
   registrarEntradaInsumo, registrarSalidaInsumo, guardarRutaSolicitud, getMovimientosInventario, getMovimientosInsumo, getMovimientosSolicitud, getSalidasMiSucursal,
   guardarObservacionSolicitud
 } from '../controllers/solicitudes-controller.js';
@@ -106,6 +106,9 @@ router.get("/insumos/stock-bajo", requireAdmin, getInsumosStockBajo);
 router.get("/insumos",            getInsumos);
 router.get("/insumos/:id/movimientos", requireAdmin, getMovimientosInsumo);
 router.get("/inventario",         getInventario);
+
+router.get("/inventario/for-user", requireSoporteOAdmin, getInsumosForUser);
+
 router.get("/pendientes",         requireAdmin, getSolicitudesPendientes);
 router.get("/empleado/:id_empleado", requireOwnerOrAdmin, getSolicitudesByEmpleado);
 router.post("/", solicitudLimiter, validate(schemaCrearSolicitud), crearSolicitud);
