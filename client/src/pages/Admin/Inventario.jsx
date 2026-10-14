@@ -712,7 +712,7 @@ export default function Inventario() {
   const [categorias, setCategorias] = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [syncing,    setSyncing]    = useState(false);
-  const [filtros,    setFiltros]    = useState({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos" });
+  const [filtros,    setFiltros]    = useState({ busqueda: "", estado: "Todos", categoria: "Todos", stock: "Todos", activo: "Todos" });
   const [pagina,     setPagina]     = useState(1);
   const [pageSize,   setPageSize]   = useState(PAGE_SIZE);
   const [modal,      setModal]      = useState(null);
@@ -947,6 +947,7 @@ export default function Inventario() {
     { key: "estado",    label: "Estado",           type: "select", opts: ["Todos", ...ESTADO_OPTS] },
     { key: "categoria", label: "Categoría",        type: "select", opts: catOpts },
     { key: "stock",     label: "Stock",            type: "select", opts: ["Todos", "Con stock", "Sin stock"] },
+    { key: "activo",    label: "Visibilidad",      type: "select", opts: ["Todos", "Activos", "Inhabilitados"] },
   ];
 
   // Filtros de las pestañas "Entradas" / "Salidas" (misma barra)

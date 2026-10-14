@@ -123,6 +123,25 @@ const Insumo = {
     return rows;
   },
 
+  // ── Para el rol Usuario (no admin): solo insumos activos y con stock.
+  //     Los inhabilitados se conservan en el historial pero no se muestran.
+  //     La columna `activo` puede no existir en una BD antigua; si falta se
+  //     asume que todo el inventario es visible.
+  getForUser: async () => {
+    const tieneActivo = await Insumo._tieneActivoCheck();
+    const [rows] = await pool.query(
+      `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion, i.marca, i.modelo,
+              i.stock, i.estado, i.imagen_url, ${tieneActivo ? "i.activo" : "1 AS activo"}
+              c.nombre_categoria,
+              ${DISPONIBILIDAD_EXPR}
+       FROM insumo i
+       LEFT JOIN categoria c ON i.id_categoria = c.id_categoria
+       WHERE i.stock > 0 ${tieneActivo ? "AND i.activo = 1" : ""}
+       ORDER BY i.nombre ASC`
+    );
+    return rows;
+  },
+
   // conn: conexion opcional con transaccion activa (para escribir el movimiento
   //       en la misma transaccion que el alta del insumo).
   crear: async ({ num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, imagen_url }, conn = pool) => {

@@ -938,6 +938,30 @@ export const cambiarActivoInsumo = async (req, res) => {
     res.status(500).json({ error: "Error al cambiar el estado del insumo", ...errDetalle(err) });
   }
 };
+
+/** getInsumosForUser
+ * GET /api/solicitudes/inventario/for-user   (solo admin o Soporte Tecnico)
+ *
+ * Retorna los insumos visibles para el rol Usuario: con stock > 0 y no
+ * inhabilitados. El `stock` y `disponibilidad` (que delata rangos de stock)
+ * no se entregan al usuario normal; solo a administradores y Soporte.
+ */
+export const getInsumosForUser = async (req, res) => {
+  try {
+    const rows = await Insumo.getForUser();
+    if (req.usuario?.id_rol === 1) return res.json(rows);
+    const sinStock = (obj) => {
+      if (!obj || typeof obj !== "object") return obj;
+      const { stock, disponibilidad, ...resto } = obj;
+      return resto;
+    };
+    return res.json(Array.isArray(rows) ? rows.map(sinStock) : rows);
+  } catch (err) {
+    res.status(500).json({ error: "Error al obtener el inventario para el usuario", ...errDetalle(err) });
+  }
+};
+
+
 /**
  * registrarEntradaInsumo
  * POST /api/solicitudes/insumos/:id/entrada   (solo admin)
