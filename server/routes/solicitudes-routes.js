@@ -40,14 +40,14 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { csrfProtection } from '../middlewares/security.js';
 import { requireAuth, requireAdmin, requireSoporteOAdmin } from '../middlewares/auth-middleware.js';
-import { validate, schemaCrearSolicitud, schemaActualizarEstatusSolicitud, schemaInsumo, schemaEntradaInsumo, schemaSalidaInsumo, schemaItemsSolicitud, schemaRutaSolicitud, schemaObservacionItem } from '../middlewares/validate.js';
+import { validate, schemaCrearSolicitud, schemaActualizarEstatusSolicitud, schemaInsumo, schemaEntradaInsumo, schemaSalidaInsumo, schemaItemsSolicitud, schemaRutaSolicitud, schemaObservacionSolicitud } from '../middlewares/validate.js';
 import {
   getInsumos, getInventario, getInsumosStockBajo, crearSolicitud, getSolicitudesByEmpleado,
   getSolicitudById, getSolicitudByFolio, getAllSolicitudes, getSolicitudesPendientes,
   actualizarEstatusSolicitud, aprobarItemsSolicitud, crearInsumo, actualizarInsumo,
   eliminarInsumo, cambiarActivoInsumo, getReporteSolicitudes, subirFotoInsumo, getMetricasSolicitudes,
   registrarEntradaInsumo, registrarSalidaInsumo, guardarRutaSolicitud, getMovimientosInventario, getMovimientosInsumo, getMovimientosSolicitud, getSalidasMiSucursal,
-  guardarObservacionItem
+  guardarObservacionSolicitud
 } from '../controllers/solicitudes-controller.js';
 import { uploadInsumo } from '../middlewares/upload-insumos.js';
 
@@ -92,11 +92,11 @@ router.get("/movimientos",        requireAdmin, getMovimientosInventario);
 router.get("/movimientos/mis-salidas", getSalidasMiSucursal);
 router.patch("/:id/estatus",  requireAdmin, validate(schemaActualizarEstatusSolicitud), actualizarEstatusSolicitud);
 router.patch("/:id/items",    requireAdmin, validate(schemaItemsSolicitud), aprobarItemsSolicitud);
-// Observaciones de Soporte Tecnico o Administracion sobre cada insumo pedido.
+// Observacion unica de Soporte Tecnico o Administracion sobre toda la solicitud.
 // No usa requireAdmin: el personal de Soporte Tecnico tambien puede escribir.
 // Antes que /:id/items por ser mas especifica; Express no lo confundiria con
 // /:id/items porque el numero de segmentos es distinto.
-router.patch("/:id/items/:id_item/observaciones", requireSoporteOAdmin, validate(schemaObservacionItem), guardarObservacionItem);
+router.patch("/:id/observacion", requireSoporteOAdmin, validate(schemaObservacionSolicitud), guardarObservacionSolicitud);
 router.patch("/:id/ruta",     requireSoporteOAdmin, validate(schemaRutaSolicitud), guardarRutaSolicitud);
 router.get("/:id/movimientos", requireAdmin, getMovimientosSolicitud);
 

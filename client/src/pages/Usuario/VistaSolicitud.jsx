@@ -103,10 +103,10 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
   const [confirmParcial, setConfirmParcial] = useState(null);
   const [insumoDetalle, setInsumoDetalle] = useState(null);
 
-  // ── Observaciones por insumo (Soporte Técnico / Administración) ─────────
+  // ── Observación única de la solicitud (Soporte Técnico / Administración) ──
   // "Soporte Técnico" NO es un rol (solo existen Administrador y Usuario):
-  // es el departamento 2, igual que DEPARTAMENTO_SOPORTE en el backend.
-  const DEPTO_SOPORTE = 2;
+  // es el departamento 67, igual que DEPARTAMENTO_SOPORTE en el backend.
+  const DEPTO_SOPORTE = 67;
   const yo = getUsuario();
   const puedeObservar = esAdmin
     || Number(yo?.id_rol) === 1
@@ -119,43 +119,39 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
     || Number(yo?.id_rol) === 1
     || Number(yo?.id_departamento) === DEPTO_SOPORTE;
 
-  const [obsBorrador,  setObsBorrador]  = useState({});   // id_item → texto en edición
-  const [obsGuardando, setObsGuardando] = useState(null); // id_item que se está guardando
-  const [obsMensaje,   setObsMensaje]   = useState({});   // id_item → { ok, texto }
+  const [obsBorrador,  setObsBorrador]  = useState("");   // texto en edición (uno por solicitud)
+  const [obsGuardando, setObsGuardando] = useState(false);
+  const [obsMensaje,   setObsMensaje]   = useState(null); // { ok, texto }
 
-  const guardarObservacion = async (idItem) => {
+  const guardarObservacion = async () => {
     if (!solicitud || obsGuardando) return;
-    const texto = (obsBorrador[idItem] ?? "").trim();
-    setObsGuardando(idItem);
-    setObsMensaje(prev => ({ ...prev, [idItem]: null }));
+    const texto = obsBorrador.trim();
+    setObsGuardando(true);
+    setObsMensaje(null);
     try {
-      const r = await apiFetch(API_ROUTES.SOLICITUD_ITEM_OBS(solicitud.id_solicitud, idItem), {
+      const r = await apiFetch(API_ROUTES.SOLICITUD_OBS(solicitud.id_solicitud), {
         method: "PATCH",
-        body: { observaciones: texto },
+        body: { observacion: texto },
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
-        setObsMensaje(prev => ({ ...prev, [idItem]: { ok: false, texto: data.error || "No se pudo guardar" } }));
+        setObsMensaje({ ok: false, texto: data.error || "No se pudo guardar" });
         return;
       }
       // Se refleja en memoria sin recargar la solicitud entera
       setSolicitud(prev => ({
         ...prev,
-        detalle: (prev.detalle || []).map(d => d.id_solicitud_insumo === idItem
-          ? { ...d,
-              observaciones:       data.observaciones,
-              observaciones_por:   data.observaciones_por,
-              observaciones_fecha: data.observaciones_fecha,
-              observaciones_autor: data.observaciones_autor }
-          : d),
+        observacion:       data.observacion,
+        observacion_por:   data.observacion_por,
+        observacion_fecha: data.observacion_fecha,
+        observacion_autor: data.observacion_autor,
       }));
-      setObsBorrador(prev => { const n = { ...prev }; delete n[idItem]; return n; });
-      setObsMensaje(prev => ({ ...prev, [idItem]: { ok: true, texto: texto ? "Guardada" : "Eliminada" } }));
-      setTimeout(() => setObsMensaje(prev => { const n = { ...prev }; delete n[idItem]; return n; }), 2500);
+      setObsMensaje({ ok: true, texto: texto ? "Guardada" : "Eliminada" });
+      setTimeout(() => setObsMensaje(null), 2500);
     } catch {
-      setObsMensaje(prev => ({ ...prev, [idItem]: { ok: false, texto: "Error de conexión" } }));
+      setObsMensaje({ ok: false, texto: "Error de conexión" });
     } finally {
-      setObsGuardando(null);
+      setObsGuardando(false);
     }
   };
 
@@ -168,6 +164,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
         if (d?.error) { setError(d.error); return; }
         if (!d?.id_solicitud) { setError("Solicitud no encontrada"); return; }
         setSolicitud(d);
+        setObsBorrador(d.observacion ?? "");
         // null = sin revisar → false (el admin debe marcar explícitamente)
         // 1 = aprobado, 0 = rechazado explícito
         const mapa = {};
@@ -811,68 +808,72 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                         )}
                       </div>
 
-                      {/* Observación de Soporte Técnico / Administración sobre este insumo */}
-                      {(d.observaciones || puedeObservar) && (
-                        <div className="w-full" style={{ marginTop: 2 }}>
-                          {puedeObservar ? (
-                            <>
-                              <textarea
-                                value={obsBorrador[d.id_solicitud_insumo] ?? d.observaciones ?? ""}
-                                onChange={e => setObsBorrador(prev => ({ ...prev, [d.id_solicitud_insumo]: e.target.value }))}
-                                placeholder="Observación de Soporte — p. ej.: sin stock, se sustituye por uno equivalente"
-                                rows={2}
-                                maxLength={500}
-                                disabled={obsGuardando === d.id_solicitud_insumo}
-                                aria-label="Observación de Soporte"
-                                className="w-full text-[11px] rounded-lg px-2 py-1.5 outline-none resize-y"
-                                style={{
-                                  background: isDark ? "rgba(255,255,255,0.05)" : (T?.surfaceAlt ?? "#fff"),
-                                  color: T?.text,
-                                  border: `1px solid ${T?.border}`,
-                                }}
-                              />
-                              <div className="flex items-center justify-between gap-2 mt-1">
-                                <span className="text-[9px] truncate" style={labelStyle}>
-                                  {d.observaciones_autor
-                                    ? `${d.observaciones_autor} · ${fmtFechaHora(d.observaciones_fecha)}`
-                                    : "Solo Soporte / Administración · máx. 500 caracteres"}
-                                </span>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  {obsMensaje[d.id_solicitud_insumo] && (
-                                    <span className="text-[9px] font-bold"
-                                      style={{ color: obsMensaje[d.id_solicitud_insumo].ok ? "#16a34a" : "#dc2626" }}>
-                                      {obsMensaje[d.id_solicitud_insumo].texto}
-                                    </span>
-                                  )}
-                                  <button
-                                    onClick={() => guardarObservacion(d.id_solicitud_insumo)}
-                                    disabled={obsGuardando === d.id_solicitud_insumo}
-                                    title="Guardar observación"
-                                    className="flex items-center gap-1 text-[9px] font-bold px-2 py-1 rounded-md transition-all hover:brightness-110 disabled:opacity-50"
-                                    style={{ background: `${orange}15`, color: orange, border: `1px solid ${orange}40` }}>
-                                    <Save size={9} strokeWidth={3} />
-                                    {obsGuardando === d.id_solicitud_insumo ? "..." : "Guardar"}
-                                  </button>
-                                </div>
-                              </div>
-                            </>
-                          ) : (
-                            <p className="text-[10px] leading-snug" style={{ ...labelStyle, color: T?.textMuted }}>
-                              <span className="font-black uppercase" style={{ letterSpacing: "0.06em" }}>Nota de soporte: </span>
-                              {d.observaciones}
-                              {d.observaciones_autor && (
-                                <span style={{ opacity: 0.7 }}>
-                                  {" — "}{d.observaciones_autor}, {fmtFechaHora(d.observaciones_fecha)}
-                                </span>
-                              )}
-                            </p>
-                          )}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
               </div>
+
+              {/* Observación única de Soporte Técnico / Administración sobre toda la solicitud */}
+              {(solicitud?.observacion || puedeObservar) && (
+                <div className="px-4 py-3" style={{ borderTop: `1px solid ${T?.border}`, background: isDark ? "rgba(255,255,255,0.02)" : (T?.surfaceAlt ?? "#f8fafc") }}>
+                  <p className="text-[10px] font-black uppercase mb-1.5" style={{ ...labelStyle, letterSpacing: "0.06em", color: orange }}>
+                    Observación de Soporte Técnico
+                  </p>
+                  {puedeObservar ? (
+                    <>
+                      <textarea
+                        value={obsBorrador}
+                        onChange={e => setObsBorrador(e.target.value)}
+                        placeholder="Observación de Soporte — p. ej.: sin stock, se sustituye por uno equivalente"
+                        rows={2}
+                        maxLength={500}
+                        disabled={obsGuardando}
+                        aria-label="Observación de Soporte sobre la solicitud"
+                        className="w-full text-[11px] rounded-lg px-2 py-1.5 outline-none resize-y"
+                        style={{
+                          background: isDark ? "rgba(255,255,255,0.05)" : "#fff",
+                          color: T?.text,
+                          border: `1px solid ${T?.border}`,
+                        }}
+                      />
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <span className="text-[9px] truncate" style={labelStyle}>
+                          {solicitud?.observacion_autor
+                            ? `${solicitud.observacion_autor} · ${fmtFechaHora(solicitud.observacion_fecha)}`
+                            : "Solo Soporte / Administración · máx. 500 caracteres"}
+                        </span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {obsMensaje && (
+                            <span className="text-[9px] font-bold"
+                              style={{ color: obsMensaje.ok ? "#16a34a" : "#dc2626" }}>
+                              {obsMensaje.texto}
+                            </span>
+                          )}
+                          <button
+                            onClick={guardarObservacion}
+                            disabled={obsGuardando}
+                            title="Guardar observación"
+                            className="flex items-center gap-1 text-[9px] font-bold px-2 py-1 rounded-md transition-all hover:brightness-110 disabled:opacity-50"
+                            style={{ background: `${orange}15`, color: orange, border: `1px solid ${orange}40` }}>
+                            <Save size={9} strokeWidth={3} />
+                            {obsGuardando ? "..." : "Guardar"}
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-[10px] leading-snug" style={{ ...labelStyle, color: T?.textMuted }}>
+                      {solicitud?.observacion}
+                      {solicitud?.observacion_autor && (
+                        <span style={{ opacity: 0.7 }}>
+                          {" — "}{solicitud.observacion_autor}, {fmtFechaHora(solicitud.observacion_fecha)}
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              )}
+
 
               {/* Botón guardar selección — solo admin, solicitud abierta */}
               {esAdmin && !cerrado && (

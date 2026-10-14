@@ -60,7 +60,7 @@ const API_ROUTES = {
   SOLICITUD_ESTATUS:  (id) => `/api/solicitudes/${Number(id)}/estatus`,
   SOLICITUD_ITEMS:    (id) => `/api/solicitudes/${Number(id)}/items`,
   SOLICITUD_RUTA:     (id) => `/api/solicitudes/${Number(id)}/ruta`,
-  SOLICITUD_ITEM_OBS: (id, idItem) => `/api/solicitudes/${Number(id)}/items/${Number(idItem)}/observaciones`,
+  SOLICITUD_OBS: (id) => `/api/solicitudes/${Number(id)}/observacion`,
   SOLICITUD_MOVIMIENTOS: (id) => `/api/solicitudes/${Number(id)}/movimientos`,
   SOLICITUDES_EMP:    (id) => `/api/solicitudes/empleado/${Number(id)}`,
   SOLICITUDES_PEND:   "/api/solicitudes/pendientes",
