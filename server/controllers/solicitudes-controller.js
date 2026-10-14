@@ -407,52 +407,47 @@ export const aprobarItemsSolicitud = async (req, res) => {
 
 
 /**
- * guardarObservacionItem
+ * guardarObservacionSolicitud
  *
- * Registra o borra la observacion que Soporte Tecnico o Administracion
- * escriben sobre un insumo de la solicitud. Es distinta de la `descripcion`
- * que escribe el solicitante: esta es la respuesta de quien revisa el pedido
- * ("este filtro ya se agotó, pide el alternativo", "salió del lote nuevo").
+ * Registra o borra la observacion unica que Soporte Tecnico o Administracion
+ * escriben sobre una solicitud completa (no por insumo). Es distinta de la
+ * justificacion que escribe el solicitante: esta es la respuesta de quien
+ * revisa el pedido ("sin stock, se sustituye por equivalente", etc.).
  *
- * Ruta: PATCH /api/solicitudes/:id/items/:id_item/observaciones
+ * Ruta: PATCH /api/solicitudes/:id/observacion
  * Permiso: requireSoporteOAdmin (administradores o depto. Soporte Tecnico).
  */
-export const guardarObservacionItem = async (req, res) => {
-  const id      = parseInt(req.params.id, 10);
-  const id_item = parseInt(req.params.id_item, 10);
-  const texto   = String(req.body.observaciones ?? "").trim();
-  const autor   = req.usuario.id_empleado;
+export const guardarObservacionSolicitud = async (req, res) => {
+  const id    = parseInt(req.params.id, 10);
+  const texto = String(req.body.observacion ?? "").trim();
+  const autor = req.usuario.id_empleado;
 
-  if (!Number.isInteger(id) || !Number.isInteger(id_item))
-    return res.status(400).json({ error: "Identificadores inválidos" });
+  if (!Number.isInteger(id))
+    return res.status(400).json({ error: "Identificador inválido" });
 
   try {
-    // El item debe pertenecer a la solicitud de la ruta. Sin esta comprobacion
-    // un usuario autorizado podria escribir sobre el insumo de otra solicitud
-    // indicando su id.
-    const [[item]] = await pool.query(
-      `SELECT id_solicitud_insumo FROM solicitud_insumo
-        WHERE id_solicitud_insumo = ? AND id_solicitud = ? LIMIT 1`,
-      [id_item, id]
+    const [[sol]] = await pool.query(
+      "SELECT id_solicitud FROM solicitud WHERE id_solicitud = ? LIMIT 1",
+      [id]
     );
-    if (!item)
-      return res.status(404).json({ error: "Ese insumo no pertenece a la solicitud" });
+    if (!sol)
+      return res.status(404).json({ error: "Solicitud no encontrada" });
 
     // Texto vacio = borrar. Se limpian tambien autor y fecha para no dejar
     // rastro de quien escribio algo que ya no existe.
     if (texto) {
       await pool.query(
-        `UPDATE solicitud_insumo
-            SET observaciones = ?, observaciones_por = ?, observaciones_fecha = NOW()
-          WHERE id_solicitud_insumo = ?`,
-        [texto, autor, id_item]
+        `UPDATE solicitud
+            SET observacion = ?, observacion_por = ?, observacion_fecha = NOW()
+          WHERE id_solicitud = ?`,
+        [texto, autor, id]
       );
     } else {
       await pool.query(
-        `UPDATE solicitud_insumo
-            SET observaciones = NULL, observaciones_por = NULL, observaciones_fecha = NULL
-          WHERE id_solicitud_insumo = ?`,
-        [id_item]
+        `UPDATE solicitud
+            SET observacion = NULL, observacion_por = NULL, observacion_fecha = NULL
+          WHERE id_solicitud = ?`,
+        [id]
       );
     }
 
@@ -461,10 +456,10 @@ export const guardarObservacionItem = async (req, res) => {
     );
     res.json({
       ok: true,
-      observaciones: texto || null,
-      observaciones_por: texto ? autor : null,
-      observaciones_fecha: texto ? new Date() : null,
-      observaciones_autor: texto
+      observacion: texto || null,
+      observacion_por: texto ? autor : null,
+      observacion_fecha: texto ? new Date() : null,
+      observacion_autor: texto
         ? `${emp?.nombre ?? ""} ${emp?.ap_paterno ?? ""}`.trim()
         : "",
     });
@@ -1057,13 +1052,19 @@ export const registrarSalidaInsumo = async (req, res) => {
       const base = /^\d{4}-\d{2}-\d{2}$/.test(soloFecha)
         ? new Date(tieneHora ? f.replace(" ", "T") : `${soloFecha}T12:00:00`)
         : new Date();
-      const ymd = `${base.getFullYear()}${String(base.getMonth() + 1).padStart(2, "0")}${String(base.getDate()).padStart(2, "0")}`;
-      const ymdSql = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}-${String(base.getDate()).padStart(2, "0")}`;
+      // Folio de salida unificado por MES: SAL-YYYYMM-NNNN, mismo patron que
+      // las solicitudes (YYYYMM-NNNN) pero conservando el prefijo SAL- para que
+      // una salida nunca se confunda con una solicitud. El consecutivo cuenta
+      // los folios DISTINTOS del mes ya escritos en el motivo (cada salida
+      // manual deja "[SAL-YYYYMM-NNNN] ..." al inicio del texto del motivo).
+      const ym = `${base.getFullYear()}${String(base.getMonth() + 1).padStart(2, "0")}`;
       const [[{ n }]] = await conn.query(
-        `SELECT COUNT(*) AS n FROM movimiento_inventario WHERE tipo = 'Salida' AND DATE(fecha) = ? FOR UPDATE`,
-        [ymdSql]
+        `SELECT COUNT(DISTINCT LEFT(motivo, LOCATE(']', motivo))) AS n
+           FROM movimiento_inventario
+          WHERE tipo = 'Salida' AND motivo LIKE ? FOR UPDATE`,
+        [`[SAL-${ym}-%`]
       );
-      const folio = `SAL-${ymd}-${String((Number(n) || 0) + 1).padStart(4, "0")}`;
+      const folio = `SAL-${ym}-${String((Number(n) || 0) + 1).padStart(4, "0")}`;
 
       // Los campos del formato pueden venir como texto libre (hojas viejas) o
       // como IDs de las listas (empleados/sucursales): se resuelven a nombre.

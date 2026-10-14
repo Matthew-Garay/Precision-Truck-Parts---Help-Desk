@@ -102,7 +102,7 @@ export default function PrintReportView({ ticket }: { ticket: Ticket }) {
             {prio.icon ? `${prio.icon} ` : ""}{prio.label}
           </span>
           {tiempoRes && (
-            <span style={{ fontSize: "7.5pt", color: "var(--pr-muted)" }}>Resuelto en {tiempoRes}</span>
+            <span style={{ fontSize: "7pt", color: "var(--pr-muted)" }}>Resuelto en {tiempoRes}</span>
           )}
         </div>
 

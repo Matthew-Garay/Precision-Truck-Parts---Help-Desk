@@ -2,7 +2,6 @@ import {
   PageHeader, PageFooter, PageSize, Firma,
   PRIO_META, fmt, nowFechaGen,
 } from '../PrintShared.tsx';
-import { getUsuario } from '../../utils/session.js';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 /** Convierte imagen_url del insumo en una URL visible (prefijo /storage + API). */
@@ -45,6 +44,10 @@ interface Solicitud {
   nombre_sucursal_destino?: string | null;
   fecha_atencion?: string | null;
   justificacion?: string | null;
+  /** Observacion que Soporte Tecnico anoto sobre la solicitud (si la hay). */
+  observacion?: string | null;
+  observacion_autor?: string | null;
+  observacion_fecha?: string | null;
   /** Soporte tecnico (o admin) que acepto la solicitud — "Quien entrega". */
   quien_entrega?: string | null;
   detalle: DetalleItem[];
@@ -106,7 +109,7 @@ function InsumosTable({ items, cerrado }: {
       <thead>
         <tr>
           {["#", "Foto", "Insumo", "Descripción", "Solicitado", "Aceptado", "Estado"].map((h, i) => (
-            <th key={h} className={i === 3 ? "pr-inv-th" : undefined} style={{ textAlign: i === 3 ? "left" : i === 5 ? "right" : i === 6 ? "center" : "left" }}>{h}</th>
+            <th key={h} className="pr-inv-th" style={{ textAlign: i === 0 || i === 1 || i === 6 ? "center" : i === 4 || i === 5 ? "right" : "left" }}>{h}</th>
           ))}
         </tr>
       </thead>
@@ -118,12 +121,12 @@ function InsumosTable({ items, cerrado }: {
           const descTxt    = (d.descripcion ?? "").trim();
           return (
             <tr key={d.id_solicitud_insumo}>
-              <td className="pr-inv-td" style={{ textAlign: "center", color: "var(--pr-faint)", fontSize: "6.5pt" }}>{i + 1}</td>
+              <td className="pr-inv-td" style={{ textAlign: "center", color: "var(--pr-faint)" }}>{i + 1}</td>
               <td className="pr-inv-td pr-inv-td-img">
                 {imgSrc(d.imagen_url) ? (
                   <img src={imgSrc(d.imagen_url)} alt="" className="pr-inv-thumb" />
                 ) : (
-                  <div className="pr-inv-thumb-placeholder"><span style={{ fontSize: "5pt", color: "var(--pr-faint)" }}>S/F</span></div>
+                  <div className="pr-inv-thumb-placeholder"><span style={{ fontSize: "6pt", color: "var(--pr-faint)" }}>S/F</span></div>
                 )}
               </td>
               <td className="pr-inv-td">
@@ -131,15 +134,15 @@ function InsumosTable({ items, cerrado }: {
                 {modeloTxt && <div className="pr-item-sub">{modeloTxt}</div>}
               </td>
               <td className="pr-inv-td">
-                {descTxt && <div style={{ fontSize: "7pt", lineHeight: 1.3 }}>{descTxt}</div>}
+                {descTxt && <div style={{ lineHeight: 1.3 }}>{descTxt}</div>}
                 {d.num_serie && <div className="pr-item-note">S/N: {d.num_serie}</div>}
                 {!descTxt && !d.num_serie && <span style={{ color: "var(--pr-faint)" }}>&mdash;</span>}
               </td>
-              <td className="pr-num" style={{ fontSize: "9pt", fontWeight: 700, color: "var(--pr-muted)" }}>
+              <td className="pr-num" style={{ fontSize: "var(--pr-fs-num)", fontWeight: 700, color: "var(--pr-muted)" }}>
                 {solicitadoDe(d)}
               </td>
               <td className="pr-num" style={{
-                fontSize: "9.5pt", fontWeight: 800,
+                fontSize: "var(--pr-fs-num)", fontWeight: 800,
                 color: cerrado ? (aprobado ? "var(--pr-ink)" : "var(--pr-faint)") : "var(--pr-faint)",
               }}>
                 {cerrado ? entregadoDe(d) : solicitadoDe(d)}
@@ -157,10 +160,10 @@ function InsumosTable({ items, cerrado }: {
       </tbody>
       <tfoot>
         <tr>
-          <td colSpan={3}>Total de piezas solicitadas</td>
+          <td colSpan={4}>Total de piezas solicitadas</td>
           <td className="pr-num">{totalSolicitado}</td>
           <td className="pr-num">{cerrado ? totalAprobado : "—"}</td>
-          <td colSpan={3} style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400, color: "var(--pr-faint)" }}>
+          <td colSpan={1} style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400, color: "var(--pr-faint)" }}>
             {totalAprobado !== null ? `${totalAprobado} piezas aprobadas` : ""}
           </td>
         </tr>
@@ -176,10 +179,10 @@ function EstadoSolicitud({ estatus, fechaSolicitud }: { estatus: string; fechaSo
     <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
       <StatusPill estatus={estatus} />
       <div>
-        <p style={{ margin: 0, fontSize: "8.5pt", fontWeight: 700, color: "var(--pr-ink)" }}>
+        <p style={{ margin: 0, fontSize: "var(--pr-fs-value)", fontWeight: 700, color: "var(--pr-ink)" }}>
           {cerrado ? (estatus === "Aceptado" ? "Solicitud aceptada" : "Solicitud rechazada") : "Pendiente de resolución"}
         </p>
-        <p style={{ margin: 0, fontSize: "7pt", color: "var(--pr-faint)" }}>
+        <p style={{ margin: 0, fontSize: "var(--pr-fs-label)", color: "var(--pr-faint)" }}>
           {cerrado
             ? (estatus === "Aceptado" ? "Insumos aprobados y stock descontado" : "La solicitud fue denegada")
             : `Fecha de solicitud: ${fechaSolicitud}`}
@@ -200,13 +203,16 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
   const rutaDestino = solicitud.nombre_sucursal_destino?.trim() || null;
 
   // La ruta del material (de donde sale y a donde llega el material) es
-  // logistica interna: en la hoja solo la imprimen Administracion y Soporte
-  // Tecnico (mismo criterio que la API). El resto del personal no debe verla;
-  // el backend ademas la omite de la respuesta.
-  const DEPTO_SOPORTE = 2;
-  const sesion = getUsuario();
-  const veRuta = sesion?.id_rol === 1
-    || Number(sesion?.id_departamento) === DEPTO_SOPORTE;
+  // logistica interna: el backend la omite de la respuesta a quien no es
+  // Soporte Tecnico/Administracion, asi que en la hoja basta con imprimirla
+  // cuando el dato llega en el payload (sin ids de departamento en cliente).
+  const veRuta = !!(rutaOrigen || rutaDestino);
+
+  // "Quien entrega" se llena al aceptar la solicitud (autor del movimiento de
+  // salida generado). Mientras no exista, se imprime un texto claro en gris
+  // en lugar de la linea de firma completamente vacia.
+  const quienEntregaTxt = solicitud.quien_entrega?.trim()
+    || (solicitud.estatus === "Rechazado" ? "Solicitud rechazada" : "Pendiente de entrega");
 
   return (
     <div className="pr-root pr-solicitud" data-ready="true">
@@ -219,7 +225,8 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
         .pr-solicitud .pr-solicitud-firmas .pr-signature:first-child .pr-signature-area { height: 150px; }
         .pr-solicitud .pr-signature { width: 42%; }
         .pr-solicitud .pr-signature-line { width: 100%; height: 1px; background: var(--pr-ink); }
-        .pr-solicitud .pr-solicitud-firmas { margin-top: 40px; padding-top: 24px; align-items: flex-end; }
+        .pr-solicitud .pr-signature-name { white-space: normal; overflow-wrap: anywhere; }
+        .pr-solicitud .pr-solicitud-firmas { margin-top: 40px; padding-top: 24px; align-items: flex-end; grid-template-columns: 1fr 1fr; }
       `}</style>
 
       <PageHeader
@@ -228,7 +235,7 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
         subtitulo="Departamento de Soporte Técnico"
         metaRows={[
           { label: "Folio", value: solicitud.folio_solicitud, mono: true },
-          { label: "Fecha", value: fmtFecha(solicitud.fecha) },
+          { label: "Fecha", value: fmt.fechaCorta(solicitud.fecha) },
           { label: "Generado", value: fechaGen },
         ]}
       />
@@ -298,6 +305,26 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
           </div>
         )}
 
+        {/* Observacion de Soporte Tecnico (solo se imprime si existe) */}
+        {solicitud.observacion && (
+          <div className="pr-inv-section" style={{ padding: "6px 10px 10px" }}>
+            <div className="pr-inv-section-hdr">
+              <span className="pr-inv-section-title">Observación de Soporte Técnico</span>
+            </div>
+            <div style={{ padding: "8px 12px", lineHeight: 1.5, color: "var(--pr-ink)" }}>
+              {solicitud.observacion}
+              {(solicitud.observacion_autor || solicitud.observacion_fecha) && (
+                <div className="pr-item-note" style={{ marginTop: 4 }}>
+                  {[
+                    solicitud.observacion_autor,
+                    solicitud.observacion_fecha ? fmt.fechaHora(solicitud.observacion_fecha) : null,
+                  ].filter(Boolean).join(" · ")}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <InsumosTable items={solicitud.detalle} cerrado={cerrado} />
 
         <div className="pr-doc-h2">
@@ -306,11 +333,16 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
         <EstadoSolicitud estatus={solicitud.estatus} fechaSolicitud={fechaSol} />
 
         {/* Firmas estilo salida interna. "Quien recibe" queda en BLANCO: el
-            area es para firmar a mano. "Quien entrega" muestra al soporte
-            tecnico que acepto la solicitud. */}
+            area es para firmar a mano. "Quien entrega" muestra al admin (o
+            soporte) que acepto la solicitud, o un texto claro en gris si aun
+            no se ha atendido. */}
         <div className="pr-firmas pr-solicitud-firmas" style={{ padding: "0 14px" }}>
           <Firma nombre="" rol="Quien recibe" />
-          <Firma nombre={solicitud.quien_entrega ?? ""} rol="Quien entrega" />
+          <Firma
+            nombre={quienEntregaTxt}
+            rol="Quien entrega"
+            placeholder={!solicitud.quien_entrega?.trim()}
+          />
         </div>
 
       </div>

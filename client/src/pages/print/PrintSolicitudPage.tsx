@@ -36,6 +36,9 @@ interface Solicitud {
   nombre_sucursal_destino?: string | null;
   fecha_atencion?: string | null;
   justificacion?: string | null;
+  observacion?: string | null;
+  observacion_autor?: string | null;
+  observacion_fecha?: string | null;
   /** Soporte tecnico (o admin) que acepto la solicitud. */
   quien_entrega?: string | null;
   detalle: DetalleItem[];

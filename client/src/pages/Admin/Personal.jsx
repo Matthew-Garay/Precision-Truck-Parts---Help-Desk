@@ -5,6 +5,7 @@ import { apiFetch } from '../../services/api-client.js';
 import { emailCorporativoValido, DOMINIOS_PERMITIDOS } from '../../utils/email.js';
 import { evaluarPassword, passwordSeguro } from '../../utils/password.js';
 import FiltrosToolbar from '../../components/FiltrosToolbar.jsx';
+import Paginacion from '../../components/Paginacion.jsx';
 import { X, Eye, EyeOff } from "lucide-react";
 
 const ORANGE  = "#F47920";
@@ -748,7 +749,6 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
   const totalPaginas = Math.max(1, Math.ceil(sorted.length / pageSize));
   const paginaActual = Math.min(pagina, totalPaginas);
   const filasPagina  = sorted.slice((paginaActual - 1) * pageSize, paginaActual * pageSize);
-  const irPagina     = p => { if (p >= 1 && p <= totalPaginas) setPagina(p); };
 
   const COLS = [
     { key: "nombre",   label: "Empleado",  sortable: true  },
@@ -867,29 +867,15 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
         </table>
       </div>
 
-      {/* Paginación — mismo diseño y adaptación que Historial de Insumos */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2" style={{ borderTop: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
-        <div className="flex items-center gap-1.5">
-          <button disabled={paginaActual <= 1} onClick={() => irPagina(paginaActual - 1)}
-            className="px-2 py-1 rounded border text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ borderColor: T.border, background: T.surfaceAlt, color: T.text }}>
-            ‹ Ant
-          </button>
-          <span className="text-[11px] px-1" style={{ color: T.textMuted }}>{paginaActual} / {totalPaginas}</span>
-          <button disabled={paginaActual >= totalPaginas} onClick={() => irPagina(paginaActual + 1)}
-            className="px-2 py-1 rounded border text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ borderColor: T.border, background: T.surfaceAlt, color: T.text }}>
-            Sig ›
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-[10px]" style={{ color: T.textMuted }}>Mostrar</label>
-          <select value={pageSize} onChange={e => { setPageSize(parseInt(e.target.value, 10)); setPagina(1); }}
-            className="text-[11px]" style={{ padding: "3px 6px", borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.text }}>
-            {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </div>
-      </div>
+      {/* Paginación — componente compartido (misma barra que Historial de Insumos) */}
+      <Paginacion
+        pagina={paginaActual}
+        setPagina={setPagina}
+        totalPaginas={totalPaginas}
+        pageSize={pageSize}
+        setPageSize={setPageSize}
+        T={T}
+      />
     </div>
   );
 }

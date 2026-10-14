@@ -11,11 +11,11 @@
   "scripts": {
     "dev": "npm run dev -w client",
     "server": "cross-env NODE_ENV=production node --import ./server/load-env.js server/server.js",
-    "dev:all": "chcp 65001 && concurrently -k -n \"BACK,FRONT\" -c \"yellow,cyan\" --timestamp --timefmt \"HH:mm:ss\" \"node --import ./server/load-env.js server/server.js\" \"npm run dev -w client\"",
+    "dev:all": "chcp 65001 >nul && concurrently -k -n \"BACK,FRONT\" -c \"yellow,cyan\" --timestamp --timefmt \"HH:mm:ss\" \"node --import ./server/load-env.js server/server.js\" \"npm run dev -w client --silent\"",
     "build": "npm run build -w client",
     "preview": "npm run preview -w client",
     "preall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/liberar-puertos.ps1",
-    "all": "npm run dev:all",
+    "all": "npm run dev:all --silent",
     "probar:correo": "node --import ./server/load-env.js server/scripts/probar-correo.js",
     "respaldar": "powershell -ExecutionPolicy Bypass -File respaldar.ps1"
   },

@@ -4,6 +4,7 @@ import { apiFetch } from '../../services/api-client.js';
 import { abrirReporteLista } from '../print/PrintReportePage.tsx';
 import { useAutoRefresh } from '../../hooks/use-auto-refresh.js';
 import FiltrosToolbar from '../../components/FiltrosToolbar.jsx';
+import Paginacion from '../../components/Paginacion.jsx';
 import { useCardStyles } from '../../components/Card.jsx';
 import VistaSolicitud from '../Usuario/VistaSolicitud.jsx';
 import ModalReporte from '../../components/ModalReporte.jsx';
@@ -19,7 +20,7 @@ const ESTATUS_BG    = { Resuelto: "rgba(22,163,74,0.13)", Pendiente: "rgba(59,13
 const fmt = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
 
 const LIMIT = 25;
-const FILTROS_INIT = { busqueda: "", estatus: "Todos", prioridad: "Todos", area: "Todos", usuario: "Todos", sucursal: "Todos" };
+const FILTROS_INIT = { busqueda: "", estatus: "Todos", prioridad: "Todos", area: "Todos", usuario: "Todos", sucursal: "Todos", origen: "Todos" };
 
 export default function HistorialInsumos({ T }) {
   const isDark = T.isDark;
@@ -73,8 +74,10 @@ export default function HistorialInsumos({ T }) {
     ])
       .then(([sols, movs]) => {
         const salidas = agruparSalidas(movs).filter(g => coincideFiltrosSalida(g, f));
-        const combo = [...sols, ...salidas]
-          .sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
+        // Origen: "interno" = solicitudes (SOL-), "sistema" = salidas manuales (SAL-).
+        let combo = [...sols, ...salidas].sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
+        if (f.origen === "interno") combo = combo.filter(x => !x.es_salida);
+        else if (f.origen === "sistema") combo = combo.filter(x => x.es_salida);
         const total = combo.length;
         const ini = (p - 1) * l;
         setSolicitudes(combo.slice(ini, ini + l));
@@ -108,7 +111,7 @@ export default function HistorialInsumos({ T }) {
 
   const limpiar = () => setFiltros(FILTROS_INIT);
   const hayFiltros = filtros.busqueda || filtros.estatus !== "Todos" || filtros.prioridad !== "Todos"
-    || filtros.usuario !== "Todos" || filtros.area !== "Todos" || filtros.sucursal !== "Todos";
+    || filtros.usuario !== "Todos" || filtros.area !== "Todos" || filtros.sucursal !== "Todos" || filtros.origen !== "Todos";
 
   const toOpts = arr => [{ value: "Todos", label: "Todos" }, ...arr.map(v => ({ value: v, label: v }))];
 
@@ -119,6 +122,7 @@ export default function HistorialInsumos({ T }) {
     { key: "usuario",   label: "Usuario",           type: "select",  opts: toOpts(optsCache.usuarios) },
     { key: "area",      label: "Área",              type: "select",  opts: toOpts(optsCache.areas) },
     { key: "sucursal",  label: "Sucursal",          type: "select",  opts: toOpts(optsCache.sucursales) },
+    { key: "origen",    label: "Origen",            type: "select",  opts: [{ value: "Todos", label: "Todos" }, { value: "interno", label: "Salidas internas" }, { value: "sistema", label: "Salidas de sistema" }] },
   ];
 
   const generarReporte = async (params) => {
@@ -592,27 +596,16 @@ export default function HistorialInsumos({ T }) {
             </div>
           </div>
 
-          {/* Paginación */}
-          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2" style={{ borderTop: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
-            <div className="flex items-center gap-1.5">
-              <button disabled={page <= 1 || cargando} onClick={() => setPage(p => Math.max(1, p - 1))}
-                className="px-2 py-1 rounded border text-[11px]" style={{ borderColor: T.border, background: T.surfaceAlt, color: T.text }}>
-                ‹ Ant
-              </button>
-              <span className="text-[11px] px-1" style={{ color: T.textMuted }}>{page} / {pages}</span>
-              <button disabled={page >= pages || cargando} onClick={() => setPage(p => Math.min(pages, p + 1))}
-                className="px-2 py-1 rounded border text-[11px]" style={{ borderColor: T.border, background: T.surfaceAlt, color: T.text }}>
-                Sig ›
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-[10px]" style={{ color: T.textMuted }}>Mostrar</label>
-              <select value={limit} onChange={e => { setLimit(parseInt(e.target.value, 10)); setPage(1); }}
-                className="text-[11px]" style={{ padding: "3px 6px", borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.text }}>
-                {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </div>
-          </div>
+          {/* Paginación — componente compartido (mismo estilo que Personal) */}
+          <Paginacion
+            pagina={page}
+            setPagina={setPage}
+            totalPaginas={pages}
+            pageSize={limit}
+            setPageSize={setLimit}
+            T={T}
+            cargando={cargando}
+          />
         </div>
 
       </div>

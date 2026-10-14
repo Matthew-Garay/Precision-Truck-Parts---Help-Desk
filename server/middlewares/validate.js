@@ -320,7 +320,7 @@ export const schemaEntradaInsumo = z.object({
 });
 
 // Schema para registrar una SALIDA INTERNA manual de insumos (uso interno).
-// Descuenta stock en transacción y deja el movimiento con el folio SAL-XXXX
+// Descuenta stock en transacción y deja el movimiento con el folio SAL-YYYYMM-NNNN
 // en el motivo. Los campos libres (destino, responsable, etc.) viajan dentro
 // del motivo estructurado, sin migración de BD.
 // TODO EL FORMATO ES EDITABLE: el usuario llena fecha, solicitante, destino,
@@ -394,11 +394,12 @@ export const schemaItemsSolicitud = z.object({
 
 
 /**
- * Observacion de Soporte Tecnico o Administracion sobre un insumo pedido.
- * Se admite cadena vacia: eso borra la observacion existente (y su autor).
+ * Observacion unica de Soporte Tecnico o Administracion sobre toda la
+ * solicitud (no por insumo). Se admite cadena vacia: eso borra la observacion
+ * existente (y su autor).
  */
-export const schemaObservacionItem = z.object({
-  observaciones: z
+export const schemaObservacionSolicitud = z.object({
+  observacion: z
     .string()
     .trim()
     .max(500, "La observacion no puede superar 500 caracteres")

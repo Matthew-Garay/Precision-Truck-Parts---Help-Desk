@@ -155,10 +155,15 @@ export function abrirHojaSalida(g) {
     // Abre la HOJA de impresión en una PESTAÑA NUEVA (con el formato
     // solicitado) en vez de reemplazar la pestaña actual. El payload ya
     // quedó en sessionStorage, que el navegador copia a la pestaña nueva.
+    // Igual que Inventario.jsx (abrirImpresion): si el navegador bloquea la
+    // ventana emergente se avisa en pantalla en vez de secuestrar la pestaña.
     const win = window.open("/print/salida", "_blank");
     if (!win) {
-      // El navegador bloqueó el popup: como respaldo abrimos en la misma pestaña.
-      window.location.href = "/print/salida";
+      const aviso = document.createElement("div");
+      aviso.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#1D1D1B;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;border-left:4px solid #0d9488;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
+      aviso.textContent = "El navegador bloqueó la ventana emergente. Permite las ventanas emergentes e intenta de nuevo.";
+      document.body.appendChild(aviso);
+      setTimeout(() => aviso.remove(), 5000);
     }
     return true;
   } catch {

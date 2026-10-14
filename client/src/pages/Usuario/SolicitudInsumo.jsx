@@ -10,7 +10,6 @@ import {
   agruparSalidas, coincideFiltrosSalida, abrirHojaSalida,
   traerSalidasMiSucursal, traerSolicitudesEmpleado,
 } from '../../services/salidas-historial.js';
-import ModalSalidaView from '../../components/ModalSalidaView.tsx';
 
 const PRIORITY_OPTIONS = [
   { value: "Urgente", label: "Urgente", color: "#dc2626", bg: "rgba(220,38,38,0.10)", border: "rgba(220,38,38,0.30)" },
@@ -413,23 +412,14 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   const [solPages,        setSolPages]        = useState(1);
   const [solLimit,        setSolLimit]        = useState(25);
   const [solTotal,        setSolTotal]        = useState(0);
-  const [filtrosSol,      setFiltrosSol]      = useState({ busqueda: "", estatus: "Todos", prioridad: "Todos" });
+  const [filtrosSol,      setFiltrosSol]      = useState({ busqueda: "", estatus: "Todos", prioridad: "Todos", origen: "Todos" });
   const [cargandoSol,     setCargandoSol]     = useState(false);
   const [solicitudVer,    setSolicitudVer]    = useState(null);
-  const [modalSalida,     setModalSalida]     = useState(null);
 
-  // Abre el modal de la salida cuando este panel (u otro) emita el evento
-  // "abrir-salida" (emitido por abrirHojaSalida en salidasHistorial.js,
-  // que ya no abre ventanas emergentes).
-  useEffect(() => {
-    const onAbrirSalida = (e) => {
-      setModalSalida(e.detail);
-    };
-    window.addEventListener("abrir-salida", onAbrirSalida);
-    return () => window.removeEventListener("abrir-salida", onAbrirSalida);
-  }, []);
+  // Las salidas (folio SAL-…) se abren con abrirHojaSalida() de
+  // salidas-historial.js: guarda el payload y abre /print/salida en una
+  // PESTAÑA NUEVA, igual que las salidas registradas desde Inventario.
 
-  const cerrarModalSalida = () => setModalSalida(null);
   const [statsGlobal, setStatsGlobal] = useState(() => ({
     total: 0, enProceso: 0, aceptados: 0, rechazados: 0,
     totalPiezas: 0,
@@ -573,6 +563,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
     { key: "busqueda",  label: "Búsqueda Rápida", type: "search", placeholder: "Folio...", debounce: 300 },
     { key: "estatus",   label: "Estatus",         type: "select", opts: ["Todos", "En proceso", "Aceptado", "Rechazado"] },
     { key: "prioridad", label: "Prioridad",        type: "select", opts: ["Todos", "Urgente", "Alta", "Media", "Baja"] },
+    { key: "origen",    label: "Origen",           type: "select", opts: [{ value: "Todos", label: "Todos" }, { value: "interno", label: "Salidas internas" }, { value: "sistema", label: "Salidas de sistema" }] },
   ];
 
   // La lista mezcla mis solicitudes (SOL-) y las salidas manuales hechas a
@@ -599,8 +590,10 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
           return true;
         });
         const salidas = agruparSalidas(movs).filter(g => coincideFiltrosSalida(g, f));
-        const combo = [...filtradas, ...salidas]
+        let combo = [...filtradas, ...salidas]
           .sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
+        if (f.origen === "interno") combo = combo.filter(x => !x.es_salida);
+        else if (f.origen === "sistema") combo = combo.filter(x => x.es_salida);
         const total = combo.length;
         const ini = (p - 1) * l;
         setSolicitudes(combo.slice(ini, ini + l));
@@ -661,7 +654,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
 
   useAutoRefresh(() => { if (tab === "historial") cargarSolicitudes(filtrosSolRef.current, solPage, solLimit); }, 30000, [solPage, solLimit]);
 
-  const hayFiltrosSol = filtrosSol.busqueda || filtrosSol.estatus !== "Todos" || filtrosSol.prioridad !== "Todos";
+  const hayFiltrosSol = filtrosSol.busqueda || filtrosSol.estatus !== "Todos" || filtrosSol.prioridad !== "Todos" || filtrosSol.origen !== "Todos";
   const { total: totalSol, enProceso: pendientesSol, aceptados: aceptadosSol, rechazados: rechazadosSol, totalPiezas, prioridades, topInsumos, actividadMes } = statsGlobal;
   const tasaSol      = (aceptadosSol + rechazadosSol) > 0 ? Math.round(aceptadosSol / (aceptadosSol + rechazadosSol) * 100) : 0;
   const tasaColorSol = tasaSol >= 75 ? "#16a34a" : tasaSol >= 50 ? "#ca8a04" : "#dc2626";
@@ -825,7 +818,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                 campos={camposFiltroSol}
                 valores={filtrosSol}
                 onChange={(k, v) => { setFiltrosSol(p => ({ ...p, [k]: v })); setSolPage(1); }}
-                onLimpiar={() => { setFiltrosSol({ busqueda: "", estatus: "Todos", prioridad: "Todos" }); setSolPage(1); }}
+                onLimpiar={() => { setFiltrosSol({ busqueda: "", estatus: "Todos", prioridad: "Todos", origen: "Todos" }); setSolPage(1); }}
                 T={T}
               />
             </div>
@@ -1404,13 +1397,6 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
         />
       )}
 
-      {modalSalida && (
-        <ModalSalidaView
-          payload={modalSalida}
-          T={T}
-          onClose={() => setModalSalida(null)}
-        />
-      )}
       {insumoDetalle && (
         <ModalDetalleInsumo insumo={insumoDetalle} onClose={() => setInsumoDetalle(null)} T={T} />
       )}

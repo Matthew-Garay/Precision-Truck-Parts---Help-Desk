@@ -65,7 +65,10 @@ function Campo({ label, value }: { label: string; value?: string | null }) {
       <div style={{
         marginTop: 3, minHeight: "14pt", fontSize: "8.5pt", fontWeight: 700, color: "var(--pr-ink)",
         borderBottom: v ? "1px solid var(--pr-border)" : "1px dotted var(--pr-faint)",
-        paddingBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+        paddingBottom: 2,
+        // Nombres largos (p. ej. "Soporte …") se imprimen COMPLETOS: si no caben
+        // en una línea pasan a la siguiente; nunca se cortan con "…".
+        whiteSpace: "normal", overflowWrap: "anywhere",
       }}>
         {v || "\u00a0"}
       </div>
@@ -92,9 +95,13 @@ export default function PrintSalidaView({ payload }: { payload: SalidaPayload })
         .pr-salida .pr-signature-area { height: 96px; border-bottom: none; }
         /* "Quien recibe" (primer bloque) lleva MÁS altura para firmar con pluma. */
         .pr-salida .pr-salida-firmas .pr-signature:first-child .pr-signature-area { height: 150px; }
-        .pr-salida .pr-signature { width: 42%; }
+        /* Misma maquetación que las firmas de solicitud: dos columnas iguales,
+           bloque centrado, línea única al 100% y nombre impreso centrado
+           (los largos pasan de línea, nunca se cortan). */
+        .pr-salida .pr-signature { width: 42%; align-items: center; text-align: center; }
         .pr-salida .pr-signature-line { width: 100%; height: 1px; background: var(--pr-ink); }
-        .pr-salida .pr-salida-firmas { margin-top: 40px; padding-top: 24px; align-items: flex-end; }
+        .pr-salida .pr-signature-name { white-space: normal; overflow-wrap: anywhere; }
+        .pr-salida .pr-salida-firmas { margin-top: 40px; padding-top: 24px; align-items: flex-end; grid-template-columns: 1fr 1fr; }
       `}</style>
 
       <PageHeader
