@@ -418,8 +418,18 @@ const BLOQUEO_SEG  = 30;
 
 export default function Login({ onLogin }) {
   // Forzar tema claro mientras el login está montado
+  // Forzar tema claro mientras el login está montado, y restaurar la
+  // preferencia real del usuario (localStorage) al desmontar. Sin esta
+  // restauración, el dashboard quedaba con data-theme="light" pero con los
+  // tokens oscuros de React (T), mezclando colores en varias interfaces.
   useLayoutEffect(() => {
     document.documentElement.setAttribute("data-theme", "light");
+    return () => {
+      document.documentElement.setAttribute(
+        "data-theme",
+        localStorage.getItem("theme") === "dark" ? "dark" : "light"
+      );
+    };
   }, []);
   const [email, setEmail]           = useState("");
   const [password, setPassword]     = useState("");

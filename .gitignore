@@ -131,3 +131,6 @@ docs/MYSQL Database/database.utf8.sql
 *.bak
 *.orig
 *.old
+
+# Redireccion accidental de shell (archivo 'null')
+dev/
