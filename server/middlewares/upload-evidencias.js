@@ -21,7 +21,7 @@
  *   Los archivos se guardan inicialmente en storage/Evidencias_Tickets/_tmp_upload/
  *   con nombres unicos basados en timestamp y un sufijo aleatorio.
  *   El controlador ticketsController.js los mueve a la carpeta definitiva
- *   nombrada con el folio del ticket (ej. PTP-202605-001/) despues de crear
+ *   nombrada con el folio del ticket (ej. ST-202610-0001/) despues de crear
  *   el ticket en la base de datos.
  *
  * Exportaciones:
