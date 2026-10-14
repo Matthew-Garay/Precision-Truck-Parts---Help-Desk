@@ -50,8 +50,8 @@ const Solicitud = {
     try {
       await conn.beginTransaction();
 
-      // Folio sin prefijo: YYYYMM-NNNN (ej. 202610-0001)
-      const folio = await generarFolio(conn, "solicitud", "folio_solicitud");
+      // Folio con prefijo SOL-: SOL-YYYYMM-NNNN (ej. SOL-202610-0001).
+      const folio = await generarFolio(conn, "solicitud", "folio_solicitud", "SOL");
 
       const [result] = await conn.query(
         `INSERT INTO solicitud (folio_solicitud, prioridad, id_empleado) VALUES (?, ?, ?)`,
