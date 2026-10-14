@@ -139,6 +139,8 @@ const Solicitud = {
       `SELECT s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
               s.id_empleado, s.fecha_atencion,
               s.id_sucursal_origen, s.id_sucursal_destino,
+              s.observacion, s.observacion_por, s.observacion_fecha,
+              IFNULL(CONCAT(obs.nombre,' ',obs.ap_paterno),'') AS observacion_autor,
               so.nombre_sucursal AS nombre_sucursal_origen,
               sd.nombre_sucursal AS nombre_sucursal_destino,
               IFNULL(CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')),'[Empleado eliminado]') AS nombre_empleado,
@@ -151,6 +153,7 @@ const Solicitud = {
        LEFT JOIN sucursal su    ON e.id_sucursal          = su.id_sucursal
        LEFT JOIN sucursal so    ON s.id_sucursal_origen   = so.id_sucursal
        LEFT JOIN sucursal sd    ON s.id_sucursal_destino  = sd.id_sucursal
+       LEFT JOIN empleado obs   ON s.observacion_por     = obs.id_empleado
        WHERE s.id_solicitud = ?`,
       [id_solicitud]
     );
@@ -162,8 +165,6 @@ const Solicitud = {
               si.cantidad_aprobada,
               si.aprobado,
               si.descripcion AS justificacion,
-              si.observaciones, si.observaciones_por, si.observaciones_fecha,
-              IFNULL(CONCAT(obs.nombre,' ',obs.ap_paterno),'') AS observaciones_autor,
               i.id_insumo, IFNULL(i.nombre,'[Insumo eliminado]') AS nombre,
               i.marca, i.modelo, i.num_serie, IFNULL(i.stock,0) AS stock, i.estado,
               i.imagen_url, i.descripcion, i.id_categoria,
@@ -171,7 +172,6 @@ const Solicitud = {
        FROM solicitud_insumo si
        LEFT JOIN insumo i ON si.id_insumo = i.id_insumo
        LEFT JOIN categoria c ON i.id_categoria = c.id_categoria
-       LEFT JOIN empleado obs ON si.observaciones_por = obs.id_empleado
        WHERE si.id_solicitud = ?`,
       [id_solicitud]
     );

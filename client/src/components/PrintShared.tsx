@@ -202,7 +202,7 @@ export function ReporteTable({ headers, rows, colWidths }: {
           <tr style={{ background: "var(--pr-light)" }}>
             {headers.map(h => (
               <th key={h} style={{
-                padding: "5px 6px", textAlign: "left", fontSize: "5pt", fontWeight: 900,
+                padding: "5px 6px", textAlign: "left", fontSize: "var(--pr-fs-th)", fontWeight: 900,
                 textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--pr-ink)",
                 whiteSpace: "nowrap", borderBottom: "1px solid var(--pr-ink)",
               }}>{h}</th>
@@ -230,12 +230,23 @@ export function ReporteTable({ headers, rows, colWidths }: {
 }
 
 /* ── Firma ──────────────────────────────────────────────────────── */
-export function Firma({ nombre, rol }: { nombre: string; rol: string }) {
+/* placeholder=true imprime el texto en gris cursiva (persona "aun no
+   definida"): sirve para estados como "Pendiente de entrega". */
+export function Firma({ nombre, rol, placeholder = false }: {
+  nombre: string;
+  rol: string;
+  placeholder?: boolean;
+}) {
   return (
     <div className="pr-signature">
       <div className="pr-signature-area" />
       <div className="pr-signature-line" />
-      <span className="pr-signature-name">{nombre}</span>
+      <span
+        className="pr-signature-name"
+        style={placeholder ? { fontWeight: 400, fontStyle: "italic", color: "var(--pr-faint)" } : undefined}
+      >
+        {nombre}
+      </span>
       <span className="pr-signature-role">{rol}</span>
       <span className="pr-signature-role">Precision Truck Parts, Parts and Accesories, S.A de C.V.</span>
     </div>

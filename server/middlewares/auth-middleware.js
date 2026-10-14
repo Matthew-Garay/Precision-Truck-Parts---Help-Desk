@@ -75,8 +75,13 @@ export function requireAdmin(req, res, next) {
  * Vive en `departamento` (no en `rol`): el sistema solo tiene Administrador y
  * Usuario, y "Soporte Tecnico" es un departamento. Si se renombra o cambia el
  * id hay que actualizar esta constante.
+ *
+ * OJO: en la base de datos actual "Soporte Tecnico" es el id 67 (los ids de
+ * `departamento` van de 21 a 73); el valor historico 2 ya no existe y dejaba
+ * al personal de soporte sin permisos de ruta/observaciones (403) y sin la
+ * ruta del material en la hoja impresa de solicitudes.
  */
-export const DEPARTAMENTO_SOPORTE = 2;
+export const DEPARTAMENTO_SOPORTE = 67;
 
 /**
  * esSoporteOAdmin
