@@ -1,8 +1,18 @@
 import {
-  PageFooter, PageSize, Firma,
+  PageHeader, PageFooter, PageSize, Firma,
   PRIO_META, fmt, nowFechaGen,
 } from '../PrintShared.tsx';
 import { getUsuario } from '../../utils/session.js';
+
+const API_BASE = import.meta.env.VITE_API_URL ?? "";
+/** Convierte imagen_url del insumo en una URL visible (prefijo /storage + API). */
+function imgSrc(u?: string | null): string {
+  const s = String(u ?? "").trim();
+  if (!s) return "";
+  if (/^https?:\/\//i.test(s)) return s;
+  const rel = s.startsWith("/storage/") ? s : `/storage/${s.replace(/^\/+/, "")}`;
+  return API_BASE + rel;
+}
 
 interface DetalleItem {
   id_solicitud_insumo: number;
@@ -35,6 +45,8 @@ interface Solicitud {
   nombre_sucursal_destino?: string | null;
   fecha_atencion?: string | null;
   justificacion?: string | null;
+  /** Soporte tecnico (o admin) que acepto la solicitud — "Quien entrega". */
+  quien_entrega?: string | null;
   detalle: DetalleItem[];
 }
 
@@ -66,10 +78,9 @@ function PrioridadPill({ prioridad }: { prioridad: string }) {
   return <Pill tone={tone}>{(PRIO_META[prioridad] ?? PRIO_META.Baja).label}</Pill>;
 }
 
-function InsumosTable({ items, cerrado, justificacionGeneral }: {
+function InsumosTable({ items, cerrado }: {
   items: DetalleItem[];
   cerrado: boolean;
-  justificacionGeneral?: string | null;
 }) {
   if (!items.length) {
     return <p className="pr-empty">No hay insumos registrados en esta solicitud.</p>;
@@ -82,20 +93,20 @@ function InsumosTable({ items, cerrado, justificacionGeneral }: {
     : null;
 
   return (
-    <table className="pr-items-table">
+    <table className="pr-inv-table" style={{ tableLayout: "fixed" }}>
       <colgroup>
         <col style={{ width: "4%" }} />
-        <col style={{ width: "24%" }} />
-        <col style={{ width: "22%" }} />
-        <col style={{ width: "10%" }} />
-        <col style={{ width: "10%" }} />
-        <col style={{ width: "19%" }} />
+        <col style={{ width: "8%" }} />
+        <col style={{ width: "20%" }} />
+        <col style={{ width: "30%" }} />
         <col style={{ width: "11%" }} />
+        <col style={{ width: "11%" }} />
+        <col style={{ width: "16%" }} />
       </colgroup>
       <thead>
         <tr>
-          {["#", "Insumo", "Descripción y S/N", "Solicitado", "Aceptado", "Justificación", "Estado"].map((h, i) => (
-            <th key={h} className={i === 3 || i === 4 ? "pr-num" : undefined}>{h}</th>
+          {["#", "Foto", "Insumo", "Descripción", "Solicitado", "Aceptado", "Estado"].map((h, i) => (
+            <th key={h} className={i === 3 ? "pr-inv-th" : undefined} style={{ textAlign: i === 3 ? "left" : i === 5 ? "right" : i === 6 ? "center" : "left" }}>{h}</th>
           ))}
         </tr>
       </thead>
@@ -107,31 +118,33 @@ function InsumosTable({ items, cerrado, justificacionGeneral }: {
           const descTxt    = (d.descripcion ?? "").trim();
           return (
             <tr key={d.id_solicitud_insumo}>
-              <td style={{ textAlign: "center", color: "var(--pr-faint)", fontSize: "6.5pt" }}>{i + 1}</td>
-              <td>
+              <td className="pr-inv-td" style={{ textAlign: "center", color: "var(--pr-faint)", fontSize: "6.5pt" }}>{i + 1}</td>
+              <td className="pr-inv-td pr-inv-td-img">
+                {imgSrc(d.imagen_url) ? (
+                  <img src={imgSrc(d.imagen_url)} alt="" className="pr-inv-thumb" />
+                ) : (
+                  <div className="pr-inv-thumb-placeholder"><span style={{ fontSize: "5pt", color: "var(--pr-faint)" }}>S/F</span></div>
+                )}
+              </td>
+              <td className="pr-inv-td">
                 <div className="pr-item-name">{d.nombre}</div>
                 {modeloTxt && <div className="pr-item-sub">{modeloTxt}</div>}
               </td>
-              <td>
-                {descTxt && <div style={{ fontSize: "7pt" }}>{descTxt}</div>}
+              <td className="pr-inv-td">
+                {descTxt && <div style={{ fontSize: "7pt", lineHeight: 1.3 }}>{descTxt}</div>}
                 {d.num_serie && <div className="pr-item-note">S/N: {d.num_serie}</div>}
                 {!descTxt && !d.num_serie && <span style={{ color: "var(--pr-faint)" }}>&mdash;</span>}
               </td>
-              {/* Lo que el empleado pidio */}
               <td className="pr-num" style={{ fontSize: "9pt", fontWeight: 700, color: "var(--pr-muted)" }}>
                 {solicitadoDe(d)}
               </td>
-              {/* Lo que el administrador acepto entregar (puede ser menor) */}
               <td className="pr-num" style={{
                 fontSize: "9.5pt", fontWeight: 800,
-                color: !cerrado ? "var(--pr-faint)" : aprobado ? "var(--pr-ink)" : "var(--pr-faint)",
+                color: cerrado ? (aprobado ? "var(--pr-ink)" : "var(--pr-faint)") : "var(--pr-faint)",
               }}>
                 {cerrado ? entregadoDe(d) : solicitadoDe(d)}
               </td>
-              <td style={{ fontSize: "7pt", color: "var(--pr-muted)" }}>
-                {(d.justificacion ?? "").trim() || justificacionGeneral?.trim() || <span style={{ color: "var(--pr-faint)" }}>&mdash;</span>}
-              </td>
-              <td>
+              <td className="pr-inv-td" style={{ textAlign: "center" }}>
                 {sinRevisar
                   ? <Pill tone="quiet">Pendiente</Pill>
                   : aprobado
@@ -147,7 +160,7 @@ function InsumosTable({ items, cerrado, justificacionGeneral }: {
           <td colSpan={3}>Total de piezas solicitadas</td>
           <td className="pr-num">{totalSolicitado}</td>
           <td className="pr-num">{cerrado ? totalAprobado : "—"}</td>
-          <td colSpan={2} style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400, color: "var(--pr-faint)" }}>
+          <td colSpan={3} style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400, color: "var(--pr-faint)" }}>
             {totalAprobado !== null ? `${totalAprobado} piezas aprobadas` : ""}
           </td>
         </tr>
@@ -209,40 +222,29 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
         .pr-solicitud .pr-solicitud-firmas { margin-top: 40px; padding-top: 24px; align-items: flex-end; }
       `}</style>
 
-      {/* Encabezado: logo a la izquierda, título y folio a la derecha.
-          La ruta del material va debajo del título, discreta, sin mezclarse
-          con el estatus. */}
-      <header className="pr-doc-hdr">
-        <div className="pr-doc-brand">
-          <img src="/assets/img/logo negro.png" alt="Precision Truck Parts" className="pr-doc-logo" />
-          <div className="pr-doc-company">
-            Precision Truck Parts, Parts and Accesories, S.A de C.V.
-            <br />
-            Departamento de Soporte Técnico
-          </div>
-        </div>
+      <PageHeader
+        logoSrc="/assets/img/logo.png"
+        titulo="Solicitud de Insumos"
+        subtitulo="Departamento de Soporte Técnico"
+        metaRows={[
+          { label: "Folio", value: solicitud.folio_solicitud, mono: true },
+          { label: "Fecha", value: fmtFecha(solicitud.fecha) },
+          { label: "Generado", value: fechaGen },
+        ]}
+      />
 
-        <div className="pr-doc-hdr-right">
-          <span className="pr-doc-title">Solicitud de Insumos</span>
-          <span className="pr-doc-folio">{solicitud.folio_solicitud}</span>
-          <span className="pr-doc-gen">Generado {fechaGen}</span>
-
-          {/* Ruta del material — la imprimen Administracion y Soporte Tecnico.
-              Si aun no se define se muestra "Por definir". */}
-          {veRuta && (
-            <div className="pr-doc-ruta">
-              <span className="pr-doc-ruta-label">Ruta del material</span>
-              {rutaOrigen || rutaDestino ? (
-                <span className="pr-doc-ruta-val">
-                  {rutaOrigen ?? "—"} → {rutaDestino ?? "—"}
-                </span>
-              ) : (
-                <span className="pr-doc-ruta-val">Por definir</span>
-              )}
-            </div>
+      {veRuta && (
+        <div className="pr-doc-ruta" style={{ marginTop: 6, padding: "0 10px" }}>
+          <span className="pr-doc-ruta-label">Ruta del material</span>
+          {rutaOrigen || rutaDestino ? (
+            <span className="pr-doc-ruta-val">
+              {rutaOrigen ?? "—"} → {rutaDestino ?? "—"}
+            </span>
+          ) : (
+            <span className="pr-doc-ruta-val">Por definir</span>
           )}
         </div>
-      </header>
+      )}
 
       <div className="pr-content">
 
@@ -285,22 +287,35 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
           Insumos solicitados — {solicitud.detalle.length} ítem{solicitud.detalle.length !== 1 ? "s" : ""}
         </div>
 
-        <InsumosTable items={solicitud.detalle} cerrado={cerrado} justificacionGeneral={solicitud.justificacion ?? null} />
+        {solicitud.justificacion && (
+          <div className="pr-inv-section" style={{ padding: "6px 10px 10px" }}>
+            <div className="pr-inv-section-hdr">
+              <span className="pr-inv-section-title">Justificación del solicitante</span>
+            </div>
+            <div style={{ padding: "8px 12px", lineHeight: 1.5, color: "var(--pr-ink)" }}>
+              {solicitud.justificacion}
+            </div>
+          </div>
+        )}
+
+        <InsumosTable items={solicitud.detalle} cerrado={cerrado} />
 
         <div className="pr-doc-h2">
           Estado de la solicitud
         </div>
         <EstadoSolicitud estatus={solicitud.estatus} fechaSolicitud={fechaSol} />
 
-        {/* Firmas iguales a la salida interna: Quien recibe (solicitante) / Quien entrega (se llena a mano). */}
-        <div className="pr-solicitud-firmas" style={{ display: "flex", justifyContent: "space-around", gap: 24, padding: "0 14px 6px" }}>
-          <Firma nombre={solicitud.nombre_empleado} rol="Quien recibe" />
-          <Firma nombre="" rol="Quien entrega" />
+        {/* Firmas estilo salida interna. "Quien recibe" queda en BLANCO: el
+            area es para firmar a mano. "Quien entrega" muestra al soporte
+            tecnico que acepto la solicitud. */}
+        <div className="pr-firmas pr-solicitud-firmas" style={{ padding: "0 14px" }}>
+          <Firma nombre="" rol="Quien recibe" />
+          <Firma nombre={solicitud.quien_entrega ?? ""} rol="Quien entrega" />
         </div>
 
       </div>
 
-      <PageFooter right={`${solicitud.folio_solicitud} · ${fechaGen}`} />
+      <PageFooter right={`${solicitud.folio_solicitud} · ${fechaGen}`} logoSrc="/assets/img/logo.png" />
     </div>
   );
 }

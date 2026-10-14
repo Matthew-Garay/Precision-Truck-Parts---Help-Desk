@@ -92,6 +92,7 @@
   --ptp-surface:       #FFFFFF;
   --ptp-neutral:       #F8FAFC;
   --ptp-neutral-alt:   #F1F5F9;
+  --ptp-page-bg:       #FFFFFF;
   --ptp-text:          #334155;
   --ptp-muted:         #475569;
   --ptp-faint:         #94A3B8;
@@ -125,7 +126,7 @@
    Todo rem/em en el sistema hereda esta base automáticamente  */
 html {
   font-size: clamp(10px, 0.55vw + 0.2vh + 0.1vmin, 12.5px);
-  background-color: var(--ptp-neutral);
+  background-color: var(--ptp-page-bg);
   color-scheme: light;
   overscroll-behavior-y: none;
 }
@@ -135,7 +136,7 @@ body {
   font-size:               clamp(9px, 0.72vw, 11.5px);
   line-height:             1.5;
   color:                   var(--ptp-text);
-  background-color:        var(--ptp-neutral);
+  background-color:        var(--ptp-page-bg);
   -webkit-font-smoothing:  antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior-y: none;
@@ -791,6 +792,7 @@ body, button, input, select, textarea, h1, h2, h3, h4, h5, h6 {
   --ptp-surface:      #161B22;
   --ptp-neutral:      #0D1117;
   --ptp-neutral-alt:  #1C2230;
+  --ptp-page-bg:      #0D1117;
   --ptp-text:         #E6EDF3;
   --ptp-muted:        #8B949E;
   --ptp-faint:        #484F58;

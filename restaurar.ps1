@@ -32,7 +32,7 @@ $raiz = $PSScriptRoot
 
 # ── Leer configuracion del .env ──────────────────────────────────────
 $cfg = @{}
-foreach ($linea in Get-Content (Join-Path $raiz '.env')) {
+foreach ($linea in Get-Content (Join-Path $raiz 'server\.env')) {
   if ($linea -match '^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*?)\s*$') {
     $cfg[$Matches[1]] = $Matches[2].Trim('"').Trim("'")
   }

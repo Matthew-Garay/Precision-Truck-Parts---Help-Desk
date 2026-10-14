@@ -782,9 +782,9 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
 
   return (
     <div style={{ borderRadius: 10, overflow: "hidden", background: T.surface, border: `1px solid ${T.border}`, boxShadow: isDark ? "0 1px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-      {/* Scroll interno de filas: la página no se mueve, el encabezado queda fijo */}
-      <div style={{ overflowX: "auto", overflowY: "auto", flex: 1, minHeight: 0 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
+      {/* Contenedor interno: el encabezado se mantiene fijo y solo la tabla se desplaza */}
+      <div style={{ overflowX: "auto", overflowY: "auto", flexGrow: 0, flexShrink: 1, flexBasis: "auto", minHeight: 0 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 0 }}>
           <thead>
             <tr>
               {COLS.map(col => (
@@ -867,30 +867,24 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
         </table>
       </div>
 
-      {/* Footer tabla + paginación — mismo estilo que Historial de Insumos */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2" style={{ borderTop: `1px solid ${T.border}`, background: isDark ? "rgba(255,255,255,0.02)" : T.surfaceAlt, flexShrink: 0 }}>
-        <span className="text-[11px]" style={{ color: T.textFaint }}>
-          {sorted.length} empleado{sorted.length !== 1 ? "s" : ""}
-          {totalPaginas > 1 && ` · mostrando ${((paginaActual - 1) * pageSize) + 1}–${Math.min(paginaActual * pageSize, sorted.length)}`}
-        </span>
-        <div className="flex items-center gap-2">
+      {/* Paginación — mismo diseño y adaptación que Historial de Insumos */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2" style={{ borderTop: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
+        <div className="flex items-center gap-1.5">
           <button disabled={paginaActual <= 1} onClick={() => irPagina(paginaActual - 1)}
             className="px-2 py-1 rounded border text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ borderColor: T.border, background: T.surfaceAlt, color: T.text }}>
-            Anterior
+            ‹ Ant
           </button>
-          <span className="text-[11px] ml-2" style={{ color: T.textMuted }}>
-            Página {paginaActual} de {totalPaginas}
-          </span>
+          <span className="text-[11px] px-1" style={{ color: T.textMuted }}>{paginaActual} / {totalPaginas}</span>
           <button disabled={paginaActual >= totalPaginas} onClick={() => irPagina(paginaActual + 1)}
             className="px-2 py-1 rounded border text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ borderColor: T.border, background: T.surfaceAlt, color: T.text }}>
-            Siguiente
+            Sig ›
           </button>
+        </div>
+        <div className="flex items-center gap-2">
           <label className="text-[10px]" style={{ color: T.textMuted }}>Mostrar</label>
-          <select
-            value={pageSize}
-            onChange={e => { setPageSize(parseInt(e.target.value, 10)); setPagina(1); }}
+          <select value={pageSize} onChange={e => { setPageSize(parseInt(e.target.value, 10)); setPagina(1); }}
             className="text-[11px]" style={{ padding: "3px 6px", borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.text }}>
             {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
           </select>

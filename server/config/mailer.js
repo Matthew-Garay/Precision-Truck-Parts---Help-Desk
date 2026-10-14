@@ -118,14 +118,21 @@ export function smtpConfigurado() {
   );
 }
 
-if (process.env.SMTP_USER && !process.env.SMTP_HOST)
-  console.warn("[mailer] SMTP_USER definido pero falta SMTP_HOST — revisa el .env");
-if (process.env.SMTP_USER && PASS_PENDIENTE.test((process.env.SMTP_PASS ?? "").trim()))
-  console.warn("[mailer] SMTP_PASS sigue con el valor de ejemplo: pega la contraseña específica de la aplicación de Zoho en el .env");
-else if (process.env.SMTP_USER && !process.env.SMTP_PASS)
-  console.warn("[mailer] SMTP_USER definido pero falta SMTP_PASS — en Zoho y Gmail usa una contraseña específica para la aplicación");
-if (process.env.SMTP_USER && !process.env.SMTP_FROM)
-  console.warn("[mailer] Falta SMTP_FROM — se usará el SMTP_USER como remitente");
+// Avisos detallados de configuración de correo. Por defecto NO se imprimen para
+// mantener limpia la consola al arrancar: el banner del servidor ya resume el
+// estado de SMTP ("No configurado - correos desactivados"). Actívalos con
+// MAILER_DEBUG=1 en el .env cuando estés configurando el envío y necesites la
+// pista exacta de qué variable falta o sigue con el valor de ejemplo.
+if (process.env.MAILER_DEBUG === "1") {
+  if (process.env.SMTP_USER && !process.env.SMTP_HOST)
+    console.warn("[mailer] SMTP_USER definido pero falta SMTP_HOST — revisa el .env");
+  if (process.env.SMTP_USER && PASS_PENDIENTE.test((process.env.SMTP_PASS ?? "").trim()))
+    console.warn("[mailer] SMTP_PASS sigue con el valor de ejemplo: pega la contraseña específica de la aplicación de Zoho en el .env");
+  else if (process.env.SMTP_USER && !process.env.SMTP_PASS)
+    console.warn("[mailer] SMTP_USER definido pero falta SMTP_PASS — en Zoho y Gmail usa una contraseña específica para la aplicación");
+  if (process.env.SMTP_USER && !process.env.SMTP_FROM)
+    console.warn("[mailer] Falta SMTP_FROM — se usará el SMTP_USER como remitente");
+}
 
 // Transporter de Nodemailer. Se crea una sola vez al cargar el modulo.
 const transporter = nodemailer.createTransport({

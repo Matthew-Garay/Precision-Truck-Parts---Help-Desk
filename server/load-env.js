@@ -16,4 +16,6 @@ import { config } from "dotenv";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
-config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "./.env") });
+// quiet: true silencia el banner "injected env (N)" que imprime dotenv v17,
+// manteniendo la consola limpia al arrancar.
+config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "./.env"), quiet: true });

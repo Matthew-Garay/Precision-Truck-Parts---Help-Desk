@@ -299,13 +299,19 @@ app.use((err, req, res, _next) => {
 httpServer.listen(PORT, "0.0.0.0", async () => {
   const line = "-".repeat(52);
 
+  const hora = new Date().toLocaleTimeString("es-MX", { hour12: false });
+
   console.log(`\n${line}`);
   console.log(`  Precision Truck Parts, Parts and Accesories, S.A de C.V. - HelpDesk`);
+  console.log(`  Arrancado a las ${hora}`);
   console.log(line);
 
   console.log(`  Backend  ->  ✅  http://localhost:${PORT}`);
-  console.log(`  Frontend ->  ✅  ${process.env.APP_URL || "http://localhost:5173"}`);
-  if (process.env.APP_URL) console.log(`  Publico  ->  ✅  ${process.env.APP_URL}`);
+  if (process.env.APP_URL) {
+    console.log(`  Publico  ->  ✅  ${process.env.APP_URL}`);
+  } else {
+    console.log(`  Frontend ->  ⚠️  http://localhost:5173  (levántalo con: npm run dev)`);
+  }
 
   const nets = networkInterfaces();
   for (const iface of Object.values(nets))

@@ -16,7 +16,7 @@ import RendimientoTecnicos from './RendimientoTecnicos.jsx';
 import { apiFetch, API_ROUTES } from '../../services/api-client.js';
 import { useTheme } from '../../context/theme-context.js';
 import { useAutoRefresh } from '../../hooks/use-auto-refresh.js';
-import { SeccionEstadisticas, SeccionMetricas, SeccionInsumos, KanbanBoard, PanelDerecho } from '../../components/DashboardShared.jsx';
+import { SeccionEstadisticas, SeccionMetricas, KanbanBoard, PanelDerecho } from '../../components/DashboardShared.jsx';
 import CampanaNotificaciones from '../../components/CampanaNotificaciones.jsx';
 import { useTicketNotification } from '../../hooks/use-ticket-notification.js';
 
@@ -92,7 +92,6 @@ function DashboardContent({ T, usuario, tickets = [], solicitudes = [], metricas
       <div className="flex-shrink-0" style={{ padding: "var(--content-pt) var(--content-px) 0" }}>
         <SeccionMetricas T={T} metricas={metricas} />
         <SeccionEstadisticas T={T} tickets={tickets} solicitudes={solicitudes} />
-        <SeccionInsumos T={T} />
       </div>
       <div className="flex-shrink-0" style={{ padding: "4px var(--content-px) 10px" }}>
         <KanbanBoard T={T} tickets={tickets} solicitudes={solicitudes} onVerTicket={onVerTicket} onVerSolicitud={onVerSolicitud} inline />

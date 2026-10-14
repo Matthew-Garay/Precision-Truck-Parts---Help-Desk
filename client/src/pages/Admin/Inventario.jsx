@@ -90,7 +90,7 @@ function IconBtn({ onClick, title, children, hoverColor = "#2563eb", hoverBg = "
       onClick={onClick} title={title} aria-label={title}
       onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)}
       style={{
-        width: "28px", height: "26px", borderRadius: "6px", border: `1px solid ${h ? "transparent" : T.border}`,
+        width: "34px", height: "30px", borderRadius: "6px", border: `1px solid ${h ? "transparent" : T.border}`,
         background: h ? hoverBg : "transparent",
         color: h ? hoverColor : T.textFaint,
         display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -162,11 +162,11 @@ function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHistorial,
     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", tableLayout: "fixed", minWidth: "720px" }}>
       <colgroup>
         <col style={{ width: "40px" }} />
-        <col style={{ width: "32%" }} />
-        <col style={{ width: "17%" }} />
-        <col style={{ width: "11%" }} />
-        <col style={{ width: "11%" }} />
-        <col style={{ width: "188px" }} />
+        <col style={{ width: "30%" }} />
+        <col style={{ width: "16%" }} />
+        <col style={{ width: "10%" }} />
+        <col style={{ width: "10%" }} />
+        <col style={{ width: "244px" }} />
       </colgroup>
       <thead>
         <tr>{COLS.map((c, i) => <th key={c} style={{ ...th, ...(i === COLS.length - 1 ? { textAlign: "right" } : null) }}>{c}</th>)}</tr>

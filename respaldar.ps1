@@ -31,10 +31,10 @@ if (-not $raiz) { $raiz = Split-Path -Parent $MyInvocation.MyCommand.Path }
 if (-not $Destino) { $Destino = Join-Path $raiz 'backups' }
 
 # â”€â”€ Leer configuracion del .env â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-# Se lee desde .env para no dejar usuario ni contrasena escritos aqui.
-$archivoEnv = Join-Path $raiz '.env'
+# Se lee desde server/.env (mismo archivo que usa el backend) para no dejar usuario ni contrasena escritos aqui.
+$archivoEnv = Join-Path $raiz 'server\.env'
 if (-not (Test-Path $archivoEnv)) {
-  throw "No se encontro el archivo .env en $raiz"
+  throw "No se encontro el archivo server\.env en $raiz"
 }
 
 $cfg = @{}

@@ -24,7 +24,10 @@ import dotenv from "dotenv";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
-dotenv.config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../.env") });
+// quiet: true evita el segundo banner "injected env (0)" de dotenv v17, ya que
+// load-env.js cargo las variables antes. Se conserva como red de seguridad por
+// si este modulo se importa sin pasar por load-env.js.
+dotenv.config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../.env"), quiet: true });
 
 // Pool de conexiones a MySQL. Se reutilizan conexiones en lugar de abrir una nueva
 // por cada peticion, lo que mejora el rendimiento bajo carga concurrente.

@@ -5,7 +5,7 @@
  *
  * FUNCIÓN PRINCIPAL: generarFolio(conn, tabla, campoFolio, prefijo)
  * ─────────────────────────────────────────────────────────────────
- * Genera un folio secuencial con formato <PREFIJO>-YYYYMMDD-NNNN de forma
+ * Genera un folio secuencial con formato <PREFIJO>-YYYYMM-NNNN de forma
  * segura bajo alta concurrencia mediante bloqueo exclusivo FOR UPDATE.
  *
  * Estrategia anti-race-condition:
@@ -15,8 +15,8 @@
  *      leer el mismo rango hasta que la transacción actual haga COMMIT o
  *      ROLLBACK. Esto garantiza que dos conexiones simultáneas nunca lean
  *      el mismo "último número" y produzcan folios duplicados.
- *   3. El número secuencial (NNNN) se reinicia automáticamente cada día al
- *      cambiar el segmento YYYYMMDD del prefijo.
+ *   3. El número secuencial (NNNN) se reinicia automáticamente cada mes al
+ *      cambiar el segmento YYYYMM del prefijo.
  *
  * Parámetros:
  *   @param {import('mysql2/promise').PoolConnection} conn
@@ -26,7 +26,7 @@
  *   @param {string} prefijo     Prefijo del folio         (ej. "PTP" | "SOL")
  *
  * Retorna:
- *   @returns {Promise<string>}  Folio generado, ej. \"PTP-20261006-0001\" / \"SAL-20261006-0001\"
+ *   @returns {Promise<string>}  Folio generado, ej. \"PTP-202610-0001\" / \"SOL-202610-0001\"
  *
  * Uso en Ticket.js:
  *   import { generarFolio } from './helpers.js';
@@ -50,8 +50,9 @@ export async function generarFolio(conn, tabla, campoFolio, prefijo) {
   const ahora   = new Date();
   const anio    = ahora.getFullYear();
   const mes     = String(ahora.getMonth() + 1).padStart(2, "0");
-  const dia     = String(ahora.getDate()).padStart(2, "0");
-  const segmento = `${prefijo}-${anio}${mes}${dia}-`;
+  // Sin prefijo el folio queda YYYYMM-NNNN (ej. 202610-0001). Si se pasa un
+  // prefijo se antepone: PREFIJO-YYYYMM-NNNN. El numero se reinicia cada mes.
+  const segmento = prefijo ? `${prefijo}-${anio}${mes}-` : `${anio}${mes}-`;
 
   // FOR UPDATE: bloquea las filas del mes actual hasta el COMMIT del llamador.
   // CAST(...AS UNSIGNED) ordena numéricamente para obtener el último NNN real,

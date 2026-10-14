@@ -50,16 +50,21 @@ const Solicitud = {
     try {
       await conn.beginTransaction();
 
-      // Delega al helper centralizado con bloqueo FOR UPDATE anti race-condition
-      const folio = await generarFolio(conn, "solicitud", "folio_solicitud", "SAL");
+      // Folio sin prefijo: YYYYMM-NNNN (ej. 202610-0001)
+      const folio = await generarFolio(conn, "solicitud", "folio_solicitud");
 
       const [result] = await conn.query(
         `INSERT INTO solicitud (folio_solicitud, prioridad, id_empleado) VALUES (?, ?, ?)`,
         [folio, prioridad, id_empleado]
       );
       const id_solicitud = result.insertId;
-      // Verificar que todos los insumos existen y tienen stock suficiente
-      // (la justificación se inserta en el segundo bucle, ya validado todo)
+
+      // Observación general de la solicitud (una sola para todos los insumos).
+      const justGeneral = String(descripcion ?? "").trim() || null;
+
+      // 1) Validar que todos los insumos existen y tienen stock suficiente.
+      //    IMPORTANTE: crear la solicitud NO descuenta stock; el descuento ocurre
+      //    solo cuando un administrador la acepta (ver aceptarSolicitud).
       for (const { id_insumo, cantidad } of insumos) {
         const [[insumo]] = await conn.query(
           "SELECT id_insumo, nombre, stock FROM insumo WHERE id_insumo = ? LIMIT 1 FOR UPDATE",
@@ -78,27 +83,23 @@ const Solicitud = {
           throw err;
         }
       }
-      for (const { id_insumo, cantidad, descripcion } of insumos) {
+
+      // 2) Insertar el detalle. La observación general se aplica a cada insumo
+      //    (si un ítem trae su propia nota, esa manda; si no, usa la general).
+      //    El reporte la expone una sola vez gracias a la deduplicación en getById.
+      for (const { id_insumo, cantidad, descripcion: descItem } of insumos) {
+        const just = String(descItem ?? justGeneral ?? "").trim() || null;
         await conn.query(
-          `INSERT INTO solicitud_insumo (id_solicitud, id_insumo, cantidad, descripcion) VALUES (?, ?, ?, ?)`,
-          [id_solicitud, id_insumo, cantidad, descripcion || null]
+          `INSERT INTO solicitud_insumo (id_solicitud, id_insumo, cantidad, descripcion)
+           VALUES (?, ?, ?, ?)`,
+          [id_solicitud, id_insumo, cantidad, just]
         );
       }
+
       await conn.commit();
       return { id_solicitud, folio_solicitud: folio };
     } catch (err) {
       await conn.rollback();
-      // Insertar el detalle CON la justificación por insumo (la del ítem si
-      // viene, si no la general de la solicitud). Es lo que se imprime en
-      // el formato de insumos, columna "Justificación".
-      for (const { id_insumo, cantidad, descripcion: descItem } of insumos) {
-        const justLimpia = String(descItem ?? descripcion ?? "").trim() || null;
-        await conn.query(
-          `INSERT INTO solicitud_insumo (id_solicitud, id_insumo, cantidad, descripcion)
-           VALUES (?, ?, ?, ?)`,
-          [id_solicitud, id_insumo, cantidad, justLimpia]
-        );
-      }
       throw err;
     } finally {
       conn.release();
@@ -193,10 +194,24 @@ const Solicitud = {
           ? (d.cantidad_aprobada ?? d.cantidad)
           : 0;
     });
+    // Quien entrego/acepto el material: al aceptar la solicitud se genera un
+    // movimiento de salida cuyo id_empleado es el soporte tecnico (o admin)
+    // que la acepto. La tabla solicitud no guarda ese dato de forma directa.
+    const [[entrega]] = await pool.query(
+      `SELECT TRIM(CONCAT(IFNULL(e.nombre,''), ' ', IFNULL(e.ap_paterno,''), ' ', IFNULL(e.ap_materno,''))) AS nombre
+       FROM movimiento_inventario m
+       LEFT JOIN empleado e ON m.id_empleado = e.id_empleado
+       WHERE m.id_solicitud = ? AND m.tipo = 'Salida'
+       ORDER BY m.fecha ASC
+       LIMIT 1`,
+      [id_solicitud]
+    );
+
     return {
       ...solicitud,
       detalle,
       justificacion: textosJustificacion[0] ?? null,
+      quien_entrega: (entrega?.nombre ?? "").trim() || null,
     };
   },
 

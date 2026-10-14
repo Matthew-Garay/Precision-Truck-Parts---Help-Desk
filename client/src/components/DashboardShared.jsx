@@ -234,7 +234,7 @@ export function SeccionMetricas({ T, metricas }) {
   const maxDepto = Math.max(...deptos.map(d => d.total), 1);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2 w-full">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 mb-2 w-full">
 
       {/* Tiempo promedio de resolucion */}
       <div className="rounded-xl overflow-hidden" style={cardStyle}>
@@ -244,8 +244,8 @@ export function SeccionMetricas({ T, metricas }) {
           <p className="text-[10px] font-black uppercase tracking-widest"
             style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Tiempo Prom. Resolucion</p>
         </div>
-        <div className="px-3 py-2 flex flex-col items-center justify-center gap-0.5">
-          <span className="text-2xl sm:text-3xl font-black" style={{ color: "#3b82f6" }}>{tiempoLabel}</span>
+        <div className="px-2.5 py-1.5 flex flex-col items-center justify-center gap-0.5">
+          <span className="text-xl sm:text-2xl font-black" style={{ color: "#3b82f6" }}>{tiempoLabel}</span>
           <span className="text-[10px] font-semibold" style={{ color: T.textMuted }}>promedio por ticket resuelto</span>
           <div className="mt-1 flex items-center gap-1.5 px-2 py-0.5 rounded-full"
             style={{ background: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff", border: "1px solid rgba(59,130,246,0.2)" }}>
@@ -263,7 +263,7 @@ export function SeccionMetricas({ T, metricas }) {
           <p className="text-[10px] font-black uppercase tracking-widest"
             style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Tickets por Departamento</p>
         </div>
-        <div className="px-3 py-2 flex flex-col gap-1.5">
+        <div className="px-2.5 py-1.5 flex flex-col gap-1">
           {deptos.length === 0 ? (
             <p className="text-xs text-center py-3" style={{ color: T.textFaint }}>Sin datos</p>
           ) : deptos.map((d, i) => {
@@ -315,7 +315,7 @@ export function SeccionMetricas({ T, metricas }) {
             );
           })()}
         </div>
-        <div className="px-2 pt-2 pb-1">
+        <div className="px-2 pt-1.5 pb-1">
           {tendencia.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-6 gap-2">
               <BarChart2 size={20} style={{ color: T.textFaint }} />
@@ -357,27 +357,27 @@ export function SeccionMetricasUsuario({ T, tickets = [] }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 mb-3 w-full">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 sm:gap-2 mb-2 w-full">
       {stats.map((s, i) => (
-        <div key={i} className="rounded-xl px-3 py-2.5 flex flex-col gap-1"
+        <div key={i} className="rounded-xl px-2.5 py-2 flex flex-col gap-0.5"
           style={{ background: isDark ? s.bgD : s.bgL, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}` }}>
           <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }}>{s.label}</p>
-          <p className="text-xl sm:text-2xl font-black leading-none" style={{ color: s.color }}>{s.val}</p>
+          <p className="text-lg sm:text-xl font-black leading-none" style={{ color: s.color }}>{s.val}</p>
         </div>
       ))}
 
-      <div className="rounded-xl px-3 py-2.5 flex flex-col gap-1 col-span-1" style={cardStyle}>
+      <div className="rounded-xl px-2.5 py-2 flex flex-col gap-0.5 col-span-1" style={cardStyle}>
         <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Tasa resolucion</p>
-        <p className="text-xl sm:text-2xl font-black leading-none" style={{ color: "#16a34a" }}>{tasaRes}%</p>
+        <p className="text-lg sm:text-xl font-black leading-none" style={{ color: "#16a34a" }}>{tasaRes}%</p>
         <div className="h-1 rounded-full overflow-hidden mt-1" style={{ background: isDark ? "rgba(255,255,255,0.08)" : T.border }}>
           <div className="h-full rounded-full transition-all duration-700"
             style={{ width: `${tasaRes}%`, background: "linear-gradient(90deg,#16a34a,#4ade80)" }} />
         </div>
       </div>
 
-      <div className="rounded-xl px-3 py-2.5 flex flex-col gap-1 col-span-1" style={cardStyle}>
+      <div className="rounded-xl px-2.5 py-2 flex flex-col gap-0.5 col-span-1" style={cardStyle}>
         <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Tiempo prom.</p>
-        <p className="text-lg sm:text-xl font-black leading-none" style={{ color: "#3b82f6" }}>{fmtTiempo}</p>
+        <p className="text-base sm:text-lg font-black leading-none" style={{ color: "#3b82f6" }}>{fmtTiempo}</p>
         <p className="text-[9px]" style={{ color: T.textFaint }}>por ticket resuelto</p>
       </div>
     </div>
@@ -419,14 +419,14 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
   const { card: cardStyle, hdr } = useCardStyles(T, "elevated");
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2 w-full">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-2 w-full">
       <div className="rounded-xl overflow-hidden" style={cardStyle}>
         <div className="px-3 py-1.5 flex items-center gap-2" style={hdr}>
           <div className="w-1 h-3 rounded-full" style={{ background: "#F47920" }} />
           <p className="text-[10px] font-black uppercase tracking-widest"
             style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Reportes por Prioridad</p>
         </div>
-        <div className="px-3 py-2 flex flex-col gap-1.5">
+        <div className="px-2.5 py-1.5 flex flex-col gap-1">
           {prioridadData.map((p, i) => {
             const totalFila = p.valor + p.insumos;
             const pct = total > 0 ? Math.round((totalFila / (total + sol.length)) * 100) : 0;
@@ -471,8 +471,8 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
           <p className="text-[10px] font-black uppercase tracking-widest"
             style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Reportes por Estatus</p>
         </div>
-        <div className="px-3 py-2 flex gap-3 flex-1">
-          <div className="flex-shrink-0"><GraficaPastel data={estatusData} size={64} T={T} /></div>
+        <div className="px-2.5 py-1.5 flex gap-2.5 flex-1">
+          <div className="flex-shrink-0"><GraficaPastel data={estatusData} size={54} T={T} /></div>
           <div className="flex flex-col gap-1.5 flex-1 justify-center">
             {estatusData.map((e, i) => {
               const pct = totalEstatus > 0 ? Math.round((e.valor / totalEstatus) * 100) : 0;
@@ -581,41 +581,41 @@ export function SeccionInsumos({ T }) {
     { label: "Sin stock",  valor: sinStock,   color: "#dc2626", Icon: AlertTriangle },
   ];
   return (
-    <div className="mb-2 w-full">
+    <div className="mb-2 w-full max-w-5xl mx-auto">
       {/* KPIs compactos */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-2">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-2.5">
         {kpis.map(({ label, valor, color, Icon }) => (
-          <div key={label} className="rounded-xl px-3 py-2 flex items-center gap-2.5" style={cardStyle}>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          <div key={label} className="rounded-xl px-4 py-3 flex items-center gap-3" style={cardStyle}>
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ background: isDark ? `${color}22` : `${color}18` }}>
-              <Icon size={16} style={{ color }} />
+              <Icon size={20} style={{ color }} />
             </div>
             <div className="min-w-0">
-              <p className="text-[9px] font-black uppercase tracking-wider truncate" style={{ color: T.textFaint }}>{label}</p>
-              <p className="text-base font-black leading-none mt-0.5" style={{ color }}>{valor}</p>
+              <p className="text-[11px] font-black uppercase tracking-wider truncate" style={{ color: T.textFaint }}>{label}</p>
+              <p className="text-2xl font-black leading-none mt-1" style={{ color }}>{valor}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* Dos graficas compactas en una fila */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {/* Disponibilidad */}
-        <div className="rounded-xl overflow-hidden flex items-center gap-3 px-3 py-2.5" style={cardStyle}>
-          <div className="flex-shrink-0"><GraficaPastel data={disponibilidadData} size={62} T={T} /></div>
-          <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>Disponibilidad</p>
+        <div className="rounded-xl overflow-hidden flex items-center gap-4 px-4 py-3.5" style={cardStyle}>
+          <div className="flex-shrink-0"><GraficaPastel data={disponibilidadData} size={78} T={T} /></div>
+          <div className="flex flex-col gap-2 flex-1 min-w-0">
+            <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>Disponibilidad</p>
             {disponibilidadData.map((d, i) => {
               const pct = totalDisp > 0 ? Math.round((d.valor / totalDisp) * 100) : 0;
               return (
                 <div key={i} className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
-                    <span className="text-[11px] font-semibold truncate" style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{d.label}</span>
+                    <span className="text-[13px] font-semibold truncate" style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{d.label}</span>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="text-[11px] font-black" style={{ color: d.color }}>{d.valor}</span>
-                    <span className="text-[9px] font-semibold" style={{ color: T.textFaint }}>({pct}%)</span>
+                    <span className="text-[13px] font-black" style={{ color: d.color }}>{d.valor}</span>
+                    <span className="text-[11px] font-semibold" style={{ color: T.textFaint }}>({pct}%)</span>
                   </div>
                 </div>
               );
@@ -624,15 +624,15 @@ export function SeccionInsumos({ T }) {
         </div>
 
         {/* Movimientos */}
-        <div className="rounded-xl overflow-hidden flex flex-col justify-center gap-1.5 px-3 py-2.5" style={cardStyle}>
-          <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>Movimientos</p>
+        <div className="rounded-xl overflow-hidden flex flex-col justify-center gap-2 px-4 py-3.5" style={cardStyle}>
+          <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>Movimientos</p>
           {movData.map((d, i) => {
             const pct = Math.round((d.valor / maxMov) * 100);
             return (
               <div key={i} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold" style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{d.label}</span>
-                  <span className="text-[11px] font-black" style={{ color: d.color }}>{d.valor}</span>
+                  <span className="text-[13px] font-semibold" style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{d.label}</span>
+                  <span className="text-[13px] font-black" style={{ color: d.color }}>{d.valor}</span>
                 </div>
                 <div className="h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.border }}>
                   <div className="h-full rounded-full transition-all duration-700"
