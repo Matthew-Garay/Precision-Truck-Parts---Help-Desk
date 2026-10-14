@@ -1,8 +1,11 @@
 <div align="center">
 
 # Precision Truck Parts — HelpDesk
+<img src="client/public/assets/img/logo.png" alt="Precision Truck Parts" width="160">
 
 **Sistema web de gestión de tickets de soporte técnico, solicitudes de insumos y control de inventario** para Precision Truck Parts, Parts and Accesories, S.A. de C.V.
+
+Los usuarios pueden iniciar sesión con su cuenta corporativa a través de Zoho si el administrador lo habilita.
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=flat-square)](https://vitejs.dev/)
@@ -29,6 +32,7 @@ Está dirigido al personal interno de la empresa (empleados y administradores de
 - **Inventario** con control de entradas y salidas de insumos.
 - **Notificaciones en tiempo real** con Socket.io.
 - **Seguridad:** contraseñas con bcrypt, sesiones JWT de 12 h, validación con Zod, Helmet y rate limiting.
+- **Autenticación corporativa:** acceso con Zoho (OAuth server-based) para emparejar empleados y asignar roles.
 
 ## Tecnologías utilizadas
 
@@ -112,6 +116,41 @@ O en dos terminales: `npm run dev` (frontend en http://localhost:5173) y `npm ru
 ### Correo de recuperación de contraseñas
 
 Si usas Gmail, activa la **verificación en dos pasos** y genera una **contraseña de aplicación**; esa va en `SMTP_PASS` (no la de tu cuenta). Con cualquier otro SMTP solo cambia las líneas `SMTP_*`.
+
+## Inicio de sesión con Zoho
+
+Si el administrador habilita la autenticación corporativa con Zoho, los usuarios pueden iniciar sesión desde el mismo login usando el botón **Iniciar sesión con Zoho**.
+
+**Flujo:**
+1. El botón consulta `GET /api/auth/zoho/login`, que genera un `state` antifalsificación y redirige al consentimiento de Zoho con `openid email profile`.
+2. Zoho redirige al callback `GET /api/auth/zoho/callback`.
+3. El backend valida el `state` y el `id_token`, empata el correo con un empleado activo y emite el mismo JWT de 12 h que el login normal.
+4. El frontend (`/login/zoho`) consume el fragmento de la URL y guarda token, `id_acceso` y usuario sin dejar el JWT en la barra de direcciones.
+
+**Requisitos del backend:**
+```env
+ZOHO_CLIENT_ID=[SECURITY_DATA]
+ZOHO_CLIENT_SECRET=PEGAR_AQUI_EL_CLIENT_SECRET
+ZOHO_ACCOUNTS_URL=https://accounts.zoho.com
+ZOHO_REDIRECT_URI=http://192.168.x.x:3001/api/auth/zoho/callback
+ZOHO_SCOPES=openid,email,profile
+```
+
+**Dónde verlo:**
+- Botón en `client/src/pages/Login.jsx` (logo `/assets/img/zoho-logo.svg`).
+- Pantalla `/login/zoho` (`client/src/pages/ZohoCallbackPage.jsx`).
+- Servidor `server/controllers/zoho-controller.js`.
+
+## Despliegue en producción
+
+Para publicar el sistema en internet (dominio, variables de entorno, volumen de
+archivos, endurecimiento de seguridad y restricción de acceso a correos
+corporativos) consulta la guía completa: [docs/despliegue.md](docs/despliegue.md).
+
+Resumen: el proyecto es un monolito full-stack listo para **Railway** (región
+California, la más cercana a México). El backend sirve el frontend compilado y
+la API bajo un mismo dominio. El acceso ya está limitado a correos corporativos
+mediante `validarEmailCorporativo`.
 
 ## Uso
 

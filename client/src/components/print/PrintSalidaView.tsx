@@ -209,7 +209,7 @@ export default function PrintSalidaView({ payload }: { payload: SalidaPayload })
         </section>
 
         {/* Firmas (se llenan a mano) */}
-        <div className="pr-salida-firmas" style={{ display: "flex", justifyContent: "space-around", gap: 24, padding: "0 14px 6px" }}>
+        <div className="pr-firmas pr-salida-firmas" style={{ padding: "0 14px" }}>
           <Firma nombre={payload?.responsable || ""} rol="Quien recibe" />
           <Firma nombre={payload?.registrado_por || ""} rol="Quien entrega" />
         </div>

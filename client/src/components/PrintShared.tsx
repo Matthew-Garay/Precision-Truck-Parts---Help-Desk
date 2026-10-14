@@ -126,9 +126,14 @@ export function PageHeader({ titulo, subtitulo, dept, metaRows, logoSrc = "/asse
 }
 
 /* ── PageFooter ─────────────────────────────────────────────────── */
-export function PageFooter({ right }: { right: string }) {
+export function PageFooter({ right, logoSrc }: { right: string; logoSrc?: string }) {
   return (
     <footer className="pr-page-footer">
+      {logoSrc && (
+        <span className="pr-footer-logo-wrap">
+          <img src={logoSrc} alt="Precision Truck Parts" className="pr-footer-logo" />
+        </span>
+      )}
       <span className="pr-footer-center-text">
         Precision Truck Parts, Parts and Accesories, S.A de C.V.
       </span>

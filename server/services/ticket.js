@@ -76,8 +76,8 @@ const Ticket = {
     try {
       await conn.beginTransaction();
 
-      // Delega al helper centralizado con bloqueo FOR UPDATE anti race-condition
-      const folio_ticket = await generarFolio(conn, "ticket", "folio_ticket", "PTP");
+      // Folio sin prefijo: YYYYMM-NNNN (ej. 202610-0001)
+      const folio_ticket = await generarFolio(conn, "ticket", "folio_ticket");
 
       const [result] = await conn.query(
         `INSERT INTO ticket (folio_ticket, titulo, descripcion, estatus, prioridad, id_empleado, id_categoria)

@@ -116,6 +116,30 @@ El usuario de MySQL del `.env` necesita los privilegios `SELECT, LOCK TABLES, TR
 - El esquema vivo debe regenerarse tras cada cambio: `node database/dump-schema.mjs > database/schema-dump.txt`.
 - `historial_acceso` y `movimiento_inventario` crecen con el uso; ambos admiten poda por fecha una vez exportados los periodos exigidos por auditoria.
 
+## Política de empleados: baja lógica, no borrado físico
+
+El sistema no debe ejecutar `DELETE FROM empleado`. Las claves foráneas del
+esquema (`database/schema.sql`) determinan qué ocurre si se borra un empleado:
+
+- `ticket` (como solicitante y como técnico): `ON DELETE RESTRICT`. MySQL
+  bloquea el borrado si el empleado tiene tickets. El intento falla con error
+  de integridad referencial.
+- `solicitud`: `ON DELETE RESTRICT`. Mismo comportamiento, bloquea el borrado.
+- `movimiento_inventario`: `ON DELETE SET NULL`. El movimiento de inventario
+  queda sin empleado asociado (el kardex muestra autor genérico).
+- `historial_acceso`: `ON DELETE CASCADE`. El historial de accesos del empleado
+  se elimina por completo.
+- `manual` (campo subido_por): `ON DELETE SET NULL`. El manual queda sin autor.
+- `ticket_historial`: `ON DELETE CASCADE`. El historial de cambios del ticket
+  se elimina.
+
+Conclusión operativa: borrar un empleado con tickets o solicitudes activas es
+imposible por restricción de la base de datos, y borrar uno con solo historial
+o movimientos provoca pérdida irreversible de esos registros. El procedimiento
+correcto es la baja lógica: actualizar `empleado.estatus` a `Inactivo`. Esto
+deshabilita el inicio de sesión, conserva tickets, solicitudes, kardex e
+historial intactos, y permite reactivar al empleado si regresa.
+
 ## Monitoreo operativo
 
 - Logs: el servidor imprime en consola el estado de Backend, Frontend, DB, Socket, Workers, SMTP y JWT al arrancar, y registra `uncaughtException`/`unhandledRejection` sin tumbar el proceso.
