@@ -23,18 +23,18 @@
  *     Conexión con transacción activa (beginTransaction ya invocado).
  *   @param {string} tabla       Nombre de la tabla MySQL  (ej. "ticket")
  *   @param {string} campoFolio  Nombre de la columna      (ej. "folio_ticket")
- *   @param {string} prefijo     Prefijo del folio         (ej. "PTP" | "SOL")
+ *   @param {string} prefijo     Prefijo del folio         (ej. "ST" | "SOL")
  *
  * Retorna:
- *   @returns {Promise<string>}  Folio generado, ej. \"PTP-202610-0001\" / \"SOL-202610-0001\"
+ *   @returns {Promise<string>}  Folio generado, ej. \"ST-202610-0001\" / \"SOL-202610-0001\"
  *
  * Uso en Ticket.js:
  *   import { generarFolio } from './helpers.js';
- *   const folio = await generarFolio(conn, "ticket",    "folio_ticket",    "PTP");
+ *   const folio = await generarFolio(conn, "ticket",    "folio_ticket",    "ST");
  *
  * Uso en Solicitud.js:
  *   import { generarFolio } from './helpers.js';
- *   const folio = await generarFolio(conn, "solicitud", "folio_solicitud",  "SOL");
+ *   const folio = await generarFolio(conn, "solicitud", "folio_solicitud", "SOL");
  */
 
 /**

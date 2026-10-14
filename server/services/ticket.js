@@ -9,7 +9,7 @@
  *
  *   crear({ titulo, descripcion, prioridad, id_empleado, id_categoria })
  *     Opera dentro de una transaccion. Genera el folio con formato
- *     PTP-{anno}{mes}-{numero} usando FOR UPDATE para evitar folios duplicados
+ *     ST-{anno}{mes}-{numero} usando FOR UPDATE para evitar folios duplicados
  *     bajo concurrencia. Inserta el ticket con estatus inicial "En proceso".
  *
  *   getFolioById(id_ticket)
@@ -76,8 +76,8 @@ const Ticket = {
     try {
       await conn.beginTransaction();
 
-      // Folio sin prefijo: YYYYMM-NNNN (ej. 202610-0001)
-      const folio_ticket = await generarFolio(conn, "ticket", "folio_ticket");
+      // Folio con prefijo ST-: ST-YYYYMM-NNNN (ej. ST-202610-0001).
+      const folio_ticket = await generarFolio(conn, "ticket", "folio_ticket", "ST");
 
       const [result] = await conn.query(
         `INSERT INTO ticket (folio_ticket, titulo, descripcion, estatus, prioridad, id_empleado, id_categoria)

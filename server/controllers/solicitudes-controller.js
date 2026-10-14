@@ -1011,7 +1011,7 @@ export const registrarEntradaInsumo = async (req, res) => {
  * renglón en `movimiento_inventario`. Todo lo que el admin escribe en la hoja
  * (destino, responsable, motivo libre) viaja dentro del campo `motivo`
  * estructurado, sin migración de BD:
- *   "[SAL-20250115-0003] Uso interno · Destino: Taller · Recibe: Juan · <motivo>"
+ *   "[SAL-202610-001] Uso interno · Destino: Taller · Recibe: Juan · <motivo>"
  *
  * Acepta un renglón ({ id_insumo, cantidad }) o varios ({ items: [...] }).
  * Falla con 409 si algún renglón pide más stock del disponible; en ese caso
@@ -1052,19 +1052,19 @@ export const registrarSalidaInsumo = async (req, res) => {
       const base = /^\d{4}-\d{2}-\d{2}$/.test(soloFecha)
         ? new Date(tieneHora ? f.replace(" ", "T") : `${soloFecha}T12:00:00`)
         : new Date();
-      // Folio de salida unificado por MES: SAL-YYYYMM-NNNN, mismo patron que
-      // las solicitudes (YYYYMM-NNNN) pero conservando el prefijo SAL- para que
-      // una salida nunca se confunda con una solicitud. El consecutivo cuenta
-      // los folios DISTINTOS del mes ya escritos en el motivo (cada salida
-      // manual deja "[SAL-YYYYMM-NNNN] ..." al inicio del texto del motivo).
+      // Folio de salida por MES: SAL-YYYYMM-NNN (3 digitos, ej. SAL-202610-001).
+      // El consecutivo cuenta los folios DISTINTOS del mes ya escritos en el
+      // motivo (cada salida manual deja "[SAL-YYYYMM-NNN] ..." al inicio del
+      // texto del motivo). Solo cuenta el formato nuevo de 3 digitos para que
+      // la secuencia no se mezcle con folios viejos de 4 digitos.
       const ym = `${base.getFullYear()}${String(base.getMonth() + 1).padStart(2, "0")}`;
       const [[{ n }]] = await conn.query(
         `SELECT COUNT(DISTINCT LEFT(motivo, LOCATE(']', motivo))) AS n
            FROM movimiento_inventario
-          WHERE tipo = 'Salida' AND motivo LIKE ? FOR UPDATE`,
-        [`[SAL-${ym}-%`]
+          WHERE tipo = 'Salida' AND motivo LIKE ? AND motivo REGEXP ? FOR UPDATE`,
+        [`[SAL-${ym}-%`, `^\[SAL-${ym}-[0-9]{3}\]`]
       );
-      const folio = `SAL-${ym}-${String((Number(n) || 0) + 1).padStart(4, "0")}`;
+      const folio = `SAL-${ym}-${String((Number(n) || 0) + 1).padStart(3, "0")}`;
 
       // Los campos del formato pueden venir como texto libre (hojas viejas) o
       // como IDs de las listas (empleados/sucursales): se resuelven a nombre.

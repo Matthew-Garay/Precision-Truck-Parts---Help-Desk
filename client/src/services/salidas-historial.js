@@ -9,7 +9,7 @@ import { apiFetch } from './api-client.js';
  *   - Sucursal  → Pages/Usuario/SolicitudInsumo.jsx (tab Mis Solicitudes)
  *
  * El backend guarda los datos del formato dentro del motivo del movimiento:
- *   "[SAL-20261007-0001] Uso interno · Destino: X · Recibe: Y · Entrega: Z · motivo"
+ *   "[SAL-202610-001] Uso interno · Destino: X · Recibe: Y · Entrega: Z · motivo"
  * Aquí se parsean de vuelta para rearmar la HOJA de salida sin idas extra.
  */
 
