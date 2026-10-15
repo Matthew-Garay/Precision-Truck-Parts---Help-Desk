@@ -99,21 +99,50 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
     apiFetch("/api/tickets/admins").then(r => r.json()).then(d => { if (Array.isArray(d)) setAdmins(d); }).catch(() => {});
   }, []);
 
-  // Carga sin filtros una sola vez — solo para poblar opciones de los selects
+  // Carga sin filtros una sola vez — para poblar los selects con catálogos
+  // completos (todas las áreas y sucursales) y los nombres de los empleados,
+  // no solo los derivados de los 2000 primeros tickets.
   useEffect(() => {
-    apiFetch(`/api/tickets?limit=2000&page=1`)
-      .then(r => r.json())
-      .then(d => {
-        const lista = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
-        const uniq = (arr) => Array.from(new Set(arr.filter(Boolean).map(s => s.replace(/\s+/g, ' ').trim()))).sort();
+    const cargar = async () => {
+      const leer = async (r) => {
+        if (!r?.ok) return [];
+        const d = await r.json().catch(() => null);
+        return Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
+      };
+      try {
+        const [depsRes, sucsRes, empsRes, adminsRes, ticsRes] = await Promise.all([
+          apiFetch("/api/auth/departamentos"),
+          apiFetch("/api/auth/sucursales"),
+          apiFetch("/api/auth/empleados"),
+          apiFetch("/api/tickets/admins"),
+          apiFetch("/api/tickets?limit=2000&page=1"),
+        ]);
+        const [areasCat, sucsCat, empleados, admins, lista] = await Promise.all([
+          leer(depsRes), leer(sucsRes), leer(empsRes), leer(adminsRes), leer(ticsRes),
+        ]);
+
+        const uniq = arr =>
+          Array.from(new Set(arr.filter(Boolean).map(s => String(s).replace(/\s+/g, " ").trim()))).sort();
+
+        const nombres = empleados.map(emp =>
+          [emp?.nombre, emp?.ap_paterno, emp?.ap_materno]
+            .filter(Boolean)
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim()
+        );
+
         setOptsCache({
-          tecnicos:   uniq(lista.map(t => t.resuelto_por)),
-          usuarios:   uniq(lista.map(t => t.nombre_empleado)),
-          areas:      uniq(lista.map(t => t.nombre_departamento)),
-          sucursales: uniq(lista.map(t => t.nombre_sucursal)),
+          tecnicos:   uniq([...admins.map(a => a?.nombre_completo), ...lista.map(t => t.resuelto_por)]),
+          usuarios:   uniq(nombres.length ? nombres : lista.map(t => t.nombre_empleado)),
+          areas:      uniq(areasCat.length ? areasCat.map(a => a.nombre_departamento) : lista.map(t => t.nombre_departamento)),
+          sucursales: uniq(sucsCat.length ? sucsCat.map(s => s.nombre_sucursal) : lista.map(t => t.nombre_sucursal)),
         });
-      })
-      .catch(() => {});
+      } catch {
+        // Si algo falla se conservan las opciones ya cargadas.
+      }
+    };
+    cargar();
   }, []);
 
   const sl        = statsData.lista;

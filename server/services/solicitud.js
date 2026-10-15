@@ -216,11 +216,16 @@ const Solicitud = {
   },
 
   getAll: async ({ limit = 100, offset = 0, estatus, prioridad, empleado, busqueda, area, sucursal, fecha_inicio, fecha_fin } = {}) => {
+    // Nombre completo del empleado (nombre + ap. paterno + ap. materno)
+    // normalizado: el filtro de usuario envía el nombre completo del catálogo,
+    // así que CONCAT sin el materno no haría match con el valor seleccionado.
+    const NOMBRE_EMP = "REGEXP_REPLACE(TRIM(CONCAT(IFNULL(e.nombre,''),' ',IFNULL(e.ap_paterno,''),' ',IFNULL(e.ap_materno,''))), ' +', ' ')";
     const where = [];
     const params = [];
     if (estatus)              { where.push("s.estatus = ?");                                                                                                params.push(estatus); }
     if (prioridad)            { where.push("s.prioridad = ?");                                                                                              params.push(prioridad); }
-    if (empleado || busqueda) { where.push("(CONCAT(IFNULL(e.nombre,''),' ',IFNULL(e.ap_paterno,'')) LIKE ? OR s.folio_solicitud LIKE ?)"); const q = `%${empleado || busqueda}%`; params.push(q, q); }
+    if (empleado)             { where.push(`(${NOMBRE_EMP} LIKE ?)`);                                                       params.push(`%${empleado}%`); }
+    if (busqueda)             { where.push(`(${NOMBRE_EMP} LIKE ? OR s.folio_solicitud LIKE ?)`);                           params.push(`%${busqueda}%`, `%${busqueda}%`); }
     if (area)                 { where.push("d.nombre_departamento = ?");                                                                                    params.push(area); }
     if (sucursal)             { where.push("su.nombre_sucursal = ?");                                                                                       params.push(sucursal); }
     if (fecha_inicio) { where.push("DATE(s.fecha) >= ?"); params.push(fecha_inicio); }
