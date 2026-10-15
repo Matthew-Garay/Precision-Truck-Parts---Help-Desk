@@ -373,7 +373,7 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
   const [hasta,      setHasta]      = useState("");
   const [tipoFiltro, setTipoFiltro] = useState("todos");
   const [pagina,     setPagina]     = useState(1);
-  const [pageSize,   setPageSize]   = useState(20);
+  const [pageSize,   setPageSize]   = useState(25);
 
   const nombre = `${empleado.nombre} ${empleado.ap_paterno}`.trim();
 
@@ -427,7 +427,6 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
   const totalPaginas    = Math.max(1, Math.ceil(filtrados.length / pageSize));
   const paginaActual    = Math.min(pagina, totalPaginas);
   const registrosPagina = filtrados.slice((paginaActual - 1) * pageSize, paginaActual * pageSize);
-  const irPagina        = p => { if (p >= 1 && p <= totalPaginas) setPagina(p); };
 
   const exportarCSV = () => {
     const filas = [["Entrada","Salida","Duración","Estado"], ...filtrados.map(a => [fmt(a.fecha_entrada), fmt(a.fecha_salida), duracion(a.fecha_entrada, a.fecha_salida)||"-", a.fecha_salida?"Cerrada":"Activa"])];
@@ -599,6 +598,16 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
           })}
         </div>
 
+        {/* Paginación — componente compartido (misma barra que Historial de Insumos) */}
+        <Paginacion
+          pagina={paginaActual}
+          setPagina={setPagina}
+          totalPaginas={totalPaginas}
+          pageSize={pageSize}
+          setPageSize={setPageSize}
+          T={{ ...tk, text: tk.textMain, bg: tk.surface }}
+        />
+
         {/* Footer */}
         <div style={{ padding: "10px 18px", borderTop: `1px solid ${tk.border}`, background: tk.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
           <span style={{ fontSize: 11, color: tk.textFaint }}>
@@ -606,22 +615,6 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
             {totalPaginas > 1 && ` · mostrando ${((paginaActual - 1) * pageSize) + 1}–${Math.min(paginaActual * pageSize, filtrados.length)}`}
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            {/* Paginación */}
-            <button onClick={() => irPagina(paginaActual - 1)} disabled={paginaActual <= 1}
-              style={{ padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: paginaActual <= 1 ? "not-allowed" : "pointer", border: `1px solid ${tk.border}`, background: tk.surface, color: tk.textMuted, opacity: paginaActual <= 1 ? 0.4 : 1 }}>
-              ‹
-            </button>
-            <span style={{ fontSize: 11, color: tk.textMuted, minWidth: 44, textAlign: "center" }}>{paginaActual} / {totalPaginas}</span>
-            <button onClick={() => irPagina(paginaActual + 1)} disabled={paginaActual >= totalPaginas}
-              style={{ padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: paginaActual >= totalPaginas ? "not-allowed" : "pointer", border: `1px solid ${tk.border}`, background: tk.surface, color: tk.textMuted, opacity: paginaActual >= totalPaginas ? 0.4 : 1 }}>
-              ›
-            </button>
-            <select
-              value={pageSize}
-              onChange={e => { setPageSize(parseInt(e.target.value, 10)); setPagina(1); }}
-              style={{ padding: "3px 6px", borderRadius: 6, border: `1px solid ${tk.border}`, background: tk.surface, color: tk.textMain, fontSize: 11, colorScheme: isDark ? "dark" : "light" }}>
-              {[10, 20, 50].map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
             <span style={{ width: 1, height: 16, background: tk.border, margin: "0 2px" }} />
             <button onClick={exportarCSV} disabled={filtrados.length === 0}
               style={{ padding: "5px 12px", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, opacity: filtrados.length === 0 ? 0.4 : 1, background: "transparent", border: `1px solid ${tk.border}`, borderRadius: 6, cursor: filtrados.length === 0 ? "not-allowed" : "pointer", color: tk.textMuted, transition: "all 0.12s" }}

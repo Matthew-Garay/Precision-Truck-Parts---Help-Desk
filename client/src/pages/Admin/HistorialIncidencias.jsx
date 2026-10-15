@@ -6,6 +6,7 @@ import { abrirReporteLista } from '../print/PrintReportePage.tsx';
 import { useAutoRefresh } from '../../hooks/use-auto-refresh.js';
 import FiltrosToolbar from '../../components/FiltrosToolbar.jsx';
 import { useCardStyles } from '../../components/Card.jsx';
+import Paginacion from '../../components/Paginacion.jsx';
 
 const PCOLOR = { Urgente:"#dc2626", Alta:"#ea580c", Media:"#ca8a04", Baja:"#16a34a" };
 
@@ -624,27 +625,16 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
             </table>
           </div>
           </div>
-          {/* Paginación */}
-          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2" style={{ borderTop:`1px solid ${T.border}`, background:T.bg, flexShrink:0 }}>
-            <div className="flex items-center gap-1.5">
-              <button disabled={page<=1 || cargando} onClick={() => setPage(p => Math.max(1, p-1))}
-                className="px-2 py-1 rounded border text-[11px]" style={{ borderColor:T.border, background:T.surfaceAlt, color:T.text }}>
-                ‹ Ant
-              </button>
-              <span className="text-[11px] px-1" style={{ color:T.textMuted }}>{page} / {pages}</span>
-              <button disabled={page>=pages || cargando} onClick={() => setPage(p => Math.min(pages, p+1))}
-                className="px-2 py-1 rounded border text-[11px]" style={{ borderColor:T.border, background:T.surfaceAlt, color:T.text }}>
-                Sig ›
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-[10px]" style={{ color:T.textMuted }}>Mostrar</label>
-              <select value={limit} onChange={e => { setLimit(parseInt(e.target.value,10)); setPage(1); }}
-                className="text-[11px]" style={{ padding:"3px 6px", borderRadius:6, border:`1px solid ${T.border}`, background:T.surface, color:T.text }}>
-                {[10,25,50,100].map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </div>
-          </div>
+          {/* Paginación — componente compartido (misma barra que Historial de Insumos) */}
+          <Paginacion
+            pagina={page}
+            setPagina={setPage}
+            totalPaginas={pages}
+            pageSize={limit}
+            setPageSize={setLimit}
+            T={T}
+            cargando={cargando}
+          />
         </div>{/* fin tabla */}
 
         </div>
