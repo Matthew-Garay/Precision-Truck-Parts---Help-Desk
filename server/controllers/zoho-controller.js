@@ -49,7 +49,7 @@ const zohoCfg = (req) => {
  * backend (:3001) y redirigir ahí rompe con `Cannot GET /login/zoho`.
  */
 function resolverAppUrl(_req) {
-  return (process.env.APP_URL || "http://192.168.31.124:5173").replace(/\/+$/, "");
+  return (process.env.APP_URL || "http://192.168.31.122:5173").replace(/\/+$/, "");
 }
 
 /**
