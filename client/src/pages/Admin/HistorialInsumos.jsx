@@ -74,10 +74,11 @@ export default function HistorialInsumos({ T }) {
     ])
       .then(([sols, movs]) => {
         const salidas = agruparSalidas(movs).filter(g => coincideFiltrosSalida(g, f));
-        // Origen: "interno" = solicitudes (SOL-), "sistema" = salidas manuales (SAL-).
+        // Origen: "interno" = salidas internas (SAL-, uso interno registrado
+        // por Soporte), "sistema" = solicitudes del flujo (SOL-).
         let combo = [...sols, ...salidas].sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
-        if (f.origen === "interno") combo = combo.filter(x => !x.es_salida);
-        else if (f.origen === "sistema") combo = combo.filter(x => x.es_salida);
+        if (f.origen === "interno") combo = combo.filter(x => x.es_salida);
+        else if (f.origen === "sistema") combo = combo.filter(x => !x.es_salida);
         const total = combo.length;
         const ini = (p - 1) * l;
         setSolicitudes(combo.slice(ini, ini + l));
@@ -93,20 +94,52 @@ export default function HistorialInsumos({ T }) {
 
   useAutoRefresh(() => { cargar(filtrosRef.current, page, limit); cargarMetricas(); }, 30000, [page, limit]);
 
-  // Opciones para selects — una sola vez
+  // Opciones para selects — una sola vez (catálogos completos, no solo los 2000
+  // primeros registros, para que el filtro cargue todas las sucursales y áreas).
   useEffect(() => {
-    apiFetch("/api/solicitudes?limit=2000&page=1")
-      .then(r => r.json())
-      .then(d => {
-        const lista = Array.isArray(d?.data) ? d.data : [];
-        const uniq = arr => [...new Set(arr.filter(Boolean).map(s => s.replace(/\s+/g, " ").trim()))].sort();
+    const cargar = async () => {
+      const leer = async (r) => {
+        if (!r?.ok) return [];
+        const d = await r.json().catch(() => null);
+        return Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
+      };
+      try {
+        const [depsRes, sucsRes, empsRes] = await Promise.all([
+          apiFetch("/api/auth/departamentos"),
+          apiFetch("/api/auth/sucursales"),
+          apiFetch("/api/auth/empleados"),
+        ]);
+        const [areasCat, sucsCat, empleados] = await Promise.all([
+          leer(depsRes), leer(sucsRes), leer(empsRes),
+        ]);
+
+        const uniq = arr =>
+          [...new Set(arr.filter(Boolean).map(s => String(s).replace(/\s+/g, " ").trim()))].sort();
+
+        const nombres = empleados.map(emp =>
+          [emp?.nombre, emp?.ap_paterno, emp?.ap_materno]
+            .filter(Boolean)
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim()
+        );
+
+        // Respaldo: si algún catálogo no responde, se deriva de las solicitudes.
+        let lista = [];
+        if (!nombres.length || !areasCat.length || !sucsCat.length) {
+          lista = await leer(await apiFetch("/api/solicitudes?limit=2000&page=1"));
+        }
+
         setOptsCache({
-          usuarios:   uniq(lista.map(s => s.nombre_empleado)),
-          areas:      uniq(lista.map(s => s.nombre_departamento)),
-          sucursales: uniq(lista.map(s => s.nombre_sucursal)),
+          usuarios:   uniq(nombres.length ? nombres : lista.map(s => s.nombre_empleado)),
+          areas:      uniq(areasCat.length ? areasCat.map(a => a.nombre_departamento) : lista.map(s => s.nombre_departamento)),
+          sucursales: uniq(sucsCat.length ? sucsCat.map(s => s.nombre_sucursal) : lista.map(s => s.nombre_sucursal)),
         });
-      })
-      .catch(() => {});
+      } catch {
+        // Si falla una de las cargas, se deja el estado anterior.
+      }
+    };
+    cargar();
   }, []);
 
   const limpiar = () => setFiltros(FILTROS_INIT);

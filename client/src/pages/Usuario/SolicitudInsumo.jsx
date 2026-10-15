@@ -592,8 +592,9 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
         const salidas = agruparSalidas(movs).filter(g => coincideFiltrosSalida(g, f));
         let combo = [...filtradas, ...salidas]
           .sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
-        if (f.origen === "interno") combo = combo.filter(x => !x.es_salida);
-        else if (f.origen === "sistema") combo = combo.filter(x => x.es_salida);
+        // "interno" = salidas internas (SAL-), "sistema" = solicitudes (SOL-).
+        if (f.origen === "interno") combo = combo.filter(x => x.es_salida);
+        else if (f.origen === "sistema") combo = combo.filter(x => !x.es_salida);
         const total = combo.length;
         const ini = (p - 1) * l;
         setSolicitudes(combo.slice(ini, ini + l));

@@ -100,23 +100,31 @@ export function agruparSalidas(rows = []) {
 
 /**
  * ¿Pasa la salida los filtros activos del Historial?
- * Los filtros que una salida no puede cumplir (prioridad/área) la excluyen
- * mientras estén activos; búsqueda, usuario y sí aplican.
+ * Aplica búsqueda, estatus, prioridad, área (puesto/área del solicitante),
+ * usuario y sucursal (destino o sucursal del solicitante). Todo filtro
+ * activo que la salida no pueda satisfacer la excluye.
  */
 export function coincideFiltrosSalida(g, f = {}) {
+  const norm = v => String(v ?? "").replace(/\s+/g, " ").trim().toLowerCase();
   const q = String(f.busqueda ?? "").trim().toLowerCase();
   if (q) {
     const heno = [g.folio, g.entrega, g.recibe, g.destino, g.motivoTexto,
-      g.nombre_empleado, g.registrado_por, g.insumos_nombres]
+      g.nombre_empleado, g.registrado_por, g.insumos_nombres,
+      g.puesto, g.sucSol]
       .filter(Boolean).join(" ").toLowerCase();
     if (!heno.includes(q)) return false;
   }
   if (f.estatus   && f.estatus   !== "Todos" && f.estatus   !== "Entregado") return false;
-  if (f.prioridad && f.prioridad !== "Todos" && g.prioridad !== f.prioridad) return false;
-  if (f.area      && f.area      !== "Todos") return false;
+  if (f.prioridad && f.prioridad !== "Todos" && norm(g.prioridad) !== norm(f.prioridad)) return false;
+  // Área: la salida guarda el área/puesto del solicitante en "Puesto:".
+  if (f.area      && f.area      !== "Todos" && norm(g.puesto) !== norm(f.area)) return false;
   if (f.usuario   && f.usuario   !== "Todos"
-      && g.nombre_empleado !== f.usuario && g.registrado_por !== f.usuario) return false;
-  if (f.sucursal  && f.sucursal  !== "Todos" && (g.nombre_sucursal || "") !== f.sucursal) return false;
+      && ![g.nombre_empleado, g.registrado_por, g.entrega, g.recibe]
+        .map(norm).includes(norm(f.usuario))) return false;
+  // Sucursal: coincide por el destino o por la sucursal del solicitante.
+  if (f.sucursal  && f.sucursal  !== "Todos"
+      && norm(g.nombre_sucursal) !== norm(f.sucursal)
+      && norm(g.sucSol)          !== norm(f.sucursal)) return false;
   return true;
 }
 
