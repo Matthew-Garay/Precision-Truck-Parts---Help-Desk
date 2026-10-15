@@ -59,7 +59,10 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: 'all',
     proxy: {
-      '/api':       { target: BACKEND_URL, changeOrigin: true },
+      // xfwd: envía X-Forwarded-Host/Proto para que el backend conozca el host
+      // real del navegador (login Zoho elige el redirect_uri correcto aunque
+      // el request pase por el proxy con changeOrigin).
+      '/api':       { target: BACKEND_URL, changeOrigin: true, xfwd: true },
       '/storage':   { target: BACKEND_URL, changeOrigin: true },
       '/fotos':     { target: BACKEND_URL, changeOrigin: true },
       '/socket.io': {
