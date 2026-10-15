@@ -16,6 +16,7 @@ import ModalInsumo       from '../../components/Inventario/ModalInsumo.jsx';
 import ModalDetalleInsumo   from '../../components/Inventario/ModalDetalleInsumo.jsx';
 import ModalEntradaInsumo   from '../../components/Inventario/ModalEntradaInsumo.jsx';
 import ModalSalidaInsumo    from '../../components/Inventario/ModalSalidaInsumo.jsx';
+import Paginacion           from '../../components/Paginacion.jsx';
 import { getUsuario } from '../../utils/session.js';
 import { useTheme }      from '../../context/theme-context.js';
 
@@ -387,8 +388,7 @@ function EntradasTable({ rows, tipo = "Entrada" }) {
   );
 }
 
-const PAGE_SIZES = [10, 15, 25, 50];
-const PAGE_SIZE  = 15;
+const PAGE_SIZE  = 25; // coincide con el selector estándar [10, 25, 50, 100] de <Paginacion/>
 
 // ── Helpers ───────────────────────────────────────────────────────
 async function urlToBase64(url) {
@@ -1219,40 +1219,15 @@ export default function Inventario() {
                 onGestionar={row => setGestionar(row)} />
             )}
           </div>
-          {/* Paginación — siempre visible, dentro del card */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", borderTop: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <button
-                disabled={vista === "insumos" ? paginaActual <= 1 : movPaginaActual <= 1}
-                onClick={() => vista === "insumos" ? irPagina(paginaActual - 1) : setMovPagina(movPaginaActual - 1)}
-                style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: (vista === "insumos" ? paginaActual <= 1 : movPaginaActual <= 1) ? "not-allowed" : "pointer", border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.textMuted, opacity: (vista === "insumos" ? paginaActual <= 1 : movPaginaActual <= 1) ? 0.4 : 1 }}>
-                Anterior
-              </button>
-              <button
-                disabled={vista === "insumos" ? paginaActual >= totalPaginas : movPaginaActual >= movTotalPaginas}
-                onClick={() => vista === "insumos" ? irPagina(paginaActual + 1) : setMovPagina(movPaginaActual + 1)}
-                style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: (vista === "insumos" ? paginaActual >= totalPaginas : movPaginaActual >= movTotalPaginas) ? "not-allowed" : "pointer", border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.textMuted, opacity: (vista === "insumos" ? paginaActual >= totalPaginas : movPaginaActual >= movTotalPaginas) ? 0.4 : 1 }}>
-                Siguiente
-              </button>
-              <span style={{ fontSize: "11px", marginLeft: "6px", color: T.textMuted }}>
-                {vista === "insumos"
-                  ? `Página ${paginaActual} de ${totalPaginas}`
-                  : `Página ${movPaginaActual} de ${movTotalPaginas}`}
-              </span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <label style={{ fontSize: "10px", color: T.textMuted }}>Mostrar</label>
-              <select
-                value={vista === "insumos" ? pageSize : movPageSize}
-                onChange={e => {
-                  if (vista === "insumos") { setPageSize(parseInt(e.target.value, 10)); setPagina(1); }
-                  else { setMovPageSize(parseInt(e.target.value, 10)); setMovPagina(1); }
-                }}
-                style={{ padding: "4px", borderRadius: "6px", border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: "11px" }}>
-                {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </div>
-          </div>
+          {/* Paginación — componente compartido, siempre visible dentro del card */}
+          <Paginacion
+            pagina={vista === "insumos" ? paginaActual : movPaginaActual}
+            setPagina={vista === "insumos" ? irPagina : setMovPagina}
+            totalPaginas={vista === "insumos" ? totalPaginas : movTotalPaginas}
+            pageSize={vista === "insumos" ? pageSize : movPageSize}
+            setPageSize={vista === "insumos" ? setPageSize : setMovPageSize}
+            T={T}
+          />
         </div>
 
       </div>

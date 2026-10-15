@@ -1,6 +1,7 @@
 /**
  * Barra de paginación compartida por las interfaces con tabla
- * (Personal, Historial de Insumos, ...). Mismo diseño en todas:
+ * (Historial de Insumos, Personal, Inventario, Historial de Incidencias,
+ * Solicitudes de Insumos, ...). Mismo diseño responsivo en todas:
  *   ‹ Ant · n / m · Sig ›   +   selector "Mostrar" [10|25|50|100]
  *
  * Props:

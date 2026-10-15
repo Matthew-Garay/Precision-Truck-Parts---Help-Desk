@@ -6,6 +6,7 @@ import ModalDetalleInsumo from '../../components/Inventario/ModalDetalleInsumo.j
 import FiltrosToolbar from '../../components/FiltrosToolbar.jsx';
 import VistaSolicitud from './VistaSolicitud.jsx';
 import { useAutoRefresh } from '../../hooks/use-auto-refresh.js';
+import Paginacion from '../../components/Paginacion.jsx';
 import {
   agruparSalidas, coincideFiltrosSalida, abrirHojaSalida,
   traerSalidasMiSucursal, traerSolicitudesEmpleado,
@@ -939,23 +940,16 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                 </table>
               </div>
 
-              {/* Paginación */}
-              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2" style={{ borderTop: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
-                <div className="flex items-center gap-2">
-                  <button disabled={solPage <= 1 || cargandoSol} onClick={() => setSolPage(p => Math.max(1, p - 1))}
-                    className="px-2 py-1 rounded border text-xs" style={{ borderColor: T.border, background: T.surfaceAlt, color: T.text }}>Anterior</button>
-                  <button disabled={solPage >= solPages || cargandoSol} onClick={() => setSolPage(p => Math.min(solPages, p + 1))}
-                    className="px-2 py-1 rounded border text-xs" style={{ borderColor: T.border, background: T.surfaceAlt, color: T.text }}>Siguiente</button>
-                  <span className="text-[11px]" style={{ color: T.textMuted }}>Página {solPage} de {solPages}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label style={{ color: T.textMuted, fontSize: 10 }}>Mostrar</label>
-                  <select value={solLimit} onChange={e => { setSolLimit(parseInt(e.target.value, 10)); setSolPage(1); }}
-                    style={{ padding: "4px", borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.text }}>
-                    {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </div>
-              </div>
+              {/* Paginación — componente compartido (misma barra que Historial de Insumos) */}
+              <Paginacion
+                pagina={solPage}
+                setPagina={setSolPage}
+                totalPaginas={solPages}
+                pageSize={solLimit}
+                setPageSize={setSolLimit}
+                T={T}
+                cargando={cargandoSol}
+              />
             </div>
 
           </div>
