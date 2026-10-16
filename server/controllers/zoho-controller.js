@@ -77,11 +77,44 @@ export const zohoHabilitado = () => {
   return Boolean(cId && cSec && uris);
 };
 
+/**
+ * Orígenes de frontend "seguros" para regresar al terminar el login Zoho:
+ * solo localhost o hosts privados (evita open-redirect vía cookie o cabeceras).
+ */
+const HOST_PRIVADO =
+  /^(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d{2,5})?$/i;
+const origenFrontend = (u) => {
+  try {
+    const x = new URL(String(u || ""));
+    if (x.protocol !== "http:" && x.protocol !== "https:") return "";
+    return HOST_PRIVADO.test(x.host) ? x.origin.replace(/\/+$/, "") : "";
+  } catch { return ""; }
+};
+
 /** GET /api/auth/zoho/login — inicia el flujo: state + redirect a Zoho. */
 export const zohoLogin = (req, res) => {
   const c = zohoCfg(req);
   if (!zohoHabilitado())
     return res.status(503).json({ error: "Login con Zoho no configurado" });
+
+  // ── Puente de host ─────────────────────────────────────────────────
+  // El callback registrado en Zoho es fijo (registradas[0]: la IP alias
+  // .124 de esta máquina). El handshake OAuth —cookie state incluida—
+  // debe empezar y terminar en ESE host, así que si la petición llega por
+  // otro (proxy de Vite, la IP actual del DHCP, localhost…), rebotamos
+  // UNA vez al host canónico llevando el origen real del frontend en
+  // `from` (validado: solo hosts privados) para volver ahí al final.
+  try {
+    const canonico = new URL(c.redirectUris[0] || "");
+    const actual = String(req?.headers?.["x-forwarded-host"] || req?.headers?.host || "")
+      .split(",")[0].trim().toLowerCase();
+    if (actual && actual !== canonico.host.toLowerCase()) {
+      const proto = String(req?.headers?.["x-forwarded-proto"] || "http").split(",")[0].trim();
+      const from = origenFrontend(`${proto}://${actual}`);
+      return res.redirect(302,
+        `${canonico.origin}/api/auth/zoho/login${from ? `?from=${encodeURIComponent(from)}` : ""}`);
+    }
+  } catch { /* URI canónica inválida: flujo normal */ }
 
   const state = crypto.randomBytes(24).toString("hex");
   res.cookie("zoho_oauth_state", state, {
@@ -91,6 +124,16 @@ export const zohoLogin = (req, res) => {
     maxAge:   10 * 60 * 1000,
     path:     "/api/auth/zoho",
   });
+
+  // Origen real del frontend para regresar al terminar (solo hosts privados).
+  const from = origenFrontend(req?.query?.from);
+  if (from)
+    res.cookie("zoho_return_to", from, {
+      httpOnly: true, sameSite: "lax", secure: isProd(),
+      maxAge: 10 * 60 * 1000, path: "/api/auth/zoho",
+    });
+  else
+    res.clearCookie("zoho_return_to", { path: "/api/auth/zoho" });
 
   const params = new URLSearchParams({
     response_type: "code",
@@ -128,7 +171,10 @@ export const zohoCallback = async (req, res) => {
     if (error) return redirigirError(res, `Zoho denegó el acceso (${error})`);
 
     const stateCookie = req.cookies?.zoho_oauth_state;
+    // Origen real del navegador (puente de host): ahí se vuelve al final.
+    res.locals.landing = origenFrontend(req.cookies?.zoho_return_to) || null;
     res.clearCookie("zoho_oauth_state", { path: "/api/auth/zoho" });
+    res.clearCookie("zoho_return_to",  { path: "/api/auth/zoho" });
     if (!state || !stateCookie || state !== stateCookie)
       return redirigirError(res, "Sesión OAuth inválida, intenta de nuevo");
     if (!code) return redirigirError(res, "Zoho no devolvió código de autorización");
@@ -208,7 +254,7 @@ export const zohoCallback = async (req, res) => {
       id_acceso: String(id_acceso),
       usuario:   JSON.stringify(usuario),
     }).toString();
-    return res.redirect(302, `${c.appUrl}/login/zoho#${frag}`);
+    return res.redirect(302, `${res.locals.landing || c.appUrl}/login/zoho#${frag}`);
   } catch (err) {
     console.error("[Zoho callback]", err);
     if (errDetalle(err).detalle)
@@ -223,6 +269,7 @@ export const zohoCallback = async (req, res) => {
  */
 const redirigirError = (res, mensaje) => {
   const c = zohoCfg();
-  // Redirect a la URL canónica del frontend (APP_URL, que apunta al Vite)
-  return res.redirect(302, `${c.appUrl}/login?zoho_error=${encodeURIComponent(mensaje)}`);
+  // Vuelve al origen real del navegador (puente de host) o al canónico APP_URL.
+  const destino = res.locals?.landing || c.appUrl;
+  return res.redirect(302, `${destino}/login?zoho_error=${encodeURIComponent(mensaje)}`);
 };

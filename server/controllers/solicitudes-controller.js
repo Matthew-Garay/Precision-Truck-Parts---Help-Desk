@@ -117,8 +117,13 @@ export const getInsumos = async (req, res) => {
 
 export const getInventario = async (req, res) => {
   try {
-    const rows = await Insumo.getAll();
-    res.json(esAdmin(req) ? rows : sinStockLista(rows));
+    // Baja lógica: los insumos inhabilitados solo los lista el admin.
+    // /inventario no tiene guard porque el dashboard (SeccionInsumos) lo
+    // consume para ambos roles; para Usuario/Soporte se devuelve el catálogo
+    // filtrado (mismo criterio que /insumos), ocultando los dados de baja.
+    const admin = esAdmin(req);
+    const rows = admin ? await Insumo.getAll() : await Insumo.getAll({ soloActivos: true });
+    res.json(admin ? rows : sinStockLista(rows));
   } catch (err) {
     res.status(500).json({ error: "Error al obtener inventario", ...errDetalle(err) });
   }
