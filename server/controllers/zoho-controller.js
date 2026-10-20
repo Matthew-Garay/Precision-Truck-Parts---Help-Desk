@@ -19,8 +19,8 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import Empleado from '../services/empleado.js';
 import { validarEmailCorporativo } from '../middlewares/validate.js';
+import { isProd } from '../utils/helpers.js';
 
-const isProd = () => process.env.NODE_ENV === "production";
 const errDetalle = (err) => (isProd() ? {} : { detalle: err?.message });
 
 const zohoCfg = (req) => {
@@ -49,7 +49,10 @@ const zohoCfg = (req) => {
  * backend (:3001) y redirigir ahí rompe con `Cannot GET /login/zoho`.
  */
 function resolverAppUrl(_req) {
-  return (process.env.APP_URL || "http://192.168.31.122:5173").replace(/\/+$/, "");
+  if (!process.env.APP_URL) {
+    throw new Error("APP_URL no está definido. Configura la variable de entorno APP_URL.");
+  }
+  return process.env.APP_URL.replace(/\/+$/, "");
 }
 
 /**

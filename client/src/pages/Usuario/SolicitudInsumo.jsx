@@ -503,14 +503,13 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
     const payload = {
       prioridad:   priority || "Media",
       id_empleado: parseInt(usuario.id_empleado, 10),
-      // Justificación GENERAL: es el campo que valida el backend (descripcion
-      // de la solicitud). Sin este campo el POST se rechaza aunque el usuario
-      // haya escrito la justificación.
-      descripcion: justification.trim(),
+      // Observaciones generales de la solicitud: un solo texto para todo el
+      // encabezado (solicitud.observacion). Ya no se exige ni se replica un
+      // comentario en cada insumo del detalle.
+      observaciones_generales: justification.trim(),
       insumos:     Object.entries(requestCart).map(([id, qty]) => ({
         id_insumo:   parseInt(id, 10),
         cantidad:    parseInt(qty, 10),
-        descripcion: justification.trim() || null,
       })),
     };
     setIsSubmitting(true);
@@ -942,11 +941,11 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
 
               {/* Paginación — componente compartido (misma barra que Historial de Insumos) */}
               <Paginacion
-                pagina={solPage}
-                setPagina={setSolPage}
-                totalPaginas={solPages}
+                page={solPage}
+                onPageChange={setSolPage}
+                total={solTotal}
                 pageSize={solLimit}
-                setPageSize={setSolLimit}
+                onPageSizeChange={setSolLimit}
                 T={T}
                 cargando={cargandoSol}
               />
@@ -1138,7 +1137,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                   rows={2}
                   value={justification}
                   onChange={e => setJustification(e.target.value)}
-                  placeholder="Justificación…"
+                  placeholder="Observaciones generales…"
                   style={{
                     width: "100%", padding: "5px 8px", borderRadius: 6, fontSize: 11,
                     border: `1px solid ${justification.trim() ? T.border : "rgba(239,68,68,0.4)"}`,
@@ -1154,7 +1153,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
 
                 {!isTicketValid && (
                   <p style={{ fontSize: 9, color: T.textFaint, margin: 0, lineHeight: 1.4 }}>
-                    {cartEntries.length === 0 ? "Agrega al menos un insumo" : "Escribe la justificación"}
+                    {cartEntries.length === 0 ? "Agrega al menos un insumo" : "Escribe las observaciones generales"}
                   </p>
                 )}
 
@@ -1331,7 +1330,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
 
                     <div>
                       <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textMuted, display: "block", marginBottom: 6 }}>
-                        Justificación <span style={{ color: "#ef4444" }}>*</span>
+                        Observaciones generales <span style={{ color: "#ef4444" }}>*</span>
                       </label>
                       <textarea
                         rows={3}
@@ -1351,7 +1350,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 6, padding: "8px 10px", borderRadius: 8, background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
                         <AlertCircle size={11} style={{ color: T.textFaint, marginTop: 1, flexShrink: 0 }} />
                         <span style={{ fontSize: 10, color: T.textFaint, lineHeight: 1.4 }}>
-                          {cartEntries.length === 0 ? "Agrega al menos un insumo" : "Escribe la justificación"}
+                          {cartEntries.length === 0 ? "Agrega al menos un insumo" : "Escribe las observaciones generales"}
                         </span>
                       </div>
                     )}

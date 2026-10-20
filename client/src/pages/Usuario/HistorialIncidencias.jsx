@@ -424,11 +424,11 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           </div>
           {/* ── Paginación — componente compartido (misma barra que Historial de Insumos) ── */}
           <Paginacion
-            pagina={page}
-            setPagina={setPage}
-            totalPaginas={pages}
+            page={page}
+            onPageChange={setPage}
+            total={totalCount}
             pageSize={limit}
-            setPageSize={setLimit}
+            onPageSizeChange={setLimit}
             T={T}
             cargando={cargando}
           />

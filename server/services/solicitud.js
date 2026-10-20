@@ -7,12 +7,12 @@
  *
  * Metodos:
  *
- *   crear({ prioridad, id_empleado, insumos })
+ *   crear({ prioridad, id_empleado, insumos, observaciones_generales })
  *     Opera dentro de una transaccion completa con los siguientes pasos:
  *       1. Bloquea con FOR UPDATE los folios del mes actual para evitar
  *          duplicados bajo concurrencia (race condition entre peticiones simultaneas).
  *       2. Calcula el siguiente numero secuencial y genera el folio con el
- *          formato SOL-{anno}{mes}-{numero} (ej. SOL-202605-001).
+ *          formato SAL-{anno}{mes}-{numero} (ej. SAL-202610-0001).
  *       3. Inserta el registro principal en la tabla solicitud.
  *       4. Verifica que todos los insumos del arreglo existen y tienen
  *          stock suficiente para la cantidad solicitada.
@@ -45,22 +45,24 @@ import pool from '../config/db.js';
 import { generarFolio } from '../utils/helpers.js';
 
 const Solicitud = {
-  crear: async ({ prioridad, id_empleado, insumos, descripcion = null }) => {
+  crear: async ({ prioridad, id_empleado, insumos, observaciones_generales = null }) => {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
 
-      // Folio con prefijo SOL-: SOL-YYYYMM-NNNN (ej. SOL-202610-0001).
-      const folio = await generarFolio(conn, "solicitud", "folio_solicitud", "SOL");
+      // Folio con prefijo SAL-: SAL-YYYYMM-NNNN (ej. SAL-202610-0001).
+      const folio = await generarFolio(conn, "solicitud", "folio_solicitud", "SAL");
+
+      // Observaciones generales de la solicitud: un único texto para toda la
+      // solicitud, guardado en el encabezado (solicitud.observacion). No se
+      // replica ni se exige en cada insumo del detalle.
+      const observacion = String(observaciones_generales ?? "").trim() || null;
 
       const [result] = await conn.query(
-        `INSERT INTO solicitud (folio_solicitud, prioridad, id_empleado) VALUES (?, ?, ?)`,
-        [folio, prioridad, id_empleado]
+        `INSERT INTO solicitud (folio_solicitud, prioridad, id_empleado, observacion) VALUES (?, ?, ?, ?)`,
+        [folio, prioridad, id_empleado, observacion]
       );
       const id_solicitud = result.insertId;
-
-      // Observación general de la solicitud (una sola para todos los insumos).
-      const justGeneral = String(descripcion ?? "").trim() || null;
 
       // 1) Validar que todos los insumos existen y tienen stock suficiente.
       //    IMPORTANTE: crear la solicitud NO descuenta stock; el descuento ocurre
@@ -84,11 +86,11 @@ const Solicitud = {
         }
       }
 
-      // 2) Insertar el detalle. La observación general se aplica a cada insumo
-      //    (si un ítem trae su propia nota, esa manda; si no, usa la general).
-      //    El reporte la expone una sola vez gracias a la deduplicación en getById.
+      // 2) Insertar el detalle. El comentario por insumo es opcional: solo se
+      //    guarda si el empleado escribió una nota para ese renglón en
+      //    particular; de lo contrario queda NULL.
       for (const { id_insumo, cantidad, descripcion: descItem } of insumos) {
-        const just = String(descItem ?? justGeneral ?? "").trim() || null;
+        const just = String(descItem ?? "").trim() || null;
         await conn.query(
           `INSERT INTO solicitud_insumo (id_solicitud, id_insumo, cantidad, descripcion)
            VALUES (?, ?, ?, ?)`,
@@ -97,7 +99,7 @@ const Solicitud = {
       }
 
       await conn.commit();
-      return { id_solicitud, folio_solicitud: folio };
+      return { id_solicitud, folio_solicitud: folio, observacion };
     } catch (err) {
       await conn.rollback();
       throw err;
@@ -217,14 +219,14 @@ const Solicitud = {
 
   getAll: async ({ limit = 100, offset = 0, estatus, prioridad, empleado, busqueda, area, sucursal, fecha_inicio, fecha_fin } = {}) => {
     // Nombre completo del empleado (nombre + ap. paterno + ap. materno)
-    // normalizado: el filtro de usuario envía el nombre completo del catálogo,
-    // así que CONCAT sin el materno no haría match con el valor seleccionado.
+    // normalizado: el filtro de usuario es texto libre (match parcial), así
+    // que se usa LIKE para que "matt", "garay" o el nombre completo coincidan.
     const NOMBRE_EMP = "REGEXP_REPLACE(TRIM(CONCAT(IFNULL(e.nombre,''),' ',IFNULL(e.ap_paterno,''),' ',IFNULL(e.ap_materno,''))), ' +', ' ')";
     const where = [];
     const params = [];
     if (estatus)              { where.push("s.estatus = ?");                                                                                                params.push(estatus); }
     if (prioridad)            { where.push("s.prioridad = ?");                                                                                              params.push(prioridad); }
-    if (empleado)             { where.push(`(${NOMBRE_EMP} LIKE ?)`);                                                       params.push(`%${empleado}%`); }
+    if (empleado)             { where.push(`(${NOMBRE_EMP} LIKE ?)`);                                                       params.push(`%${String(empleado).replace(/\s+/g, ' ').trim()}%`); }
     if (busqueda)             { where.push(`(${NOMBRE_EMP} LIKE ? OR s.folio_solicitud LIKE ?)`);                           params.push(`%${busqueda}%`, `%${busqueda}%`); }
     if (area)                 { where.push("d.nombre_departamento = ?");                                                                                    params.push(area); }
     if (sucursal)             { where.push("su.nombre_sucursal = ?");                                                                                       params.push(sucursal); }

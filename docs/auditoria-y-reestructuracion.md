@@ -86,7 +86,7 @@ Accion recomendada (requiere pruebas de regresion, no se ejecuto para no alterar
 | Parseo de ids repetido a mano. | 34 usos de `parseInt(req.params...)` (`authController.js:95,270`, `solicitudesController.js:194,210,331,421,477...`); `toPosId` existe solo en `solicitudesController.js:92`. |
 | IP de LAN hardcodeada como fallback de redireccion OAuth. | `zohoController.js:52` usa `http://192.168.31.124:5173` cuando falta `APP_URL`. |
 | Herramientas one-shot conviven con el codigo fuente del servidor. | `src/Backend/scripts/db_state.mjs`, `db_fk.mjs`, `db_cleanup.mjs`, `db_cats.mjs`, `db_schema_map.mjs`, CSVs de plantilla y `README_import_empleados.md`. |
-| Deriva codigo-base de datos (heredada). | `Empleado.js` y `POST /auth/perfil/:id/foto` siguen referenciando `empleado.foto`, columna eliminada de la BD viva el 12/10/2026 (error 1054 potencial); el docstring de `utils/helpers.js` dice prefijo `SOL` pero el folio real es `SAL`; la tabla `_migraciones` solo existe en el volcado del 01/10. |
+| Deriva codigo-base de datos (heredada). | El docstring de `utils/helpers.js` dice prefijo `SOL` pero el folio real es `SAL`; la tabla `_migraciones` solo existe en el volcado del 01/10. |
 | Estado de workers persistido junto al codigo. | `src/Backend/Workers/alert_state.json` y `reset_tokens.json` (correcto que existan; deben vivir fuera de `server/`). |
 
 **Frontend**
@@ -126,7 +126,7 @@ Accion recomendada (requiere pruebas de regresion, no se ejecuto para no alterar
 |---|---|
 | Prefijos REST estables, no se modifican. | `/api/auth`, `/api/categorias`, `/api/tickets`, `/api/solicitudes`, `/api/manuales`, `/api/health`, `/api/ping` en `server.js:251,272-276` |
 | Orden de rutas critico en tickets (fijas antes que `/:id_ticket`). | `ticketsRoutes.js:76-107` |
-| Deriva codigo-BD: `Empleado.js` y `POST /auth/perfil/:id/foto` referencian `empleado.foto`, columna eliminada el 12/10/2026. Riesgo error 1054. | `authController.js:100-108`, `Models/Empleado.js` |
+| Deriva codigo-BD: `Empleado.js` y `POST /auth/perfil/:id/foto` ya no usan `empleado.foto` (columna eliminada el 12/10/2026). | `authController.js:100-108`, `Models/Empleado.js` |
 | Docstring desalineado: `utils/helpers.js:26,37` indica prefijo `SOL`; folio real `SAL`. | `utils/helpers.js:29,37` |
 | Tabla `_migraciones` solo existe en volcado `01/10`; `docs/MYSQL Database/database.sql` era texto de error, eliminado; canonico `database.utf8.sql`. | — |
 

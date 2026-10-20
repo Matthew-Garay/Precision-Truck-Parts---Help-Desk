@@ -221,12 +221,13 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
 
       {/* Firmas iguales a la salida interna: área amplia para sello/pluma. */}
       <style>{`
-        .pr-solicitud .pr-signature-area { height: 96px; border-bottom: none; }
-        .pr-solicitud .pr-solicitud-firmas .pr-signature:first-child .pr-signature-area { height: 150px; }
-        .pr-solicitud .pr-signature { width: 42%; }
-        .pr-solicitud .pr-signature-line { width: 100%; height: 1px; background: var(--pr-ink); }
-        .pr-solicitud .pr-signature-name { white-space: normal; overflow-wrap: anywhere; }
-        .pr-solicitud .pr-solicitud-firmas { margin-top: 40px; padding-top: 24px; align-items: flex-end; grid-template-columns: 1fr 1fr; }
+        .pr-solicitud .pr-signature-area { height: 120px; border-bottom: none; }
+        .pr-solicitud .pr-solicitud-firmas .pr-signature:first-child .pr-signature-area { height: 120px; }
+        .pr-solicitud .pr-signature { width: 100%; max-width: 100%; align-items: center; text-align: center; justify-items: center; }
+        .pr-solicitud .pr-signature-line { width: 100%; height: 1px; background: var(--pr-ink); margin-left: auto; margin-right: auto; }
+        .pr-solicitud .pr-signature-name { white-space: nowrap; overflow-wrap: normal; text-align: center; min-height: 1em; line-height: 1.35; }
+        .pr-solicitud .pr-signature-role { white-space: nowrap; overflow-wrap: normal; text-align: center; }
+        .pr-solicitud .pr-solicitud-firmas { margin-top: 40px; padding-top: 24px; align-items: flex-start; grid-template-columns: 1fr 1fr; }
       `}</style>
 
       <PageHeader

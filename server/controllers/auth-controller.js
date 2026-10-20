@@ -55,8 +55,8 @@ import jwt      from "jsonwebtoken";
 import crypto   from "crypto";
 import pool     from '../config/db.js';
 import { validarEmailCorporativo } from '../middlewares/validate.js';
+import { isProd } from '../utils/helpers.js';
 
-const isProd = () => process.env.NODE_ENV === "production";
 const errDetalle = (err) => isProd() ? {} : { detalle: err.message };
 
 export const refreshToken = async (req, res) => {
@@ -247,7 +247,7 @@ export const updateEmpleadoAdmin = async (req, res) => {
     if (!empleado) return res.status(404).json({ error: "Empleado no encontrado" });
     const passwordHash = (password_nueva && password_nueva.trim()) ? await bcrypt.hash(password_nueva.trim(), 12) : undefined;
     await Empleado.updateAdmin(idNum, {
-      num_empleado:     num_empleado && String(num_empleado).trim() ? String(num_empleado).trim() : undefined,
+      num_empleado:     Object.prototype.hasOwnProperty.call(req.body, "num_empleado") ? (num_empleado && String(num_empleado).trim() ? String(num_empleado).trim() : null) : undefined,
       nombre:          nombre          || undefined,
       ap_paterno:      ap_paterno      || undefined,
       ap_materno:      ap_materno      !== undefined ? ap_materno : undefined,
@@ -268,7 +268,7 @@ export const updateEmpleadoAdmin = async (req, res) => {
 
 export const crearEmpleado = async (req, res) => {
   const { num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento, id_sucursal } = req.body;
-  if (!num_empleado || !nombre || !ap_paterno || !email || !password || !id_rol || !id_departamento)
+  if (!nombre || !ap_paterno || !email || !password || !id_rol || !id_departamento)
     return res.status(400).json({ error: "Todos los campos son requeridos" });
   if (password.length < 8)
     return res.status(400).json({ error: "La contraseña debe tener al menos 8 caracteres" });

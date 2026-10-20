@@ -142,7 +142,7 @@ export default function HistorialInsumos({ T }) {
     cargar();
   }, []);
 
-  const limpiar = () => setFiltros(FILTROS_INIT);
+  const limpiar = () => setFiltros(FILTROS_INIT, () => setPage(1));
   const hayFiltros = filtros.busqueda || filtros.estatus !== "Todos" || filtros.prioridad !== "Todos"
     || filtros.usuario !== "Todos" || filtros.area !== "Todos" || filtros.sucursal !== "Todos" || filtros.origen !== "Todos";
 
@@ -152,7 +152,7 @@ export default function HistorialInsumos({ T }) {
     { key: "busqueda",  label: "Búsqueda Rápida", type: "search",  placeholder: "Folio o empleado...", debounce: 400 },
     { key: "estatus",   label: "Estatus",          type: "select",  opts: ["Todos", "En proceso", "Aceptado", "Rechazado"] },
     { key: "prioridad", label: "Prioridad",         type: "select",  opts: ["Todos", "Urgente", "Alta", "Media", "Baja"] },
-    { key: "usuario",   label: "Usuario",           type: "select",  opts: toOpts(optsCache.usuarios) },
+    { key: "usuario",   label: "Usuario",           type: "combo",   placeholder: "Escribe el nombre...", opts: toOpts(optsCache.usuarios) },
     { key: "area",      label: "Área",              type: "select",  opts: toOpts(optsCache.areas) },
     { key: "sucursal",  label: "Sucursal",          type: "select",  opts: toOpts(optsCache.sucursales) },
     { key: "origen",    label: "Origen",            type: "select",  opts: [{ value: "Todos", label: "Todos" }, { value: "interno", label: "Salidas internas" }, { value: "sistema", label: "Salidas de sistema" }] },
@@ -190,7 +190,9 @@ export default function HistorialInsumos({ T }) {
           estatus: "Entregado",
           prioridad: s.prioridad && s.prioridad !== "—" ? s.prioridad : "Media",
           nombre_empleado: s.entrega || s.nombre_empleado || "",
-          nombre_departamento: s.registrado_por ? `Registró: ${s.registrado_por}` : "Salida manual",
+          // Las salidas manuales no tienen área: se deja vacío para que
+          // no contamine el ranking "Top Áreas" ni reportes.
+          nombre_departamento: "",
           nombre_sucursal: s.nombre_sucursal || destino || s.destino || "",
           nombre_sucursal_origen: origen || null,
           nombre_sucursal_destino: destino || null,
@@ -374,7 +376,14 @@ export default function HistorialInsumos({ T }) {
             <div className="px-2 pb-1 flex flex-col gap-0.5">
               {(() => {
                 const conteo = {};
-                solicitudes.forEach(s => { if (s.nombre_departamento) conteo[s.nombre_departamento] = (conteo[s.nombre_departamento] || 0) + 1; });
+                // Solo áreas REALES: las salidas manuales (SAL-) no tienen área
+                // (traen nombre_departamento vacío) y tampoco cuentan los
+                // textos heredados "Registró: …" / "Salida manual".
+                solicitudes.forEach(s => {
+                  const a = s.nombre_departamento;
+                  if (!a || a === "Salida manual" || a.startsWith("Registró:")) return;
+                  conteo[a] = (conteo[a] || 0) + 1;
+                });
                 const top = Object.entries(conteo).sort((a, b) => b[1] - a[1]).slice(0, 3);
                 const maxN = top[0]?.[1] || 1;
                 const rankColors = [T.orange, "#3b82f6", "#8b5cf6"];
@@ -465,7 +474,7 @@ export default function HistorialInsumos({ T }) {
                             <span className="w-2 h-2 rounded-full" style={{ background: PCOLOR[s.prioridad] || "#94a3b8" }} />
                             <span style={{ color: PCOLOR[s.prioridad] || T.textMuted }}>{s.prioridad}</span>
                           </span>
-                          <span className="text-[11px]" style={{ color: T.textFaint }}>{s.nombre_departamento || "-"}</span>
+                          <span className="text-[11px]" style={{ color: T.textFaint }}>{s.nombre_departamento || (s.es_salida && s.registrado_por ? `Registró: ${s.registrado_por}` : "—")}</span>
                         </div>
                         <div className="flex items-center justify-between pt-1" style={{ borderTop: `1px solid ${T.border}` }}>
                           <span className="text-[10px]" style={{ color: T.textFaint }}>{fmt(s.fecha)}</span>
@@ -513,7 +522,7 @@ export default function HistorialInsumos({ T }) {
                         </td>
                         <td className="px-2 py-1.5" style={{ maxWidth: "160px" }}>
                           <span className="block truncate text-[11px] font-semibold" style={{ color: T.text }}>{s.nombre_empleado || "-"}</span>
-                          <span className="block text-[10px] truncate" style={{ color: T.textMuted }}>{s.nombre_departamento || "-"}</span>
+                          <span className="block text-[10px] truncate" style={{ color: T.textMuted }}>{s.nombre_departamento || (s.es_salida && s.registrado_por ? `Registró: ${s.registrado_por}` : "—")}</span>
                         </td>
                         <td className="px-2 py-1.5">
                           <span className="flex items-center gap-1 mt-0.5">
@@ -576,7 +585,7 @@ export default function HistorialInsumos({ T }) {
                         </td>
                         <td className="px-2 py-1.5">
                           <span className="block text-[11px] font-semibold" style={{ color: T.text }}>{s.nombre_empleado || "-"}</span>
-                          <span className="block text-[10px]" style={{ color: T.textMuted }}>{s.nombre_departamento || "-"}</span>
+                          <span className="block text-[10px]" style={{ color: T.textMuted }}>{s.nombre_departamento || (s.es_salida && s.registrado_por ? `Registró: ${s.registrado_por}` : "—")}</span>
                         </td>
                         <td className="px-2 py-1.5 text-[11px]" style={{ color: T.textMuted }}>{s.nombre_sucursal || "-"}</td>
                         <td className="px-2 py-1.5">
@@ -631,11 +640,11 @@ export default function HistorialInsumos({ T }) {
 
           {/* Paginación — componente compartido (mismo estilo que Personal) */}
           <Paginacion
-            pagina={page}
-            setPagina={setPage}
-            totalPaginas={pages}
+            page={page}
+            onPageChange={setPage}
+            total={totalCount}
             pageSize={limit}
-            setPageSize={setLimit}
+            onPageSizeChange={setLimit}
             T={T}
             cargando={cargando}
           />

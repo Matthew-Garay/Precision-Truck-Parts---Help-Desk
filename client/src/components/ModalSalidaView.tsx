@@ -180,17 +180,15 @@ const ModalSalidaView = ({
            dos columnas iguales, "Quien recibe" a la izquierda y "Quien entrega"
            a la derecha, nombre impreso completo bajo la línea) ── */}
       <div style={{ padding: "12px 18px 16px", borderTop: `1px solid ${border}` }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
           {([
             { nombre: responsable, rol: "Quien recibe" },
             { nombre: registradoPor, rol: "Quien entrega" },
           ]).map((f) => (
-            <div key={f.rol} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, textAlign: "center" }}>
+            <div key={f.rol} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, textAlign: "center", justifyContent: "flex-start" }}>
               <div style={{ width: "100%", height: 44 }} />
               <div style={{ width: "100%", height: 1, background: isDark ? "rgba(255,255,255,0.25)" : "#1a202c" }} />
-              {f.nombre && f.nombre !== "—" && (
-                <span style={{ maxWidth: "100%", fontWeight: 700, fontSize: "10px", color: textMain, overflowWrap: "anywhere" }}>{f.nombre}</span>
-              )}
+              <span style={{ maxWidth: "100%", fontWeight: 700, fontSize: "10px", color: textMain, overflowWrap: "anywhere", minHeight: "1em", lineHeight: 1.35 }}>{(f.nombre && f.nombre !== "—" ? f.nombre : "\u00a0")}</span>
               <span style={{ color: textMuted, fontSize: "8px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em" }}>{f.rol}</span>
             </div>
           ))}

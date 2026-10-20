@@ -217,7 +217,7 @@ export const schemaActualizarPerfil = z.object({
 );
 
 export const schemaCrearEmpleado = z.object({
-  num_empleado:    z.string().trim().min(1).max(20),
+  num_empleado:    z.union([z.string().trim().max(20), z.literal(""), z.null()]).transform(v => (v === "" || v === null || (typeof v === "string" && !v.trim())) ? null : String(v).trim()).optional(),
   nombre:          z.string().trim().min(1).max(80),
   ap_paterno:      z.string().trim().min(1).max(80),
   ap_materno:      z.string().trim().max(80).optional().default(""),
@@ -229,7 +229,7 @@ export const schemaCrearEmpleado = z.object({
 });
 
 export const schemaUpdateEmpleadoAdmin = z.object({
-  num_empleado:    z.string().trim().min(1).max(20).optional(),
+  num_empleado:    z.union([z.string().trim().max(20), z.literal(""), z.null()]).transform(v => (v === "" || v === null || (typeof v === "string" && !v.trim())) ? null : String(v).trim()).optional(),
   nombre:          z.string().trim().min(1).max(80).optional(),
   ap_paterno:      z.string().trim().min(1).max(80).optional(),
   ap_materno:      z.string().trim().max(80).optional(),
@@ -276,17 +276,19 @@ export const schemaCrearSolicitud = z.object({
   insumos:     z.array(z.object({
     id_insumo:   z.number({ coerce: true }).int().positive(),
     cantidad:    z.number({ coerce: true }).int().min(1, "La cantidad debe ser al menos 1"),
+    // Nota opcional por insumo. YA NO ES REQUERIDA: las observaciones
+    // generales se guardan a nivel de encabezado (solicitud.observacion),
+    // no se exigen ni se replican en cada renglón del detalle.
     descripcion: z.string().trim().max(1000).optional().nullable().default(null),
   })).min(1, "Debe incluir al menos un insumo").max(50, "Máximo 50 insumos por solicitud"),
-  // Justificación general de la solicitud (la escribe el empleado en el formulario).
-  // OBLIGATORIA: sin ella el backend rechaza la solicitud. Antes era .nullish()
-  // y una justificacion vacia se colaba hasta el controller, que devolvia un
-  // 400 "La justificacion es requerida" aunque el usuario ya la habia escrito.
-  // Zod v4: el mensaje unico se pasa con `error` (required_error ya no existe).
-  descripcion: z.string({ error: "La justificación es requerida" })
-                 .trim()
-                 .min(1, "La justificación es requerida")
-                 .max(2000, "La justificación no puede superar los 2000 caracteres"),
+  // Observaciones generales de la solicitud (la escribe el empleado en el formulario).
+  // Se guarda como un único texto en solicitud.observacion para toda la solicitud.
+  // OBLIGATORIA: sin ella el backend rechaza la solicitud.
+  // Zod v4: el mensaje único se pasa con `error` (required_error ya no existe).
+  observaciones_generales: z.string({ error: "Las observaciones generales son requeridas" })
+                            .trim()
+                            .min(1, "Las observaciones generales son requeridas")
+                            .max(2000, "Las observaciones generales no pueden superar los 2000 caracteres"),
 });
 
 export const schemaActualizarEstatusSolicitud = z.object({
@@ -448,4 +450,8 @@ export const schemaInsumo = z.object({
   estado:       z.enum(["Excelente", "Bueno", "Regular", "Malo", "Dañado"]),
   id_categoria: z.number({ coerce: true }).int().positive(),
   imagen_url:   z.string().trim().max(255).optional().nullable().default(null),
+  visible_publico: z
+    .preprocess((v) => v === undefined || v === null ? undefined : Number(v), z.number({ coerce: true }).int().min(0).max(1))
+    .optional()
+    .default(1),
 });

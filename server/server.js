@@ -76,9 +76,15 @@ import solicitudesRoutes from './routes/solicitudes-routes.js';
 import manualesRoutes    from './routes/manuales-routes.js';
 
 const REQUIRED_ENV = ["JWT_SECRET", "DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"];
-const missing = REQUIRED_ENV.filter(k => !process.env[k]);
+const RUNTIME_REQUIRED = process.env.NODE_ENV === "production"
+  ? [...REQUIRED_ENV, "APP_URL", "CORS_ORIGIN"]
+  : REQUIRED_ENV;
+const missing = RUNTIME_REQUIRED.filter(k => !process.env[k]);
 if (missing.length > 0) {
   console.error(`[❌ ERROR] Variables de entorno faltantes: ${missing.join(", ")}`);
+  if (process.env.NODE_ENV === "production") {
+    console.error(`[❌ ERROR] APP_URL y CORS_ORIGIN son obligatorias en produccion.`);
+  }
   process.exit(1);
 }
 
@@ -169,9 +175,14 @@ const shutdown = (signal) => {
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT",  () => shutdown("SIGINT"));
 
-// En produccion se confia en el primer proxy inverso para obtener la IP real del cliente.
-// Necesario para que express-rate-limit funcione correctamente detras de Nginx o Apache.
+// Se confia en el proxy inverso para obtener la IP real del cliente.
+// Necesario para que express-rate-limit identifique correctamente al usuario:
+//   - En produccion detras de Nginx/Apache (1 salto).
+//   - En desarrollo detras del proxy de Vite, que envia X-Forwarded-For
+//     (solo se confia en loopback, es decir, el mismo equipo).
+// Sin esto, express-rate-limit registra ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
 if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
+else app.set("trust proxy", "loopback");
 
 // -- Middlewares globales -------------------------------------
 // Compresión gzip/brotli para reducir el ancho de banda

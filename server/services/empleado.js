@@ -248,12 +248,18 @@ const Empleado = {
 
   updateAdmin: async (id, campos) => {
     const { nombre, ap_paterno, ap_materno, email, id_rol, id_departamento, id_sucursal, estatus, password, num_empleado } = campos;
-    // id_sucursal puede ser null (quitar sucursal) o un número, pero si no viene en campos no se toca
+    // id_sucursal y num_empleado pueden ser null (quitar valor) o un valor,
+    // pero si no vienen en campos no se tocan. COALESCE no sirve para limpiar
+    // porque COALESCE(NULL, actual) conserva el actual; por eso se usa
+    // asignación directa (= ?) cuando el campo sí fue enviado.
     const sucursalEnviada = Object.prototype.hasOwnProperty.call(campos, "id_sucursal");
+    const numEnviado = Object.prototype.hasOwnProperty.call(campos, "num_empleado");
+    const setNum = numEnviado ? "num_empleado     = ?," : "num_empleado     = COALESCE(?, num_empleado),";
+    const paramsNum = numEnviado ? (num_empleado ?? null) : (num_empleado ?? null);
     if (sucursalEnviada) {
       await pool.query(
         `UPDATE empleado
-         SET num_empleado     = COALESCE(?, num_empleado),
+         SET ${setNum}
              nombre          = COALESCE(?, nombre),
              ap_paterno      = COALESCE(?, ap_paterno),
              ap_materno      = COALESCE(?, ap_materno),
@@ -264,14 +270,14 @@ const Empleado = {
              estatus         = COALESCE(?, estatus),
              password        = COALESCE(?, password)
          WHERE id_empleado = ?`,
-        [num_empleado ?? null, nombre ?? null, ap_paterno ?? null, ap_materno ?? null, email ?? null,
+        [paramsNum, nombre ?? null, ap_paterno ?? null, ap_materno ?? null, email ?? null,
          id_rol ?? null, id_departamento ?? null, id_sucursal ?? null,
          estatus ?? null, password ?? null, id]
       );
     } else {
       await pool.query(
         `UPDATE empleado
-         SET num_empleado     = COALESCE(?, num_empleado),
+         SET ${setNum}
              nombre          = COALESCE(?, nombre),
              ap_paterno      = COALESCE(?, ap_paterno),
              ap_materno      = COALESCE(?, ap_materno),
@@ -281,7 +287,7 @@ const Empleado = {
              estatus         = COALESCE(?, estatus),
              password        = COALESCE(?, password)
          WHERE id_empleado = ?`,
-        [num_empleado ?? null, nombre ?? null, ap_paterno ?? null, ap_materno ?? null, email ?? null,
+        [paramsNum, nombre ?? null, ap_paterno ?? null, ap_materno ?? null, email ?? null,
          id_rol ?? null, id_departamento ?? null,
          estatus ?? null, password ?? null, id]
       );
@@ -290,10 +296,11 @@ const Empleado = {
   },
 
   crear: async ({ num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento, id_sucursal }) => {
+    const ne = typeof num_empleado === "string" ? num_empleado.trim() : num_empleado;
     const [result] = await pool.query(
       `INSERT INTO empleado (num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento, id_sucursal, estatus)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Activo')`,
-      [num_empleado, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento, id_sucursal ?? null]
+      [ne || null, nombre, ap_paterno, ap_materno, email, password, id_rol, id_departamento, id_sucursal ?? null]
     );
     cache.del("empleados:all");
     return result.insertId;

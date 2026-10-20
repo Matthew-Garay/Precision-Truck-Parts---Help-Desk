@@ -212,7 +212,9 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
       const d = await r.json().catch(() => ({}));
       if (!r.ok) {
         const det = Array.isArray(d?.errores) ? d.errores.map(x => x.mensaje).join(", ") : "";
-        throw new Error(det || d?.error || "No se pudo registrar la salida");
+        // Orden: errores Zod (det) → detalle real del 500 → mensaje genérico.
+        // ANTES d.error (genérico) tapaba d.detalle (el error real de BD).
+        throw new Error(det || d?.detalle || d?.error || "No se pudo registrar la salida");
       }
       const empSel = empleados.find(e => String(e.id_empleado) === String(solicitanteId));
       onSaved?.(d, {

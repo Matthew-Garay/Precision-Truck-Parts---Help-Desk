@@ -23,10 +23,10 @@
  *     Conexión con transacción activa (beginTransaction ya invocado).
  *   @param {string} tabla       Nombre de la tabla MySQL  (ej. "ticket")
  *   @param {string} campoFolio  Nombre de la columna      (ej. "folio_ticket")
- *   @param {string} prefijo     Prefijo del folio         (ej. "ST" | "SOL")
+ *   @param {string} prefijo     Prefijo del folio         (ej. "ST" | "SAL")
  *
  * Retorna:
- *   @returns {Promise<string>}  Folio generado, ej. \"ST-202610-0001\" / \"SOL-202610-0001\"
+ *   @returns {Promise<string>}  Folio generado, ej. \"ST-202610-0001\" / \"SAL-202610-0001\"
  *
  * Uso en Ticket.js:
  *   import { generarFolio } from './helpers.js';
@@ -34,7 +34,7 @@
  *
  * Uso en Solicitud.js:
  *   import { generarFolio } from './helpers.js';
- *   const folio = await generarFolio(conn, "solicitud", "folio_solicitud", "SOL");
+ *   const folio = await generarFolio(conn, "solicitud", "folio_solicitud", "SAL");
  */
 
 /**
@@ -46,6 +46,12 @@
  * @param {string} prefijo
  * @returns {Promise<string>}
  */
+/**
+ * Indica si la aplicacion esta ejecutándose en entorno de produccion.
+ * Centralizado para evitar copias duplicadas de `isProd` en cada controlador.
+ */
+export const isProd = () => process.env.NODE_ENV === "production";
+
 export async function generarFolio(conn, tabla, campoFolio, prefijo) {
   const ahora   = new Date();
   const anio    = ahora.getFullYear();

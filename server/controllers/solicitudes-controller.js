@@ -71,10 +71,14 @@ import path      from "path";
 import fs        from "fs";
 import { INSUMOS_DIR } from '../middlewares/upload-insumos.js';
 import { esSoporteOAdmin } from '../middlewares/auth-middleware.js';
+import { isProd } from '../utils/helpers.js';
 
-const isProd = () => process.env.NODE_ENV === "production";
-const errDetalle = (err) => isProd() ? {} : { detalle: err.message };
-
+const errDetalle = (err) => isProd() ? {} : {
+  detalle: err.message,
+  ...(err.sqlMessage ? { sqlMessage: err.sqlMessage } : {}),
+  ...(err.errno != null ? { codigo: err.errno } : {}),
+  ...(err.sqlState ? { sqlState: err.sqlState } : {}),
+};
 // ── Stock: dato interno del inventario ─────────────────────────────────────
 // El rol Usuario (id_rol !== 1) NO debe ver el stock en ningún momento:
 // ni la cifra exacta ni el campo calculado "disponibilidad" (que delata
@@ -138,12 +142,14 @@ export const getInsumosStockBajo = async (req, res) => {
 };
 
 export const crearSolicitud = async (req, res) => {
-  const { prioridad, id_empleado, insumos, descripcion } = req.body;
+  const { prioridad, id_empleado, insumos, observaciones_generales } = req.body;
   if (!prioridad || !id_empleado || !Array.isArray(insumos) || insumos.length === 0)
     return res.status(400).json({ error: "Datos incompletos" });
-  // La justificación es obligatoria: es el "por qué" que sale en el formato.
-  if (!String(descripcion ?? "").trim())
-    return res.status(400).json({ error: "La justificación es requerida" });
+  // Las observaciones generales son obligatorias: es el "por qué" de la
+  // solicitud. Se guardan a nivel de encabezado (solicitud.observacion) y no
+  // se exigen ni se replican por insumo individual.
+  if (!String(observaciones_generales ?? "").trim())
+    return res.status(400).json({ error: "Las observaciones generales son requeridas" });
   if (parseInt(id_empleado) !== req.usuario.id_empleado && req.usuario.id_rol !== 1)
     return res.status(403).json({ error: "No puedes crear solicitudes en nombre de otro usuario" });
   for (const item of insumos) {
@@ -164,7 +170,7 @@ export const crearSolicitud = async (req, res) => {
     }
   } catch { /* sin columna activo o error: el flujo normal continúa */ }
   try {
-    const result = await Solicitud.crear({ prioridad, id_empleado: parseInt(id_empleado), insumos, descripcion: String(descripcion).trim() });
+    const result = await Solicitud.crear({ prioridad, id_empleado: parseInt(id_empleado), insumos, observaciones_generales: String(observaciones_generales).trim() });
     const emp = await Empleado.getResumen(parseInt(id_empleado));
     try {
       getIO().to("admins").emit("solicitud:nueva", {
@@ -688,7 +694,7 @@ export const actualizarEstatusSolicitud = async (req, res) => {
 const SELECT_INSUMO_COMPLETO = `
   SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion,
          i.marca, i.modelo, i.stock, i.estado,
-         i.id_categoria, i.imagen_url,
+         i.id_categoria, i.imagen_url, i.activo, i.visible_publico,
          c.nombre_categoria,
          CASE
            WHEN i.stock  = 0 THEN 'Sin stock'
@@ -728,7 +734,7 @@ export const crearInsumo = async (req, res) => {
           stock_anterior: 0,
           stock_nuevo:   stockInicial,
           id_empleado:   idAdmin,
-          motivo:        "Stock inicial al crear el insumo",
+          motivo:        "Entrega de proveedor de Jose Alejandro Vera Atilano",
         });
       }
       await conn.commit();
@@ -944,6 +950,37 @@ export const cambiarActivoInsumo = async (req, res) => {
   }
 };
 
+/** cambiarVisiblePublico
+ * PATCH /api/solicitudes/insumos/:id/visible-publico   (solo admin)
+ *
+ * Control de visibilidad pública:
+ *   visible_publico = 1 → el insumo se muestra en el catalogo público
+ *                          (inventario, reportes, búsquedas sin restricción)
+ *   visible_publico = 0 → el insumo se OCULTA del catalogo público
+ *                          (se conserva en el historial y en los movimientos)
+ * Por defecto, todos los insumos son visibles (1).
+ */
+export const cambiarVisiblePublico = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id) || id <= 0)
+      return res.status(400).json({ error: "ID de insumo inválido" });
+    let { visible } = req.body ?? {};
+    if (visible === 1 || visible === "1" || visible === "true") visible = true;
+    if (visible === 0 || visible === "0" || visible === "false") visible = false;
+    if (typeof visible !== "boolean")
+      return res.status(422).json({ error: "Datos inválidos", errores: [{ campo: "visible", mensaje: "Debe ser verdadero o falso" }] });
+    const ok = await Insumo.cambiarVisiblePublico(id, visible);
+    if (!ok) return res.status(404).json({ error: "Insumo no encontrado" });
+    try {
+      getIO().to("admins").emit("inventario:movimiento", { tipo: visible ? "Insumo visible público" : "Insumo oculto público", id_insumo: id });
+    } catch {}
+    res.json({ ok: true, id_insumo: id, visible });
+  } catch (err) {
+    res.status(500).json({ error: "Error al cambiar la visibilidad pública", ...errDetalle(err) });
+  }
+};
+
 /** getInsumosForUser
  * GET /api/solicitudes/inventario/for-user   (solo admin o Soporte Tecnico)
  *
@@ -1065,6 +1102,58 @@ export const registrarSalidaInsumo = async (req, res) => {
 
   const idAdmin = req.usuario?.id_empleado ?? null;
 
+  // Validar que el empleado autenticado exista en la tabla empleado.
+  // Si no existe, el INSERT en movimiento_inventario fallaría con FK violation (500);
+  // mejor devolver un 403 claro antes de tocar la BD.
+  if (!Number.isFinite(parseInt(idAdmin, 10)) || idAdmin <= 0) {
+    return res.status(403).json({ error: "Usuario autenticado sin id_empleado válido" });
+  }
+  const [[empExiste]] = await pool.query(
+    "SELECT id_empleado FROM empleado WHERE id_empleado = ? LIMIT 1",
+    [idAdmin]
+  );
+  if (!empExiste) {
+    return res.status(403).json({
+      error: `El empleado autenticado (id_empleado=${idAdmin}) no está registrado en la tabla empleado`,
+    });
+  }
+
+  // Validar sucursales de origen/destino si se envían: FK violation daría 500;
+  // mejor devolver 403 claro antes de tocar la BD.
+  const idSucOrigenRaw  = id_sucursal_origen  != null ? parseInt(id_sucursal_origen, 10)  : null;
+  const idSucDestinoRaw = id_sucursal_destino != null ? parseInt(id_sucursal_destino, 10) : null;
+
+  if (idSucOrigenRaw != null && (!Number.isFinite(idSucOrigenRaw) || idSucOrigenRaw <= 0)) {
+    return res.status(400).json({ error: "Sucursal de origen inválida" });
+  }
+  if (idSucDestinoRaw != null && (!Number.isFinite(idSucDestinoRaw) || idSucDestinoRaw <= 0)) {
+    return res.status(400).json({ error: "Sucursal de destino inválida" });
+  }
+
+  if (idSucOrigenRaw != null) {
+    const [[sucOrigen]] = await pool.query(
+      "SELECT id_sucursal FROM sucursal WHERE id_sucursal = ? LIMIT 1",
+      [idSucOrigenRaw]
+    );
+    if (!sucOrigen) {
+      return res.status(403).json({
+        error: `La sucursal de origen (id_sucursal=${idSucOrigenRaw}) no está registrada en la tabla sucursal`,
+      });
+    }
+  }
+
+  if (idSucDestinoRaw != null) {
+    const [[sucDestino]] = await pool.query(
+      "SELECT id_sucursal FROM sucursal WHERE id_sucursal = ? LIMIT 1",
+      [idSucDestinoRaw]
+    );
+    if (!sucDestino) {
+      return res.status(403).json({
+        error: `La sucursal de destino (id_sucursal=${idSucDestinoRaw}) no está registrada en la tabla sucursal`,
+      });
+    }
+  }
+
   try {
     const conn = await pool.getConnection();
     let resultado = null;
@@ -1081,19 +1170,22 @@ export const registrarSalidaInsumo = async (req, res) => {
       const base = /^\d{4}-\d{2}-\d{2}$/.test(soloFecha)
         ? new Date(tieneHora ? f.replace(" ", "T") : `${soloFecha}T12:00:00`)
         : new Date();
-      // Folio de salida por MES: SAL-YYYYMM-NNN (3 digitos, ej. SAL-202610-001).
-      // El consecutivo cuenta los folios DISTINTOS del mes ya escritos en el
-      // motivo (cada salida manual deja "[SAL-YYYYMM-NNN] ..." al inicio del
-      // texto del motivo). Solo cuenta el formato nuevo de 3 digitos para que
-      // la secuencia no se mezcle con folios viejos de 4 digitos.
+      // Folio de salida por MES: SAL-YYYYMM-NNNN (4 digitos, ej. SAL-202610-0001).
+      // El consecutivo es el MAXIMO + 1 de los folios del mes ya escritos en el
+      // motivo (cada salida manual deja "[SAL-YYYYMM-NNNN] ..." al inicio).
+      // El REGEXP acepta 3 o 4 digitos ([0-9]{3,4}) para incluir tambien los
+      // folios viejos de 3 digitos y que la secuencia sea consecutiva.
       const ym = `${base.getFullYear()}${String(base.getMonth() + 1).padStart(2, "0")}`;
-      const [[{ n }]] = await conn.query(
-        `SELECT COUNT(DISTINCT LEFT(motivo, LOCATE(']', motivo))) AS n
+      const [[{ max_n }]] = await conn.query(
+        `SELECT MAX(CAST(SUBSTRING(motivo, 13, LOCATE(']', motivo) - 13) AS UNSIGNED)) AS max_n
            FROM movimiento_inventario
           WHERE tipo = 'Salida' AND motivo LIKE ? AND motivo REGEXP ? FOR UPDATE`,
-        [`[SAL-${ym}-%`, `^\[SAL-${ym}-[0-9]{3}\]`]
+        // OJO: en template literals JS, `\[` descarta el backslash (NonEscapeCharacter)
+        // y el regex llega como `[SAL-...` (clase de caracteres → error ICU "range x>y").
+        // Se necesita `\\[` en el fuente para que el string sea `\[` y el regex escape.
+        [`[SAL-${ym}-%`, `^\\[SAL-${ym}-[0-9]{3,4}\\]`]
       );
-      const folio = `SAL-${ym}-${String((Number(n) || 0) + 1).padStart(3, "0")}`;
+      const folio = `SAL-${ym}-${String((Number(max_n) || 0) + 1).padStart(4, "0")}`;
 
       // Los campos del formato pueden venir como texto libre (hojas viejas) o
       // como IDs de las listas (empleados/sucursales): se resuelven a nombre.
@@ -1222,6 +1314,9 @@ export const registrarSalidaInsumo = async (req, res) => {
 
     res.json({ ok: true, ...resultado });
   } catch (err) {
+    // Log obligatorio: sin esto el error 500 es invisible en la consola del
+    // servidor y solo aparece en el body de la respuesta (DevTools → Response).
+    console.error("[salidas] Error al registrar salida de insumos:", err);
     res.status(500).json({ error: "Error al registrar la salida de insumos", ...errDetalle(err) });
   }
 };

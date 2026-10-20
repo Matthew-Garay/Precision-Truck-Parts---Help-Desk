@@ -719,7 +719,7 @@ export default function Inventario() {
   const [detalle,    setDetalle]    = useState(null);
   const [entrada,    setEntrada]    = useState(null);
   const [salida,     setSalida]     = useState(null); // true = hoja de salida interna abierta
-  const [confirmar,  setConfirmar]  = useState(null); // { tipo: "eliminar"|"activo", row, busy }
+  const [confirmar,  setConfirmar]  = useState(null); // { tipo: "eliminar"|"activo"|"visible_publico", row, busy }
   const [gestionar,  setGestionar]  = useState(null); // row → panel "Inhabilitar o eliminar" (un solo botón)
   // ── Vista "Entradas" (entradas de material) ──
   const [vista,      setVista]      = useState("insumos");
@@ -821,6 +821,15 @@ export default function Inventario() {
         if (!r.ok) throw new Error(d?.error || `Error ${r.status} al eliminar`);
         setInsumos(prev => prev.filter(i => i.id_insumo !== row.id_insumo));
         toast.success(`Insumo "${row.nombre}" eliminado`);
+      } else if (tipo === "visible_publico") {
+        const nuevo = Number(row.visible_publico ?? 1) === 0;
+        const r = await apiFetch(API_ROUTES.INSUMO_VISIBLE(row.id_insumo), {
+          method: "PATCH", body: JSON.stringify({ visible: nuevo }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d?.error || `Error ${r.status} al cambiar visibilidad`);
+        setInsumos(prev => prev.map(i => i.id_insumo === row.id_insumo ? { ...i, visible_publico: nuevo ? 1 : 0 } : i));
+        toast.success(nuevo ? `Insumo "${row.nombre}" visible al pÃºblico` : `Insumo "${row.nombre}" oculto al pÃºblico`);
       } else {
         const nuevo = Number(row.activo ?? 1) === 0;
         const r = await apiFetch(API_ROUTES.INSUMO_ACTIVO(row.id_insumo), {
@@ -1221,11 +1230,12 @@ export default function Inventario() {
           </div>
           {/* Paginación — componente compartido, siempre visible dentro del card */}
           <Paginacion
-            pagina={vista === "insumos" ? paginaActual : movPaginaActual}
-            setPagina={vista === "insumos" ? irPagina : setMovPagina}
-            totalPaginas={vista === "insumos" ? totalPaginas : movTotalPaginas}
+            variant="table"
+            page={vista === "insumos" ? paginaActual : movPaginaActual}
+            onPageChange={vista === "insumos" ? irPagina : setMovPagina}
+            total={vista === "insumos" ? filtrados.length : movTotal}
             pageSize={vista === "insumos" ? pageSize : movPageSize}
-            setPageSize={vista === "insumos" ? setPageSize : setMovPageSize}
+            onPageSizeChange={vista === "insumos" ? setPageSize : setMovPageSize}
             T={T}
           />
         </div>
@@ -1271,7 +1281,7 @@ export default function Inventario() {
               ¿Qué quieres hacer con <strong style={{ color: T.text }}>“{gestionar.nombre}”</strong>?
               <ul style={{ margin: "8px 0 0", paddingLeft: "18px" }}>
                 <li><strong style={{ color: T.text }}>Inhabilitar/Habilitar:</strong> baja lógica — se oculta de Salidas y solicitudes conservando su historial.</li>
-                <li><strong style={{ color: T.text }}>Eliminar:</strong> borra el insumo (solo es posible si no tiene solicitudes ni movimientos).</li>
+                <li><strong style={{ color: T.text }}>Visible PÃºblico:</strong> controla si el insumo aparece en el catalogo pÃºblico (inventario, reportes). 0 = oculto, 1 = visible.</li>
               </ul>
             </div>
             <div style={{ padding: "10px 18px", borderTop: `1px solid ${T.border}`, background: T.surfaceAlt,
@@ -1288,6 +1298,11 @@ export default function Inventario() {
                 {Number(gestionar.activo ?? 1) === 0 ? "Habilitar" : "Inhabilitar"}
               </button>
               <button type="button"
+                onClick={() => { setConfirmar({ tipo: "visible_publico", row: gestionar, busy: false }); setGestionar(null); }}
+                style={{ padding: "6px 16px", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", color: "#fff",
+                  background: Number(gestionar.visible_publico ?? 1) === 0 ? "#0d9488" : "#0284c7", cursor: "pointer" }}>
+                {Number(gestionar.visible_publico ?? 1) === 0 ? "Hacer visible" : "Ocultar público"}</button>
+<button type="button"
                 onClick={() => { setConfirmar({ tipo: "eliminar", row: gestionar, busy: false }); setGestionar(null); }}
                 style={{ padding: "6px 16px", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", color: "#fff",
                   background: "#dc2626", cursor: "pointer" }}>
@@ -1309,6 +1324,8 @@ export default function Inventario() {
             <div style={{ padding: "14px 18px", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 10 }}>
               {confirmar.tipo === "eliminar"
                 ? <Trash2 size={16} style={{ color: "#dc2626" }} />
+                : confirmar.tipo === "visible_publico"
+                ? <Eye size={16} style={{ color: "#0284c7" }} />
                 : <Ban size={16} style={{ color: "#d97706" }} />}
               <strong style={{ fontSize: 13, color: T.text }}>
                 {confirmar.tipo === "eliminar" ? "Eliminar insumo"
@@ -1319,6 +1336,12 @@ export default function Inventario() {
               {confirmar.tipo === "eliminar" ? (
                 <>¿Eliminar <strong style={{ color: T.text }}>“{confirmar.row.nombre}”</strong> del catálogo?
                 Solo se puede si no tiene solicitudes activas ni movimientos. Si tiene historial, inhabilítalo en su lugar.</>
+              ) : confirmar.tipo === "visible_publico" ? (
+                Number(confirmar.row.visible_publico ?? 1) === 0 ? (
+                  <>¿Hacer <strong style={{ color: T.text }}>“{confirmar.row.nombre}”</strong> visible público? Aparecerá en el catálogo público.</>
+                ) : (
+                  <>¿Ocultar <strong style={{ color: T.text }}>“{confirmar.row.nombre}”</strong> del público? Sólo los administradores podrán verlo.</>
+                )
               ) : Number(confirmar.row.activo ?? 1) === 0 ? (
                 <>¿Habilitar <strong style={{ color: T.text }}>“{confirmar.row.nombre}”</strong>? Volverá a aparecer en Salidas y solicitudes.</>
               ) : (
@@ -1334,9 +1357,12 @@ export default function Inventario() {
               </button>
               <button type="button" disabled={confirmar.busy} onClick={ejecutarConfirmado}
                 style={{ padding: "6px 18px", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", color: "#fff",
-                  background: confirmar.tipo === "eliminar" ? "#dc2626" : "#d97706",
+                  background: confirmar.tipo === "eliminar" ? "#dc2626" : confirmar.tipo === "visible_publico" ? "#0284c7" : "#d97706",
                   cursor: confirmar.busy ? "not-allowed" : "pointer", opacity: confirmar.busy ? 0.6 : 1 }}>
-                {confirmar.busy ? "Procesando…" : confirmar.tipo === "eliminar" ? "Eliminar" : Number(confirmar.row.activo ?? 1) === 0 ? "Habilitar" : "Inhabilitar"}
+                {confirmar.busy ? "Procesando…" : confirmar.tipo === "eliminar" ? "Eliminar"
+                  : confirmar.tipo === "visible_publico"
+                  ? Number(confirmar.row.visible_publico ?? 1) === 0 ? "Hacer visible" : "Ocultar público"
+                  : Number(confirmar.row.activo ?? 1) === 0 ? "Habilitar" : "Inhabilitar"}
               </button>
             </div>
           </div>

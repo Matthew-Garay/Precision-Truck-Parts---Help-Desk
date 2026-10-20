@@ -67,6 +67,7 @@ const API_ROUTES = {
   INSUMOS:            "/api/solicitudes/insumos",
   INSUMO:             (id) => `/api/solicitudes/insumos/${Number(id)}`,
   INSUMO_ACTIVO:      (id) => `/api/solicitudes/insumos/${Number(id)}/activo`,
+  INSUMO_VISIBLE:     (id) => `/api/solicitudes/insumos/${Number(id)}/visible-publico`,
   SALIDAS:            "/api/solicitudes/salidas",
   INSUMO_FOTO:        (id) => `/api/solicitudes/insumos/${Number(id)}/foto`,
   INSUMO_ENTRADA:     (id) => `/api/solicitudes/insumos/${Number(id)}/entrada`,
