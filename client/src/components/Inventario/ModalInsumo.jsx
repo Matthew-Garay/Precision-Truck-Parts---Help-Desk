@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ModalInsumo.jsx — Crear / Editar insumo
  * Mismo sistema visual que ModalDetalleInsumo.
  */
@@ -12,12 +12,12 @@ const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo", "Dañado"];
 
 const INSUMO_VACIO = {
   num_serie: "", nombre: "", descripcion: "", marca: "",
-  modelo: "", stock: 0, estado: "Bueno", id_categoria: "", imagen_url: "",
+  modelo: "", stock: 0, estado: "Bueno", id_categoria: "", imagen_url: "", visible_publico: 1,
 };
 
-function Field({ label, htmlFor, required, children, textFaint }) {
+function Field({ label, htmlFor, required, children, textFaint, style }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0, ...(style || {}) }}>
       <label htmlFor={htmlFor} style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: textFaint }}>
         {label}{required && <span style={{ color: ORANGE, marginLeft: "2px" }}>*</span>}
       </label>
@@ -41,11 +41,8 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
 
   useEffect(() => { firstRef.current?.focus(); }, []);
 
-  useEffect(() => {
-    const fn = (e) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", fn);
-    return () => document.removeEventListener("keydown", fn);
-  }, [onClose]);
+  // Modal persistente: solo se cierra con la X, Cancelar o Guardar.
+  // Sin cierre por Escape ni por clic en el overlay para evitar cierres accidentales.
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -118,6 +115,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
         estado:       form.estado,
         id_categoria: Number(form.id_categoria),
         imagen_url:   form.imagen_url  || null,
+        visible_publico: form.visible_publico ? 1 : 0,
       };
 
       const r    = await apiFetch(url, { method, body: payload });
@@ -151,19 +149,20 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
         padding: "16px",
         animation: "miF 0.15s ease",
       }}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+
     >
       <style>{`
         @keyframes miF { from{opacity:0} to{opacity:1} }
         @keyframes miS { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
         input[readonly]{ cursor: not-allowed; }
+        @media (max-width: 640px){ #form-insumo{ grid-template-columns: 1fr !important; } #form-insumo > *{ grid-column: auto !important; } }
       `}</style>
 
       <div
         role="dialog"
         aria-modal="true"
         style={{
-          width: "95%", maxWidth: "500px",
+          width: "95%", maxWidth: "760px",
           background: surface,
           border: `1px solid ${border}`,
           borderRadius: "10px",
@@ -223,10 +222,10 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
 
         {/* ── Body scrollable ── */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px" }}>
-          <form id="form-insumo" onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <form id="form-insumo" onSubmit={handleSubmit} noValidate style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", alignItems: "start" }}>
 
             {/* Foto */}
-            <Field htmlFor="fi-foto" label="Foto del insumo" textFaint={textFaint}>
+            <Field style={{ gridColumn: "1 / -1" }} htmlFor="fi-foto" label="Foto del insumo" textFaint={textFaint}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 {/* Preview / placeholder */}
                 <div style={{ position: "relative", flexShrink: 0 }}>
@@ -296,10 +295,10 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
             </Field>
 
             {/* Separador */}
-            <div style={{ height: "1px", background: border }} />
+            <div style={{ height: "1px", background: border, gridColumn: "1 / -1" }} />
 
             {/* Nombre */}
-            <Field htmlFor="fi-nombre" label="Nombre" required textFaint={textFaint}>
+            <Field style={{ gridColumn: "1 / -1" }} htmlFor="fi-nombre" label="Nombre" required textFaint={textFaint}>
               <input
                 id="fi-nombre" ref={firstRef} type="text"
                 value={form.nombre}
@@ -310,7 +309,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
             </Field>
 
             {/* Descripción */}
-            <Field htmlFor="fi-desc" label="Descripción" textFaint={textFaint}>
+            <Field style={{ gridColumn: "1 / -1" }} htmlFor="fi-desc" label="Descripción" textFaint={textFaint}>
               <textarea
                 id="fi-desc"
                 value={form.descripcion ?? ""}
@@ -323,7 +322,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
             </Field>
 
             {/* Marca + Modelo */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", gridColumn: "1 / -1" }}>
               <Field htmlFor="fi-marca" label="Marca" textFaint={textFaint}>
                 <input id="fi-marca" type="text" value={form.marca}
                   onChange={e => set("marca", e.target.value)}
@@ -337,7 +336,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
             </div>
 
             {/* N.º de serie */}
-            <Field htmlFor="fi-serie" label="N.º de serie" textFaint={textFaint}>
+            <Field style={{ gridColumn: "1 / -1" }} htmlFor="fi-serie" label="N.º de serie" textFaint={textFaint}>
               <input id="fi-serie" type="text" value={form.num_serie}
                 onChange={e => set("num_serie", e.target.value)}
                 placeholder="Ej. SN-00421" style={inp} onFocus={onFocus} onBlur={onBlur} />
@@ -379,14 +378,24 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
               </select>
             </Field>
 
+            {/* Visibilidad pública */}
+            <Field htmlFor="fi-visible-publico" label="Visible al público" textFaint={textFaint}>
+              <select id="fi-visible-publico" value={String(form.visible_publico ?? 1)}
+                onChange={e => set("visible_publico", Number(e.target.value))}
+                style={{ ...inp, cursor: "pointer" }} onFocus={onFocus} onBlur={onBlur}>
+                <option value="1">Sí — catálogo público</option>
+                <option value="0">No — solo administradores</option>
+              </select>
+            </Field>
+
             {/* Nota: campos vacíos se guardan como N/A automáticamente */}
-            <p style={{ margin: 0, fontSize: "10px", color: textFaint, textAlign: "right" }}>
+            <p style={{ margin: 0, fontSize: "10px", color: textFaint, textAlign: "right", gridColumn: "1 / -1" }}>
               Los campos vacíos se guardarán como <b>N/A</b>.
             </p>
 
             {/* Error */}
             {error && (
-              <p role="alert" style={{
+              <p role="alert" style={{ gridColumn: "1 / -1",
                 margin: 0, padding: "8px 12px", borderRadius: "6px",
                 fontSize: "12px", fontWeight: 500, color: "#dc2626",
                 background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2",

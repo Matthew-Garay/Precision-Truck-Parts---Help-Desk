@@ -74,6 +74,22 @@ const Insumo = {
   // Si la columna no existe, las consultas siguen
   // funcionando: se asume todo activo (=1).
   _tieneActivo: null,
+
+  _tieneVisiblePublico: null,
+  _tieneVisiblePublicoCheck: async () => {
+    if (Insumo._tieneVisiblePublico !== null) return Insumo._tieneVisiblePublico;
+    try {
+      const [[{ cnt }]] = await pool.query(
+        `SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'insumo' AND COLUMN_NAME = 'visible_publico'`
+      );
+      Insumo._tieneVisiblePublico = Number(cnt) > 0;
+    } catch {
+      Insumo._tieneVisiblePublico = false;
+    }
+    return Insumo._tieneVisiblePublico;
+  },
+
   _tieneActivoCheck: async () => {
     if (Insumo._tieneActivo !== null) return Insumo._tieneActivo;
     try {
@@ -90,12 +106,14 @@ const Insumo = {
 
   getAll: async ({ soloActivos = false } = {}) => {
     const tieneActivo = await Insumo._tieneActivoCheck();
+    const tieneVisiblePublico = await Insumo._tieneVisiblePublicoCheck();
     const colActivo = tieneActivo ? "i.activo," : "1 AS activo,";
+    const colVisible = tieneVisiblePublico ? "i.visible_publico," : "1 AS visible_publico,";
     const whereActivo = tieneActivo && soloActivos ? "WHERE i.activo = 1" : "";
     const [rows] = await pool.query(
       `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion,
               i.marca, i.modelo, i.stock, i.estado,
-              i.id_categoria, i.imagen_url, ${colActivo}
+              i.id_categoria, i.imagen_url, ${colActivo} ${colVisible}
               c.nombre_categoria,
               ${DISPONIBILIDAD_EXPR}
        FROM insumo i
@@ -108,35 +126,43 @@ const Insumo = {
 
   getDisponibles: async () => {
     const tieneActivo = await Insumo._tieneActivoCheck();
+    const tieneVisiblePublico = await Insumo._tieneVisiblePublicoCheck();
     const colActivo = tieneActivo ? "i.activo," : "1 AS activo,";
+    const colVisible = tieneVisiblePublico ? "i.visible_publico," : "1 AS visible_publico,";
     const whereActivo = tieneActivo ? "AND i.activo = 1" : "";
     const [rows] = await pool.query(
       `SELECT i.id_insumo, i.nombre, i.descripcion, i.marca, i.modelo,
-              i.stock, i.estado, i.id_categoria, i.imagen_url, ${colActivo}
+              i.stock, i.estado, i.id_categoria, i.imagen_url, ${colActivo} ${colVisible}
               c.nombre_categoria,
               ${DISPONIBILIDAD_EXPR}
        FROM insumo i
        LEFT JOIN categoria c ON i.id_categoria = c.id_categoria
-       WHERE i.stock > 0 ${whereActivo}
+       WHERE i.stock > 0
+         ${whereActivo}
+         ${tieneVisiblePublico ? "AND i.visible_publico = 1" : ""}
        ORDER BY i.nombre ASC`
     );
     return rows;
   },
 
-  // ── Para el rol Usuario (no admin): solo insumos activos y con stock.
-  //     Los inhabilitados se conservan en el historial pero no se muestran.
-  //     La columna `activo` puede no existir en una BD antigua; si falta se
-  //     asume que todo el inventario es visible.
+  // Para el rol Usuario (no admin): solo insumos activos, con stock y
+  //     visibles al público. Los inhabilitados y los no públicos se
+  //     conservan en el historial pero no se muestran en el catálogo.
   getForUser: async () => {
     const tieneActivo = await Insumo._tieneActivoCheck();
+    const tieneVisiblePublico = await Insumo._tieneVisiblePublicoCheck();
+    const colActivo = tieneActivo ? "i.activo," : "1 AS activo,";
+    const colVisible = tieneVisiblePublico ? "i.visible_publico," : "1 AS visible_publico,";
+    const whereActivo = tieneActivo ? "AND i.activo = 1" : "";
+    const whereVisible = tieneVisiblePublico ? "AND i.visible_publico = 1" : "";
     const [rows] = await pool.query(
       `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion, i.marca, i.modelo,
-              i.stock, i.estado, i.imagen_url, ${tieneActivo ? "i.activo" : "1 AS activo"}
+              i.stock, i.estado, i.imagen_url, ${colActivo} ${colVisible}
               c.nombre_categoria,
               ${DISPONIBILIDAD_EXPR}
        FROM insumo i
        LEFT JOIN categoria c ON i.id_categoria = c.id_categoria
-       WHERE i.stock > 0 ${tieneActivo ? "AND i.activo = 1" : ""}
+       WHERE i.stock > 0 ${whereActivo} ${whereVisible}
        ORDER BY i.nombre ASC`
     );
     return rows;
@@ -144,34 +170,37 @@ const Insumo = {
 
   // conn: conexion opcional con transaccion activa (para escribir el movimiento
   //       en la misma transaccion que el alta del insumo).
-  crear: async ({ num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, imagen_url }, conn = pool) => {
+  crear: async ({ num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, imagen_url, visible_publico }, conn = pool) => {
     const [r] = await conn.query(
       `INSERT INTO insumo
-         (num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, imagen_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, imagen_url, visible_publico)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        num_serie   || null,
+        num_serie      || null,
         nombre,
-        descripcion || null,
-        marca       || null,
-        modelo      || null,
+        descripcion    || null,
+        marca          || null,
+        modelo         || null,
         stock,
         estado,
         id_categoria,
-        imagen_url  || null,
+        imagen_url     || null,
+        visible_publico !== undefined ? (visible_publico ? 1 : 0) : 1,
       ]
     );
     return r.insertId;
   },
 
-  actualizar: async (id, { num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, imagen_url }, conn = pool) => {
+  actualizar: async (id, { num_serie, nombre, descripcion, marca, modelo, stock, estado, id_categoria, imagen_url, visible_publico }, conn = pool) => {
     // Si imagen_url no viene en el body (undefined), no sobreescribir la foto existente.
     const imgSql  = imagen_url !== undefined ? ", imagen_url=?" : "";
     const imgVals = imagen_url !== undefined ? [imagen_url || null] : [];
+    const visSql  = visible_publico !== undefined ? ", visible_publico=?" : "";
+    const visVals = visible_publico !== undefined ? [visible_publico ? 1 : 0] : [];
     const [r] = await conn.query(
       `UPDATE insumo
           SET num_serie=?, nombre=?, descripcion=?, marca=?, modelo=?,
-              stock=?, estado=?, id_categoria=?${imgSql}
+              stock=?, estado=?, id_categoria=?${imgSql}${visSql}
         WHERE id_insumo=?`,
       [
         num_serie   || null,
@@ -183,6 +212,7 @@ const Insumo = {
         estado,
         id_categoria,
         ...imgVals,
+        ...visVals,
         id,
       ]
     );
@@ -222,6 +252,17 @@ const Insumo = {
 
   eliminar: async (id) => {
     const [r] = await pool.query("DELETE FROM insumo WHERE id_insumo=?", [id]);
+    return r.affectedRows > 0;
+  },
+
+  // Cambiar el estado visible (pública) del insumo.
+  // visible_publico = 1 → visible al público (reportes, inventario web)
+  // visible_publico = 0 → oculto al público (solo visible para admins)
+  cambiarVisiblePublico: async (id, visible) => {
+    const [r] = await pool.query(
+      "UPDATE insumo SET visible_publico = ? WHERE id_insumo = ?",
+      [visible ? 1 : 0, id]
+    );
     return r.affectedRows > 0;
   },
 

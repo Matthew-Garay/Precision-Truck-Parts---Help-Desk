@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from "react";
+﻿import { useRef, useEffect, useState, useCallback } from "react";
 import { Search, X, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { RADIUS, SLATE } from '../utils/design-system.js';
 
@@ -25,7 +25,7 @@ const LABEL_ST = (activo, orange, textMuted) => ({
 function getLabel(campo, valor) {
   if (campo.type === "checkbox") return valor ? campo.label : null;
   if (!valor || valor === "Todos" || valor === "") return null;
-  if (campo.type === "search" || campo.type === "date") return `"${valor}"`;
+  if (campo.type === "search" || campo.type === "date" || campo.type === "combo") return `"${valor}"`;
   const opt = campo.opts?.find(o => typeof o === "string" ? o === valor : o.value === valor);
   return typeof opt === "string" ? opt : (opt?.label ?? valor);
 }
@@ -33,6 +33,77 @@ function isActive(campo, valor) {
   if (campo.type === "checkbox") return !!valor;
   return !!valor && valor !== "Todos" && valor !== "";
 }
+
+/* â”€â”€ Campo combo: input escribible + datalist de sugerencias â”€â”€
+ * Se comporta como un search (texto libre con debounce) pero muestra las
+ * opciones del catÃ¡logo como sugerencias nativas. Si el texto coincide
+ * exactamente con una opciÃ³n actÃºa como filtro exacto; si es parcial, el
+ * backend / filtro local hace match parcial. Vaciar = "Todos". */
+function ComboField({ campo, valor, onChange, disabled, T }) {
+  const { isDark, orange, text, textMuted, textFaint } = T;
+  const debounceMs = campo.debounce ?? 400;
+  const activo = !!valor && valor !== "Todos" && valor !== "";
+  const [localVal, setLocalVal] = useState(valor === "Todos" ? "" : (valor || ""));
+  const timerRef = useRef(null);
+  const listId = useRef(`combo-${campo.key}-${Math.random().toString(36).slice(2, 8)}`);
+  useEffect(() => { setLocalVal(valor === "Todos" ? "" : (valor || "")); }, [valor]);
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+  const norm = (v) => String(v ?? "").replace(/\s+/g, " ").trim();
+  const fire = useCallback((v) => {
+    const n = norm(v);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => onChange(campo.key, n === "" ? "Todos" : n), debounceMs);
+  }, [campo.key, debounceMs, onChange]);
+  const handleChange = (e) => {
+    const v = e.target.value;
+    setLocalVal(v);
+    clearTimeout(timerRef.current);
+    // Si eligiÃ³ una sugerencia del datalist (match exacto), aplicar al instante.
+    const esOpcion = (campo.opts || []).some(o =>
+      (typeof o === "string" ? o : o.value) === norm(v));
+    if (esOpcion) { onChange(campo.key, norm(v)); }
+    else fire(v);
+  };
+  const handleClear = () => { setLocalVal(""); clearTimeout(timerRef.current); onChange(campo.key, "Todos"); };
+  const opts = (campo.opts || []).map(o => typeof o === "string" ? o : o.value).filter(v => v && v !== "Todos");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: "110px", flex: "1 1 110px", maxWidth: "200px" }}>
+      <label style={LABEL_ST(activo, orange, textMuted)}>{campo.label}</label>
+      <div style={{ position: "relative" }}>
+        <Search size={9} style={{ position: "absolute", left: "5px", top: "50%", transform: "translateY(-50%)", color: activo ? orange : textFaint, pointerEvents: "none" }} />
+        <input type="text" value={localVal} onChange={handleChange} list={listId.current}
+          placeholder={campo.placeholder || "Escribe para buscar..."} disabled={disabled}
+          style={{ ...BASE_INPUT, width: "100%", paddingLeft: "18px", paddingRight: activo ? "18px" : "5px",
+            background: inputBg(activo, isDark, orange), border: `1px solid ${borderColor(activo, isDark, orange)}`,
+            color: text, opacity: disabled ? 0.5 : 1, cursor: disabled ? "not-allowed" : "text" }}
+          onFocus={e => { if (!disabled) { e.target.style.borderColor = orange; e.target.style.boxShadow = `0 0 0 2px ${orange}33`; } }}
+          onBlur={e => {
+            e.target.style.boxShadow = "none";
+            if (!localVal) e.target.style.borderColor = borderColor(false, isDark, orange);
+            // Al salir con texto parcial pendiente, aplicarlo.
+            clearTimeout(timerRef.current);
+            const n = norm(localVal);
+            if (n !== norm(valor === "Todos" ? "" : valor)) onChange(campo.key, n === "" ? "Todos" : n);
+          }} />
+        <datalist id={listId.current}>
+          {opts.map(v => <option key={v} value={v} />)}
+        </datalist>
+        {activo && !disabled && (
+          <button onClick={handleClear}
+            style={{ position: "absolute", right: "2px", top: "50%", transform: "translateY(-50%)",
+              background: "none", border: "none", cursor: "pointer", padding: "2px", display: "flex",
+              alignItems: "center", color: textFaint }}
+            onMouseEnter={e => e.currentTarget.style.color = "#DC2626"}
+            onMouseLeave={e => e.currentTarget.style.color = textFaint}
+            title="Limpiar">
+            <X size={9} />
+          </button>
+        )}
+        </div>
+      </div>
+  );
+}
+
 
 function SearchField({ campo, valor, onChange, disabled, T }) {
   const { isDark, orange, text, textMuted, textFaint } = T;
@@ -203,7 +274,7 @@ export default function FiltrosToolbar({
     const campo = campos.find(c => c.key === key);
     if (!campo) return;
     if (campo.type === "checkbox") onChange(key, false);
-    else if (campo.type === "search" || campo.type === "date") onChange(key, "");
+    else if (campo.type === "search" || campo.type === "date" || campo.type === "combo") onChange(key, "");
     else onChange(key, "Todos");
   };
 
@@ -213,6 +284,7 @@ export default function FiltrosToolbar({
       case "search":   return <SearchField   key={campo.key} {...props} />;
       case "date":     return <DateField     key={campo.key} {...props} />;
       case "checkbox": return <CheckboxField key={campo.key} {...props} />;
+      case "combo":    return <ComboField key={campo.key} {...props} />;
       default:         return <SelectField   key={campo.key} {...props} />;
     }
   };
@@ -224,7 +296,7 @@ export default function FiltrosToolbar({
     opacity: disabled ? 0.7 : 1, transition: "opacity 0.15s",
   };
 
-  // ── PC / tablet ancha: todos los campos en una fila ──
+  // â”€â”€ PC / tablet ancha: todos los campos en una fila â”€â”€
   if (!esMobil) return (
     <div ref={wrapRef} style={wrapStyle}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: "6px",
@@ -258,7 +330,7 @@ export default function FiltrosToolbar({
     </div>
   );
 
-  // ── Móvil: cabecera compacta + panel colapsable ──
+  // â”€â”€ MÃ³vil: cabecera compacta + panel colapsable â”€â”€
   return (
     <div ref={wrapRef} style={wrapStyle}>
       {/* Cabecera siempre visible */}
@@ -281,7 +353,7 @@ export default function FiltrosToolbar({
             transition: "transform 0.2s" }} />
         </button>
         <div style={{ width: "1px", height: "20px", background: isDark ? "rgba(255,255,255,0.07)" : "#E5E7EB", flexShrink: 0 }} />
-        {/* Búsqueda siempre visible */}
+        {/* BÃºsqueda siempre visible */}
         {campos.filter(c => c.type === "search").map(renderField)}
         <div style={{ flex: 1 }} />
         <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
@@ -296,7 +368,7 @@ export default function FiltrosToolbar({
           {children}
         </div>
       </div>
-      {/* Panel colapsable: selects y demás */}
+      {/* Panel colapsable: selects y demÃ¡s */}
       {expandido && (
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: "6px",
           padding: "6px 8px", borderBottom: hayFiltros ? bs : "none" }}>

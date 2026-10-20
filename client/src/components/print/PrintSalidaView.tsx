@@ -92,16 +92,17 @@ export default function PrintSalidaView({ payload }: { payload: SalidaPayload })
         .pr-salida .pr-content { display: flex; flex-direction: column; flex: 1; }
         .pr-salida .pr-inv-td { border-bottom: 1px solid #d6d6d6; }
         .pr-salida .pr-inv-th { background: #ffffff; border-bottom: 1.5px solid #000; }
-        .pr-salida .pr-signature-area { height: 96px; border-bottom: none; }
+        .pr-salida .pr-signature-area { height: 120px; border-bottom: none; }
         /* "Quien recibe" (primer bloque) lleva MÁS altura para firmar con pluma. */
-        .pr-salida .pr-salida-firmas .pr-signature:first-child .pr-signature-area { height: 150px; }
+        .pr-salida .pr-salida-firmas .pr-signature:first-child .pr-signature-area { height: 120px; }
         /* Misma maquetación que las firmas de solicitud: dos columnas iguales,
            bloque centrado, línea única al 100% y nombre impreso centrado
            (los largos pasan de línea, nunca se cortan). */
-        .pr-salida .pr-signature { width: 42%; align-items: center; text-align: center; }
-        .pr-salida .pr-signature-line { width: 100%; height: 1px; background: var(--pr-ink); }
-        .pr-salida .pr-signature-name { white-space: normal; overflow-wrap: anywhere; }
-        .pr-salida .pr-salida-firmas { margin-top: 40px; padding-top: 24px; align-items: flex-end; grid-template-columns: 1fr 1fr; }
+        .pr-salida .pr-signature { width: 100%; max-width: 100%; align-items: center; text-align: center; justify-items: center; }
+        .pr-salida .pr-signature-line { width: 100%; height: 1px; background: var(--pr-ink); margin-left: auto; margin-right: auto; }
+        .pr-salida .pr-signature-name { white-space: nowrap; overflow-wrap: normal; text-align: center; min-height: 1em; line-height: 1.35; }
+        .pr-salida .pr-signature-role { white-space: nowrap; overflow-wrap: normal; text-align: center; }
+        .pr-salida .pr-salida-firmas { margin-top: 40px; padding-top: 24px; align-items: flex-start; grid-template-columns: 1fr 1fr; }
       `}</style>
 
       <PageHeader

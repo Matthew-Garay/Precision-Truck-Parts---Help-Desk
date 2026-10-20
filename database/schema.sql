@@ -186,7 +186,7 @@ CREATE TABLE `ticket_historial` (
 DROP TABLE IF EXISTS `empleado`;
 CREATE TABLE `empleado` (
   `id_empleado` int NOT NULL AUTO_INCREMENT,
-  `num_empleado` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `num_empleado` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
   `nombre` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `ap_paterno` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `ap_materno` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,

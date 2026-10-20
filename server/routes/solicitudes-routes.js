@@ -45,7 +45,7 @@ import {
   getInsumos, getInventario, getInsumosStockBajo, crearSolicitud, getSolicitudesByEmpleado,
   getSolicitudById, getSolicitudByFolio, getAllSolicitudes, getSolicitudesPendientes,
   actualizarEstatusSolicitud, aprobarItemsSolicitud, crearInsumo, actualizarInsumo,
-  eliminarInsumo, cambiarActivoInsumo, getInsumosForUser, getReporteSolicitudes, subirFotoInsumo, getMetricasSolicitudes,
+  eliminarInsumo, cambiarActivoInsumo, cambiarVisiblePublico, getInsumosForUser, getReporteSolicitudes, subirFotoInsumo, getMetricasSolicitudes,
   registrarEntradaInsumo, registrarSalidaInsumo, guardarRutaSolicitud, getMovimientosInventario, getMovimientosInsumo, getMovimientosSolicitud, getSalidasMiSucursal,
   guardarObservacionSolicitud
 } from '../controllers/solicitudes-controller.js';
@@ -83,6 +83,7 @@ router.put("/insumos/:id",        requireAdmin, validate(schemaInsumo), actualiz
 router.post("/insumos/:id/foto",  requireAdmin, ...uploadInsumo.single("foto"), subirFotoInsumo);
 router.delete("/insumos/:id",     requireAdmin, eliminarInsumo);
 router.patch("/insumos/:id/activo", requireAdmin, cambiarActivoInsumo);
+router.patch("/insumos/:id/visible-publico",  requireAdmin, cambiarVisiblePublico);
 // Salida interna manual — descuenta stock y deja el movimiento (uso interno)
 router.post("/salidas", requireAdmin, validate(schemaSalidaInsumo), registrarSalidaInsumo);
 // Entrada de material al inventario — suma stock y deja el movimiento

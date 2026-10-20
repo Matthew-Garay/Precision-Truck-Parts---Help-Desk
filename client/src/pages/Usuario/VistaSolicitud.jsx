@@ -385,10 +385,12 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
   const aprobadosCount = Object.values(aprobados).filter(Boolean).length;
   const totalItems = solicitud.detalle?.length ?? 0;
 
-  // Justificación escrita por el empleado al crear la solicitud (se guarda por
-  // item en solicitud_insumo.descripcion; el backend la expone arriba en limpio)
+  // Observaciones generales de la solicitud. Se escriben al crearla y se
+  // guardan a nivel de encabezado (solicitud.observacion). Para solicitudes
+  // antiguas aún puede venir en solicitud.justificacion o por ítem.
   const justificacion = String(
-    solicitud.justificacion
+    solicitud.observacion
+    ?? solicitud.justificacion
     ?? solicitud.detalle?.find(d => d.justificacion)?.justificacion
     ?? ""
   ).trim();

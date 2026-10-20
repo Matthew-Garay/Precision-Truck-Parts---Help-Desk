@@ -70,10 +70,11 @@ export function agruparSalidas(rows = []) {
         numEmp:          p.numEmp,
         motivoTexto:     p.texto,
         nombre_sucursal: m.nombre_sucursal_destino || p.destino || "",
-        // En la columna "Empleado / Área": quién se lleva el material;
-        // debajo se aclara quién lo registró.
+        // En la columna "Empleado / Área": quién se lleva el material.
+        // nombre_departamento se deja VACÍO a propósito: las salidas
+        // manuales no tienen área real y NO deben contarse en "Top Áreas".
         nombre_empleado:     p.entrega || p.recibe || registró,
-        nombre_departamento: registró ? `Registró: ${registró}` : "Salida manual",
+        nombre_departamento: "",
         registrado_por:      registró,
         // "—" para que la columna de prioridad muestre un guion neutro en vez
         // de un punto gris sin texto (una salida manual no tiene prioridad).
@@ -118,9 +119,13 @@ export function coincideFiltrosSalida(g, f = {}) {
   if (f.prioridad && f.prioridad !== "Todos" && norm(g.prioridad) !== norm(f.prioridad)) return false;
   // Área: la salida guarda el área/puesto del solicitante en "Puesto:".
   if (f.area      && f.area      !== "Todos" && norm(g.puesto) !== norm(f.area)) return false;
-  if (f.usuario   && f.usuario   !== "Todos"
-      && ![g.nombre_empleado, g.registrado_por, g.entrega, g.recibe]
-        .map(norm).includes(norm(f.usuario))) return false;
+  if (f.usuario   && f.usuario   !== "Todos") {
+    // El campo es escribible: match parcial (contiene), no exacto. Revisa
+    // solicitante, quien registró, quien entrega y quien recibe.
+    const u = norm(f.usuario);
+    if (u && ![g.nombre_empleado, g.registrado_por, g.entrega, g.recibe]
+        .map(norm).some(v => v.includes(u))) return false;
+  }
   // Sucursal: coincide por el destino o por la sucursal del solicitante.
   if (f.sucursal  && f.sucursal  !== "Todos"
       && norm(g.nombre_sucursal) !== norm(f.sucursal)

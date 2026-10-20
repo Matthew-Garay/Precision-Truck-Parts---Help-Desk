@@ -245,7 +245,7 @@ export function Firma({ nombre, rol, placeholder = false }: {
         className="pr-signature-name"
         style={placeholder ? { fontWeight: 400, fontStyle: "italic", color: "var(--pr-faint)" } : undefined}
       >
-        {nombre}
+        {nombre?.trim() ? nombre : "\u00a0"}
       </span>
       <span className="pr-signature-role">{rol}</span>
       <span className="pr-signature-role">Precision Truck Parts, Parts and Accesories, S.A de C.V.</span>

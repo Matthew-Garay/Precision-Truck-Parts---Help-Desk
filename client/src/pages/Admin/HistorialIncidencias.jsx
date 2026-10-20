@@ -161,13 +161,13 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
     { key:"busqueda",  label:"Búsqueda Rápida", type:"search",  placeholder:"Título o folio...", debounce:400 },
     { key:"estatus",   label:"Estatus",          type:"select",  opts:["Todos","Resuelto","En proceso","No Resuelto","Cancelado"] },
     { key:"prioridad", label:"Prioridad",         type:"select",  opts:["Todos","Urgente","Alta","Media","Baja"] },
-    { key:"tecnico",   label:"Técnico",           type:"select",  opts:toOpts(optsCache.tecnicos) },
-    { key:"usuario",   label:"Usuario",           type:"select",  opts:toOpts(optsCache.usuarios) },
+    { key:"tecnico",   label:"Técnico",           type:"combo",   placeholder:"Escribe el nombre...", opts:toOpts(optsCache.tecnicos) },
+    { key:"usuario",   label:"Usuario",           type:"combo",   placeholder:"Escribe el nombre...", opts:toOpts(optsCache.usuarios) },
     { key:"area",      label:"Área",              type:"select",  opts:toOpts(optsCache.areas) },
     { key:"sucursal",  label:"Sucursal",           type:"select",  opts:toOpts(optsCache.sucursales) },
   ];
 
-  const limpiar = () => setFiltros({ busqueda:"", estatus:"Todos", prioridad:"Todos", tecnico:"Todos", usuario:"Todos", area:"Todos", sucursal:"Todos" });
+  const limpiar = () => setFiltros({ busqueda:"", estatus:"Todos", prioridad:"Todos", tecnico:"Todos", usuario:"Todos", area:"Todos", sucursal:"Todos" }, () => setPage(1));
 
   const hayFiltros = filtros.busqueda || filtros.estatus!=="Todos" || filtros.prioridad!=="Todos"
     || filtros.tecnico!=="Todos" || filtros.usuario!=="Todos" || filtros.area!=="Todos" || filtros.sucursal!=="Todos";
@@ -627,11 +627,11 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           </div>
           {/* Paginación — componente compartido (misma barra que Historial de Insumos) */}
           <Paginacion
-            pagina={page}
-            setPagina={setPage}
-            totalPaginas={pages}
+            page={page}
+            onPageChange={setPage}
+            total={totalCount}
             pageSize={limit}
-            setPageSize={setLimit}
+            onPageSizeChange={setLimit}
             T={T}
             cargando={cargando}
           />

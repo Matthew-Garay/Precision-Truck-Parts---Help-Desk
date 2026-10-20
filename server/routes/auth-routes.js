@@ -94,6 +94,15 @@ const logoutLimiter = rateLimit({
   message: { error: "Demasiadas peticiones." },
 });
 
+// Rate limit para refresh-token (previene fuerza bruta)
+const refreshTokenLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Demasiados intentos. Intenta en 15 minutos." },
+});
+
 // Rutas públicas
 router.post("/login",            loginLimiter,     validate(schemaLogin), login);
 router.post("/recuperar",        recuperarLimiter, solicitarRecuperacion);
@@ -105,7 +114,7 @@ router.post("/reset-password",   recuperarLimiter, resetPassword);
 router.post("/logout", logoutLimiter, validate(schemaLogout), logout);
 
 // Renovar JWT — requiere token válido en Authorization
-router.post("/refresh-token", requireAuth, refreshToken);
+router.post("/refresh-token", refreshTokenLimiter, requireAuth, refreshToken);
 
 // Login con Zoho (OIDC server-based) — rutas GET públicas:
 // Zoho redirige el navegador aquí sin headers; el callback valida `state`

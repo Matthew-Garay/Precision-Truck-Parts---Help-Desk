@@ -66,7 +66,7 @@ const FORM_VACIO = {
 function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucursales, onGuardar, onCerrar }) {
   const isEdit = modo === "editar";
   const tk = useTokens(T, isDark);
-  const [form,   setForm]   = useState({ ...FORM_VACIO, ...(isEdit ? { ...empleado, password_nueva: "", id_sucursal: empleado.id_sucursal != null ? String(empleado.id_sucursal) : "", id_rol: String(empleado.id_rol ?? ""), id_departamento: String(empleado.id_departamento ?? "") } : {}) });
+  const [form,   setForm]   = useState({ ...FORM_VACIO, ...(isEdit ? { ...empleado, password_nueva: "", num_empleado: empleado.num_empleado ?? "", id_sucursal: empleado.id_sucursal != null ? String(empleado.id_sucursal) : "", id_rol: String(empleado.id_rol ?? ""), id_departamento: String(empleado.id_departamento ?? "") } : {}) });
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -378,7 +378,7 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
   const nombre = `${empleado.nombre} ${empleado.ap_paterno}`.trim();
 
   // Volver a la página 1 cuando cambian los filtros o el empleado consultado
-  useEffect(() => { setPagina(1); }, [desde, hasta, tipoFiltro, empleado.id_empleado]);
+  useEffect(() => { setPagina(1); }, [desde, hasta, tipoFiltro, empleado.id_empleado, filtros]);
 
   useEffect(() => {
     apiFetch(`/api/auth/accesos/${empleado.id_empleado}`)
@@ -600,11 +600,12 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
 
         {/* Paginación — componente compartido (misma barra que Historial de Insumos) */}
         <Paginacion
-          pagina={paginaActual}
-          setPagina={setPagina}
-          totalPaginas={totalPaginas}
+          variant="table"
+          page={paginaActual}
+          onPageChange={setPagina}
+          total={filtrados.length}
           pageSize={pageSize}
-          setPageSize={setPageSize}
+          onPageSizeChange={setPageSize}
           T={{ ...tk, text: tk.textMain, bg: tk.surface }}
         />
 
@@ -860,15 +861,16 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
         </table>
       </div>
 
-      {/* Paginación — componente compartido (misma barra que Historial de Insumos) */}
-      <Paginacion
-        pagina={paginaActual}
-        setPagina={setPagina}
-        totalPaginas={totalPaginas}
-        pageSize={pageSize}
-        setPageSize={setPageSize}
-        T={T}
-      />
+       {/* Paginación — componente compartido (misma barra que Historial de Insumos) */}
+       <Paginacion
+         variant="table"
+         page={paginaActual}
+         onPageChange={setPagina}
+         total={sorted.length}
+         pageSize={pageSize}
+         onPageSizeChange={setPageSize}
+         T={T}
+       />
     </div>
   );
 }
@@ -926,11 +928,11 @@ export default function Personal({ T }) {
   const guardarEmpleado = async (form, modo, empleadoId) => {
     const esEditar = modo === "editar";
     const url  = esEditar ? `/api/auth/empleados/${empleadoId}` : `/api/auth/empleados`;
-    const pass = form.password_nueva.trim();
-    const numEmp = form.num_empleado.trim();
+    const pass = String(form.password_nueva ?? "").trim();
+    const numEmp = String(form.num_empleado ?? "").trim();
     const body = esEditar
-      ? { ...(numEmp ? { num_empleado: numEmp } : {}), nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento), id_sucursal: form.id_sucursal !== "" ? Number(form.id_sucursal) : null, estatus: form.estatus, ...(pass ? { password_nueva: pass } : {}) }
-      : { num_empleado: numEmp, nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), password: pass, id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento), id_sucursal: form.id_sucursal ? Number(form.id_sucursal) : null };
+      ? { num_empleado: numEmp ? numEmp : null, nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento), id_sucursal: form.id_sucursal !== "" ? Number(form.id_sucursal) : null, estatus: form.estatus, ...(pass ? { password_nueva: pass } : {}) }
+      : { num_empleado: numEmp ? numEmp : null, nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), password: pass, id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento), id_sucursal: form.id_sucursal ? Number(form.id_sucursal) : null };
     const res  = await apiFetch(url, { method: esEditar ? "PUT" : "POST", body });
     const data = await res.json();
     if (!res.ok) throw new Error((data.errores?.[0]?.mensaje) || data.error || "Error al guardar");

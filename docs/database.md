@@ -70,7 +70,7 @@ CREATE TABLE `categoria` (
 
 CREATE TABLE `empleado` (
   `id_empleado` int NOT NULL AUTO_INCREMENT,
-  `num_empleado` varchar(20) NOT NULL,
+  `num_empleado` varchar(20) NULL,
   `nombre` varchar(50) NOT NULL,
   `ap_paterno` varchar(50) NOT NULL,
   `ap_materno` varchar(50) DEFAULT NULL,
@@ -257,7 +257,7 @@ Volumen aproximado al 12/10/2026 entre parentesis.
 | Columna | Tipo | Restriccion | Descripcion |
 | --- | --- | --- | --- |
 | id_empleado | int | PK, autoincremental | Identificador del usuario |
-| num_empleado | varchar(20) | NOT NULL, UNIQUE (`uq_num_empleado`) | Numero de empleado corporativo |
+| num_empleado | varchar(20) | NULL, UNIQUE (`uq_num_empleado`) | Numero de empleado corporativo |
 | nombre / ap_paterno / ap_materno | varchar(50) | nombre y ap_paterno NOT NULL | Nombre completo |
 | email | varchar(100) | NOT NULL, UNIQUE (`uq_email`) | Correo corporativo; unico y usado como usuario de login |
 | password | varchar(255) | NOT NULL | Hash bcrypt (12 rounds); nunca en claro |
@@ -474,7 +474,7 @@ Table categoria {
 
 Table empleado {
   id_empleado int [pk, increment]
-  num_empleado varchar(20) [not null, unique]
+  num_empleado varchar(20) [null, unique]
   nombre varchar(50) [not null]
   ap_paterno varchar(50) [not null]
   ap_materno varchar(50)

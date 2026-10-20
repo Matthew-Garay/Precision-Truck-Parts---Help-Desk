@@ -428,7 +428,7 @@ const Ticket = {
     if (prioridad) { conditions.push("t.prioridad = ?");    params.push(prioridad); }
     if (area)      { conditions.push("dep.nombre_departamento = ?"); params.push(area); }
     if (sucursal)  { conditions.push("s.nombre_sucursal = ?");      params.push(sucursal); }
-    if (usuario)   { conditions.push("REGEXP_REPLACE(TRIM(CONCAT(e.nombre,' ',e.ap_paterno,IF(e.ap_materno IS NOT NULL AND e.ap_materno!='',CONCAT(' ',e.ap_materno),''))), ' +', ' ') = ?"); params.push(usuario.replace(/\s+/g, ' ').trim()); }
+    if (usuario)   { conditions.push("REGEXP_REPLACE(TRIM(CONCAT(e.nombre,' ',e.ap_paterno,IF(e.ap_materno IS NOT NULL AND e.ap_materno!='',CONCAT(' ',e.ap_materno),''))), ' +', ' ') LIKE ?"); params.push(`%${usuario.replace(/\s+/g, ' ').trim()}%`); }
     if (q)         { conditions.push("(t.folio_ticket LIKE ? OR t.titulo LIKE ?)"); params.push(`%${q}%`, `%${q}%`); }
 
     const [rows] = await pool.query(
@@ -523,8 +523,10 @@ const Ticket = {
       conditions.push("(t.folio_ticket LIKE ? OR t.titulo LIKE ?)");
       params.push(`%${q}%`, `%${q}%`);
     }
-    if (tecnico)  { conditions.push("REGEXP_REPLACE(TRIM(CONCAT(r.nombre,' ',r.ap_paterno,IF(r.ap_materno IS NOT NULL AND r.ap_materno!='',CONCAT(' ',r.ap_materno),''))), ' +', ' ') = ?"); params.push(tecnico.replace(/\s+/g, ' ').trim()); }
-    if (usuario)  { conditions.push("REGEXP_REPLACE(TRIM(CONCAT(e.nombre,' ',e.ap_paterno,IF(e.ap_materno IS NOT NULL AND e.ap_materno!='',CONCAT(' ',e.ap_materno),''))), ' +', ' ') = ?"); params.push(usuario.replace(/\s+/g, ' ').trim()); }
+    // Filtros de técnico/usuario: texto libre (match parcial con LIKE), para
+    // que el filtro escribible coincida con "matt", "garay" o el nombre completo.
+    if (tecnico)  { conditions.push("REGEXP_REPLACE(TRIM(CONCAT(r.nombre,' ',r.ap_paterno,IF(r.ap_materno IS NOT NULL AND r.ap_materno!='',CONCAT(' ',r.ap_materno),''))), ' +', ' ') LIKE ?"); params.push(`%${tecnico.replace(/\s+/g, ' ').trim()}%`); }
+    if (usuario)  { conditions.push("REGEXP_REPLACE(TRIM(CONCAT(e.nombre,' ',e.ap_paterno,IF(e.ap_materno IS NOT NULL AND e.ap_materno!='',CONCAT(' ',e.ap_materno),''))), ' +', ' ') LIKE ?"); params.push(`%${usuario.replace(/\s+/g, ' ').trim()}%`); }
     if (area)     { conditions.push("d.nombre_departamento = ?"); params.push(area); }
     if (sucursal) { conditions.push("s.nombre_sucursal = ?");     params.push(sucursal); }
 
