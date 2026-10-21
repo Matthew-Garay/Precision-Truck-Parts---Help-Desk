@@ -606,7 +606,7 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
           total={filtrados.length}
           pageSize={pageSize}
           onPageSizeChange={setPageSize}
-          T={{ ...tk, text: tk.textMain, bg: tk.surface }}
+          T={T}
         />
 
         {/* Footer */}
@@ -869,7 +869,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
          total={sorted.length}
          pageSize={pageSize}
          onPageSizeChange={setPageSize}
-         T={{ ...T, text: T.textMain }}
+         T={T}
        />
     </div>
   );
