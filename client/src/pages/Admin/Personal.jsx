@@ -695,7 +695,7 @@ function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial }) {
             },
           ].map(item => (
             <button key={item.label} onMouseDown={item.action}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "8px 14px", fontSize: 12, fontWeight: 500, color: T.text, background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "8px 14px", fontSize: 12, fontWeight: 500, color: T.textMain, background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
               onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "#f8fafc"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
               {item.icon}{item.label}
@@ -769,7 +769,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
   const tdS = {
     padding: "10px 16px",
     fontSize: 11,
-    color: T.text,
+    color: T.textMain,
     borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}`,
     verticalAlign: "middle",
   };
@@ -811,7 +811,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
                       <Avatar nombre={nombre} size={30} isDark={isDark} />
                       <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                         <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: activo ? "#22c55e" : "#94a3b8", boxShadow: activo ? "0 0 0 2.5px rgba(34,197,94,0.2)" : "none" }} />
-                        <span style={{ fontSize: 13, fontWeight: 600, color: T.text, whiteSpace: "nowrap" }}>{nombre}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: T.textMain, whiteSpace: "nowrap" }}>{nombre}</span>
                       </div>
                     </div>
                   </td>
@@ -869,7 +869,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
          total={sorted.length}
          pageSize={pageSize}
          onPageSizeChange={setPageSize}
-         T={T}
+         T={{ ...T, text: T.textMain }}
        />
     </div>
   );

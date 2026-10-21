@@ -50,7 +50,7 @@ const MAX_INTENTOS = 5;
 
 // -- Persistencia de tokens en disco (sobrevive reinicios) -----
 const __dirname    = path.dirname(fileURLToPath(import.meta.url));
-const TOKENS_DIR  = path.join(__dirname, "../Workers");
+const TOKENS_DIR  = path.join(__dirname, "../workers");
 const TOKENS_FILE  = path.join(TOKENS_DIR, "reset_tokens.json");
 
 function cargarTokens() {
