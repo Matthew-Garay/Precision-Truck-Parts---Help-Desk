@@ -1,4 +1,3 @@
-﻿
 import React, { useState, useEffect, useCallback } from "react";
 import { useAutoRefresh } from '../../hooks/use-auto-refresh.js';
 import { apiFetch } from '../../services/api-client.js';
@@ -7,8 +6,16 @@ import { evaluarPassword, passwordSeguro } from '../../utils/password.js';
 import FiltrosToolbar from '../../components/FiltrosToolbar.jsx';
 import Paginacion from '../../components/Paginacion.jsx';
 import { X, Eye, EyeOff } from "lucide-react";
+import { useCardStyles } from '../../components/Card.jsx';
 
-const ORANGE  = "#F47920";
+const ORANGE = "#F47920";
+
+const ESTATUS_COLOR = { Activo: "#16a34a", Inactivo: "#94a3b8" };
+
+const fmt = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
+
+const LIMIT = 25;
+const FILTROS_INIT = { busqueda: "", departamento: "Todos", sucursal: "Todos", estatus: "Todos" };
 
 // ── Avatar ────────────────────────────────────────────────────────
 function Avatar({ nombre, size = 48, isDark }) {
@@ -37,7 +44,7 @@ function useTokens(T, isDark) {
     surface:    isDark ? "#161B22" : "#ffffff",
     surfaceAlt: isDark ? "#1a2030" : "#f8fafc",
     border:     isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0",
-    textMain:   T?.text      ?? (isDark ? "#e2e8f0" : "#1a202c"),
+    textMain:   T?.text ?? (isDark ? "#e2e8f0" : "#1a202c"),
     textMuted:  T?.textMuted ?? (isDark ? "#8b949e" : "#64748b"),
     textFaint:  T?.textFaint ?? (isDark ? "rgba(255,255,255,0.30)" : "#a0aec0"),
     inputBg:    isDark ? "rgba(255,255,255,0.04)" : "#f8fafc",
@@ -62,32 +69,35 @@ const FORM_VACIO = {
   id_sucursal: "", estatus: "Activo",
 };
 
+// ── Ícono de orden ────────────────────────────────────────────────
+function SortIcon({ dir }) {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: dir ? 1 : 0.3, flexShrink: 0 }}>
+      {dir === "asc" ? <polyline points="18 15 12 9 6 15" /> : <polyline points="6 9 12 15 18 9" />}
+    </svg>
+  );
+}
+
 // ── Modal Empleado (crear / editar) ───────────────────────────────
 function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucursales, onGuardar, onCerrar }) {
   const isEdit = modo === "editar";
   const tk = useTokens(T, isDark);
-  const [form,   setForm]   = useState({ ...FORM_VACIO, ...(isEdit ? { ...empleado, password_nueva: "", num_empleado: empleado.num_empleado ?? "", id_sucursal: empleado.id_sucursal != null ? String(empleado.id_sucursal) : "", id_rol: String(empleado.id_rol ?? ""), id_departamento: String(empleado.id_departamento ?? "") } : {}) });
+  const [form, setForm] = useState({ ...FORM_VACIO, ...(isEdit ? { ...empleado, password_nueva: "", num_empleado: empleado.num_empleado ?? "", id_sucursal: empleado.id_sucursal != null ? String(empleado.id_sucursal) : "", id_rol: String(empleado.id_rol ?? ""), id_departamento: String(empleado.id_departamento ?? "") } : {}) });
   const [saving, setSaving] = useState(false);
-  const [error,  setError]  = useState("");
+  const [error, setError] = useState("");
   const [showPass, setShowPass] = useState(false);
-
-  // Política de contraseña compartida (misma que valida el backend)
   const passEval = evaluarPassword(form.password_nueva);
-
   useEffect(() => {
     const fn = e => { if (e.key === "Escape") onCerrar(); };
     document.addEventListener("keydown", fn);
     return () => document.removeEventListener("keydown", fn);
   }, [onCerrar]);
-
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, []);
-
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
-
   const inp = {
     background: tk.inputBg, border: `1px solid ${tk.border}`,
     borderRadius: "6px", padding: "0 10px", height: "34px",
@@ -98,23 +108,21 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
   };
   const borderFocus = "#2563eb";
   const onFocus = e => { e.target.style.borderColor = borderFocus; e.target.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.10)"; e.target.style.background = isDark ? "rgba(255,255,255,0.07)" : "#fff"; };
-  const onBlur  = e => { e.target.style.borderColor = tk.border; e.target.style.boxShadow = "none"; e.target.style.background = tk.inputBg; };
-
+  const onBlur = e => { e.target.style.borderColor = tk.border; e.target.style.boxShadow = "none"; e.target.style.background = tk.inputBg; };
   const validarPassword = p => passwordSeguro(p);
-
   const guardar = async () => {
-    if (!form.nombre.trim())     return setError("El nombre es requerido.");
+    if (!form.nombre.trim()) return setError("El nombre es requerido.");
     if (!form.ap_paterno.trim()) return setError("El apellido paterno es requerido.");
     const emailErr = emailCorporativoValido(form.email);
-    if (emailErr)                return setError(emailErr);
+    if (emailErr) return setError(emailErr);
     const pass = form.password_nueva.trim();
-    if (!isEdit && !pass)        return setError("La contraseña es requerida.");
+    if (!isEdit && !pass) return setError("La contraseña es requerida.");
     if (pass) {
       const passErr = validarPassword(pass);
       if (passErr) return setError(passErr);
     }
-    if (!form.id_rol)            return setError("Selecciona un rol.");
-    if (!form.id_departamento)   return setError("Selecciona un área.");
+    if (!form.id_rol) return setError("Selecciona un rol.");
+    if (!form.id_departamento) return setError("Selecciona un área.");
     setSaving(true); setError("");
     try {
       await onGuardar(form, modo, empleado?.id_empleado);
@@ -123,7 +131,7 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
       setSaving(false);
     }
   };
-
+  const selectStyle = { ...inp, cursor: "pointer" };
   return (
     <div
       role="presentation"
@@ -131,11 +139,10 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
         position: "fixed", inset: 0, zIndex: 1000,
         background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.40)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "16px", animation: "miF 0.15s ease",
+        padding: "16px",
       }}
       onMouseDown={e => { if (e.target === e.currentTarget) onCerrar(); }}
     >
-      <style>{`@keyframes miF{from{opacity:0}to{opacity:1}} @keyframes miS{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}`}</style>
       <div
         role="dialog" aria-modal="true"
         style={{
@@ -146,13 +153,9 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
           boxShadow: isDark
             ? "0 16px 40px rgba(0,0,0,0.50), 0 1px 0 rgba(255,255,255,0.04) inset"
             : "0 16px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
-          animation: "miS 0.18s ease",
         }}
       >
-        {/* Línea acento */}
         <div style={{ height: "2px", flexShrink: 0, background: ORANGE, borderRadius: "10px 10px 0 0" }} />
-
-        {/* Header */}
         <div style={{ padding: "14px 18px 12px", borderBottom: `1px solid ${tk.border}`, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", flexShrink: 0 }}>
           <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>
@@ -165,23 +168,15 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
               {isEdit ? "Modifica los campos que necesites" : "Completa los datos del nuevo empleado"}
             </p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
-            <img src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"} alt="Precision Trucks"
-              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }} />
-            <button onClick={onCerrar} aria-label="Cerrar"
-              style={{ width: "26px", height: "26px", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${tk.border}`, borderRadius: "6px", cursor: "pointer", color: tk.textFaint, transition: "all 0.12s" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = tk.textMuted; e.currentTarget.style.color = tk.textMain; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = tk.border; e.currentTarget.style.color = tk.textFaint; }}>
-              <X size={12} strokeWidth={2} />
-            </button>
-          </div>
+          <button onClick={onCerrar} aria-label="Cerrar"
+            style={{ width: "26px", height: "26px", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${tk.border}`, borderRadius: "6px", cursor: "pointer", color: tk.textFaint, transition: "all 0.12s" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = tk.textMuted; e.currentTarget.style.color = tk.textMain; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = tk.border; e.currentTarget.style.color = tk.textFaint; }}>
+            <X size={12} strokeWidth={2} />
+          </button>
         </div>
-
-        {/* Body */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-
-            {/* Nombre + Apellido paterno */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
               <Field htmlFor="fe-nombre" label="Nombre" required textFaint={tk.textFaint}>
                 <input id="fe-nombre" type="text" value={form.nombre}
@@ -194,8 +189,6 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
                   placeholder="Ej. García" style={inp} onFocus={onFocus} onBlur={onBlur} />
               </Field>
             </div>
-
-            {/* Apellido materno + Num empleado */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
               <Field htmlFor="fe-apMat" label="Apellido materno" textFaint={tk.textFaint}>
                 <input id="fe-apMat" type="text" value={form.ap_materno}
@@ -208,8 +201,6 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
                   placeholder="Ej. EMP-001" style={inp} onFocus={onFocus} onBlur={onBlur} />
               </Field>
             </div>
-
-            {/* Correo */}
             <Field htmlFor="fe-email" label="Correo electrónico" required textFaint={tk.textFaint}>
               <input id="fe-email" type="email" value={form.email}
                 onChange={e => set("email", e.target.value)}
@@ -218,120 +209,60 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
                 Dominios permitidos: {DOMINIOS_PERMITIDOS.map(d => `@${d}`).join(", ")}
               </p>
             </Field>
-
-            {/* Contraseña */}
             <Field htmlFor="fe-pass" label={isEdit ? "Nueva contraseña (opcional)" : "Contraseña"} required={!isEdit} textFaint={tk.textFaint}>
               <div style={{ position: "relative" }}>
                 <input id="fe-pass" type={showPass ? "text" : "password"} value={form.password_nueva}
                   onChange={e => set("password_nueva", e.target.value)}
                   placeholder={isEdit ? "Dejar vacío para no cambiar" : "Mín. 8 chars, mayúscula, número y símbolo"}
                   style={{ ...inp, paddingRight: "34px" }} onFocus={onFocus} onBlur={onBlur} />
-                {/* Ver la contraseña que está escribiendo el admin */}
-                <button type="button" onClick={() => setShowPass(v => !v)}
-                  aria-label={showPass ? "Ocultar contraseña" : "Mostrar contraseña"}
-                  title={showPass ? "Ocultar" : "Mostrar"}
-                  style={{
-                    position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)",
-                    background: "none", border: "none", cursor: "pointer", padding: 0,
-                    display: "flex", alignItems: "center", color: tk.textFaint,
-                  }}>
-                  {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 4, color: tk.textMuted }}
+                >
+                  {showPass ? <EyeOff width="16" height="16" /> : <Eye width="16" height="16" />}
                 </button>
               </div>
-
-              {/* Seguridad: barra + checklist en vivo */}
-              {!passEval.vacia && (
-                <>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
-                    <div style={{ flex: 1, height: 3, borderRadius: 99, background: isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb", overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${passEval.pct}%`, background: passEval.color, borderRadius: 99, transition: "width 0.2s, background 0.2s" }} />
-                    </div>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: passEval.color, flexShrink: 0 }}>{passEval.etiqueta}</span>
-                  </div>
-                  <ul style={{ listStyle: "none", margin: "6px 0 0", padding: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 8px" }}>
-                    {passEval.reglas.map(r => (
-                      <li key={r.id} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: 9.5, color: r.ok ? "#16a34a" : tk.textFaint }}>
-                        {r.ok
-                          ? <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                          : <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>}
-                        {r.texto}
-                      </li>
-                    ))}
-                  </ul>
-                </>
+              {pass && passEval && (
+                <p style={{ fontSize: "11px", margin: "4px 0 0", color: passEval.valido ? "#16a34a" : "#dc2626" }}>
+                  {passEval.mensaje}
+                </p>
               )}
             </Field>
-
-            <div style={{ height: "1px", background: tk.border }} />
-
-            {/* Rol + Área */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <Field htmlFor="fe-depto" label="Área" required textFaint={tk.textFaint}>
+                <select id="fe-depto" value={form.id_departamento} onChange={e => set("id_departamento", e.target.value)} style={selectStyle}>
+                  <option value="">Selecciona un área</option>
+                  {departamentos.map(d => (
+                    <option key={d.id_departamento} value={String(d.id_departamento)}>{d.nombre_departamento}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field htmlFor="fe-suc" label="Sucursal" required textFaint={tk.textFaint}>
+                <select id="fe-suc" value={form.id_sucursal} onChange={e => set("id_sucursal", e.target.value)} style={selectStyle}>
+                  <option value="">Selecciona una sucursal</option>
+                  {sucursales.map(s => (
+                    <option key={s.id_sucursal} value={String(s.id_sucursal)}>{s.nombre_sucursal}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
               <Field htmlFor="fe-rol" label="Rol" required textFaint={tk.textFaint}>
-                <select id="fe-rol" value={form.id_rol} onChange={e => set("id_rol", e.target.value)}
-                  style={{ ...inp, cursor: "pointer" }} onFocus={onFocus} onBlur={onBlur}>
-                  <option value="">Seleccionar…</option>
-                  {roles.map(r => <option key={r.id_rol} value={r.id_rol}>{r.nombre_rol}</option>)}
+                <select id="fe-rol" value={form.id_rol} onChange={e => set("id_rol", e.target.value)} style={selectStyle}>
+                  <option value="">Selecciona un rol</option>
+                  {roles.map(r => (
+                    <option key={r.id_rol} value={String(r.id_rol)}>{r.nombre_rol}</option>
+                  ))}
                 </select>
               </Field>
-              <Field htmlFor="fe-depto" label="Área" required textFaint={tk.textFaint}>
-                <select id="fe-depto" value={form.id_departamento} onChange={e => set("id_departamento", e.target.value)}
-                  style={{ ...inp, cursor: "pointer" }} onFocus={onFocus} onBlur={onBlur}>
-                  <option value="">Seleccionar…</option>
-                  {departamentos.map(d => <option key={d.id_departamento} value={d.id_departamento}>{d.nombre_departamento}</option>)}
+              <Field htmlFor="fe-estatus" label="Estatus" required textFaint={tk.textFaint}>
+                <select id="fe-estatus" value={form.estatus} onChange={e => set("estatus", e.target.value)} style={selectStyle}>
+                  <option value="Activo">Activo</option>
+                  <option value="Inactivo">Inactivo</option>
                 </select>
               </Field>
             </div>
-
-            {/* Sucursal + Estatus */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              <Field htmlFor="fe-suc" label="Sucursal" textFaint={tk.textFaint}>
-                <select id="fe-suc" value={form.id_sucursal} onChange={e => set("id_sucursal", e.target.value)}
-                  style={{ ...inp, cursor: "pointer" }} onFocus={onFocus} onBlur={onBlur}>
-                  <option value="">Sin asignar</option>
-                  {sucursales.map(s => <option key={s.id_sucursal} value={s.id_sucursal}>{s.nombre_sucursal}</option>)}
-                </select>
-              </Field>
-              {isEdit && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textFaint }}>Estatus</span>
-                  <div style={{ display: "flex", borderRadius: "6px", overflow: "hidden", border: `1px solid ${tk.border}`, height: "34px" }}>
-                    {[
-                      { val: "Activo",   color: "#16a34a", bg: "rgba(22,163,74,0.12)",  border: "rgba(22,163,74,0.35)",  dot: "#22c55e",  label: "Activo"   },
-                      { val: "Inactivo", color: "#94a3b8", bg: "rgba(148,163,184,0.10)", border: "rgba(148,163,184,0.30)", dot: "#94a3b8", label: "Inactivo" },
-                    ].map((opt, i) => {
-                      const sel = form.estatus === opt.val;
-                      return (
-                        <button
-                          key={opt.val}
-                          type="button"
-                          onClick={() => set("estatus", opt.val)}
-                          style={{
-                            flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                            fontSize: "12px", fontWeight: sel ? 700 : 500, cursor: "pointer",
-                            background: sel ? opt.bg : (isDark ? "rgba(255,255,255,0.03)" : "#f8fafc"),
-                            color: sel ? opt.color : tk.textMuted,
-                            border: "none",
-                            borderRight: i === 0 ? `1px solid ${tk.border}` : "none",
-                            outline: sel ? `1.5px solid ${opt.border}` : "none",
-                            outlineOffset: "-1.5px",
-                            transition: "all 0.15s",
-                          }}
-                        >
-                          <span style={{
-                            width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
-                            background: sel ? opt.dot : tk.textFaint,
-                            boxShadow: sel && opt.val === "Activo" ? "0 0 0 2.5px rgba(34,197,94,0.25)" : "none",
-                            transition: "background 0.15s",
-                          }} />
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
             {error && (
               <p role="alert" style={{ margin: 0, padding: "8px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: 500, color: "#dc2626", background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2", border: `1px solid ${isDark ? "rgba(220,38,38,0.25)" : "#fecaca"}` }}>
                 {error}
@@ -339,19 +270,19 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
             )}
           </div>
         </div>
-
-        {/* Footer */}
         <div style={{ padding: "10px 18px", borderTop: `1px solid ${tk.border}`, background: tk.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
           <button type="button" onClick={onCerrar} disabled={saving}
             style={{ padding: "6px 16px", borderRadius: "6px", fontSize: "12px", fontWeight: 600, background: "transparent", border: `1px solid ${tk.border}`, color: tk.textMuted, cursor: "pointer", transition: "all 0.12s", opacity: saving ? 0.5 : 1 }}
-            onMouseEnter={e => { if (!saving) { e.currentTarget.style.borderColor = tk.textMuted; e.currentTarget.style.color = tk.textMain; }}}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = tk.border; e.currentTarget.style.color = tk.textMuted; }}>
+            onMouseEnter={e => { if (!saving) { e.currentTarget.style.borderColor = tk.textMuted; e.currentTarget.style.color = tk.textMain; } }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = tk.border; e.currentTarget.style.color = tk.textMuted; }}
+          >
             Cancelar
           </button>
           <button type="button" onClick={guardar} disabled={saving}
             style={{ padding: "6px 18px", borderRadius: "6px", fontSize: "12px", fontWeight: 700, background: saving ? `${ORANGE}99` : ORANGE, border: "none", color: "#fff", cursor: saving ? "not-allowed" : "pointer", transition: "opacity 0.12s" }}
             onMouseEnter={e => { if (!saving) e.currentTarget.style.opacity = "0.88"; }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}>
+            onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+          >
             {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear empleado"}
           </button>
         </div>
@@ -361,25 +292,20 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
 }
 // ── Modal Historial ───────────────────────────────────────────────
 function ModalHistorial({ T, isDark, empleado, onCerrar }) {
-  const ORANGE = "#F47920";
+  const tk = useTokens(T, isDark);
   const hoy = new Date();
-  const isoHoy   = hoy.toISOString().slice(0, 10);
+  const isoHoy = hoy.toISOString().slice(0, 10);
   const isoLunes = (() => { const d = new Date(hoy); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })();
-  const isoMes   = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-01`;
-
-  const [accesos,    setAccesos]    = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [desde,      setDesde]      = useState("");
-  const [hasta,      setHasta]      = useState("");
+  const isoMes = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-01`;
+  const [accesos, setAccesos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
   const [tipoFiltro, setTipoFiltro] = useState("todos");
-  const [pagina,     setPagina]     = useState(1);
-  const [pageSize,   setPageSize]   = useState(25);
-
+  const [pagina, setPagina] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const nombre = `${empleado.nombre} ${empleado.ap_paterno}`.trim();
-
-  // Volver a la página 1 cuando cambian los filtros o el empleado consultado
-  useEffect(() => { setPagina(1); }, [desde, hasta, tipoFiltro, empleado.id_empleado, filtros]);
-
+  useEffect(() => { setPagina(1); }, [desde, hasta, tipoFiltro, empleado.id_empleado]);
   useEffect(() => {
     apiFetch(`/api/auth/accesos/${empleado.id_empleado}`)
       .then(r => r.json())
@@ -387,80 +313,36 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [empleado.id_empleado]);
-
   useEffect(() => {
     const fn = (e) => { if (e.key === "Escape") onCerrar(); };
     document.addEventListener("keydown", fn);
     return () => document.removeEventListener("keydown", fn);
   }, [onCerrar]);
-
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, []);
-
   const fmt = iso => !iso ? "-" : new Date(iso).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
-
   const duracion = (entrada, salida) => {
-    if (!salida) return null;
-    const mins = Math.round((new Date(salida) - new Date(entrada)) / 60000);
-    return mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+    if (!entrada) return "-";
+    const fin = salida ? new Date(salida) : new Date();
+    const ini = new Date(entrada);
+    const ms = fin - ini;
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
-
-  const aplicarAtajo = (a) => {
-    if (a === "hoy")    { setDesde(isoHoy);   setHasta(isoHoy);  }
-    if (a === "semana") { setDesde(isoLunes);  setHasta(isoHoy);  }
-    if (a === "mes")    { setDesde(isoMes);    setHasta(isoHoy);  }
-    if (a === "todo")   { setDesde("");        setHasta("");       }
-  };
-
   const filtrados = accesos.filter(a => {
-    if (tipoFiltro === "activos"  && a.fecha_salida)  return false;
-    if (tipoFiltro === "cerrados" && !a.fecha_salida) return false;
-    if (desde) { const d = new Date(desde); d.setHours(0,0,0,0); if (new Date(a.fecha_entrada) < d) return false; }
-    if (hasta) { const h = new Date(hasta); h.setHours(23,59,59,999); if (new Date(a.fecha_entrada) > h) return false; }
+    if (desde && a.fecha_entrada < desde) return false;
+    if (hasta && a.fecha_entrada > hasta) return false;
+    if (tipoFiltro === "con_salida" && !a.fecha_salida) return false;
+    if (tipoFiltro === "sin_salida" && a.fecha_salida) return false;
     return true;
   });
-
-  // Paginación del historial
-  const totalPaginas    = Math.max(1, Math.ceil(filtrados.length / pageSize));
-  const paginaActual    = Math.min(pagina, totalPaginas);
-  const registrosPagina = filtrados.slice((paginaActual - 1) * pageSize, paginaActual * pageSize);
-
-  const exportarCSV = () => {
-    const filas = [["Entrada","Salida","Duración","Estado"], ...filtrados.map(a => [fmt(a.fecha_entrada), fmt(a.fecha_salida), duracion(a.fecha_entrada, a.fecha_salida)||"-", a.fecha_salida?"Cerrada":"Activa"])];
-    const csv  = filas.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const el   = document.createElement("a");
-    el.href = url; el.download = `historial_${empleado.num_empleado||empleado.id_empleado}.csv`;
-    el.click(); URL.revokeObjectURL(url);
-  };
-
-  const exportarPDF = () => {
-    const token = localStorage.getItem("_tk") ?? "";
-    const params = new URLSearchParams({ token });
-    if (desde) params.set("desde", desde);
-    if (hasta)  params.set("hasta",  hasta);
-    window.open(`/print/historial/${empleado.id_empleado}?${params}`, "_blank");
-  };
-  const tk = {
-    surface:    isDark ? "#161B22" : "#ffffff",
-    surfaceAlt: isDark ? "#1a2030" : "#f8fafc",
-    border:     isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0",
-    textMain:   T?.text     ?? (isDark ? "#e2e8f0" : "#1a202c"),
-    textMuted:  T?.textMuted ?? (isDark ? "#8b949e" : "#64748b"),
-    textFaint:  T?.textFaint ?? (isDark ? "rgba(255,255,255,0.30)" : "#a0aec0"),
-  };
-
-  const inpDate = {
-    background: isDark ? "rgba(255,255,255,0.05)" : "#f8fafc",
-    border: `1px solid ${tk.border}`,
-    color: tk.textMain, borderRadius: "6px", padding: "6px 10px",
-    fontSize: "12px", outline: "none", colorScheme: isDark ? "dark" : "light",
-  };
-
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / pageSize));
+  const paginaActual = Math.min(pagina, totalPaginas);
+  const filasPagina = filtrados.slice((paginaActual - 1) * pageSize, paginaActual * pageSize);
   return (
     <div
       role="presentation"
@@ -469,291 +351,174 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
         background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.40)",
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: "16px",
-        animation: "miF 0.15s ease",
       }}
       onMouseDown={e => { if (e.target === e.currentTarget) onCerrar(); }}
     >
-      <style>{`
-        @keyframes miF { from{opacity:0} to{opacity:1} }
-        @keyframes miS { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
-      `}</style>
-
       <div
-        role="dialog"
-        aria-modal="true"
+        role="dialog" aria-modal="true"
         style={{
-          width: "95%", maxWidth: "580px",
-          background: tk.surface,
-          border: `1px solid ${tk.border}`,
-          borderRadius: "10px",
-          display: "flex", flexDirection: "column",
+          width: "95%", maxWidth: "700px",
+          background: tk.surface, border: `1px solid ${tk.border}`,
+          borderRadius: "10px", display: "flex", flexDirection: "column",
           maxHeight: "92vh", overflow: "hidden",
           boxShadow: isDark
             ? "0 16px 40px rgba(0,0,0,0.50), 0 1px 0 rgba(255,255,255,0.04) inset"
             : "0 16px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
-          animation: "miS 0.18s ease",
         }}
       >
-        {/* Línea acento */}
-        <div style={{ height: "2px", flexShrink: 0, background: ORANGE, borderRadius: "10px 10px 0 0" }} />
-
-        {/* Header */}
-        <div style={{
-          padding: "14px 18px 12px",
-          borderBottom: `1px solid ${tk.border}`,
-          display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-          gap: "12px", flexShrink: 0,
-        }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>
-              Empleado
-            </p>
-            <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: tk.textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
-              Historial de Accesos
-            </h2>
-            <p style={{ margin: "3px 0 0", fontSize: "12px", color: tk.textMuted }}>{nombre}</p>
+        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${tk.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: tk.textMain }}>Historial de accesos</h3>
+            <p style={{ margin: "2px 0 0", fontSize: 12, color: tk.textMuted }}>{nombre}</p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
-            <img
-              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
-              alt="Precision Trucks"
-              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
-            />
-            <button
-              onClick={onCerrar}
-              aria-label="Cerrar"
-              style={{
-                width: "26px", height: "26px",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: "transparent", border: `1px solid ${tk.border}`,
-                borderRadius: "6px", cursor: "pointer", color: tk.textFaint,
-                transition: "all 0.12s",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = tk.textMuted; e.currentTarget.style.color = tk.textMain; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = tk.border; e.currentTarget.style.color = tk.textFaint; }}
-            >
-              <X size={12} strokeWidth={2} />
-            </button>
-          </div>
+          <button onClick={onCerrar} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: tk.textMuted }}>
+            <X width="20" height="20" />
+          </button>
         </div>
-        {/* Filtros */}
-        <div style={{ padding: "12px 18px", borderBottom: `1px solid ${tk.border}`, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textFaint }}>Período</span>
-            {[{ id:"todo", lbl:"Todo" }, { id:"hoy", lbl:"Hoy" }, { id:"semana", lbl:"Semana" }, { id:"mes", lbl:"Mes" }].map(a => {
-              const activo = a.id === "todo" ? (!desde && !hasta) : a.id === "hoy" ? (desde===isoHoy&&hasta===isoHoy) : a.id === "semana" ? (desde===isoLunes&&hasta===isoHoy) : (desde===isoMes&&hasta===isoHoy);
-              return (
-                <button key={a.id} onClick={() => aplicarAtajo(a.id)}
-                  style={{ padding: "3px 10px", borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: "pointer", background: activo ? "rgba(244,121,32,0.12)" : (isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"), color: activo ? ORANGE : tk.textMuted, border: `1px solid ${activo ? "rgba(244,121,32,0.35)" : tk.border}` }}>
-                  {a.lbl}
-                </button>
-              );
-            })}
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <input type="date" style={inpDate} value={desde} onChange={e => setDesde(e.target.value)} />
-              <span style={{ fontSize: 11, color: tk.textFaint }}>–</span>
-              <input type="date" style={inpDate} value={hasta} onChange={e => setHasta(e.target.value)} />
-            </div>
+        <div style={{ padding: "16px 18px", overflowY: "auto", flex: 1, minHeight: 0 }}>
+          <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+            <Field label="Desde" textFaint={tk.textFaint}>
+              <input type="date" id="desde" value={desde} onChange={e => setDesde(e.target.value)} style={{ ...inp, width: "140px" }} />
+            </Field>
+            <Field label="Hasta" textFaint={tk.textFaint}>
+              <input type="date" id="hasta" value={hasta} onChange={e => setHasta(e.target.value)} style={{ ...inp, width: "140px" }} />
+            </Field>
+            <Field label="Tipo" textFaint={tk.textFaint}>
+              <select id="tipoFiltro" value={tipoFiltro} onChange={e => setTipoFiltro(e.target.value)} style={{ ...inp, width: "150px", cursor: "pointer" }}>
+                <option value="todos">Todos</option>
+                <option value="con_salida">Con salida</option>
+                <option value="sin_salida">Sin salida</option>
+              </select>
+            </Field>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textFaint }}>Tipo</span>
-            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: `1px solid ${tk.border}` }}>
-              {[{ id:"todos", lbl:"Todos" }, { id:"activos", lbl:"Activos" }, { id:"cerrados", lbl:"Cerrados" }].map((t, i) => (
-                <button key={t.id} onClick={() => setTipoFiltro(t.id)}
-                  style={{ padding: "4px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: tipoFiltro === t.id ? ORANGE : (isDark ? "rgba(255,255,255,0.03)" : "#f8fafc"), color: tipoFiltro === t.id ? "#fff" : tk.textMuted, border: "none", borderRight: i < 2 ? `1px solid ${tk.border}` : "none" }}>
-                  {t.lbl}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Lista */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "12px 18px", display: "flex", flexDirection: "column", gap: 6 }}>
           {loading ? (
-            <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
-              <svg className="animate-spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 0" }}>
+              <svg className="animate-spin" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
             </div>
           ) : filtrados.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", gap: 8 }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={tk.textFaint} strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={tk.textFaint} strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
               <p style={{ fontSize: 13, fontWeight: 600, color: tk.textMuted, margin: 0 }}>Sin registros</p>
-              <p style={{ fontSize: 11, color: tk.textFaint, margin: 0 }}>Ajusta el rango o los filtros</p>
             </div>
-          ) : registrosPagina.map((a, i) => {
-            const dur = duracion(a.fecha_entrada, a.fecha_salida);
-            return (
-              <div key={a.id_acceso ?? i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: `1px solid ${tk.border}` }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: a.fecha_salida ? "#94a3b8" : "#22c55e", boxShadow: a.fecha_salida ? "none" : "0 0 0 3px rgba(34,197,94,0.2)" }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: tk.textMain }}>{fmt(a.fecha_entrada)}</span>
-                    {!a.fecha_salida && <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", padding: "1px 6px", borderRadius: 9999, background: "rgba(34,197,94,0.1)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.2)" }}>En sesión</span>}
-                  </div>
-                  {a.fecha_salida && <p style={{ fontSize: 11, color: tk.textFaint, margin: 0 }}>Salida: {fmt(a.fecha_salida)}</p>}
-                </div>
-                {dur && <span style={{ fontSize: 11, fontWeight: 600, flexShrink: 0, padding: "2px 8px", borderRadius: 5, background: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9", color: tk.textMuted }}>{dur}</span>}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Paginación — componente compartido (misma barra que Historial de Insumos) */}
-        <Paginacion
-          variant="table"
-          page={paginaActual}
-          onPageChange={setPagina}
-          total={filtrados.length}
-          pageSize={pageSize}
-          onPageSizeChange={setPageSize}
-          T={T}
-        />
-
-        {/* Footer */}
-        <div style={{ padding: "10px 18px", borderTop: `1px solid ${tk.border}`, background: tk.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
-          <span style={{ fontSize: 11, color: tk.textFaint }}>
-            {filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}
-            {totalPaginas > 1 && ` · mostrando ${((paginaActual - 1) * pageSize) + 1}–${Math.min(paginaActual * pageSize, filtrados.length)}`}
-          </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <span style={{ width: 1, height: 16, background: tk.border, margin: "0 2px" }} />
-            <button onClick={exportarCSV} disabled={filtrados.length === 0}
-              style={{ padding: "5px 12px", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, opacity: filtrados.length === 0 ? 0.4 : 1, background: "transparent", border: `1px solid ${tk.border}`, borderRadius: 6, cursor: filtrados.length === 0 ? "not-allowed" : "pointer", color: tk.textMuted, transition: "all 0.12s" }}
-              onMouseEnter={e => { if (filtrados.length > 0) { e.currentTarget.style.borderColor = tk.textMuted; e.currentTarget.style.color = tk.textMain; }}}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = tk.border; e.currentTarget.style.color = tk.textMuted; }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Exportar CSV
-            </button>
-            <button onClick={exportarPDF} disabled={filtrados.length === 0}
-              style={{ padding: "5px 12px", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 5, opacity: filtrados.length === 0 ? 0.4 : 1, background: filtrados.length === 0 ? `${ORANGE}60` : ORANGE, border: "none", borderRadius: 6, cursor: filtrados.length === 0 ? "not-allowed" : "pointer", color: "#fff", transition: "opacity 0.12s" }}
-              onMouseEnter={e => { if (filtrados.length > 0) e.currentTarget.style.opacity = "0.88"; }}
-              onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-              Exportar PDF
-            </button>
-          </div>
+          ) : (
+            <div style={{ borderRadius: 8, border: `1px solid ${tk.border}`, background: tk.surface, overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: tk.surfaceAlt, borderBottom: `1px solid ${tk.border}` }}>
+                    <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textMuted, textAlign: "left" }}>Fecha entrada</th>
+                    <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textMuted, textAlign: "left" }}>Fecha salida</th>
+                    <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textMuted, textAlign: "left" }}>Duración</th>
+                    <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textMuted, textAlign: "left" }}>Estatus</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filasPagina.map((a, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}`, background: i % 2 === 0 ? tk.surface : tk.surfaceAlt }}>
+                      <td style={{ padding: "10px 14px", fontSize: 11, color: tk.textMain }}>{fmt(a.fecha_entrada)}</td>
+                      <td style={{ padding: "10px 14px", fontSize: 11, color: tk.textMuted }}>{a.fecha_salida ? fmt(a.fecha_salida) : "—"}</td>
+                      <td style={{ padding: "10px 14px", fontSize: 11, color: tk.textMuted }}>{duracion(a.fecha_entrada, a.fecha_salida)}</td>
+                      <td style={{ padding: "10px 14px", fontSize: 11, fontWeight: 600, color: a.fecha_salida ? ESTATUS_COLOR.Activo : ESTATUS_COLOR.Inactivo }}>
+                        {a.fecha_salida ? "Completada" : "Abierta"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <Paginacion
+            page={paginaActual}
+            onPageChange={setPagina}
+            total={filtrados.length}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            T={T}
+            cargando={loading}
+          />
         </div>
       </div>
     </div>
   );
 }
-// ── Acciones Dropdown ─────────────────────────────────────────────
-function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial }) {
+// ── AccionesDropdown ──────────────────────────────────────────────
+function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial, onToggleEstatus }) {
+  const tk = useTokens(T, isDark);
   const [open, setOpen] = useState(false);
-  const [pos, setPos]   = useState({ top: 0, right: 0, openUp: false });
-  const btnRef = React.useRef(null);
-
-  const handleOpen = () => {
-    if (open) { setOpen(false); return; }
-    const rect = btnRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const menuH = 80; // altura aprox del menú
-    const openUp = spaceBelow < menuH + 8;
-    setPos({
-      top:   openUp ? rect.top - menuH - 4 : rect.bottom + 4,
-      right: window.innerWidth - rect.right,
-      openUp,
-    });
-    setOpen(true);
+  const activo = emp.estatus === "Activo";
+  const btnStyle = {
+    width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "8px 14px",
+    fontSize: 12, fontWeight: 500, color: tk.textMain, background: "transparent", border: "none",
+    cursor: "pointer", textAlign: "left",
   };
-
   return (
     <div style={{ position: "relative", display: "inline-block" }}>
       <button
-        ref={btnRef}
-        onClick={handleOpen}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onClick={() => setOpen(!open)}
         style={{
-          width: 30, height: 30, borderRadius: 6, cursor: "pointer",
-          background: open ? (isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9") : "transparent",
-          border: `1px solid ${open ? (isDark ? "rgba(255,255,255,0.12)" : "#d1d5db") : "transparent"}`,
-          color: T.textMuted, display: "flex", alignItems: "center", justifyContent: "center",
-          transition: "background .15s",
-        }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
-        </svg>
+          background: "transparent", border: `1px solid ${tk.border}`, color: tk.textMuted,
+          borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer",
+        }}
+      >
+        ⋮
       </button>
       {open && (
-        <div style={{
-          position: "fixed", top: pos.top, right: pos.right, zIndex: 9999,
-          minWidth: 162, borderRadius: 8, padding: "4px 0",
-          background: isDark ? "#1e2330" : "#ffffff",
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}`,
-          boxShadow: isDark ? "0 8px 24px rgba(0,0,0,0.5)" : "0 8px 24px rgba(0,0,0,0.12)",
-        }}>
-          {[
-            {
-              label: "Editar",
-              icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
-              action: () => { onEditar(emp); setOpen(false); },
-            },
-            {
-              label: "Historial",
-              icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-              action: () => { onHistorial(emp); setOpen(false); },
-            },
-          ].map(item => (
-            <button key={item.label} onMouseDown={item.action}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "8px 14px", fontSize: 12, fontWeight: 500, color: T.textMain, background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
-              onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "#f8fafc"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-              {item.icon}{item.label}
-            </button>
-          ))}
+        <div
+          style={{
+            position: "absolute", right: 0, top: "110%",
+            background: tk.surface, border: `1px solid ${tk.border}`,
+            borderRadius: 8, boxShadow: isDark ? "0 16px 40px rgba(0,0,0,0.50)" : "0 16px 40px rgba(15,23,42,0.12)",
+            minWidth: "160px", zIndex: 50,
+          }}
+          onMouseLeave={() => setOpen(false)}
+        >
+          <button onClick={() => { onEditar(emp); setOpen(false); }} style={{ ...btnStyle }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+            Editar
+          </button>
+          <button onClick={() => { onHistorial(emp); setOpen(false); }} style={{ ...btnStyle }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+            Historial
+          </button>
+          <button onClick={() => { onToggleEstatus(emp); setOpen(false); }} style={{ ...btnStyle, color: activo ? "#dc2626" : "#16a34a" }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 12H4" /><line x1="20" y1="12" x2="20" y2="12" /><line x1="4" y1="12" x2="4" y2="12" /></svg>
+            {activo ? "Desactivar" : "Activar"}
+          </button>
         </div>
       )}
     </div>
   );
 }
-// ── Ícono de orden ────────────────────────────────────────────────
-function SortIcon({ dir }) {
-  return (
-    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: dir ? 1 : 0.3, flexShrink: 0 }}>
-      {dir === "asc" ? <polyline points="18 15 12 9 6 15"/> : <polyline points="6 9 12 15 18 9"/>}
-    </svg>
-  );
-}
-
-
 // ── Tabla de Empleados ────────────────────────────────────────────
 function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleEstatus }) {
   const [sort, setSort] = useState({ col: "nombre", dir: "asc" });
-  const [pagina,   setPagina]   = useState(1);
+  const [pagina, setPagina] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-
-  // Volver a la página 1 cuando cambia el orden o la cantidad de filas filtradas
   useEffect(() => { setPagina(1); }, [sort.col, sort.dir, empleados.length]);
-
   const toggleSort = col => setSort(s => ({ col, dir: s.col === col && s.dir === "asc" ? "desc" : "asc" }));
-
   const sorted = [...empleados].sort((a, b) => {
     const map = {
-      nombre:   e => `${e.nombre} ${e.ap_paterno}`,
-      id:       e => e.num_empleado || "",
-      depto:    e => e.nombre_departamento || "",
+      nombre: e => `${e.nombre} ${e.ap_paterno}`,
+      id: e => e.num_empleado || "",
+      depto: e => e.nombre_departamento || "",
       sucursal: e => e.nombre_sucursal || "",
-      rol:      e => e.nombre_rol || "",
+      rol: e => e.nombre_rol || "",
     };
     const fn = map[sort.col] || (() => "");
     const cmp = fn(a).localeCompare(fn(b), "es");
     return sort.dir === "asc" ? cmp : -cmp;
   });
-
   const totalPaginas = Math.max(1, Math.ceil(sorted.length / pageSize));
   const paginaActual = Math.min(pagina, totalPaginas);
-  const filasPagina  = sorted.slice((paginaActual - 1) * pageSize, paginaActual * pageSize);
-
+  const filasPagina = sorted.slice((paginaActual - 1) * pageSize, paginaActual * pageSize);
   const COLS = [
-    { key: "nombre",   label: "Empleado",  sortable: true  },
-    { key: "id",       label: "ID",        sortable: true  },
-    { key: "depto",    label: "Área",      sortable: true  },
-    { key: "sucursal", label: "Sucursal",  sortable: true  },
-    { key: "rol",      label: "Rol",       sortable: true  },
-    { key: "email",    label: "Correo",    sortable: false },
-    { key: "acciones", label: "",          sortable: false },
+    { key: "nombre", label: "Empleado", sortable: true },
+    { key: "id", label: "ID", sortable: true },
+    { key: "depto", label: "Área", sortable: true },
+    { key: "sucursal", label: "Sucursal", sortable: true },
+    { key: "rol", label: "Rol", sortable: true },
+    { key: "email", label: "Correo", sortable: false },
+    { key: "acciones", label: "", sortable: false },
   ];
-
   const thS = {
     padding: "10px 16px",
     fontSize: 10, fontWeight: 700, letterSpacing: "0.07em",
@@ -765,7 +530,6 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
     userSelect: "none",
     position: "sticky", top: 0, zIndex: 2,
   };
-
   const tdS = {
     padding: "10px 16px",
     fontSize: 11,
@@ -773,10 +537,8 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
     borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}`,
     verticalAlign: "middle",
   };
-
   return (
     <div style={{ borderRadius: 10, overflow: "hidden", background: T.surface, border: `1px solid ${T.border}`, boxShadow: isDark ? "0 1px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-      {/* Contenedor interno: el encabezado se mantiene fijo y solo la tabla se desplaza */}
       <div style={{ overflowX: "auto", overflowY: "auto", flexGrow: 0, flexShrink: 1, flexBasis: "auto", minHeight: 0 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 0 }}>
           <thead>
@@ -797,15 +559,12 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
             {filasPagina.map((emp, i) => {
               const nombre = `${emp.nombre} ${emp.ap_paterno} ${emp.ap_materno || ""}`.trim();
               const activo = emp.estatus === "Activo";
-              const rowBg  = i % 2 === 0 ? (isDark ? "transparent" : T.surface) : (isDark ? "rgba(255,255,255,0.015)" : T.surfaceAlt);
-
+              const rowBg = i % 2 === 0 ? (isDark ? "transparent" : T.surface) : (isDark ? "rgba(255,255,255,0.015)" : T.surfaceAlt);
               return (
                 <tr key={emp.id_empleado}
                   style={{ background: rowBg, opacity: activo ? 1 : 0.55, transition: "background .12s" }}
                   onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.04)" : "#f0f7ff"}
                   onMouseLeave={e => e.currentTarget.style.background = rowBg}>
-
-                  {/* Empleado */}
                   <td style={tdS}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <Avatar nombre={nombre} size={30} isDark={isDark} />
@@ -815,21 +574,13 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
                       </div>
                     </div>
                   </td>
-
-                  {/* ID */}
                   <td style={tdS}>
                     <span style={{ fontFamily: "'JetBrains Mono','Courier New',monospace", fontSize: 11, color: T.textMuted, background: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6", padding: "2px 7px", borderRadius: 4 }}>
                       {emp.num_empleado || "—"}
                     </span>
                   </td>
-
-                  {/* Área */}
                   <td style={{ ...tdS, color: T.textMuted }}>{emp.nombre_departamento || "—"}</td>
-
-                  {/* Sucursal */}
                   <td style={{ ...tdS, color: T.textMuted }}>{emp.nombre_sucursal || "—"}</td>
-
-                  {/* Rol */}
                   <td style={tdS}>
                     {emp.nombre_rol && (
                       <span style={{ fontSize: 11, fontWeight: 600, background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "#e2e8f0"}`, padding: "2px 8px", borderRadius: 4 }}>
@@ -837,15 +588,11 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
                       </span>
                     )}
                   </td>
-
-                  {/* Correo */}
                   <td style={{ ...tdS, color: T.textMuted, maxWidth: 200 }}>
                     <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {emp.email}
                     </span>
                   </td>
-
-                  {/* Acciones */}
                   <td style={{ ...tdS, textAlign: "right", width: 52 }}>
                     <AccionesDropdown
                       emp={emp} T={T} isDark={isDark}
@@ -860,33 +607,29 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
           </tbody>
         </table>
       </div>
-
-       {/* Paginación — componente compartido (misma barra que Historial de Insumos) */}
-       <Paginacion
-         variant="table"
-         page={paginaActual}
-         onPageChange={setPagina}
-         total={sorted.length}
-         pageSize={pageSize}
-         onPageSizeChange={setPageSize}
-         T={T}
-       />
+      <Paginacion
+        page={paginaActual}
+        onPageChange={setPagina}
+        total={sorted.length}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        T={T}
+      />
     </div>
   );
 }
 // ── Personal (página principal) ───────────────────────────────────
 export default function Personal({ T }) {
   const isDark = T.isDark;
-
-  const [empleados,      setEmpleados]      = useState([]);
-  const [departamentos,  setDepartamentos]  = useState([]);
-  const [roles,          setRoles]          = useState([]);
-  const [sucursales,     setSucursales]     = useState([]);
-  const [loading,        setLoading]        = useState(true);
-  const [filtros,        setFiltros]        = useState({ busqueda: "", departamento: "Todos", sucursal: "Todos", estatus: "Todos" });
-  const [modal,          setModal]          = useState(null);
+  const { card, hdr } = useCardStyles(T);
+  const [empleados, setEmpleados] = useState([]);
+  const [departamentos, setDepartamentos] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [sucursales, setSucursales] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filtros, setFiltros] = useState(FILTROS_INIT);
+  const [modal, setModal] = useState(null);
   const [modalHistorial, setModalHistorial] = useState(null);
-
   const cargar = useCallback((mostrarLoading = true) => {
     if (mostrarLoading) setLoading(true);
     Promise.all([
@@ -902,10 +645,8 @@ export default function Personal({ T }) {
     }).catch(err => console.error("Error cargando personal:", err))
       .finally(() => { if (mostrarLoading) setLoading(false); });
   }, []);
-
   useEffect(() => { cargar(); }, [cargar]);
   useAutoRefresh(() => cargar(false), 30000);
-
   const filtrados = empleados.filter(e => {
     const nombre = `${e.nombre} ${e.ap_paterno} ${e.ap_materno || ""}`.toLowerCase();
     if (filtros.busqueda && !nombre.includes(filtros.busqueda.toLowerCase()) && !e.email?.toLowerCase().includes(filtros.busqueda.toLowerCase())) return false;
@@ -914,32 +655,28 @@ export default function Personal({ T }) {
     if (filtros.estatus !== "Todos" && e.estatus !== filtros.estatus) return false;
     return true;
   });
-
   const camposFiltro = [
-    { key: "busqueda",     label: "Búsqueda Rápida", type: "search", placeholder: "Nombre o correo..." },
-    { key: "departamento", label: "Área",      type: "select", opts: [{ value: "Todos", label: "Todos" }, ...departamentos.map(d => ({ value: String(d.id_departamento), label: d.nombre_departamento }))] },
-    { key: "sucursal",     label: "Sucursal",  type: "select", minWidth: "130px", opts: [{ value: "Todos", label: "Todas" }, ...sucursales.map(s => ({ value: String(s.id_sucursal), label: s.nombre_sucursal }))] },
-    { key: "estatus",      label: "Estatus",   type: "select", opts: ["Todos", "Activo", "Inactivo"] },
+    { key: "busqueda", label: "Búsqueda Rápida", type: "search", placeholder: "Nombre o correo..." },
+    { key: "departamento", label: "Área", type: "select", opts: [{ value: "Todos", label: "Todos" }, ...departamentos.map(d => ({ value: String(d.id_departamento), label: d.nombre_departamento }))] },
+    { key: "sucursal", label: "Sucursal", type: "select", minWidth: "130px", opts: [{ value: "Todos", label: "Todas" }, ...sucursales.map(s => ({ value: String(s.id_sucursal), label: s.nombre_sucursal }))] },
+    { key: "estatus", label: "Estatus", type: "select", opts: ["Todos", "Activo", "Inactivo"] },
   ];
-
-  const activos   = empleados.filter(e => e.estatus === "Activo").length;
+  const activos = empleados.filter(e => e.estatus === "Activo").length;
   const inactivos = empleados.filter(e => e.estatus !== "Activo").length;
-
   const guardarEmpleado = async (form, modo, empleadoId) => {
     const esEditar = modo === "editar";
-    const url  = esEditar ? `/api/auth/empleados/${empleadoId}` : `/api/auth/empleados`;
+    const url = esEditar ? `/api/auth/empleados/${empleadoId}` : `/api/auth/empleados`;
     const pass = String(form.password_nueva ?? "").trim();
     const numEmp = String(form.num_empleado ?? "").trim();
     const body = esEditar
       ? { num_empleado: numEmp ? numEmp : null, nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento), id_sucursal: form.id_sucursal !== "" ? Number(form.id_sucursal) : null, estatus: form.estatus, ...(pass ? { password_nueva: pass } : {}) }
       : { num_empleado: numEmp ? numEmp : null, nombre: form.nombre.trim(), ap_paterno: form.ap_paterno.trim(), ap_materno: form.ap_materno.trim(), email: form.email.trim(), password: pass, id_rol: Number(form.id_rol), id_departamento: Number(form.id_departamento), id_sucursal: form.id_sucursal ? Number(form.id_sucursal) : null };
-    const res  = await apiFetch(url, { method: esEditar ? "PUT" : "POST", body });
+    const res = await apiFetch(url, { method: esEditar ? "PUT" : "POST", body });
     const data = await res.json();
     if (!res.ok) throw new Error((data.errores?.[0]?.mensaje) || data.error || "Error al guardar");
     cargar();
     setTimeout(() => setModal(null), 1200);
   };
-
   const toggleEstatus = async (emp) => {
     const nuevoEstatus = emp.estatus === "Activo" ? "Inactivo" : "Activo";
     try {
@@ -948,17 +685,25 @@ export default function Personal({ T }) {
       cargar();
     } catch (err) { console.error("Error estatus:", err.message); }
   };
-
   return (
     <div style={{ background: T.bg, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div style={{ maxWidth: 1400, width: "100%", margin: "0 auto", padding: "16px 16px 0", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-
-        {/* KPI Cards */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: T.textMain, letterSpacing: "-0.02em" }}>Personal</h2>
+            <p style={{ margin: "2px 0 0", fontSize: 12, color: T.textMuted }}>Administración de empleados y accesos</p>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, padding: "4px 10px", borderRadius: 20, border: `1px solid ${T.border}`, background: T.surfaceAlt }}>
+              {empleados.length} empleados
+            </span>
+          </div>
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginBottom: 14 }}>
           {[
-            { label: "Total empleados", val: empleados.length,     color: "#3b82f6", bgL: "#eff6ff", bgD: "#0f1f3d" },
-            { label: "Activos",         val: activos,              color: "#16a34a", bgL: "#f0fdf4", bgD: "#071a0e" },
-            { label: "Inactivos",       val: inactivos,            color: "#94a3b8", bgL: "#f8fafc", bgD: "#1a1f2e" },
+            { label: "Total", val: empleados.length, color: "#3b82f6", bgL: "#eff6ff", bgD: "#0f1f3d" },
+            { label: "Activos", val: activos, color: "#16a34a", bgL: "#f0fdf4", bgD: "#071a0e" },
+            { label: "Inactivos", val: inactivos, color: "#94a3b8", bgL: "#f8fafc", bgD: "#1a1f2e" },
           ].map(s => (
             <div key={s.label} style={{ borderRadius: 8, padding: "10px 14px", background: isDark ? s.bgD : s.bgL, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}` }}>
               <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: isDark ? "rgba(255,255,255,0.4)" : "#6b7280", margin: 0 }}>{s.label}</p>
@@ -966,8 +711,6 @@ export default function Personal({ T }) {
             </div>
           ))}
         </div>
-
-        {/* Toolbar */}
         <FiltrosToolbar
           campos={camposFiltro}
           valores={filtros}
@@ -979,20 +722,18 @@ export default function Personal({ T }) {
             style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, background: ORANGE, color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
             onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.08)"}
             onMouseLeave={e => e.currentTarget.style.filter = "none"}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             Agregar empleado
           </button>
         </FiltrosToolbar>
-
-        {/* Contenido */}
         <div style={{ marginTop: 10, flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {loading ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "80px 0" }}>
-              <svg className="animate-spin" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              <svg className="animate-spin" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
             </div>
           ) : filtrados.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 0", gap: 8 }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={T.textFaint} strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={T.textFaint} strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
               <p style={{ fontSize: 13, fontWeight: 600, color: T.textMuted, margin: 0 }}>Sin resultados</p>
               <p style={{ fontSize: 12, color: T.textFaint, margin: 0 }}>Ajusta los filtros o agrega un nuevo empleado</p>
             </div>
@@ -1008,7 +749,6 @@ export default function Personal({ T }) {
           )}
         </div>
       </div>
-
       {modalHistorial && (
         <ModalHistorial T={T} isDark={isDark} empleado={modalHistorial} onCerrar={() => setModalHistorial(null)} />
       )}
@@ -1027,4 +767,3 @@ export default function Personal({ T }) {
     </div>
   );
 }
-
