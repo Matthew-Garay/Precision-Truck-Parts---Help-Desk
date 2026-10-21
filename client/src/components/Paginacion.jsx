@@ -12,8 +12,6 @@
  *   variant        — "table" | "bottom" (default: "bottom")
  *   cargando       — opcional; deshabilita la navegación mientras carga
  */
-import { useState } from "react";
-
 export default function Paginacion({
   total,
   page,
@@ -27,12 +25,12 @@ export default function Paginacion({
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const isDark = T?.isDark ?? false;
 
-  // Fallbacks para tokens que pueden no existir en el objeto T
-  const textMain    = T?.text ?? T?.textMain ?? (isDark ? "#e2e8f0" : "#1a202c");
-  const textMuted   = T?.textMuted ?? (isDark ? "#94a3b8" : "#64748b");
-  const surfaceAlt  = T?.surfaceAlt ?? (isDark ? "#1e2330" : "#f8fafc");
-  const surface     = T?.surface ?? (isDark ? "#0f1420" : "#ffffff");
-  const border      = T?.border ?? (isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0");
+  // Fallbacks defensivos para tokens del tema (evita errores si T o alguna clave es undefined)
+  const textMain = T?.text ?? T?.textMain ?? (isDark ? "#e2e8f0" : "#1a202c");
+  const textMuted = T?.textMuted ?? (isDark ? "#94a3b8" : "#64748b");
+  const surfaceAlt = T?.surfaceAlt ?? (isDark ? "#1e2330" : "#f8fafc");
+  const surface = T?.surface ?? (isDark ? "#0f1420" : "#ffffff");
+  const border = T?.border ?? (isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0");
 
   const irPagina = (p) => {
     if (p >= 1 && p <= totalPages && !cargando) onPageChange(p);
@@ -78,7 +76,7 @@ export default function Paginacion({
     textAlign: "center",
   };
 
-  // Selector de página (Mostrar X)
+  // Selector de cantidad (Mostrar X)
   const selectStyle = {
     fontSize: 12,
     padding: "6px 10px",
