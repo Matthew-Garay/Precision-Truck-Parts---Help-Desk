@@ -52,7 +52,7 @@ export default function Paginacion({
   const btnBase = {
     borderColor: T.border,
     background: T.surfaceAlt,
-    color: T.text,
+    color: T.text ?? T.textMain,
     borderRadius: 6,
   };
 
@@ -131,7 +131,7 @@ export default function Paginacion({
             borderRadius: 6,
             border: `1px solid ${T.border}`,
             background: T.surface,
-            color: T.text,
+            color: T.text ?? T.textMain,
             cursor: "pointer",
             minWidth: 56,
           }}
