@@ -10,9 +10,8 @@
  */
 import pool from "../config/db.js";
 
-const MOTIVO_VIEJO = "Entrega de proveedor de Alejandro Vera: 6/10/2026 16:31";
+const MOTIVO_VIEJO = "Entrega de proveedor de Alejandro Vera";
 const MOTIVO_NUEVO = "Entrega de proveedor de Jose Alejandro Vera Atilano";
-const NOMBRE_INSUMO = "Drum Xerox WorkCentre 3225";
 
 try {
   // 1) Ver ANTES cómo está la fila
