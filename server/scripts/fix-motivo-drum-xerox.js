@@ -3,7 +3,7 @@
  *
  * Guarda en la BASE DE DATOS el motivo del movimiento de ENTRADA del insumo
  * "Drum Xerox WorkCentre 3225" (stock inicial +3):
- *   "Stock inicial al crear el insumo"
+ *   "Stock inicial al ingresar el insumo"
  *     -> "Entrega de proveedor de Jose Alejandro Vera Atilano"
  *
  * Uso:  node scripts/fix-motivo-drum-xerox.js

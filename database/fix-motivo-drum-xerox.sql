@@ -15,7 +15,7 @@ FROM movimiento_inventario m
 INNER JOIN insumo i ON m.id_insumo = i.id_insumo
 WHERE i.nombre = 'Drum Xerox WorkCentre 3225'
   AND m.tipo = 'Entrada'
-  AND m.motivo = 'Stock inicial al crear el insumo';
+  AND m.motivo = 'Stock inicial al ingresar el insumo';
 
 -- 2) Cambiar el motivo
 UPDATE movimiento_inventario m
