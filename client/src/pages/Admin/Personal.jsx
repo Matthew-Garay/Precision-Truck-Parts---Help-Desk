@@ -738,6 +738,7 @@ export default function Personal({ T }) {
           </button>
         </FiltrosToolbar>
 </div>
+</div>
 
 </FiltrosToolbar>
       </div>
