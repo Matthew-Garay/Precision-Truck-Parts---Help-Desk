@@ -737,6 +737,8 @@ export default function Personal({ T }) {
             Agregar empleado
           </button>
         </FiltrosToolbar>
+</div>
+
 </FiltrosToolbar>
       </div>
     </div>
