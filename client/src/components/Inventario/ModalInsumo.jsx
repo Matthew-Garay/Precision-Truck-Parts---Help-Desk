@@ -40,6 +40,37 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
   const [fotoPreview, setFotoPreview] = useState(insumo?.imagen_url || null);
 
   useEffect(() => { firstRef.current?.focus(); }, []);
+// Modal persistente: solo se cierra con la X, Cancelar o Guardar.
+// Sin cierre por Escape ni por clic en el overlay para evitar cierres accidentales.
+// El modal NO se cierra al hacer clic fuera (backdrop) ni con la tecla Escape.
+
+  useEffect(() => {
+    // Prevenir cierre por clic fuera y tecla Escape
+    const handleOutsideClick = (e) => {
+      if (e.target === e.currentTarget) {
+        // No hacer nada - solo permite cierre por X, Cancelar o Guardar
+      }
+    };
+    const handleEscape = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        // No cerrar con Escape
+      }
+    };
+
+    document.addEventListener("click", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("click", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
+  useEffect(() => { firstRef.current?.focus(); }, []);
 
   // Modal persistente: solo se cierra con la X, Cancelar o Guardar.
   // Sin cierre por Escape ni por clic en el overlay para evitar cierres accidentales.
@@ -51,6 +82,9 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
   }, []);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  /* Modal width: ancho responsivo para mejor visualización de datos */
+  const modalWidth = isDark ? "min(90vw, 800px)" : "min(90vw, 700px)";
 
   /* ── Tokens ── */
   const surface    = isDark ? "#161B22" : "#ffffff";
@@ -448,7 +482,8 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
           >
             {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear insumo"}
           </button>
-        </div>
+        <div style={{ width: modalWidth }}>
+
       </div>
     </div>
   );

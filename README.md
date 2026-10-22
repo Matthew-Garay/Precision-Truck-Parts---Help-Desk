@@ -64,7 +64,7 @@ todos** lo devuelve al listado.
 
 ## Requisitos previos
 
-- **Node.js 18 o superior**
+- **Node.js** (versión 14 o superior)s 18 o superior**
 - **npm 9 o superior**
 - **MySQL 8 o superior**
 
