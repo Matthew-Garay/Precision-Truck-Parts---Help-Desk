@@ -4,14 +4,14 @@
  * Guarda en la BASE DE DATOS el motivo del movimiento de ENTRADA del insumo
  * "Drum Xerox WorkCentre 3225" (stock inicial +3):
  *   "Stock inicial al crear el insumo"
- *     -> "Entrega de proveedor de Alejandro Vera: 6/10/2026 16:31"
+ *     -> "Entrega de proveedor de Jose Alejandro Vera Atilano"
  *
  * Uso:  node scripts/fix-motivo-drum-xerox.js
  */
 import pool from "../config/db.js";
 
 const MOTIVO_VIEJO = "Entrega de proveedor de Alejandro Vera: 6/10/2026 16:31";
-const MOTIVO_NUEVO = "Entrega de proveedor de Alejandro Vera";
+const MOTIVO_NUEVO = "Entrega de proveedor de Jose Alejandro Vera Atilano";
 const NOMBRE_INSUMO = "Drum Xerox WorkCentre 3225";
 
 try {

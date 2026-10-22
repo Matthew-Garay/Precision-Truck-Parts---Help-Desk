@@ -14,6 +14,17 @@ const ESTATUS_COLOR = { Activo: "#16a34a", Inactivo: "#94a3b8" };
 
 const fmt = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
 
+/** Formatea un nombre completo a Title Case (Ahtziri Anahi Hernandez Correa),
+ *  evitando que se muestre todo en mayusculas o todo en minusculas
+ *  independientemente de como venga de la base de datos. */
+const nombreFormateado = (nombre, apPaterno, apMaterno) => {
+  const partes = [nombre, apPaterno, apMaterno]
+    .filter(Boolean)
+    .map(p => String(p).trim().toLowerCase())
+    .map(p => p.charAt(0).toUpperCase() + p.slice(1));
+  return partes.join(" ");
+};
+
 const LIMIT = 25;
 const FILTROS_INIT = { busqueda: "", departamento: "Todos", sucursal: "Todos", estatus: "Todos" };
 
@@ -557,7 +568,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
           </thead>
           <tbody>
             {filasPagina.map((emp, i) => {
-              const nombre = `${emp.nombre} ${emp.ap_paterno} ${emp.ap_materno || ""}`.trim();
+              const nombre = nombreFormateado(emp.nombre, emp.ap_paterno, emp.ap_materno);
               const activo = emp.estatus === "Activo";
               const rowBg = i % 2 === 0 ? (isDark ? "transparent" : T.surface) : (isDark ? "rgba(255,255,255,0.015)" : T.surfaceAlt);
               return (

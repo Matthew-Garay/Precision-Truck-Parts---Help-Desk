@@ -20,7 +20,7 @@ WHERE i.nombre = 'Drum Xerox WorkCentre 3225'
 -- 2) Cambiar el motivo
 UPDATE movimiento_inventario m
 INNER JOIN insumo i ON m.id_insumo = i.id_insumo
-SET m.motivo = 'Entrega de proveedor de Alejandro Vera'
+SET m.motivo = 'Entrega de proveedor de Jose Alejandro Vera Atilano'
 WHERE i.nombre = 'Drum Xerox WorkCentre 3225'
   AND m.tipo = 'Entrada'
   AND m.motivo = 'Entrega de proveedor de Alejandro Vera: 6/10/2026 16:31';
