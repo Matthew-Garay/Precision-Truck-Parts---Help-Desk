@@ -10,7 +10,7 @@
  * Estrategia cromatica 60-30-10:
  *   60% Neutros    - fondos blancos y grises claro para contenedores
  *   30% Slate      - texto y bordes en escala de grises azulados
- *   10% Acento     - azul #2563EB exclusivamente para acciones principales
+ *   10% Acento     - naranja #F97316 exclusivamente para acciones primarias y alertas críticas
  *
  * Colores semanticos (solo para estados funcionales):
  *   #DC2626 - Error critico (stock agotado, eliminacion)
@@ -45,11 +45,11 @@
 //  Atomic Design · Regla 60-30-10 · Heurísticas de Nielsen · Mobile-First
 // ================================================================
 //
-//  ESTRATEGIA CROMÁTICA (60-30-10):
+// ESTRATEGIA CROMÁTICA (60-30-10)
 //  ┌──────────────────────────────────────────────────────────┐
 //  │  60%  Neutros   #FFFFFF fondos · #F8FAFC contenedores    │
 //  │  30%  Slate     #475569 textos · #E2E8F0 bordes sutiles  │
-//  │  10%  Acento    #2563EB acciones principales ÚNICAMENTE  │
+//  │  10%  Acento    #F97316 acciones principales ÚNICAMENTE  │
 //  └──────────────────────────────────────────────────────────┘
 //
 //  SEMÁNTICA DE COLOR (solo estados funcionales):
@@ -94,9 +94,9 @@ export const SLATE = {
 // ── 10%: ACENTO único ────────────────────────────────────────────
 // REGLA ABSOLUTA: solo en botón primario, ítem activo, focus ring, links
 export const ACCENT = {
-  base:   "#2563EB",
-  dark:   "#1D4ED8",   // hover del botón primario
-  light:  "#EFF6FF",   // bg de badge info / highlight
+  base:   "#F97316",
+  dark:   "#EA580C",   // hover del botón primario
+  light:  "#FFF7ED",   // bg de badge primary / highlight
   muted:  "rgba(37,99,235,0.12)",  // focus ring
 };
 
@@ -126,9 +126,9 @@ export const TICKET_STATUS = {
   // En Proceso → Azul (actividad, en progreso)
   enProceso: {
     label:     "En proceso",
-    color:     "#2563EB",
-    bg:        "#EFF6FF",
-    bgDark:    "rgba(37,99,235,0.15)",
+    color:     "var(--color-primary)",
+    bg:        "var(--color-primary-light)",
+    bgDark:    "var(--color-primary-muted)",
     border:    "rgba(37,99,235,0.25)",
     borderDark:"rgba(37,99,235,0.40)",
   },
@@ -268,7 +268,7 @@ export const SHADOWS = {
 // ================================================================
 
 // ── Átomo: Botón Primario ────────────────────────────────────────
-// Acento #2563EB — SOLO acciones de confirmación/envío principal
+// Acento #F97316 — SOLO acciones de confirmación/envío principal
 export const BTN_PRIMARY = {
   background:   ACCENT.base,
   color:        "#fff",
@@ -433,7 +433,7 @@ export const CARD_FOOTER = {
 // ── Organismo: Navbar (Barra de navegación) ──────────────────────
 // Estructura: [Logo + Brand] · [Nav links] · [User + Notificaciones]
 // Color: Slate-900 (#0F172A) — estructura máxima autoridad visual
-// Acento: solo el ítem ACTIVO usa #2563EB
+// Acento: solo el ítem ACTIVO usa #F97316
 export const NAVBAR = {
   root: {
     height:      "56px",

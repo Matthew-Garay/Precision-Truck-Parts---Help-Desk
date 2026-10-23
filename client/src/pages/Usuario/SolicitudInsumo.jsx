@@ -1076,7 +1076,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                   <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#fff" }}>Solicitud</span>
                 </div>
                 {totalItemCount > 0 && (
-                  <span style={{ fontSize: 9, fontWeight: 800, padding: "1px 6px", borderRadius: 99, background: "#2563eb", color: "#fff" }}>
+                  <span style={{ fontSize: 9, fontWeight: 800, padding: "1px 6px", borderRadius: 99, background: "var(--color-primary)", color: "#fff" }}>
                     {totalItemCount}
                   </span>
                 )}
@@ -1206,7 +1206,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                 {totalItemCount > 0 ? "Tu solicitud" : "Agrega insumos"}
               </span>
               {totalItemCount > 0 && (
-                <span style={{ fontSize: 11, fontWeight: 800, padding: "1px 8px", borderRadius: 99, background: "#2563eb", color: "#fff", flexShrink: 0 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, padding: "1px 8px", borderRadius: 99, background: "var(--color-primary)", color: "#fff", flexShrink: 0 }}>
                   {totalItemCount} pza.
                 </span>
               )}
@@ -1260,7 +1260,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     <Ticket size={14} style={{ color: "#60a5fa" }} />
                     <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Solicitud en Proceso</span>
                     {totalItemCount > 0 && (
-                      <span style={{ fontSize: 10, fontWeight: 800, padding: "1px 8px", borderRadius: 99, background: "#2563eb", color: "#fff" }}>
+                      <span style={{ fontSize: 10, fontWeight: 800, padding: "1px 8px", borderRadius: 99, background: "var(--color-primary)", color: "#fff" }}>
                         {totalItemCount}
                       </span>
                     )}

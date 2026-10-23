@@ -49,11 +49,11 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, T }) {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  /* ── Tokens (mismos de ModalInsumo) ── */
+  /* Tokens (mismos de ModalInsumo)
   const surface     = isDark ? "#161B22" : "#ffffff";
   const surfaceAlt  = isDark ? "#1a2030" : "#f8fafc";
   const border      = isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0";
-  const borderFocus = "#2563eb";
+  const borderFocus = "var(--color-primary)";
   const textMain    = T?.text     ?? (isDark ? "#e2e8f0" : "#1a202c");
   const textMuted   = T?.textMuted ?? (isDark ? "#8b949e" : "#64748b");
   const textFaint   = T?.textFaint ?? (isDark ? "rgba(255,255,255,0.30)" : "#a0aec0");
