@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ModalInsumo.jsx — Crear / Editar insumo
  * Mismo sistema visual que ModalDetalleInsumo.
  */
@@ -18,7 +18,7 @@ const INSUMO_VACIO = {
 function Field({ label, htmlFor, required, children, textFaint, style }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0, ...(style || {}) }}>
-      <label htmlFor={htmlFor} style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: textFaint }}>
+      <label htmlFor={htmlFor} style={{ fontSize: "14px", fontWeight: 500, color: textFaint }}>
         {label}{required && <span style={{ color: ORANGE, marginLeft: "2px" }}>*</span>}
       </label>
       {children}
@@ -86,7 +86,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
   /* Modal width: ancho responsivo para mejor visualización de datos */
   const modalWidth = isDark ? "min(90vw, 800px)" : "min(90vw, 700px)";
 
-  /* ── Tokens ── */
+  /* Tokens */
   const surface    = isDark ? "#161B22" : "#ffffff";
   const surfaceAlt = isDark ? "#1a2030" : "#f8fafc";
   const border     = isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0";
@@ -441,7 +441,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
           </form>
         </div>
 
-        {/* ── Footer ── */}
+        {/* Footer */}
         <div style={{
           padding: "10px 18px",
           borderTop: `1px solid ${border}`,
@@ -454,8 +454,8 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
             onClick={onClose}
             disabled={saving}
             style={{
-              padding: "6px 16px", borderRadius: "6px",
-              fontSize: "12px", fontWeight: 600,
+              padding: "14px 24px", borderRadius: "6px",
+              fontSize: "14px", fontWeight: 600,
               background: "transparent", border: `1px solid ${border}`,
               color: textMuted, cursor: "pointer", transition: "all 0.12s",
               opacity: saving ? 0.5 : 1,
@@ -470,8 +470,8 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
             form="form-insumo"
             disabled={saving}
             style={{
-              padding: "6px 18px", borderRadius: "6px",
-              fontSize: "12px", fontWeight: 700,
+              padding: "14px 24px", borderRadius: "6px",
+              fontSize: "14px", fontWeight: 700,
               background: saving ? `${ORANGE}99` : ORANGE,
               border: "none", color: "#fff",
               cursor: saving ? "not-allowed" : "pointer",
@@ -482,7 +482,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
           >
             {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear insumo"}
           </button>
-        <div style={{ width: modalWidth }}>
+        </div>
 
       </div>
     </div>

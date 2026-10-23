@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { X, Package, Hash, Layers, Tag, AlignLeft, BarChart2, ZoomIn } from "lucide-react";
 
-const ORANGE = "#F47920";
+const ORANGE = "var(--color-primary)";
 
 const ESTADO_META = {
   Excelente: { color: "#16a34a", bg: "rgba(22,163,74,0.08)",  border: "rgba(22,163,74,0.20)" },
-  Bueno:     { color: "#2563eb", bg: "rgba(37,99,235,0.08)",  border: "rgba(37,99,235,0.20)" },
+  Bueno:       { color: "#16a34a", bg: "rgba(22,163,74,0.08)",  border: "rgba(22,163,74,0.20)" },
   Regular:   { color: "#d97706", bg: "rgba(217,119,6,0.08)",  border: "rgba(217,119,6,0.20)" },
   Malo:      { color: "#dc2626", bg: "rgba(220,38,38,0.08)",  border: "rgba(220,38,38,0.20)" },
   Dañado:    { color: "#7f1d1d", bg: "rgba(127,29,29,0.08)",  border: "rgba(127,29,29,0.20)" },
@@ -21,8 +21,8 @@ function Badge({ value, map }) {
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", gap: "4px",
-      padding: "2px 9px", borderRadius: "99px",
-      fontSize: "11px", fontWeight: 600,
+      padding: "14px 16px", borderRadius: "99px",
+      fontSize: "14px", fontWeight: 500,
       background: s.bg, color: s.color, border: `1px solid ${s.border}`,
     }}>
       <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: s.color, flexShrink: 0 }} />
@@ -71,7 +71,7 @@ function SpecCard({ icon: Icon, label, value, isDark, mono = false }) {
       </div>
       <div style={{ minWidth: 0, flex: 1 }}>
         <p style={{
-          margin: 0, fontSize: "9px", fontWeight: 800, textTransform: "uppercase",
+          margin: 0, fontSize: "14px", fontWeight: 600, textTransform: "uppercase",
           letterSpacing: "0.08em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0",
         }}>
           {label}
@@ -165,7 +165,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
         {/* Línea acento naranja */}
         <div style={{ height: "2px", flexShrink: 0, background: ORANGE, borderRadius: "10px 10px 0 0" }} />
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div style={{
           padding: "14px 18px 12px",
           background: surface,
@@ -214,7 +214,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
           </div>
         </div>
 
-        {/* ── Body ── */}
+        {/* Body */}
         <div style={{ flex: 1, overflowY: "auto" }}>
 
           {/* Imagen — clic para verla en grande */}
@@ -264,7 +264,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
 
           <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: "16px" }}>
 
-            {/* ── Badges: estado / disponibilidad / categoría ── */}
+            {/* Badges: estado / disponibilidad / categoría */}
             <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
               {insumo.estado && <Badge value={insumo.estado} map={ESTADO_META} />}
               {!ocultarStock && insumo.disponibilidad && <Badge value={insumo.disponibilidad} map={DISP_META} />}
@@ -280,7 +280,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
               )}
             </div>
 
-            {/* ── Stock destacado (solo admin / cuando aplica) ── */}
+            {/* Stock destacado (solo admin / cuando aplica) */}
             {!ocultarStock && insumo.stock != null && (
               <div style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -311,7 +311,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
               </div>
             )}
 
-            {/* ── Especificaciones (tarjetas) ── */}
+            {/* Especificaciones (tarjetas) */}
             {(insumo.marca || insumo.modelo || insumo.num_serie) && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                 <SpecCard icon={Layers} label="Marca"        value={insumo.marca}    isDark={isDark} />
@@ -365,8 +365,8 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
           <button
             onClick={onClose}
             style={{
-              padding: "6px 16px", borderRadius: "6px",
-              fontSize: "12px", fontWeight: 600,
+              padding: "14px 24px", borderRadius: "6px",
+              fontSize: "14px", fontWeight: 600,
               background: "transparent",
               border: `1px solid ${border}`,
               color: textMuted, cursor: "pointer", transition: "all 0.12s",

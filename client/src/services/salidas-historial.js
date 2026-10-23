@@ -13,7 +13,7 @@ import { apiFetch } from './api-client.js';
  * Aquí se parsean de vuelta para rearmar la HOJA de salida sin idas extra.
  */
 
-/* ── Lectura del motivo del movimiento ──────────────────────────── */
+// Lectura del motivo del movimiento
 export function parsearMotivoSalida(motivo) {
   const txt = String(motivo ?? "").trim();
   const folio = (txt.match(/\[(SAL-[^\]]+)\]/) || [])[1] || null;
@@ -184,7 +184,7 @@ export function abrirHojaSalida(g) {
   }
 }
 
-/* ── Descargas paginadas (el backend limita a 200/500 por petición) ─ */
+// Descargas paginadas
 async function traerEnBloques(urlBase, { bloque = 200, maxPaginas = 60 } = {}) {
   let out = [];
   for (let page = 1; page <= maxPaginas; page++) {

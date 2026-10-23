@@ -5,7 +5,7 @@
  *
  * FUNCIÓN PRINCIPAL: generarFolio(conn, tabla, campoFolio, prefijo)
  * ─────────────────────────────────────────────────────────────────
- * Genera un folio secuencial con formato <PREFIJO>-YYYYMM-NNNN de forma
+ * Genera un folio secuencial con formato <PREFIJO>-YYYYMMDD-NNNN de forma
  * segura bajo alta concurrencia mediante bloqueo exclusivo FOR UPDATE.
  *
  * Estrategia anti-race-condition:
@@ -55,10 +55,10 @@ export const isProd = () => process.env.NODE_ENV === "production";
 export async function generarFolio(conn, tabla, campoFolio, prefijo) {
   const ahora   = new Date();
   const anio    = ahora.getFullYear();
-  const mes     = String(ahora.getMonth() + 1).padStart(2, "0");
-  // Sin prefijo el folio queda YYYYMM-NNNN (ej. 202610-0001). Si se pasa un
-  // prefijo se antepone: PREFIJO-YYYYMM-NNNN. El numero se reinicia cada mes.
-  const segmento = prefijo ? `${prefijo}-${anio}${mes}-` : `${anio}${mes}-`;
+  const dia     = String(ahora.getDate()).padStart(2, "0");
+  // Sin prefijo el folio queda YYYYMMDD-NNNN (ej. 20261006-0001). Si se pasa un
+  // prefijo se antepone: PREFIJO-YYYYMMDD-NNNN. El numero se reinicia cada dia.
+  const segmento = prefijo ? `${prefijo}-${anio}${dia}-` : `${anio}${dia}-`;
 
   // FOR UPDATE: bloquea las filas del mes actual hasta el COMMIT del llamador.
   // CAST(...AS UNSIGNED) ordena numéricamente para obtener el último NNN real,
