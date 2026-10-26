@@ -1,0 +1,8 @@
+﻿/** : El término '/**' no se reconoce como nombre de un cmdlet, función, archivo de script o programa ejecutable. Compruebe si escribió correctamente el nombre o, 
+si incluyó una ruta de acceso, compruebe que dicha ruta es correcta e inténtelo de nuevo.
+En línea: 1 Carácter: 1
++ /**  * DesignSystem.js  *  * Sistema de diseno centralizado de Precis ...
++ ~~~
+    + CategoryInfo          : ObjectNotFound: (/**:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
