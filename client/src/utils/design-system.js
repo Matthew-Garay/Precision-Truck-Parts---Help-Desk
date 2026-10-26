@@ -97,17 +97,17 @@ export const ACCENT = {
   base:   "#F97316",
   dark:   "#EA580C",   // hover del botón primario
   light:  "#FFF7ED",   // bg de badge primary / highlight
-  muted:  "rgba(37,99,235,0.12)",  // focus ring
+  muted:  "rgba(249,115,22,0.12)",  // focus ring
 };
 
 // ── ACENTO CORPORATIVO (Precision Truck Parts, Parts and Accesories, S.A de C.V.) ────────────────────
 // Naranja #F97316 para acciones primarias corporativas (CTA, botones principales)
 // Token unificado con themeTokens.js (LIGHT.orange / DARK.orange)
 export const BRAND = {
-  orange:      "#F47920",   // Precision Truck Parts, Parts and Accesories, S.A de C.V. — naranja corporativo
-  orangeDark:  "#D4610A",   // hover (idéntico a themeTokens.LIGHT.orangeDark)
+  orange:      "#F97316",   // Precision Truck Parts, Parts and Accesories, S.A de C.V. — naranja corporativo
+  orangeDark:  "#D97706",   // hover (idéntico a themeTokens.LIGHT.orangeDark)
   orangeLight: "#FFF7ED",   // bg sutil
-  orangeMuted: "rgba(244,121,32,0.12)",  // focus ring / highlight
+  orangeMuted: "rgba(249,115,22,0.12)",  // focus ring / highlight
 };
 
 // ── ESTADOS DE TICKET (colores semánticos) ───────────────────────
@@ -223,14 +223,14 @@ export const COLORS = {
 // Semibold (600/700) → encabezados
 // Regular  (400)     → cuerpo
 export const FONT = {
-  h1:    { fontSize: "24px", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: "1.25", color: SLATE[900] },
-  h2:    { fontSize: "18px", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: "1.3",  color: SLATE[900] },
-  h3:    { fontSize: "14px", fontWeight: 600, letterSpacing: "-0.005em",lineHeight: "1.4",  color: SLATE[700] },
-  body:  { fontSize: "13px", fontWeight: 400, lineHeight: "1.6",                            color: SLATE[700] },
-  small: { fontSize: "12px", fontWeight: 400, lineHeight: "1.5",                            color: SLATE[600] },
-  label: { fontSize: "11px", fontWeight: 600, letterSpacing: "0.06em",  textTransform: "uppercase", color: SLATE[600] },
-  micro: { fontSize: "10px", fontWeight: 600, letterSpacing: "0.08em",  textTransform: "uppercase", color: SLATE[400] },
-  mono:  { fontFamily: "'JetBrains Mono','Fira Code','Courier New',monospace", fontSize: "12px" },
+  h1:    { fontSize: "1.375rem", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: "1.25", color: SLATE[900] },
+  h2:    { fontSize: "1rem", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: "1.3",  color: SLATE[900] },
+  h3:    { fontSize: "0.875rem", fontWeight: 600, letterSpacing: "-0.005em",lineHeight: "1.4",  color: SLATE[700] },
+  body:  { fontSize: "1rem", fontWeight: 400, lineHeight: "1.6",                            color: SLATE[700] },
+  small: { fontSize: "0.75rem", fontWeight: 400, lineHeight: "1.5",                            color: SLATE[600] },
+  label: { fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.06em",  textTransform: "uppercase", color: SLATE[600] },
+  micro: { fontSize: "0.7rem", fontWeight: 600, letterSpacing: "0.08em",  textTransform: "uppercase", color: SLATE[400] },
+  mono:  { fontFamily: "'JetBrains Mono','Fira Code','Courier New',monospace", fontSize: "0.75rem" },
 };
 
 // ================================================================

@@ -16,6 +16,7 @@ import ModalInsumo       from '../../components/Inventario/ModalInsumo.jsx';
 import ModalDetalleInsumo   from '../../components/Inventario/ModalDetalleInsumo.jsx';
 import ModalEntradaInsumo   from '../../components/Inventario/ModalEntradaInsumo.jsx';
 import ModalSalidaInsumo    from '../../components/Inventario/ModalSalidaInsumo.jsx';
+import ResponsiveTable    from '../../components/ResponsiveTable.jsx';
 import Paginacion           from '../../components/Paginacion.jsx';
 import { getUsuario } from '../../utils/session.js';
 import { useTheme }      from '../../context/theme-context.js';
@@ -170,7 +171,7 @@ function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHistorial,
         <col style={{ width: "244px" }} />
       </colgroup>
       <thead>
-        <tr>{COLS.map((c, i) => <th key={c} style={{ ...th, ...(i === COLS.length - 1 ? { textAlign: "right" } : null) }}>{c}</th>)}</tr>
+        <tr>{COLS.map((c, i) => <th key={i} style={{ ...th, ...(i === COLS.length - 1 ? { textAlign: "right" } : null) }}>{c}</th>)}</tr>
       </thead>
       <tbody>
         {rows.map((row) => {
@@ -747,15 +748,23 @@ export default function Inventario() {
               const ant = prevRef.current.find(p => p.id_insumo === i.id_insumo);
               return ant && ant.stock > 0 && i.stock === 0;
             });
-            if (nuevos.length)   toast.info(`${nuevos.length} insumo(s) nuevo(s)`);
-            if (agotados.length) toast.warning(`${agotados.length} insumo(s) agotado(s)`);
+            prevRef._nuevos = nuevos.length;
+            prevRef._agotados = agotados.length;
           }
           prevRef.current = lista;
           return JSON.stringify(prev) === JSON.stringify(lista) ? prev : lista;
         });
       })
       .catch(() => {})
-      .finally(() => { setLoading(false); setSyncing(false); });
+      .finally(() => {
+        setLoading(false);
+        setSyncing(false);
+        // Toast calls moved out of render phase: notify after state settles
+        if (prevRef._nuevos)   toast.info(`${prevRef._nuevos} insumo(s) nuevo(s)`);
+        if (prevRef._agotados) toast.warning(`${prevRef._agotados} insumo(s) agotado(s)`);
+        prevRef._nuevos = 0;
+        prevRef._agotados = 0;
+      });
   };
 
   // ── Movimientos de material — GET /api/solicitudes/movimientos (admin)
