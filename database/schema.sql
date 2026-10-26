@@ -3,6 +3,7 @@
 -- Dump generado desde el esquema y los datos reales del servidor
 -- 2026-10-01T19:51:12.600Z
 -- Tablas: 14
+-- ÍNDICES DE RENDIMIENTO AGREGADO (optimización <2s)
 -- ============================================================
 
 CREATE SCHEMA IF NOT EXISTS `precision_helpdesk`
@@ -349,10 +350,13 @@ CREATE TABLE `insumo` (
   `marca` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `modelo` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `stock` int NOT NULL DEFAULT '0',
-  `estado` enum('Excelente','Bueno','Regular','Malo') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `estado` enum('Excelente','Bueno','Regular','Malo','Dañado') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `id_categoria` int NOT NULL,
   `imagen_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `activo` tinyint(1) NOT NULL DEFAULT '1',
+  `visible_publico` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id_insumo`),
   KEY `fk_insumo_categoria` (`id_categoria`),
   CONSTRAINT `fk_insumo_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categoria` (`id_categoria`) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -764,3 +768,45 @@ INSERT INTO `ticket` (`id_ticket`,`folio_ticket`,`titulo`,`descripcion`,`fecha_s
 INSERT INTO `ticket` (`id_ticket`,`folio_ticket`,`titulo`,`descripcion`,`fecha_subido`,`fecha_resuelto`,`estatus`,`prioridad`,`comentarios`,`id_empleado`,`id_categoria`,`id_tecnico`,`calificacion`) VALUES (73, 'PTP-202608-003', 'Fallo de la impresora de ventas', 'Se desconfigura apaga, e imprime mal, mancha las hojas<hr/><p><strong>Acceso remoto (TeamViewer)</strong></p><p><strong>ID:</strong> 1 630 975 953</p><p><strong>Contraseña:</strong> fv9zxt7u</p>', '2026-08-04 19:55:54', '2026-08-04 20:01:53', 'Resuelto', 'Media', 'Ya quedo funcional completo sin fallas', 10, 5, 4, 5);
 
 SET FOREIGN_KEY_CHECKS=1;
+
+-- ============================================================
+-- ÍNDICES DE RENDIMIENTO (consultas < 2s)
+-- ============================================================
+
+-- ticket: filtros de listado, métricas y rendimiento
+CREATE INDEX idx_ticket_estatus_fecha ON ticket (estatus, fecha_subido);
+CREATE INDEX idx_ticket_tecnico_estatus ON ticket (id_tecnico, estatus);
+CREATE INDEX idx_ticket_empleado_fecha ON ticket (id_empleado, fecha_subido DESC);
+CREATE INDEX idx_ticket_fecha_subido ON ticket (fecha_subido);
+CREATE INDEX idx_ticket_folio ON ticket (folio_ticket);
+
+-- solicitud: filtros por empleado, fecha y estatus
+CREATE INDEX idx_solicitud_empleado_fecha ON solicitud (id_empleado, fecha DESC);
+CREATE INDEX idx_solicitud_estatus ON solicitud (estatus);
+CREATE INDEX idx_solicitud_fecha ON solicitud (fecha);
+CREATE INDEX idx_solicitud_folio ON solicitud (folio_solicitud);
+
+-- solicitud_insumo: joins frecuentes
+CREATE INDEX idx_solicitud_insumo_solicitud ON solicitud_insumo (id_solicitud);
+CREATE INDEX idx_solicitud_insumo_insumo ON solicitud_insumo (id_insumo);
+
+-- insumo: listado disponible y stock bajo
+CREATE INDEX idx_insumo_activo_stock ON insumo (activo, stock);
+CREATE INDEX idx_insumo_categoria ON insumo (id_categoria);
+CREATE INDEX idx_insumo_visible ON insumo (visible_publico);
+
+-- movimiento_inventario: resumen y listados por fecha/insumo
+CREATE INDEX idx_movimiento_insumo_fecha ON movimiento_inventario (id_insumo, fecha DESC);
+CREATE INDEX idx_movimiento_fecha ON movimiento_inventario (fecha);
+CREATE INDEX idx_movimiento_solicitud ON movimiento_inventario (id_solicitud);
+
+-- empleado: login y catálogos
+CREATE INDEX idx_empleado_email ON empleado (email);
+CREATE INDEX idx_empleado_rol_estatus ON empleado (id_rol, estatus);
+CREATE INDEX idx_empleado_departamento ON empleado (id_departamento);
+
+-- historial_acceso: consultas de accesos
+CREATE INDEX idx_historial_acceso_empleado ON historial_acceso (id_empleado, fecha_entrada DESC);
+
+-- ticket_historial: auditoría por ticket
+CREATE INDEX idx_ticket_historial_ticket ON ticket_historial (id_ticket, fecha_cambio DESC);

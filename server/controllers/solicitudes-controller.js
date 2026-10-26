@@ -793,8 +793,10 @@ export const actualizarInsumo = async (req, res) => {
       }
 
       const stockAnterior = prev.stock ?? 0;
-      const stockNuevo     = Math.max(parseInt(req.body.stock, 10) || 0, 0);
-      if (stockNuevo !== stockAnterior) {
+      let stockNuevo = null;
+      if (req.body.stock !== undefined) {
+        stockNuevo = Math.max(parseInt(req.body.stock, 10) || 0, 0);
+        if (stockNuevo !== stockAnterior) {
         mov = stockNuevo > stockAnterior
           ? { tipo: "Entrada", cantidad: stockNuevo - stockAnterior, motivo: "Aumento de stock al editar el insumo" }
           : { tipo: "Ajuste",  cantidad: stockAnterior - stockNuevo, motivo: "Disminución de stock al editar el insumo" };
@@ -807,6 +809,7 @@ export const actualizarInsumo = async (req, res) => {
           id_empleado:    idAdmin,
           motivo:         mov.motivo,
         });
+        }
       }
       await conn.commit();
     } catch (err) {
@@ -1018,8 +1021,21 @@ export const registrarEntradaInsumo = async (req, res) => {
   if (!Number.isFinite(id_insumo) || id_insumo <= 0)
     return res.status(400).json({ error: "ID de insumo inválido" });
 
-  const { cantidad, motivo, id_solicitud } = req.body;
+  const { cantidad, motivo, id_solicitud, fecha } = req.body;
   const idAdmin = req.usuario?.id_empleado ?? null;
+
+  // Fecha manual opcional (YYYY-MM-DD o con hora). Si no se envía, la columna
+  // usa CURRENT_TIMESTAMP (hora del servidor).
+  const f = String(fecha ?? "").trim();
+  const soloFecha = (f.match(/^\d{4}-\d{2}-\d{2}/) || [])[0] || "";
+  const tieneHora = /[T ]\d{2}:\d{2}/.test(f);
+  const base = /^\d{4}-\d{2}-\d{2}$/.test(soloFecha)
+    ? new Date(tieneHora ? f.replace(" ", "T") : `${soloFecha}T12:00:00`)
+    : new Date();
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const fechaMySQL = f
+    ? `${pad2(base.getFullYear())}-${pad2(base.getMonth() + 1)}-${pad2(base.getDate())} ${pad2(base.getHours())}:${pad2(base.getMinutes())}:${pad2(base.getSeconds())}`
+    : null;
 
   try {
     const conn = await pool.getConnection();
@@ -1047,6 +1063,7 @@ export const registrarEntradaInsumo = async (req, res) => {
         stock_nuevo,
         id_empleado: idAdmin,
         motivo:      motivo || "Entrada de material al inventario",
+        fecha: fechaMySQL,
       });
 
       await conn.commit();
@@ -1170,6 +1187,12 @@ export const registrarSalidaInsumo = async (req, res) => {
       const base = /^\d{4}-\d{2}-\d{2}$/.test(soloFecha)
         ? new Date(tieneHora ? f.replace(" ", "T") : `${soloFecha}T12:00:00`)
         : new Date();
+      // Fecha para MySQL (YYYY-MM-DD HH:MM:SS). Si no se envió, queda null y
+      // la columna `fecha` usa CURRENT_TIMESTAMP (hora del servidor).
+      const pad2 = (n) => String(n).padStart(2, "0");
+      const fechaMySQL = f
+        ? `${pad2(base.getFullYear())}-${pad2(base.getMonth() + 1)}-${pad2(base.getDate())} ${pad2(base.getHours())}:${pad2(base.getMinutes())}:${pad2(base.getSeconds())}`
+        : null;
       // Folio de salida por MES: SAL-YYYYMM-NNNN (4 digitos, ej. SAL-202610-0001).
       // El consecutivo es el MAXIMO + 1 de los folios del mes ya escritos en el
       // motivo (cada salida manual deja "[SAL-YYYYMM-NNNN] ..." al inicio).
@@ -1295,6 +1318,7 @@ export const registrarSalidaInsumo = async (req, res) => {
           id_sucursal_origen:  idSucOrigen,
           id_sucursal_destino: idSucDestino,
           motivo:      motivoMov,
+          fecha: fechaMySQL,
         });
         movs.push({ id_movimiento, id_insumo: idIns, nombre_insumo: ins.nombre, descripcion: ins.descripcion ?? null, marca: ins.marca ?? null, modelo: ins.modelo ?? null, imagen_url: ins.imagen_url ?? null, cantidad: cant, stock_anterior, stock_nuevo });
       }
