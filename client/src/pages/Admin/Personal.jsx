@@ -550,7 +550,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
   };
   return (
     <div style={{ borderRadius: 10, overflow: "hidden", background: T.surface, border: `1px solid ${T.border}`, boxShadow: isDark ? "0 1px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-      <div style={{ overflowX: "auto", overflowY: "auto", flexGrow: 0, flexShrink: 1, flexBasis: "auto", minHeight: 0 }}>
+      <div style={{ overflowX: "auto", overflowY: "auto", flexGrow: 1, flexShrink: 1, minHeight: 0 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 0 }}>
           <thead>
             <tr>
