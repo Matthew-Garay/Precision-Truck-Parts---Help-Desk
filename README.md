@@ -1,4 +1,6 @@
-# Precision Truck Parts — HelpDesk
+# Precision Truck Parts — HelpDesk (Mesa de ayuda)
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Letter_P.svg/1200px-Letter_P.svg.png" alt="Precision Truck Parts Logo" width="120" height="120">
 
 Sistema web de gestion de tickets de soporte tecnico, solicitudes de insumos y control de inventario para Precision Truck Parts, Parts and Accesories, S.A. de C.V.
 
@@ -21,15 +23,6 @@ Esta dirigido al personal interno de la empresa (empleados y administradores de 
 ## Caracteristicas
 
 | Categoria | Detalle |
-|-----------|---------|
-| Roles | Usuario (crea tickets, adjunta evidencias, consulta manuales, solicita insumos) y Administrador (atiende tickets, aprueba solicitudes, controla stock, da de alta empleados y categorias). |
-| Tickets | Estados: En proceso, Resuelto, No Resuelto y Cancelado. Prioridades: Baja, Media, Alta y Urgente. Calificacion de 1 a 5 estrellas al cerrar. |
-| Auto-cierre | Cierre automatico a las 48 horas con alertas cuando un ticket esta por vencer. |
-| Manuales | PDF con portada en miniatura, orden por categoria, busqueda y descarga. |
-| Inventario | Control de entradas y salidas de insumos con historial de movimientos (kardex). |
-| Tiempo real | Notificaciones automaticas con Socket.io. |
-| Seguridad | Contraseñas con bcrypt, sesiones JWT de 12 horas, validacion con Zod, Helmet y rate limiting. |
-| Seguridad corporativa | Acceso con Zoho (OAuth server-based) para emparejar empleados y asignar roles. |
 
 ## Tecnologias utilizadas
 
@@ -43,6 +36,18 @@ Esta dirigido al personal interno de la empresa (empleados y administradores de 
 | Base de datos | MySQL | 8 |
 | Tiempo real | Socket.io | — |
 | Autenticacion | JWT + bcryptjs | — |
+| Validacion | Zod | — |
+| Seguridad | Helmet, express-rate-limit | — |
+| Archivos / PDF | Multer, pdfjs-dist, canvas, sharp | — |
+| Reportes | exceljs | — |
+
+## Requisitos previos
+
+| Requisito | Version minima |
+|-----------|----------------|
+| Node.js | 18 |
+| npm | 9 |
+| MySQL | 8 |
 
 ## Instalacion
 
@@ -77,24 +82,6 @@ DB_NAME=precision_helpdesk
 
 JWT_SECRET=tu_secreto_de_64_caracteres_aleatorios
 
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=tu_correo@gmail.com
-SMTP_PASS=xxxx xxxx xxxx xxxx
-
-CORS_ORIGIN=http://localhost:5173
-APP_URL=http://localhost:5173
-```
-
-**client/.env**
-
-```env
-# Vacío en desarrollo: usa el proxy de Vite (evita CORS)
-VITE_API_URL=
-VITE_PORT=5173
-VITE_BACKEND_URL=http://localhost:3001
-```
-
 ### Base de datos
 
 ```sql
@@ -125,6 +112,9 @@ npm run server
 |-------|-------|
 | URL | http://localhost:5173 |
 | Usuario | admin@precisiontrucks.com |
+| Contraseña | Admin123!@# (cambiar antes de produccion) |
+
+Un ticket se crea desde Nuevo Reporte: titulo, descripcion, categoria, prioridad y hasta 8 evidencias. Los manuales se suben desde Manuales de Incidencias (solo administrador).
 
 ## Solucion de problemas
 
@@ -136,34 +126,38 @@ npm run server
 | Va lento | Ejecuta `OPTIMIZE TABLE ticket;` y `OPTIMIZE TABLE solicitud;` en MySQL. |
 
 <details>
-<summary>Flujo de inicio de sesion con Zoho SSO</summary>
+<summary>Logica de permisos de Inventario</summary>
 
-Si el administrador habilita la autenticación corporativa con Zoho, los usuarios pueden iniciar sesión desde el mismo login usando el botón Iniciar sesión con Zoho.
+La tabla `insumo` tiene la columna `activo` (dentro de `database/schema.sql`). El administrador (o Soporte Tecnico) puede ocultar un insumo para los usuarios sin eliminarlo: los insumos inhabilitados (`activo = 0`) desaparecen de los listados de solicitud y de las Salidas internas, pero se conservan en el historial, en los movimientos de kardex y siguen editables por admin/Soporte.
 
-1. El botón consulta `GET /api/auth/zoho/login`, genera un `state` antifalsificación y redirige al consentimiento de Zoho con `openid email profile`.
-2. Zoho redirige al callback `GET /api/auth/zoho/callback`.
-3. El backend valida el `state` y el `id_token`, empata el correo con un empleado activo y emite el mismo JWT de 12 horas que el login normal.
-4. El frontend (`/login/zoho`) consume el fragmento de la URL y guarda token, `id_acceso` y usuario sin dejar el JWT en la barra de direcciones.
+| Rol | Visibilidad de insumos | Stock visible |
+|-----|------------------------|---------------|
+| Administrador / Soporte Tecnico | Todo el inventario, con opcion de Inhabilitar / Mostrar para todos | Stock exacto |
+| Usuario | Solo insumos con `stock > 0` y `activo = 1` | Solo "Sin stock", "Stock bajo" o "Disponible" |
 
-**Requisitos del backend**
-
-```env
-ZOHO_CLIENT_ID=[SECURITY_DATA]
-ZOHO_CLIENT_SECRET=PEGAR_AQUI_EL_CLIENT_SECRET
-ZOHO_ACCOUNTS_URL=https://accounts.zoho.com
-ZOHO_REDIRECT_URI=http://192.168.x.x:3001/api/auth/zoho/callback
-ZOHO_SCOPES=openid,email,profile
-```
-
-**Ubicación de los archivos**
-
-| Componente | Ruta |
-|------------|------|
-| Botón de login | `client/src/pages/Login.jsx` |
-| Pantalla callback | `client/src/pages/ZohoCallbackPage.jsx` |
-| Controlador servidor | `server/controllers/zoho-controller.js` |
+Para ocultar un insumo desde el panel de Inventario (pestana Insumos), se utiliza el menu de opciones de cada fila y se elige Inhabilitar. Mostrar para todos lo devuelve al listado.
 
 </details>
+
+<details>
+<summary>Flujo de inicio de sesion con Zoho SSO</summary>
+
+
+## API (resumen)
+
+Todas las rutas requieren el token en la cabecera `Authorization: Bearer {token}`, salvo el login.
+
+| Metodo | Endpoint | Descripcion |
+|--------|----------|-------------|
+| POST | /api/auth/login | Autenticacion de usuario |
+| POST | /api/auth/logout | Cerrar sesion |
+| GET | /api/tickets | Listar tickets (solo admin) |
+| POST | /api/tickets | Crear ticket |
+| PATCH | /api/tickets/:id | Cambiar estado / resolver (solo admin) |
+| GET | /api/solicitudes | Listar solicitudes de insumos |
+| POST | /api/solicitudes | Crear solicitud de insumos |
+| GET | /api/manuales | Listar manuales |
+| POST | /api/manuales | Subir manual (solo admin, multipart) |
 
 ## Despliegue en produccion
 
@@ -227,50 +221,73 @@ Proyecto de uso interno empresarial; documentación y código sujetos a los tér
 
 ## Autor
 
-**Matthew Ilveneff Garay Pérez** — desarrollo principal  
-Contacto: matthew.garay@refividrio.com.mx · matthew.garay@ptp.com.mx
-| Contraseña | Admin123!@# (cambiar antes de produccion) |
+<table>
+  <tr>
+    <td><b>Nombre</b></td>
+    <td>Matthew Ilveneff Garay Pérez — desarrollo principal</td>
+  </tr>
+  <tr>
+    <td><b>Correo corporativo</b></td>
+    <td><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/1024px-Gmail_icon_%282020%29.svg.png" alt="Gmail" width="16" height="16"> matthew.garay@refividrio.com.mx</td>
+  </tr>
+  <tr>
+    <td><b>Correo empresarial</b></td>
+    <td><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Zoho_logo_%282021%29.svg/1200px-Zoho_logo_%282021%29.svg.png" alt="Zoho" width="16" height="16"> matthew.garay@ptp.com.mx</td>
+  </tr>
+</table>
 
-Un ticket se crea desde Nuevo Reporte: titulo, descripcion, categoria, prioridad y hasta 8 evidencias. Los manuales se suben desde Manuales de Incidencias (solo administrador).
+Si el administrador habilita la autenticación corporativa con Zoho, los usuarios pueden iniciar sesión desde el mismo login usando el botón Iniciar sesión con Zoho.
 
-<details>
-<summary>Logica de permisos de Inventario</summary>
+1. El botón consulta `GET /api/auth/zoho/login`, genera un `state` antifalsificación y redirige al consentimiento de Zoho con `openid email profile`.
+2. Zoho redirige al callback `GET /api/auth/zoho/callback`.
+3. El backend valida el `state` y el `id_token`, empata el correo con un empleado activo y emite el mismo JWT de 12 horas que el login normal.
+4. El frontend (`/login/zoho`) consume el fragmento de la URL y guarda token, `id_acceso` y usuario sin dejar el JWT en la barra de direcciones.
 
-La tabla `insumo` tiene la columna `activo` (dentro de `database/schema.sql`). El administrador (o Soporte Tecnico) puede ocultar un insumo para los usuarios sin eliminarlo: los insumos inhabilitados (`activo = 0`) desaparecen de los listados de solicitud y de las Salidas internas, pero se conservan en el historial, en los movimientos de kardex y siguen editables por admin/Soporte.
+**Requisitos del backend**
 
-| Rol | Visibilidad de insumos | Stock visible |
-|-----|------------------------|---------------|
-| Administrador / Soporte Tecnico | Todo el inventario, con opcion de Inhabilitar / Mostrar para todos | Stock exacto |
-| Usuario | Solo insumos con `stock > 0` y `activo = 1` | Solo "Sin stock", "Stock bajo" o "Disponible" |
+```env
+ZOHO_CLIENT_ID=[SECURITY_DATA]
+ZOHO_CLIENT_SECRET=PEGAR_AQUI_EL_CLIENT_SECRET
+ZOHO_ACCOUNTS_URL=https://accounts.zoho.com
+ZOHO_REDIRECT_URI=http://192.168.x.x:3001/api/auth/zoho/callback
+ZOHO_SCOPES=openid,email,profile
+```
 
-Para ocultar un insumo desde el panel de Inventario (pestana Insumos), se utiliza el menu de opciones de cada fila y se elige Inhabilitar. Mostrar para todos lo devuelve al listado.
+**Ubicación de los archivos**
+
+| Componente | Ruta |
+|------------|------|
+| Botón de login | `client/src/pages/Login.jsx` |
+| Pantalla callback | `client/src/pages/ZohoCallbackPage.jsx` |
+| Controlador servidor | `server/controllers/zoho-controller.js` |
 
 </details>
 
-## API (resumen)
 
-Todas las rutas requieren el token en la cabecera `Authorization: Bearer {token}`, salvo el login.
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=tu_correo@gmail.com
+SMTP_PASS=xxxx xxxx xxxx xxxx
 
-| Metodo | Endpoint | Descripcion |
-|--------|----------|-------------|
-| POST | /api/auth/login | Autenticacion de usuario |
-| POST | /api/auth/logout | Cerrar sesion |
-| GET | /api/tickets | Listar tickets (solo admin) |
-| POST | /api/tickets | Crear ticket |
-| PATCH | /api/tickets/:id | Cambiar estado / resolver (solo admin) |
-| GET | /api/solicitudes | Listar solicitudes de insumos |
-| POST | /api/solicitudes | Crear solicitud de insumos |
-| GET | /api/manuales | Listar manuales |
-| POST | /api/manuales | Subir manual (solo admin, multipart) |
-| Validacion | Zod | — |
-| Seguridad | Helmet, express-rate-limit | — |
-| Archivos / PDF | Multer, pdfjs-dist, canvas, sharp | — |
-| Reportes | exceljs | — |
+CORS_ORIGIN=http://localhost:5173
+APP_URL=http://localhost:5173
+```
 
-## Requisitos previos
+**client/.env**
 
-| Requisito | Version minima |
-|-----------|----------------|
-| Node.js | 18 |
-| npm | 9 |
-| MySQL | 8 |
+```env
+# Vacío en desarrollo: usa el proxy de Vite (evita CORS)
+VITE_API_URL=
+VITE_PORT=5173
+VITE_BACKEND_URL=http://localhost:3001
+```
+
+|-----------|---------|
+| Roles | Usuario (crea tickets, adjunta evidencias, consulta manuales, solicita insumos) y Administrador (atiende tickets, aprueba solicitudes, controla stock, da de alta empleados y categorias). |
+| Tickets | Estados: En proceso, Resuelto, No Resuelto y Cancelado. Prioridades: Baja, Media, Alta y Urgente. Calificacion de 1 a 5 estrellas al cerrar. |
+| Auto-cierre | Cierre automatico a las 48 horas con alertas cuando un ticket esta por vencer. |
+| Manuales | PDF con portada en miniatura, orden por categoria, busqueda y descarga. |
+| Inventario | Control de entradas y salidas de insumos con historial de movimientos (kardex). |
+| Tiempo real | Notificaciones automaticas con Socket.io. |
+| Seguridad | Contraseñas con bcrypt, sesiones JWT de 12 horas, validacion con Zod, Helmet y rate limiting. |
+| Seguridad corporativa | Acceso con Zoho (OAuth server-based) para emparejar empleados y asignar roles. |
