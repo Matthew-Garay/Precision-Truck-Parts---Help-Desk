@@ -319,6 +319,17 @@ export const schemaEntradaInsumo = z.object({
   cantidad:     z.number({ coerce: true }).int().min(1, "La cantidad debe ser al menos 1").max(100000),
   motivo:       z.string().trim().max(500).optional().nullable().default(null),
   id_solicitud: z.number({ coerce: true }).int().positive().nullish(),
+  // Fecha manual opcional de la entrada. Acepta SOLO fecha (YYYY-MM-DD) o fecha
+  // con hora (YYYY-MM-DDTHH:MM o YYYY-MM-DD HH:MM). Si no se envía, la
+  // columna usa CURRENT_TIMESTAMP (hora del servidor).
+  fecha: z.string().trim()
+    .regex(/^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?$/,
+      "Fecha inválida (usa AAAA-MM-DD o AAAA-MM-DD HH:MM)")
+    .refine((s) => {
+      const d = new Date(s.replace(" ", "T").replace(/(T\d{2}:\d{2})$/, "$1:00"));
+      return !Number.isNaN(d.getTime());
+    }, "Fecha inválida")
+    .optional().nullable().default(null),
 });
 
 // Schema para registrar una SALIDA INTERNA manual de insumos (uso interno).
@@ -454,4 +465,21 @@ export const schemaInsumo = z.object({
     .preprocess((v) => v === undefined || v === null ? undefined : Number(v), z.number({ coerce: true }).int().min(0).max(1))
     .optional()
     .default(1),
+});
+
+// Schema para actualización parcial de insumo (PUT /insumos/:id)
+// Todos los campos son opcionales: solo se actualizan los que se envían.
+export const schemaActualizarInsumo = z.object({
+  num_serie:    textoNA(100).optional(),
+  nombre:       z.string().trim().min(1, "Nombre requerido").max(150).optional(),
+  descripcion:  textoNA(1000).optional(),
+  marca:        textoNA(100).optional(),
+  modelo:       textoNA(100).optional(),
+  stock:        z.number({ coerce: true }).int().min(0).nullable().optional(),
+  estado:       z.enum(["Excelente", "Bueno", "Regular", "Malo", "Dañado"]).nullable().optional(),
+  id_categoria: z.number({ coerce: true }).int().positive().nullable().optional(),
+  imagen_url:   z.string().trim().max(255).optional().nullable(),
+  visible_publico: z
+    .preprocess((v) => v === undefined || v === null ? undefined : Number(v), z.number({ coerce: true }).int().min(0).max(1))
+    .optional(),
 });

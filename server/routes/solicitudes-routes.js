@@ -40,7 +40,7 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { csrfProtection } from '../middlewares/security.js';
 import { requireAuth, requireAdmin, requireSoporteOAdmin } from '../middlewares/auth-middleware.js';
-import { validate, schemaCrearSolicitud, schemaActualizarEstatusSolicitud, schemaInsumo, schemaEntradaInsumo, schemaSalidaInsumo, schemaItemsSolicitud, schemaRutaSolicitud, schemaObservacionSolicitud } from '../middlewares/validate.js';
+import { validate, schemaCrearSolicitud, schemaActualizarEstatusSolicitud, schemaInsumo, schemaActualizarInsumo, schemaEntradaInsumo, schemaSalidaInsumo, schemaItemsSolicitud, schemaRutaSolicitud, schemaObservacionSolicitud } from '../middlewares/validate.js';
 import {
   getInsumos, getInventario, getInsumosStockBajo, crearSolicitud, getSolicitudesByEmpleado,
   getSolicitudById, getSolicitudByFolio, getAllSolicitudes, getSolicitudesPendientes,
@@ -79,7 +79,7 @@ router.get("/metricas",       requireAdmin, getMetricasSolicitudes);
 router.get("/reporte",        requireAdmin, getReporteSolicitudes);
 router.get("/",               requireAdmin, getAllSolicitudes);
 router.post("/insumos",           requireAdmin, validate(schemaInsumo), crearInsumo);
-router.put("/insumos/:id",        requireAdmin, validate(schemaInsumo), actualizarInsumo);
+router.put("/insumos/:id",        requireAdmin, validate(schemaActualizarInsumo), actualizarInsumo);
 router.post("/insumos/:id/foto",  requireAdmin, ...uploadInsumo.single("foto"), subirFotoInsumo);
 router.delete("/insumos/:id",     requireAdmin, eliminarInsumo);
 router.patch("/insumos/:id/activo", requireAdmin, cambiarActivoInsumo);
