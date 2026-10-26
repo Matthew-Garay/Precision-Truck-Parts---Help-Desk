@@ -1,11 +1,11 @@
-<div align="center">
+﻿<div align="center">
 
-# Precision Truck Parts — HelpDesk
+# Precision Truck Parts â€” HelpDesk
 <img src="client/public/assets/img/logo.png" alt="Precision Truck Parts" width="160">
 
-**Sistema web de gestión de tickets de soporte técnico, solicitudes de insumos y control de inventario** para Precision Truck Parts, Parts and Accesories, S.A. de C.V.
+**Sistema web de gestiÃ³n de tickets de soporte tÃ©cnico, solicitudes de insumos y control de inventario** para Precision Truck Parts, Parts and Accesories, S.A. de C.V.
 
-Los usuarios pueden iniciar sesión con su cuenta corporativa a través de Zoho si el administrador lo habilita.
+Los usuarios pueden iniciar sesiÃ³n con su cuenta corporativa a travÃ©s de Zoho si el administrador lo habilita.
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=flat-square)](https://vitejs.dev/)
@@ -17,21 +17,21 @@ Los usuarios pueden iniciar sesión con su cuenta corporativa a través de Zoho 
 
 ---
 
-## Descripción
+## DescripciÃ³n
 
-Sistema integral de **tickets de soporte técnico, solicitudes de insumos y control de inventario**. Los empleados reportan fallas de cómputo y piden insumos; el área de soporte los atiende desde un solo lugar; y la administración consulta inventario, manuales técnicos e historial de todo lo que ha ocurrido, **en tiempo real** con notificaciones automáticas.
+Sistema integral de **tickets de soporte tÃ©cnico, solicitudes de insumos y control de inventario**. Los empleados reportan fallas de cÃ³mputo y piden insumos; el Ã¡rea de soporte los atiende desde un solo lugar; y la administraciÃ³n consulta inventario, manuales tÃ©cnicos e historial de todo lo que ha ocurrido, **en tiempo real** con notificaciones automÃ¡ticas.
 
-Está dirigido al personal interno de la empresa (empleados y administradores de TI).
+EstÃ¡ dirigido al personal interno de la empresa (empleados y administradores de TI).
 
-## Características
+## CaracterÃ­sticas
 
-- **Dos roles:** *usuario* (crea tickets, adjunta evidencias, consulta manuales, solicita insumos) y *administrador* (atiende tickets, aprueba solicitudes, controla stock, da de alta empleados y categorías).
-- **Tickets con estados:** *En proceso*, *Resuelto*, *No Resuelto* y *Cancelado*, con prioridad Baja/Media/Alta/Urgente y calificación de 1 a 5 estrellas al cerrar.
-- **Auto-cierre a las 48 h** con alertas automáticas cuando un ticket está por vencer.
-- **Manuales en PDF:** portada en miniatura, orden por categoría, búsqueda y descarga.
+- **Dos roles:** *usuario* (crea tickets, adjunta evidencias, consulta manuales, solicita insumos) y *administrador* (atiende tickets, aprueba solicitudes, controla stock, da de alta empleados y categorÃ­as).
+- **Tickets con estados:** *En proceso*, *Resuelto*, *No Resuelto* y *Cancelado*, con prioridad Baja/Media/Alta/Urgente y calificaciÃ³n de 1 a 5 estrellas al cerrar.
+- **Auto-cierre a las 48 h** con alertas automÃ¡ticas cuando un ticket estÃ¡ por vencer.
+- **Manuales en PDF:** portada en miniatura, orden por categorÃ­a, bÃºsqueda y descarga.
 - **Inventario** con control de entradas y salidas de insumos.
 - **Notificaciones en tiempo real** con Socket.io.
-- **Seguridad:** contraseñas con bcrypt, sesiones JWT de 12 h, validación con Zod, Helmet y rate limiting.
+- **Seguridad:** contraseÃ±as con bcrypt, sesiones JWT de 12 h, validaciÃ³n con Zod, Helmet y rate limiting.
 - **Seguridad corporativa:** acceso con Zoho (OAuth server-based) para emparejar empleados y asignar roles.
 
 ## Inventario: permisos de visibilidad
@@ -43,16 +43,16 @@ listados de solicitud y de las **Salidas internas**, pero se conservan en el
 historial, en los movimientos de kardex y siguen editables por admin/Soporte.
 
 - Los **administradores y Soporte Tecnico** ven todo el inventario, con stock y
-  la opción de Inhabilitar/Mostrar para todos.
+  la opciÃ³n de Inhabilitar/Mostrar para todos.
 - El **rol Usuario** solo recibe los insumos con `stock > 0` y `activo = 1`; no
   recibe el stock exacto ni la disponibilidad calculada (solo "Sin stock",
   "Stock bajo" o "Disponible").
 
-Para ocultar un insumo desde el panel de Inventario (pestaña Insumos), se
-utiliza el menú `⋮` de cada fila y se elige **Inhabilitar**; **Mostrar para
+Para ocultar un insumo desde el panel de Inventario (pestaÃ±a Insumos), se
+utiliza el menÃº `â‹®` de cada fila y se elige **Inhabilitar**; **Mostrar para
 todos** lo devuelve al listado.
 
-## Tecnologías utilizadas
+## TecnologÃ­as utilizadas
 
 - **Frontend:** React 18, Vite 6, TailwindCSS 4, React Router 7
 - **Backend:** Node.js, Express 5
@@ -64,11 +64,11 @@ todos** lo devuelve al listado.
 
 ## Requisitos previos
 
-- **Node.js** (versión 14 o superior)s 18 o superior**
+- **Node.js** (versiÃ³n 14 o superior)s 18 o superior**
 - **npm 9 o superior**
 - **MySQL 8 o superior**
 
-## Instalación
+## InstalaciÃ³n
 
 ```bash
 git clone https://github.com/Matthew-Garay/Precision-Truck-Parts---Help-Desk.git
@@ -76,9 +76,9 @@ cd PrecisionTrucks_HelpDesk
 npm install
 ```
 
-El proyecto usa **npm workspaces**: `npm install` en la raíz instala las dependencias de `server/` y `client/` en un solo `node_modules/`.
+El proyecto usa **npm workspaces**: `npm install` en la raÃ­z instala las dependencias de `server/` y `client/` en un solo `node_modules/`.
 
-Copia los archivos de variables de entorno y rellénalos:
+Copia los archivos de variables de entorno y rellÃ©nalos:
 
 ```bash
 cp server/.env.example server/.env
@@ -111,7 +111,7 @@ APP_URL=http://localhost:5173
 Variables principales de `client/.env`:
 
 ```env
-# Vacío en desarrollo: usa el proxy de Vite (evita CORS)
+# VacÃ­o en desarrollo: usa el proxy de Vite (evita CORS)
 VITE_API_URL=
 VITE_PORT=5173
 VITE_BACKEND_URL=http://localhost:3001
@@ -131,16 +131,16 @@ npm run dev:all
 
 O en dos terminales: `npm run dev` (frontend en http://localhost:5173) y `npm run server` (API en http://localhost:3001).
 
-### Correo de recuperación de contraseñas
+### Correo de recuperaciÃ³n de contraseÃ±as
 
-Si usas Gmail, activa la **verificación en dos pasos** y genera una **contraseña de aplicación**; esa va en `SMTP_PASS` (no la de tu cuenta). Con cualquier otro SMTP solo cambia las líneas `SMTP_*`.
+Si usas Gmail, activa la **verificaciÃ³n en dos pasos** y genera una **contraseÃ±a de aplicaciÃ³n**; esa va en `SMTP_PASS` (no la de tu cuenta). Con cualquier otro SMTP solo cambia las lÃ­neas `SMTP_*`.
 
-## Inicio de sesión con Zoho
+## Inicio de sesiÃ³n con Zoho
 
-Si el administrador habilita la autenticación corporativa con Zoho, los usuarios pueden iniciar sesión desde el mismo login usando el botón **Iniciar sesión con Zoho**.
+Si el administrador habilita la autenticaciÃ³n corporativa con Zoho, los usuarios pueden iniciar sesiÃ³n desde el mismo login usando el botÃ³n **Iniciar sesiÃ³n con Zoho**.
 
 **Flujo:**
-1. El botón consulta `GET /api/auth/zoho/login`, que genera un `state` antifalsificación y redirige al consentimiento de Zoho con `openid email profile`.
+1. El botÃ³n consulta `GET /api/auth/zoho/login`, que genera un `state` antifalsificaciÃ³n y redirige al consentimiento de Zoho con `openid email profile`.
 2. Zoho redirige al callback `GET /api/auth/zoho/callback`.
 3. El backend valida el `state` y el `id_token`, empata el correo con un empleado activo y emite el mismo JWT de 12 h que el login normal.
 4. El frontend (`/login/zoho`) consume el fragmento de la URL y guarda token, `id_acceso` y usuario sin dejar el JWT en la barra de direcciones.
@@ -154,20 +154,20 @@ ZOHO_REDIRECT_URI=http://192.168.x.x:3001/api/auth/zoho/callback
 ZOHO_SCOPES=openid,email,profile
 ```
 
-**Dónde verlo:**
-- Botón en `client/src/pages/Login.jsx` (logo `/assets/img/zoho-logo.svg`).
+**DÃ³nde verlo:**
+- BotÃ³n en `client/src/pages/Login.jsx` (logo `/assets/img/zoho-logo.svg`).
 - Pantalla `/login/zoho` (`client/src/pages/ZohoCallbackPage.jsx`).
 - Servidor `server/controllers/zoho-controller.js`.
 
-## Despliegue en producción
+## Despliegue en producciÃ³n
 
 Para publicar el sistema en internet (dominio, variables de entorno, volumen de
-archivos, endurecimiento de seguridad y restricción de acceso a correos
-corporativos) consulta la guía completa: [docs/despliegue.md](docs/despliegue.md).
+archivos, endurecimiento de seguridad y restricciÃ³n de acceso a correos
+corporativos) consulta la guÃ­a completa: [docs/despliegue.md](docs/despliegue.md).
 
-Resumen: el proyecto es un monolito full-stack listo para **Railway** (región
-California, la más cercana a México). El backend sirve el frontend compilado y
-la API bajo un mismo dominio. El acceso ya está limitado a correos corporativos
+Resumen: el proyecto es un monolito full-stack listo para **Railway** (regiÃ³n
+California, la mÃ¡s cercana a MÃ©xico). El backend sirve el frontend compilado y
+la API bajo un mismo dominio. El acceso ya estÃ¡ limitado a correos corporativos
 mediante `validarEmailCorporativo`.
 
 ## Uso
@@ -175,54 +175,54 @@ mediante `validarEmailCorporativo`.
 **Primer arranque:**
 - URL: http://localhost:5173
 - Usuario: `admin@precisiontrucks.com`
-- Contraseña: `Admin123!@#` *(cámbiala antes de producción)*
+- ContraseÃ±a: `Admin123!@#` *(cÃ¡mbiala antes de producciÃ³n)*
 
-Un ticket se crea desde **Nuevo Reporte**: título, descripción, categoría, prioridad y hasta 8 evidencias. Los manuales se suben desde **Manuales de Incidencias** (solo administrador).
+Un ticket se crea desde **Nuevo Reporte**: tÃ­tulo, descripciÃ³n, categorÃ­a, prioridad y hasta 8 evidencias. Los manuales se suben desde **Manuales de Incidencias** (solo administrador).
 
 ## Estructura del proyecto
 
 ```
 PrecisionTrucks_HelpDesk/
-├── client/                  # Frontend React (Vite + Tailwind) — paquete npm propio
-│   ├── public/              # Archivos estáticos (assets/img)
-│   ├── src/
-│   │   ├── assets/          # CSS importado por main.jsx
-│   │   ├── components/      # Componentes React reutilizables (PascalCase)
-│   │   ├── pages/           # Vistas por rol (Admin/, Usuario/, print/)
-│   │   ├── context/         # ThemeContext y proveedores globales
-│   │   ├── hooks/           # Custom hooks (useAuth, useSocket, ...)
-│   │   ├── services/        # api-client.js (axios) y conectores externos
-│   │   ├── utils/           # Validaciones, formatos y helpers puros
-│   │   └── main.jsx         # Punto de entrada de la SPA
-│   ├── .env                 # Solo variables VITE_* (no se versiona)
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.js       # outDir ../dist para el contrato de deploy
-├── server/                  # Backend Express (paquete npm propio)
-│   ├── config/              # db.js (pool MySQL), mailer.js, zoho.js, constants.js
-│   ├── controllers/         # Lógica HTTP por recurso
-│   ├── middlewares/         # auth, validación, subida y manejo de errores
-│   ├── routes/              # Definición de endpoints bajo /api
-│   ├── services/            # Consultas MySQL y lógica de negocio (tickets, alertas, ...)
-│   ├── utils/               # Helpers puros (fechas, JWT, passwords, ...)
-│   ├── workers/             # Jobs programados (alertas SLA, cierre, limpieza)
-│   ├── scripts/             # Utilidades one-shot (probar-correo, ...)
-│   ├── .env                 # Variables del servidor (no se versiona)
-│   ├── load-env.js          # Carga de variables de entorno (--import)
-│   ├── server.js            # Punto de entrada: Express + Socket.io
-│   └── package.json
-├── database/                # Esquema SQL versionado
-│   ├── schema.sql           # Esquema MySQL completo (DDL)
-│   └── dump-schema.mjs      # Generador del esquema desde la BD viva
-├── docs/                    # Documentación técnica
-├── storage/                 # Evidencias, insumos y manuales subidos (regenerable)
-├── scripts/                 # Scripts de mantenimiento (liberar-puertos.ps1)
-├── dist/                    # Build de producción (generado por npm run build)
-├── respaldar.ps1            # Copia de seguridad de la BD + storage
-├── restaurar.ps1            # Restauración de una copia
-├── package.json             # Orquestador de npm workspaces (dev, build, ...)
-├── railway.json             # Configuración de despliegue
-└── README.md
+â”œâ”€â”€ client/                  # Frontend React (Vite + Tailwind) â€” paquete npm propio
+â”‚   â”œâ”€â”€ public/              # Archivos estÃ¡ticos (assets/img)
+â”‚   â”œâ”€â”€ src/
+â”‚   â”‚   â”œâ”€â”€ assets/          # CSS importado por main.jsx
+â”‚   â”‚   â”œâ”€â”€ components/      # Componentes React reutilizables (PascalCase)
+â”‚   â”‚   â”œâ”€â”€ pages/           # Vistas por rol (Admin/, Usuario/, print/)
+â”‚   â”‚   â”œâ”€â”€ context/         # ThemeContext y proveedores globales
+â”‚   â”‚   â”œâ”€â”€ hooks/           # Custom hooks (useAuth, useSocket, ...)
+â”‚   â”‚   â”œâ”€â”€ services/        # api-client.js (axios) y conectores externos
+â”‚   â”‚   â”œâ”€â”€ utils/           # Validaciones, formatos y helpers puros
+â”‚   â”‚   â””â”€â”€ main.jsx         # Punto de entrada de la SPA
+â”‚   â”œâ”€â”€ .env                 # Solo variables VITE_* (no se versiona)
+â”‚   â”œâ”€â”€ index.html
+â”‚   â”œâ”€â”€ package.json
+â”‚   â””â”€â”€ vite.config.js       # outDir ../dist para el contrato de deploy
+â”œâ”€â”€ server/                  # Backend Express (paquete npm propio)
+â”‚   â”œâ”€â”€ config/              # db.js (pool MySQL), mailer.js, zoho.js, constants.js
+â”‚   â”œâ”€â”€ controllers/         # LÃ³gica HTTP por recurso
+â”‚   â”œâ”€â”€ middlewares/         # auth, validaciÃ³n, subida y manejo de errores
+â”‚   â”œâ”€â”€ routes/              # DefiniciÃ³n de endpoints bajo /api
+â”‚   â”œâ”€â”€ services/            # Consultas MySQL y lÃ³gica de negocio (tickets, alertas, ...)
+â”‚   â”œâ”€â”€ utils/               # Helpers puros (fechas, JWT, passwords, ...)
+â”‚   â”œâ”€â”€ workers/             # Jobs programados (alertas SLA, cierre, limpieza)
+â”‚   â”œâ”€â”€ scripts/             # Utilidades one-shot (probar-correo, ...)
+â”‚   â”œâ”€â”€ .env                 # Variables del servidor (no se versiona)
+â”‚   â”œâ”€â”€ load-env.js          # Carga de variables de entorno (--import)
+â”‚   â”œâ”€â”€ server.js            # Punto de entrada: Express + Socket.io
+â”‚   â””â”€â”€ package.json
+â”œâ”€â”€ database/                # Esquema SQL versionado
+â”‚   â”œâ”€â”€ schema.sql           # Esquema MySQL completo (DDL)
+â”‚   â””â”€â”€ dump-schema.mjs      # Generador del esquema desde la BD viva
+â”œâ”€â”€ docs/                    # DocumentaciÃ³n tÃ©cnica
+â”œâ”€â”€ storage/                 # Evidencias, insumos y manuales subidos (regenerable)
+â”œâ”€â”€ scripts/                 # Scripts de mantenimiento (liberar-puertos.ps1)
+â”œâ”€â”€ dist/                    # Build de producciÃ³n (generado por npm run build)
+â”œâ”€â”€ respaldar.ps1            # Copia de seguridad de la BD + storage
+â”œâ”€â”€ restaurar.ps1            # RestauraciÃ³n de una copia
+â”œâ”€â”€ package.json             # Orquestador de npm workspaces (dev, build, ...)
+â”œâ”€â”€ railway.json             # ConfiguraciÃ³n de despliegue
+â””â”€â”€ README.md
 ```
 
 ## API (resumen)
@@ -239,22 +239,23 @@ GET   /api/manuales            # listar manuales
 POST  /api/manuales            # subir manual (solo admin, multipart)
 ```
 
-## Solución de problemas
+## SoluciÃ³n de problemas
 
-- **Los PDF no cargan en el visor:** verifica `storage/Manuales/` y regenera portadas con `node --import ./server/load-env.js server/scripts/generar-portadas-existentes.js`; si todo está bien, limpia la caché del navegador.
+- **Los PDF no cargan en el visor:** verifica `storage/Manuales/` y regenera portadas con `node --import ./server/load-env.js server/scripts/generar-portadas-existentes.js`; si todo estÃ¡ bien, limpia la cachÃ© del navegador.
 - **No conecta con la BD:** comprueba que MySQL corra y que las credenciales de `.env` coincidan.
-- **No llegan los correos:** suele ser la contraseña de Gmail normal en lugar de la de aplicación; revisa `SMTP_*`.
+- **No llegan los correos:** suele ser la contraseÃ±a de Gmail normal en lugar de la de aplicaciÃ³n; revisa `SMTP_*`.
 - **Va lento:** `OPTIMIZE TABLE ticket;` y `OPTIMIZE TABLE solicitud;`.
 
 ## Desarrollo
 
-Flujo habitual: fork → rama `feature/...` → commit descriptivo → pull request. El código se valida con ESLint y se documenta con JSDoc. Reporta errores en [Issues](https://github.com/Matthew-Garay/Precision-Truck-Parts---Help-Desk/issues).
+Flujo habitual: fork â†’ rama `feature/...` â†’ commit descriptivo â†’ pull request. El cÃ³digo se valida con ESLint y se documenta con JSDoc. Reporta errores en [Issues](https://github.com/Matthew-Garay/Precision-Truck-Parts---Help-Desk/issues).
 
 ## Licencia
 
-Proyecto de uso interno empresarial; documentación y código sujetos a los términos del proyecto.
+Proyecto de uso interno empresarial; documentaciÃ³n y cÃ³digo sujetos a los tÃ©rminos del proyecto.
 
 ## Autor
 
-**Matthew Garay** — desarrollo principal. Contacto: soporte@precisiontrucks.com
+**Matthew Ilveneff Garay Pérez** — desarrollo principal  Contacto: matthew.garay@refividrio.com.mx · matthew.garay@ptp.com.mx
+
 
