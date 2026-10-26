@@ -23,6 +23,9 @@
  *     relevantes al modulo activo.
  */
 import pool from '../config/db.js';
+import { cache } from '../config/cache.js';
+
+const TTL_CATALOGO = 10 * 60 * 1000; // 10 minutos
 
 // Mapa que relaciona el tipo de modulo con la columna booleana correspondiente en BD.
 const COLUMNAS_CATEGORIA = {
@@ -34,19 +37,25 @@ const COLUMNAS_CATEGORIA = {
 const Categoria = {
 
   getAll: async () => {
+    const hit = cache.get("categoria:all");
+    if (hit) return hit;
     const [rows] = await pool.query(
       `SELECT id_categoria, nombre_categoria, en_tickets, en_insumos, en_manuales
        FROM categoria ORDER BY id_categoria`
     );
+    cache.set("categoria:all", rows, TTL_CATALOGO);
     return rows;
   },
 
   getByTipo: async (tipo) => {
     const col = COLUMNAS_CATEGORIA[tipo];
     if (!col) throw Object.assign(new Error("Tipo de categoria no valido"), { status: 400 });
+    const hit = cache.get(`categoria:tipo:${tipo}`);
+    if (hit) return hit;
     const [rows] = await pool.query(
       `SELECT id_categoria, nombre_categoria FROM categoria WHERE ${col} = 1 ORDER BY id_categoria`
     );
+    cache.set(`categoria:tipo:${tipo}`, rows, TTL_CATALOGO);
     return rows;
   },
 };

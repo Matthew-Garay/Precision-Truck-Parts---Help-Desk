@@ -38,10 +38,15 @@
  *     Retorna true si se elimino al menos un registro, false si no existe.
  */
 import pool from '../config/db.js';
+import { cache } from '../config/cache.js';
+
+const TTL_MANUAL = 5 * 60 * 1000; // 5 minutos
 
 const Manual = {
 
   getAll: async () => {
+    const hit = cache.get("manual:all");
+    if (hit) return hit;
     const [rows] = await pool.query(
       `SELECT m.id_manual, m.nombre, m.descripcion, m.fecha_subida,
               m.fecha_cambio, m.ruta_pdf, m.id_categoria, c.nombre_categoria
@@ -49,6 +54,7 @@ const Manual = {
        LEFT JOIN categoria c ON m.id_categoria = c.id_categoria
        ORDER BY m.fecha_subida DESC`
     );
+    cache.set("manual:all", rows, TTL_MANUAL);
     return rows;
   },
 
@@ -58,6 +64,7 @@ const Manual = {
        VALUES (?, ?, ?, ?)`,
       [nombre, descripcion || null, ruta_pdf, id_categoria]
     );
+    cache.del("manual:all");
     return result.insertId;
   },
 
@@ -67,6 +74,7 @@ const Manual = {
        WHERE id_manual = ?`,
       [nombre, descripcion || null, id_categoria, id_manual]
     );
+    cache.del("manual:all");
     return result.affectedRows > 0;
   },
 
@@ -90,6 +98,7 @@ const Manual = {
       `DELETE FROM manual WHERE id_manual = ?`,
       [id_manual]
     );
+    cache.del("manual:all");
     return result.affectedRows > 0;
   },
 };

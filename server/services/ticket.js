@@ -69,6 +69,7 @@ import { cache } from '../config/cache.js';
 
 const CACHE_TTL_METRICAS = 2 * 60 * 1000; // 2 minutos
 const CACHE_TTL_ADMINS   = 5 * 60 * 1000; // 5 minutos
+const CACHE_TTL_LISTA    = 1 * 60 * 1000; // 1 minuto para listados paginados
 
 const Ticket = {
   crear: async ({ titulo, descripcion, prioridad, id_empleado, id_categoria }) => {
@@ -420,8 +421,8 @@ const Ticket = {
     if (id_tecnico && (!Number.isInteger(idTecnico) || idTecnico <= 0))
       throw Object.assign(new Error("id_tecnico debe ser un entero positivo"), { status: 400 });
 
-    const conditions = ["DATE(t.fecha_subido) BETWEEN ? AND ?"];
-    const params     = [fecha_inicio, fecha_fin];
+    const conditions = ["t.fecha_subido >= ? AND t.fecha_subido < ?"];
+    const params     = [fecha_inicio + " 00:00:00", fecha_fin + " 23:59:59"];
 
     if (idTecnico) { conditions.push("t.id_tecnico = ?");   params.push(idTecnico); }
     if (estatus)   { conditions.push("t.estatus = ?");      params.push(estatus); }
@@ -468,7 +469,7 @@ const Ticket = {
 
     // Filtramos los tickets con la condición de fechas (si aplica)
     const ticketFilter = fechasValidas
-      ? `AND DATE(t.fecha_subido) BETWEEN ? AND ?`
+      ? `AND t.fecha_subido >= ? AND t.fecha_subido < ?`
       : ``;
 
     const [rows] = await pool.query(
@@ -518,7 +519,7 @@ const Ticket = {
     if (estatus)      { conditions.push("t.estatus = ?");    params.push(estatus); }
     if (prioridad)    { conditions.push("t.prioridad = ?");  params.push(prioridad); }
     if (fecha_inicio) { conditions.push("DATE(t.fecha_subido) >= ?"); params.push(fecha_inicio); }
-    if (fecha_fin)    { conditions.push("DATE(t.fecha_subido) <= ?"); params.push(fecha_fin); }
+    if (fecha_fin)    { conditions.push("t.fecha_subido < ?");        params.push(fecha_fin + " 23:59:59"); }
     if (q) {
       conditions.push("(t.folio_ticket LIKE ? OR t.titulo LIKE ?)");
       params.push(`%${q}%`, `%${q}%`);

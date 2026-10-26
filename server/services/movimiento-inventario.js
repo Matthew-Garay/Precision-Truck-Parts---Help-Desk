@@ -59,17 +59,26 @@ const MovimientoInventario = {
   registrar: async (conn, {
     id_insumo, tipo, cantidad, stock_anterior, stock_nuevo,
     id_sucursal_origen = null, id_sucursal_destino = null,
-    id_solicitud = null, id_empleado = null, motivo = null,
+    id_solicitud = null, id_empleado = null, motivo = null, fecha = null,
   }) => {
+    const columns = [
+      "id_insumo", "tipo", "cantidad", "stock_anterior", "stock_nuevo",
+      "id_sucursal_origen", "id_sucursal_destino", "id_solicitud", "id_empleado", "motivo"
+    ];
+    const values = [
+      id_insumo, tipo, Math.abs(cantidad), stock_anterior ?? 0, stock_nuevo ?? 0,
+      id_sucursal_origen, id_sucursal_destino, id_solicitud, id_empleado, motivo || null
+    ];
+    // fecha solo se incluye cuando se envía explícitamente; si se omite,
+    // MySQL aplica el DEFAULT (CURRENT_TIMESTAMP) de la columna NOT NULL.
+    if (fecha != null) {
+      columns.push("fecha");
+      values.push(fecha);
+    }
+    const placeholders = columns.map(() => "?").join(", ");
     const [r] = await conn.query(
-      `INSERT INTO movimiento_inventario
-         (id_insumo, tipo, cantidad, stock_anterior, stock_nuevo,
-          id_sucursal_origen, id_sucursal_destino, id_solicitud, id_empleado, motivo)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id_insumo, tipo, Math.abs(cantidad), stock_anterior ?? 0, stock_nuevo ?? 0,
-        id_sucursal_origen, id_sucursal_destino, id_solicitud, id_empleado, motivo || null,
-      ]
+      `INSERT INTO movimiento_inventario (${columns.join(", ")}) VALUES (${placeholders})`,
+      values
     );
     return r.insertId;
   },
@@ -137,16 +146,23 @@ const MovimientoInventario = {
   },
 
   resumen: async () => {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const inicioHoy = hoy.toISOString().slice(0, 19).replace("T", " ");
+    const finHoy = new Date(hoy.getTime() + 86_400_000 - 1000).toISOString().slice(0, 19).replace("T", " ");
+    const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    const inicioMes = primerDiaMes.toISOString().slice(0, 19).replace("T", " ");
+    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0, 23, 59, 59).toISOString().slice(0, 19).replace("T", " ");
+
     const [[row]] = await pool.query(
       `SELECT
-         SUM(DATE(fecha) = CURDATE() AND tipo = 'Entrada') AS entradas_hoy,
-         SUM(DATE(fecha) = CURDATE() AND tipo = 'Salida')  AS salidas_hoy,
-         SUM(YEAR(fecha)  = YEAR(CURDATE()) AND MONTH(fecha) = MONTH(CURDATE())
-             AND tipo = 'Entrada')                         AS entradas_mes,
-         SUM(YEAR(fecha)  = YEAR(CURDATE()) AND MONTH(fecha) = MONTH(CURDATE())
-             AND tipo = 'Salida')                          AS salidas_mes,
-         COUNT(*)                                          AS total_movimientos
-       FROM movimiento_inventario`
+          SUM(fecha >= ? AND fecha <= ? AND tipo = 'Entrada') AS entradas_hoy,
+          SUM(fecha >= ? AND fecha <= ? AND tipo = 'Salida')  AS salidas_hoy,
+          SUM(fecha >= ? AND fecha <= ? AND tipo = 'Entrada') AS entradas_mes,
+          SUM(fecha >= ? AND fecha <= ? AND tipo = 'Salida')  AS salidas_mes,
+          COUNT(*)                                          AS total_movimientos
+        FROM movimiento_inventario`,
+      [inicioHoy, finHoy, inicioHoy, finHoy, inicioMes, finMes, inicioMes, finMes]
     );
     return row ?? {};
   },
