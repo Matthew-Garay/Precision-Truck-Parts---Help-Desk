@@ -75,7 +75,23 @@ const MovimientoInventario = {
       columns.push("fecha");
       values.push(fecha);
     }
-    const placeholders = columns.map(() => "?").join(", ");
+    // Inserta el movimiento en la tabla movimiento_inventario
+    const
+      result = await conn.query(
+      `INSERT INTO movimiento_inventario (${columns.join(', ')}) VALUES (${values.map((_, i) => '?').join(', ')})`,
+      values
+    );
+    
+    // ACTUALIZA EL STOCK EN LA TABLA insumo CUANDO ES ENTRADA
+    // Suma la cantidad al stock actual para entradas
+    if (tipo === 'Entrada' && id_insumo) {
+      await conn.query(
+        'UPDATE insumo SET stock = stock + ?, updated_at = NOW() WHERE id_insumo = ?',
+        [Math.abs(cantidad), id_insumo]
+      );
+    }
+    
+    return result; placeholders = columns.map(() => "?").join(", ");
     const [r] = await conn.query(
       `INSERT INTO movimiento_inventario (${columns.join(", ")}) VALUES (${placeholders})`,
       values
