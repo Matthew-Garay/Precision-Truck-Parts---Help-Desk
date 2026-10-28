@@ -49,7 +49,7 @@ const Insumo = {
     if (tieneVisiblePublico) whereClauses.push("i.visible_publico = 1");
     const whereSql = whereClauses.length > 0 ? "WHERE " + whereClauses.join(" AND ") : "";
     const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS categoria_nombre FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria ${whereSql} ORDER BY i.nombre ASC`
+      `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS nombre_categoria FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria ${whereSql} ORDER BY i.nombre ASC`
     );
     const result = rows || [];
     cache.set(cacheKey, result, TTL_INSUMOS);
@@ -66,7 +66,7 @@ const Insumo = {
     if (tieneActivo) whereClauses.push("i.activo = 1");
     if (tieneVisiblePublico) whereClauses.push("i.visible_publico = 1");
     const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS categoria_nombre FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria WHERE ${whereClauses.join(" AND ")} ORDER BY i.nombre ASC`
+      `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS nombre_categoria FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria WHERE ${whereClauses.join(" AND ")} ORDER BY i.nombre ASC`
     );
     const result = rows || [];
     cache.set(cacheKey, result, TTL_INSUMOS);
@@ -74,10 +74,10 @@ const Insumo = {
   },
 
   crear: async (data) => {
-    const { nombre, id_categoria, descripcion, stock, activo, visible_publico } = data;
+    const { nombre, id_categoria, descripcion, stock, activo, visible_publico, estado } = data;
     const [result] = await pool.query(
-      "INSERT INTO insumo (nombre, id_categoria, descripcion, stock, activo, visible_publico, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
-      [nombre, id_categoria, descripcion, stock, activo !== undefined ? activo : 1, visible_publico !== undefined ? visible_publico : 1]
+      "INSERT INTO insumo (nombre, id_categoria, descripcion, stock, activo, visible_publico, estado, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+      [nombre, id_categoria, descripcion, stock, activo !== undefined ? activo : 1, visible_publico !== undefined ? visible_publico : 1, estado !== undefined ? estado : 'Excelente']
     );
     cache.delByPrefix("insumo:");
     return result.insertId;
@@ -102,6 +102,12 @@ const Insumo = {
     values.push(id);
     const db = conn || pool;
     const [result] = await db.query(query, values);
+    cache.delByPrefix("insumo:");
+    return result.affectedRows > 0;
+  },
+
+  eliminar: async (id) => {
+    const [result] = await pool.query("DELETE FROM insumo WHERE id_insumo = ?", [id]);
     cache.delByPrefix("insumo:");
     return result.affectedRows > 0;
   },
