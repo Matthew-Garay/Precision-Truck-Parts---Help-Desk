@@ -795,6 +795,30 @@ CREATE INDEX idx_insumo_activo_stock ON insumo (activo, stock);
 CREATE INDEX idx_insumo_categoria ON insumo (id_categoria);
 CREATE INDEX idx_insumo_visible ON insumo (visible_publico);
 
+-- DESCRIPCIONES MEJORADAS PARA INSUMOS CON STOCK BAJO
+-- Estos insumos tienen stock crítico y requieren reposición inmediata
+
+-- 42 - Tóner Genérico Elite Amarillo Xerox C230, C235
+-- stock: 1 unidad - Crítico para reposición inmediata
+-- Descripción: Tóner de tóner genérico de color amarillo compatible con impresoras láser Xerox de la serie C230/C235. Rendimiento estándar para impresiones comerciales y de oficina. Ideal para entornos de alta demanda de documentos.
+INSERT INTO `insumo` (`id_insumo`,`num_serie`,`nombre`,`descripcion`,`marca`,`modelo`,`stock`,`estado`,`id_categoria`,`imagen_url`) VALUES (42, 'N/A', 'Tóner Genérico Elite Amarillo Xerox C230, C235', 'Tóner de tóner genérico de color amarillo compatible con impresoras láser Xerox de la serie C230/C235. Rendimiento estándar para impresiones comerciales y de oficina. Ideal para entornos de alta demanda de documentos.', 'Elite', 'C230,C235', 1, 'Excelente', 10, '/storage/Insumos/insumo_42_178404974126014f01c92d325.webp');
+-- 43 - Tóner Genérico Elite Magenta Xerox C230, C235
+-- stock: 1 unidad - Crítico para reposición inmediata
+-- Descripción: Tóner de tóner genérico de color magenta compatible con impresoras láser Xerox de la serie C230/C235. Rendimiento estándar para impresiones comerciales y de oficina. Ideal para entornos de alta demanda de documentos.
+INSERT INTO `insumo` (`id_insumo`,`num_serie`,`nombre`,`descripcion`,`marca`,`modelo`,`stock`,`estado`,`id_categoria`,`imagen_url`) VALUES (43, 'N/A', 'Tóner Genérico Elite Magenta Xerox C230, C235', 'Tóner de tóner genérico de color magenta compatible con impresoras láser Xerox de la serie C230/C235. Rendimiento estándar para impresiones comerciales y de oficina. Ideal para entornos de alta demanda de documentos.', 'Elite', 'C230,C235', 1, 'Excelente', 10, '/storage/Insumos/insumo_43_17840497685194a6528a4347a.webp');
+-- 45 - Teclado Dell Alámbrico KB216
+-- stock: 3 unidades - Nivel de alerta bajo
+-- Descripción: Teclado ergonómico de estilo chiclet cuenta con teclas de acceso directo multimedia, una conexión USB 2.0 mediante un cable de 1.8 metros. Diseñado para comodidad prolongada en tareas de oficina con distribución de teclas optimizada y bajo nivel de ruido.
+INSERT INTO `insumo` (`id_insumo`,`num_serie`,`nombre`,`descripcion`,`marca`,`modelo`,`stock`,`estado`,`id_categoria`,`imagen_url`) VALUES (45, 'N/A', 'Teclado Dell Alámbrico KB216', 'Teclado ergonómico de estilo chiclet cuenta con teclas de acceso directo multimedia, una conexión USB 2.0 mediante un cable de 1.8 metros. Diseñado para comodidad prolongada en tareas de oficina con distribución de teclas optimizada y bajo nivel de ruido.', 'DELL', 'KB216T1', 3, 'Excelente', 2, '/storage/Insumos/insumo_45_17840607564364eb025a575dd.webp');
+-- 46 - Mouse Dell MS116 Alámbrico
+-- stock: 2 unidades - Atención necesario
+-- Descripción: Mouse de diseño ergonómico y ambidextro, ideal para un uso cómodo y prolongado en tareas de oficina. Cuenta con un sensor óptico de 1000 DPI para precisión en el trabajo diario y diseño simétrico para diestros y zurdos.
+INSERT INTO `insumo` (`id_insumo`,`num_serie`,`nombre`,`descripcion`,`marca`,`modelo`,`stock`,`estado`,`id_categoria`,`imagen_url`) VALUES (46, 'N/A', 'Mouse Dell MS116 Alámbrico', 'Mouse de diseño ergonómico y ambidextro, ideal para un uso cómodo y prolongado en tareas de oficina. Cuenta con un sensor óptico de 1000 DPI para precisión en el trabajo diario y diseño simétrico para diestros y zurdos.', 'DELL', 'MS116T1', 2, 'Excelente', 2, '/storage/Insumos/insumo_46_17840612462196dc242c7fe2c.webp');
+-- 47 - Mouse Inalámbrico Logitech M190
+-- stock: 2 unidades - Atención necesario
+-- Descripción: Mouse de tamaño completo con diseño ergonómico contorneado, ideal para manos de medianas a grandes. Cuenta con tecnología de seguimiento óptico de 1000 DPI para una trackeduralidad suave y conexión inalámbrica confiable de 2.4 GHz con alcance de hasta 10 metros.
+INSERT INTO `insumo` (`id_insumo`,`num_serie`,`nombre`,`descripcion`,`marca`,`modelo`,`stock`,`estado`,`id_categoria`,`imagen_url`) VALUES (47, 'N/A', 'Mouse Inalámbrico Logitech M190', 'Mouse de tamaño completo con diseño ergonómico contorneado, ideal para manos de medianas a grandes. Cuenta con tecnología de seguimiento óptico de 1000 DPI para una trackeduralidad suave y conexión inalámbrica confiable de 2.4 GHz con alcance de hasta 10 metros.', 'Logitech', 'M190', 2, 'Excelente', 2, '/storage/Insumos/insumo_47_178406176272915afc30b544c.png');
+
 -- movimiento_inventario: resumen y listados por fecha/insumo
 CREATE INDEX idx_movimiento_insumo_fecha ON movimiento_inventario (id_insumo, fecha DESC);
 CREATE INDEX idx_movimiento_fecha ON movimiento_inventario (fecha);
@@ -810,3 +834,11 @@ CREATE INDEX idx_historial_acceso_empleado ON historial_acceso (id_empleado, fec
 
 -- ticket_historial: auditoría por ticket
 CREATE INDEX idx_ticket_historial_ticket ON ticket_historial (id_ticket, fecha_cambio DESC);
+-- 52 - Tóner HP Compatible 19A
+-- stock: 1 unidad - Nuevo insumo traído de sucursal
+-- Descripción: Tóner original compatible HP serie 19A (CF219A). Color negro, diseñado para impresoras LaserJet series. Rendimiento aproximado de 1,500 páginas. Fácil instalación, alta calidad de impresión y compatibilidad garantizada con modelos HP designados.
+INSERT INTO `insumo` (`id_insumo`,`num_serie`,`nombre`,`descripcion`,`marca`,`modelo`,`stock`,`estado`,`id_categoria`,`imagen_url`) VALUES (52, 'N/A', 'Tóner HP Compatible 19A', 'Tóner original compatible HP serie 19A (CF219A). Color negro, diseñado para impresoras LaserJet series. Rendimiento aproximado de 1,500 páginas. Fácil instalación, alta calidad de impresión y compatibilidad garantizada con modelos HP designados.', 'HP', 'CF219A', 1, 'Excelente', 10, '/storage/Insumos/insumo_52_178407600000000000000.webp');
+-- 51 - Tóner Compatible 85A
+-- stock: 1 unidad - Nuevo insumo
+-- Descripción: Tóner compatible de color negro para impresoras HP LaserJet serie 85A. Rendimiento estándar para impresiones oficinales y domésticas. Fácil instalación y alta calidad de impresión.
+INSERT INTO `insumo` (`id_insumo`,`num_serie`,`nombre`,`descripcion`,`marca`,`modelo`,`stock`,`estado`,`id_categoria`,`imagen_url`) VALUES (51, 'N/A', 'Tóner Compatible 85A', 'Tóner compatible de color negro para impresoras HP LaserJet serie 85A. Rendimiento estándar para impresiones oficinales y domésticas. Fácil instalación y alta calidad de impresión.', 'Genérico', '85A', 1, 'Excelente', 10, '/storage/Insumos/insumo_51_178407500000000000000.webp');
