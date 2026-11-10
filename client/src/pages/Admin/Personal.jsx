@@ -698,7 +698,7 @@ export default function Personal({ T }) {
   };
   return (
     <div style={{ background: T.bg, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-      <div style={{ maxWidth: 1400, width: "100%", margin: "0 auto", padding: "16px 16px 0", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+      <div style={{ maxWidth: 1400, width: "100%", margin: "0 auto", padding: "16px 16px 0", display: "flex", flexDirection: "column", flex: 1, minHeight: 0, mb: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: T.textMain, letterSpacing: "-0.02em" }}>Personal</h2>

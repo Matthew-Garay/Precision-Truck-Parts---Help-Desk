@@ -1410,21 +1410,31 @@ export const guardarRutaSolicitud = async (req, res) => {
  */
 export const getMovimientosInventario = async (req, res) => {
   const q = req.query ?? {};
+  console.log("[DEBUG getMovimientosInventario] Petición entrante - query:", JSON.stringify(q));
+  console.log("[DEBUG getMovimientosInventario] usuario autenticado:", req.usuario ? `empleado ${req.usuario.id_empleado}` : "NO AUTENTICADO");
+  
+  // Validación: tipo es obligatorio para esta ruta de listado
+  if (!q.tipo || !["Entrada", "Salida", "Ajuste"].includes(q.tipo)) {
+    return res.status(400).json({ error: "Parámetro 'tipo' es requerido y debe ser Entrada, Salida o Ajuste" });
+  }
+  
   const esFecha = v => /^\d{4}-\d{2}-\d{2}$/.test(v ?? "");
   try {
     const { rows, total } = await MovimientoInventario.listar({
       page:         Math.max(parseInt(q.page)  || 1, 1),
       limit:        Math.min(Math.max(parseInt(q.limit) || 50, 1), 500),
-      tipo:         ["Entrada", "Salida", "Ajuste"].includes(q.tipo) ? q.tipo : undefined,
-      id_insumo:    toPosId(q.id_insumo),
-      id_sucursal:  toPosId(q.id_sucursal),
-      q:            typeof q.q === "string" && q.q.trim() ? q.q.trim().slice(0, 100) : undefined,
-      folio:        typeof q.folio === "string" && q.folio.trim() ? q.folio.trim() : undefined,
-      fecha_inicio: esFecha(q.fecha_inicio) ? q.fecha_inicio : undefined,
-      fecha_fin:    esFecha(q.fecha_fin)    ? q.fecha_fin    : undefined,
+      tipo:         q.tipo,
+      id_insumo:    q.id_insumo ? toPosId(q.id_insumo) : undefined,
+      id_sucursal:  q.id_sucursal ? toPosId(q.id_sucursal) : undefined,
+      q:            q.q && q.q.trim() ? q.q.trim().slice(0, 100) : undefined,
+      folio:        q.folio && q.folio.trim() ? q.folio.trim() : undefined,
+      fecha_inicio: q.fecha_inicio && esFecha(q.fecha_inicio) ? q.fecha_inicio : undefined,
+      fecha_fin:    q.fecha_fin    && esFecha(q.fecha_fin)    ? q.fecha_fin    : undefined,
     });
+    console.log("[DEBUG getMovimientosInventario] Resultado:", rows?.length || 0, "filas, total:", total);
     res.json({ rows, total });
   } catch (err) {
+    console.error("[DEBUG getMovimientosInventario] ERROR:", err.message);
     res.status(500).json({ error: "Error al obtener los movimientos de inventario", ...errDetalle(err) });
   }
 };
