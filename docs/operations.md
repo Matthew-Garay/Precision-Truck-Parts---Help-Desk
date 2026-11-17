@@ -113,7 +113,7 @@ El usuario de MySQL del `.env` necesita los privilegios `SELECT, LOCK TABLES, TR
 
 - Los indices relevantes ya existen (ver [database.md](database.md)); antes de agregar indices nuevos medir con `EXPLAIN` sobre las consultas de listados paginados.
 - Los enums se amplian con `ALTER TABLE ... MODIFY COLUMN` cuidando conservar el default y la collacion de la tabla.
-- Los cambios de esquema se hacen con un script numerado en `database/migraciones/` (001, 002, …) y después se regenera `database/schema.sql` con `mysqldump --no-data`.
+- Los cambios de esquema se aplican con un script SQL probado antes en una copia de la base; después se regenera `database/schema.sql` con `mysqldump --no-data`.
 - `historial_acceso` y `movimiento_inventario` crecen con el uso; ambos admiten poda por fecha una vez exportados los periodos exigidos por auditoria.
 
 ## Política de empleados: baja lógica, no borrado físico

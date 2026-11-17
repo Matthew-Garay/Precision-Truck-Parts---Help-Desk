@@ -631,15 +631,17 @@ Ref fk_ticket_categoria    { ticket.id_categoria > categoria.id_categoria }
 Ref fk_ticket_tecnico      { ticket.id_tecnico > empleado.id_empleado }
 ```
 
-## Reestructura del 2026-11-15 (migraciones 001–003)
+## Reestructura del 2026-11-15 (ya aplicada)
 
-Los cambios de esquema y datos viven en `database/migraciones/` y se corren en orden:
+Cambios de esquema y datos aplicados a la base el 15 y 16 de noviembre de 2026:
 
-| Script | Qué hace |
+| Cambio | Qué hizo |
 |---|---|
-| `001_correccion_datos.sql` | Corrige el stock duplicado por el bug de entradas, aplica conteos físicos, limpia datos de insumos, invalida contraseñas compartidas, ajusta llaves foráneas y collations. |
-| `002_normalizacion_y_renumeracion.sql` | Crea `salida_interna`, migra las salidas que estaban dentro de `motivo`, agrega `fecha_registro` al kardex y renumera **todas** las tablas desde 1. Cierra todas las sesiones. |
-| `003_indices.sql` | Índices para catálogo de insumos, historial de solicitudes, tickets por técnico y accesos. |
+| Corrección de datos | Corrigió el stock duplicado por el bug de entradas, aplicó conteos físicos, limpió datos de insumos, invalidó contraseñas compartidas, ajustó llaves foráneas y collations. |
+| Normalización y renumeración | Creó `salida_interna`, migró las salidas que estaban dentro de `motivo`, agregó `fecha_registro` al kardex y renumeró **todas** las tablas desde 1. |
+| Índices | Catálogo de insumos, historial de solicitudes, tickets por técnico y accesos. |
+| Cuadre del kardex | Inventario inicial, diferencias explícitas y quitó movimientos artificiales: en cada insumo, stock = entradas − salidas − ajustes. |
+| Nombres de empleados | Formato título en nombre y apellidos. |
 
 Para una copia completa y actual (base + archivos subidos) usa `npm run respaldar`: se guarda en `backups/respaldo_AAAAMMDD_HHMM/` (fuera de git). `database/schema.sql` es solo la estructura.
 

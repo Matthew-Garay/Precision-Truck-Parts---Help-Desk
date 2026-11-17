@@ -1,7 +1,7 @@
 -- =============================================================================
 --  ESQUEMA (solo estructura, sin datos)
 --  PrecisionTrucks HelpDesk — generado 2026-11-15 a partir de Dump20261114.sql
---  + migraciones 001 (corrección), 002 (normalización/renumeración), 003 (índices).
+--  con la reestructura del 15-nov-2026 aplicada (corrección, normalización, índices).
 --  IDs consecutivos desde 1; salidas internas en la tabla salida_interna.
 -- =============================================================================
 
