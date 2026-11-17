@@ -45,8 +45,10 @@ const pool = mysql.createPool({
   password:           process.env.DB_PASSWORD,
   database:           process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit:    100,
-  queueLimit:         500,
+  // 20 conexiones bastan para una mesa de ayuda interna y no saturan un
+  // MySQL pequeño (max_connections = 151 por defecto). Antes: 100 / 500.
+  connectionLimit:    Number(process.env.DB_POOL_SIZE) || 20,
+  queueLimit:         200,
   connectTimeout:     30000,
   timezone:           "-06:00",
   namedPlaceholders:  false,

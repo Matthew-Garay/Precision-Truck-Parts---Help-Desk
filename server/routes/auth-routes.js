@@ -143,7 +143,9 @@ router.get("/accesos/:id",         requireOwnerOrAdmin("id"), getAccesos);
 router.get("/departamentos",       getDepartamentos);
 router.get("/sucursales",          getSucursales);
 router.get("/roles",               getRoles);
-router.get("/empleados/:id",       getEmpleadoById);
+// Solo el propio empleado (su perfil) o un administrador: antes cualquier
+// usuario autenticado podía consultar los datos de cualquier empleado.
+router.get("/empleados/:id",       requireOwnerOrAdmin("id"), getEmpleadoById);
 
 // Solo admin
 router.use(requireAdmin);

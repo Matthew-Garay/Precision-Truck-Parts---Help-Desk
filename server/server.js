@@ -112,6 +112,13 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
+// Una clave corta permite falsificar sesiones por fuerza bruta.
+if (process.env.NODE_ENV === "production" && String(process.env.JWT_SECRET).length < 32) {
+  console.error("[❌ ERROR] JWT_SECRET debe tener al menos 32 caracteres en producción.");
+  console.error("           Genera una con: node -e \"console.log(require('crypto').randomBytes(48).toString('base64'))\"");
+  process.exit(1);
+}
+
 const __dirname  = dirname(fileURLToPath(import.meta.url));
 const app        = express();
 const httpServer = createServer(app);
@@ -132,7 +139,6 @@ const CORS_ORIGINS = CORS_ORIGIN;
 // -- Socket.io ------------------------------------------------
 const io = new Server(httpServer, {
   cors: { origin: CORS_ORIGINS, methods: ["GET", "POST"], credentials: true },
-  allowEIO3: true,
 });
 setIO(io);
 
@@ -341,7 +347,9 @@ app.use((err, req, res, _next) => {
 });
 
 // -- Arranque -------------------------------------------------
-httpServer.listen(PORT, "0.0.0.0", async () => {
+// HOST=127.0.0.1 en producción: Node solo acepta conexiones del propio equipo
+// (Caddy publica HTTPS). En desarrollo 0.0.0.0 permite entrar desde la red local.
+httpServer.listen(PORT, process.env.HOST || "0.0.0.0", async () => {
   const line = "-".repeat(52);
 
   const ahora = new Date();
