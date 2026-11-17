@@ -960,10 +960,18 @@ export const subirFotoInsumo = async (req, res) => {
       await fs.promises.unlink(req.file.path).catch(() => {});
       return res.status(404).json({ error: "Insumo no encontrado" });
     }
-    // Eliminar foto anterior si existe
+    // Eliminar la foto anterior SOLO si ningún otro insumo la usa: varios
+    // insumos pueden compartir la misma imagen (p. ej. los 4 colores de un
+    // tóner) y borrarla les quitaría la foto a todos.
     if (insumo.imagen_url) {
-      const anterior = path.join(INSUMOS_DIR, path.basename(insumo.imagen_url));
-      await fs.promises.unlink(anterior).catch(() => {});
+      const [[{ otros }]] = await pool.query(
+        "SELECT COUNT(*) AS otros FROM insumo WHERE imagen_url = ? AND id_insumo <> ?",
+        [insumo.imagen_url, id]
+      );
+      if (Number(otros) === 0) {
+        const anterior = path.join(INSUMOS_DIR, path.basename(insumo.imagen_url));
+        await fs.promises.unlink(anterior).catch(() => {});
+      }
     }
     const imagen_url = `/storage/Insumos/${req.file.filename}`;
     await pool.query("UPDATE insumo SET imagen_url = ? WHERE id_insumo = ?", [imagen_url, id]);
