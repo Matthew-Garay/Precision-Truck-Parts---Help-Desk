@@ -141,8 +141,6 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
   const [tickets, setTickets]         = useState([]);
   const [solicitudes, setSolicitudes]  = useState([]);
   const [metricas, setMetricas]        = useState(null);
-  const [insumos, setInsumos] = useState([]);
-const [ultimaActualizacionInsumos, setUltimaActualizacionInsumos] = useState(new Date());
   const [ticketVer, setTicketVer]     = useState(null);
   const [solicitudVer, setSolicitudVer] = useState(null);
   const [errorRed, setErrorRed]       = useState(false);
@@ -261,16 +259,13 @@ const [ultimaActualizacionInsumos, setUltimaActualizacionInsumos] = useState(new
     cargarSolicitudes();
   }, [cargarTickets, cargarMetricas, cargarSolicitudes]);
 
-// Auto-refresh inventory every 3 seconds
-useAutoRefresh(() => {
-  apiFetch('/api/solicitudes/inventario')
-    .then(r => r.json())
-    .then(data => {
-      setInsumos(data.insumos || []);
-      setUltimaActualizacionInsumos(new Date());
-    })
-    .catch(err => console.error('Error actualizando inventario:', err));
-}, 3000);
+  // Refresco automático cada 30 s. (Se quitó una consulta al inventario cada
+  // 3 s que no se mostraba en pantalla y saturaba el servidor.)
+  useAutoRefresh(() => {
+    cargarTicketsRef.current?.();
+    cargarMetricasRef.current?.();
+    cargarSolicitudesRef.current?.();
+  }, 30000, []);
 
   const tituloHeader = ticketVer
     ? ticketVer.folio_ticket
