@@ -1,0 +1,4 @@
+# Scripts que se ejecutan en Linux: siempre con fin de línea LF
+*.sh text eol=lf
+*.cjs text eol=lf
+Caddyfile text eol=lf
