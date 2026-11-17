@@ -34,7 +34,11 @@
  *
  * Uso en Solicitud.js:
  *   import { generarFolio } from './helpers.js';
- *   const folio = await generarFolio(conn, "solicitud", "folio_solicitud", "SAL");
+ *   const folio = await generarFolio(conn, "solicitud", "folio_solicitud", "SOL");
+ *
+ * @module server/utils/helpers
+ * @exports isProd
+ * @exports generarFolio
  */
 
 /**
@@ -52,13 +56,17 @@
  */
 export const isProd = () => process.env.NODE_ENV === "production";
 
-export async function generarFolio(conn, tabla, campoFolio, prefijo) {
-  const ahora   = new Date();
+export async function generarFolio(conn, tabla, campoFolio, prefijo, fecha = new Date()) {
+  // `fecha` permite numerar por el mes del movimiento fisico (salidas con
+  // fecha manual); por defecto es el mes actual.
+  const ahora   = fecha instanceof Date && !Number.isNaN(fecha.getTime()) ? fecha : new Date();
   const anio    = ahora.getFullYear();
-  const dia     = String(ahora.getDate()).padStart(2, "0");
-  // Sin prefijo el folio queda YYYYMMDD-NNNN (ej. 20261006-0001). Si se pasa un
-  // prefijo se antepone: PREFIJO-YYYYMMDD-NNNN. El numero se reinicia cada dia.
-  const segmento = prefijo ? `${prefijo}-${anio}${dia}-` : `${anio}${dia}-`;
+  const mes     = String(ahora.getMonth() + 1).padStart(2, "0");
+  // Formato PREFIJO-YYYYMM-NNNN (ej. SOL-202611-0001); el numero se reinicia
+  // cada mes. Antes se usaba el DIA del mes en lugar del mes (SOL-202614-…),
+  // lo que mezclaba consecutivos de meses distintos y chocaba con los folios
+  // SAL-YYYYMM de las salidas internas.
+  const segmento = prefijo ? `${prefijo}-${anio}${mes}-` : `${anio}${mes}-`;
 
   // FOR UPDATE: bloquea las filas del mes actual hasta el COMMIT del llamador.
   // CAST(...AS UNSIGNED) ordena numéricamente para obtener el último NNN real,

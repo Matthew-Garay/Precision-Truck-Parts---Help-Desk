@@ -1,5 +1,5 @@
-﻿/**
- * authController.js
+/**
+ * auth-controller.js
  *
  * Controlador encargado de la autenticacion de usuarios y la gestion
  * completa de empleados dentro del sistema HelpDesk.
@@ -48,6 +48,28 @@
  *
  *   getAllAccesos
  *     Retorna el historial de accesos paginado de todos los empleados (solo admin).
+ *
+ * @module server/controllers/auth-controller
+ * @requires ../services/empleado.js
+ * @requires bcryptjs
+ * @requires jsonwebtoken
+ * @requires crypto
+ * @requires ../config/db.js
+ * @requires ../middlewares/validate.js
+ * @requires ../utils/helpers.js
+ * @exports refreshToken
+ * @exports login
+ * @exports logout
+ * @exports getAccesos
+ * @exports getEmpleadoById
+ * @exports getAllEmpleados
+ * @exports getDepartamentos
+ * @exports getSucursales
+ * @exports getRoles
+ * @exports updateEmpleadoAdmin
+ * @exports crearEmpleado
+ * @exports getAllAccesos
+ * @exports actualizarPerfil
  */
 import Empleado from '../services/empleado.js';
 import bcrypt   from "bcryptjs";

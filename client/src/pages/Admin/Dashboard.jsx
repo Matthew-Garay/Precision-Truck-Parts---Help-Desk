@@ -1,3 +1,38 @@
+/**
+ * Dashboard.jsx
+ *
+ * Contenedor principal del rol Administrador: navegación lateral, encabezado,
+ * métricas de tickets y solicitudes, y enrutamiento interno a cada sección
+ * (incidencias, insumos, inventario, personal, manuales, rendimiento).
+ *
+ * Export default: AdminDashboard
+ * Props: usuario, onLogout, onUsuarioActualizado.
+ * Endpoints: GET /api/tickets, /api/tickets/metricas,
+ *    /api/solicitudes/pendientes, /api/solicitudes/inventario.
+ * Tiempo real: Socket.io (use-socket) para tickets/solicitudes nuevas y
+ *    alertas de stock.
+ *
+ * @module client/pages/Admin/Dashboard
+ * @requires react
+ * @requires react-router-dom
+ * @requires lucide-react
+ * @requires ./VistaTicket.jsx
+ * @requires ./VistaSolicitud.jsx
+ * @requires ./HistorialIncidencias.jsx
+ * @requires ./Inventario.jsx
+ * @requires ./Personal.jsx
+ * @requires ./ManualesIncidencias.jsx
+ * @requires ./ConfiguracionPerfil.jsx
+ * @requires ./HistorialInsumos.jsx
+ * @requires ./RendimientoTecnicos.jsx
+ * @requires ../../services/api-client.js
+ * @requires ../../context/theme-context.js
+ * @requires ../../hooks/use-auto-refresh.js
+ * @requires ../../components/DashboardShared.jsx
+ * @requires ../../components/CampanaNotificaciones.jsx
+ * @requires ../../hooks/use-ticket-notification.js
+ * @exports AdminDashboard (default)
+ */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -106,6 +141,8 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
   const [tickets, setTickets]         = useState([]);
   const [solicitudes, setSolicitudes]  = useState([]);
   const [metricas, setMetricas]        = useState(null);
+  const [insumos, setInsumos] = useState([]);
+const [ultimaActualizacionInsumos, setUltimaActualizacionInsumos] = useState(new Date());
   const [ticketVer, setTicketVer]     = useState(null);
   const [solicitudVer, setSolicitudVer] = useState(null);
   const [errorRed, setErrorRed]       = useState(false);
@@ -224,11 +261,16 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
     cargarSolicitudes();
   }, [cargarTickets, cargarMetricas, cargarSolicitudes]);
 
-  useAutoRefresh(() => {
-    cargarTicketsRef.current?.();
-    cargarMetricasRef.current?.();
-    cargarSolicitudesRef.current?.();
-  }, 30000, []);
+// Auto-refresh inventory every 3 seconds
+useAutoRefresh(() => {
+  apiFetch('/api/solicitudes/inventario')
+    .then(r => r.json())
+    .then(data => {
+      setInsumos(data.insumos || []);
+      setUltimaActualizacionInsumos(new Date());
+    })
+    .catch(err => console.error('Error actualizando inventario:', err));
+}, 3000);
 
   const tituloHeader = ticketVer
     ? ticketVer.folio_ticket
@@ -266,7 +308,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, height: "var(--header-h)", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}
         >
           {errorRed && (
-            <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 py-1 text-xs font-bold"
+            <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 py-1 text-[11px] font-bold"
               style={{ background: "#dc2626", color: "#fff" }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 8v4m0 4h.01" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"/><circle cx="12" cy="12" r="9" stroke="#fff" strokeWidth="2"/></svg>
               <span className="hidden sm:inline">Sin conexión con el servidor -</span> datos desactualizados
@@ -285,11 +327,11 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
             <div className="flex flex-col justify-center min-w-0">
               <div className="flex items-center gap-2">
                 <div className="w-0.5 h-5 rounded-full flex-shrink-0" style={{ background: `linear-gradient(180deg,${T.orange},#ffb347)` }} />
-                <h1 className="text-sm sm:text-base font-black tracking-tight truncate" style={{ color: T.text }}>
+                <h1 className="text-[12px] sm:text-[13px] font-black tracking-tight truncate" style={{ color: T.text }}>
                   {tituloHeader}
                 </h1>
               </div>
-              <p className="hidden sm:block text-[10px] font-medium ml-3 truncate" style={{ color: T.textMuted }}>
+              <p className="hidden sm:block text-[9px] font-medium ml-3 truncate" style={{ color: T.textMuted }}>
                 Panel de Administración - Precision Truck Parts, Parts and Accesorios, S.A de C.V.
               </p>
             </div>
@@ -298,7 +340,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           {/* Derecha: hora + modo + campana */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {ultimaActualizacion && !errorRed && (
-              <span className="hidden xl:flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg"
+              <span className="hidden xl:flex items-center gap-1 text-[9px] px-2 py-1 rounded-lg"
                 style={{ color: T.textFaint, background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#16a34a" }}/>
                 {ultimaActualizacion.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
@@ -348,8 +390,8 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
                 style={{ background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
                 {(() => { const Icon = NAV[activo]?.icon; return Icon ? <Icon size={24} style={{ color: T.textFaint }} /> : null; })()}
               </div>
-              <p className="text-sm font-bold" style={{ color: T.textMuted }}>{NAV[activo]?.label}</p>
-              <p className="text-xs" style={{ color: T.textFaint }}>Módulo en desarrollo</p>
+              <p className="text-[12px] font-bold" style={{ color: T.textMuted }}>{NAV[activo]?.label}</p>
+              <p className="text-[11px]" style={{ color: T.textFaint }}>Módulo en desarrollo</p>
             </div>
           )}
         </div>

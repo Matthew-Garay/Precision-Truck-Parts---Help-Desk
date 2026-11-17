@@ -1,17 +1,31 @@
-import { apiFetch } from './api-client.js';
-
 /**
- * salidasHistorial.js
+ * salidas-historial.js
  *
  * Utilidades para mostrar las SALIDAS MANUALES de insumos (folio SAL-…)
  * junto a las solicitudes (SOL-…) dentro del "Historial de Insumos":
  *   - Admin     → Pages/Admin/HistorialInsumos.jsx
  *   - Sucursal  → Pages/Usuario/SolicitudInsumo.jsx (tab Mis Solicitudes)
  *
- * El backend guarda los datos del formato dentro del motivo del movimiento:
- *   "[SAL-202610-001] Uso interno · Destino: X · Recibe: Y · Entrega: Z · motivo"
- * Aquí se parsean de vuelta para rearmar la HOJA de salida sin idas extra.
+ * Los datos de cada salida (folio, prioridad, ruta, solicitante, responsable,
+ * justificación) viven en la tabla `salida_interna` y la API los entrega como
+ * campos propios de cada movimiento (folio_salida, prioridad_salida,
+ * nombre_solicitante, puesto_solicitante, sucursal_solicitante, …).
+ * parsearMotivoSalida() se conserva solo como respaldo para movimientos
+ * antiguos cuyo motivo todavía tenga el formato "[SAL-…] Uso interno · …".
+ *
+ * @module client/services/salidas-historial
+ * @requires ./api-client.js
+ * @exports parsearMotivoSalida
+ * @exports agruparSalidas
+ * @exports coincideFiltrosSalida
+ * @exports abrirHojaSalida
+ * @exports traerSalidasManualesAdmin
+ * @exports traerSalidasMiSucursal
+ * @exports traerSolicitudesAdmin
+ * @exports traerSolicitudesEmpleado
  */
+import { apiFetch } from './api-client.js';
+
 
 // Lectura del motivo del movimiento
 export function parsearMotivoSalida(motivo) {
@@ -51,7 +65,23 @@ export function parsearMotivoSalida(motivo) {
 export function agruparSalidas(rows = []) {
   const mapa = new Map();
   rows.forEach(m => {
-    const p = parsearMotivoSalida(m.motivo);
+    // Los datos de la salida llegan en columnas propias (tabla salida_interna).
+    // parsearMotivoSalida solo queda como respaldo para movimientos antiguos
+    // que no se hayan migrado.
+    const viejo = parsearMotivoSalida(m.motivo);
+    const ruta = [m.nombre_sucursal_origen, m.nombre_sucursal_destino || m.destino_texto].filter(Boolean).join(" → ");
+    const p = m.folio_salida ? {
+      folio:     m.folio_salida,
+      ruta,
+      destino:   ruta,
+      prioridad: m.prioridad_salida || "",
+      recibe:    m.nombre_responsable || "",
+      entrega:   m.nombre_solicitante || "",
+      puesto:    m.puesto_solicitante || "",
+      sucSol:    m.sucursal_solicitante || "",
+      numEmp:    m.num_empleado_solicitante || "",
+      texto:     m.justificacion || "",
+    } : viejo;
     const anio = String(m.fecha ?? "").slice(0, 4) || String(new Date().getFullYear());
     const folio = p.folio || `SAL-${anio}-${m.id_movimiento}`;
     if (!mapa.has(folio)) {

@@ -23,6 +23,17 @@
  *   onUsuarioActualizado - callback(usuarioActualizado) para propagar cambios
  *                          al componente raiz del dashboard
  *   rol                 - "Administrador" o "Usuario" (default: "Usuario")
+ *
+ * @module client/components/ConfiguracionPerfilShared
+ * @requires react
+ * @requires lucide-react
+ * @requires ../services/api-client.js
+ * @requires ../utils/email.js
+ * @requires ../utils/password.js
+ * @requires ./PerfilShared.jsx
+ * @requires ../utils/tipografia.js
+ * @requires ./LogoModal.jsx
+ * @exports ConfiguracionPerfilShared (default)
  */
 import { useState, useEffect } from "react";
 import { User } from "lucide-react";
@@ -31,6 +42,8 @@ import { emailCorporativoValido, DOMINIOS_PERMITIDOS } from '../utils/email.js';
 import { evaluarPassword, passwordSeguro } from '../utils/password.js';
 import { EyeBtn, usePerfilStyles, generarPDFAccesos } from './PerfilShared.jsx';
 
+import { FS } from '../utils/tipografia.js';
+import LogoModal from './LogoModal.jsx';
 export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActualizado, rol = "Usuario" }) {
   const isDark = T.isDark;
   const { card, hdr, inp } = usePerfilStyles(T, isDark);
@@ -175,14 +188,14 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}` }}>
             <div className="flex-shrink-0">
               <div className="flex items-center justify-center rounded-2xl font-black overflow-hidden"
-                style={{ width: "72px", height: "72px", background: isDark ? "#1e2330" : T.surfaceAlt, border: `2px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`, color: isDark ? "rgba(255,255,255,0.7)" : T.textMuted, fontSize: "24px" }}>
+                style={{ width: "72px", height: "72px", background: isDark ? "#1e2330" : T.surfaceAlt, border: `2px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`, color: isDark ? "rgba(255,255,255,0.7)" : T.textMuted, fontSize: FS.kpi }}>
                 {iniciales || <User size={28} style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textFaint }} />}
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-black text-base leading-tight" style={{ color: T.text }}>{nombreCompleto || "-"}</p>
-              <p className="text-xs mt-0.5" style={{ color: T.textMuted }}>{perfil.email || usuario.email || "-"}</p>
-              <p className="text-[11px] mt-0.5" style={{ color: T.textFaint }}>{perfil.departamento || usuario.departamento || "-"}</p>
+              <p className="font-black text-[13px] leading-tight" style={{ color: T.text }}>{nombreCompleto || "-"}</p>
+              <p className="text-[11px] mt-0.5" style={{ color: T.textMuted }}>{perfil.email || usuario.email || "-"}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: T.textFaint }}>{perfil.departamento || usuario.departamento || "-"}</p>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-0" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` }}>
@@ -190,7 +203,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
               .map(({ label, val }, i) => (
                 <div key={label} className="px-4 py-3" style={{ borderRight: i < 2 ? `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` : "none" }}>
                   <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: T.textFaint }}>{label}</p>
-                  <p className="text-[12px] font-bold truncate mt-0.5" style={{ color: T.text }}>{val}</p>
+                  <p className="text-[11px] font-bold truncate mt-0.5" style={{ color: T.text }}>{val}</p>
                 </div>
               ))}
           </div>
@@ -200,24 +213,24 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
         <div className="rounded-xl overflow-hidden" style={card}>
           <div className="px-5 py-3 flex items-center gap-2" style={hdr}>
             <div className="w-1 h-3.5 rounded-full" style={{ background: T.orange }} />
-            <p className="text-xs font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Datos Personales</p>
+            <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Datos Personales</p>
           </div>
           <div className="px-5 py-5 flex flex-col gap-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[{ label: "Nombre", val: nombre, set: setNombre }, { label: "Apellido Paterno", val: apPaterno, set: setApPaterno }, { label: "Apellido Materno", val: apMaterno, set: setApMaterno }]
                 .map(({ label, val, set }) => (
                   <div key={label} className="flex flex-col gap-1.5">
-                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</span>
-                    <input style={{ ...inp, fontSize: "14px", lineHeight: "1.35" }} value={val} onChange={e => set(e.target.value)}
+                    <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>{label}</span>
+                    <input style={{ ...inp, fontSize: FS.subtitulo, lineHeight: "1.35" }} value={val} onChange={e => set(e.target.value)}
                       onFocus={e => e.target.style.borderColor = T.orange} onBlur={e => e.target.style.borderColor = T.border} />
                   </div>
                 ))}
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Correo Electrónico</span>
-              <input style={{ ...inp, fontSize: "14px", lineHeight: "1.35" }} type="email" value={email} onChange={e => { setEmail(e.target.value); setEmailEditado(true); }}
+              <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Correo Electrónico</span>
+              <input style={{ ...inp, fontSize: FS.subtitulo, lineHeight: "1.35" }} type="email" value={email} onChange={e => { setEmail(e.target.value); setEmailEditado(true); }}
                 onFocus={e => e.target.style.borderColor = T.orange} onBlur={e => e.target.style.borderColor = T.border} />
-              <span className="text-[11px] leading-tight" style={{ color: T.textFaint }}>
+              <span className="text-[10px] leading-tight" style={{ color: T.textFaint }}>
                 Dominios permitidos: {DOMINIOS_PERMITIDOS.map(d => `@${d}`).join(", ")}
               </span>
             </div>
@@ -242,7 +255,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             display: "flex", alignItems: "center", gap: "10px",
           }}>
             <div style={{ width: "4px", height: "16px", borderRadius: "99px", background: "#F47920", flexShrink: 0 }} />
-            <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: "#F47920" }}>
+            <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: "#F47920" }}>
               Cambiar Contraseña
             </p>
           </div>
@@ -253,10 +266,10 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             {/* Nueva Contraseña */}
             <div style={{ display: "grid", gridTemplateColumns: "14px 140px 1fr", alignItems: "baseline", gap: "10px", padding: "8px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}` }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isDark ? "rgba(255,255,255,0.22)" : "#c0c9d6"} strokeWidth="2" style={{ marginTop: "1px" }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0" }}>Nueva Contraseña</span>
+              <span style={{ fontSize: FS.etiqueta, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0" }}>Nueva Contraseña</span>
               <div style={{ position: "relative" }}>
                 <input
-                  style={{ ...inp, paddingRight: "36px", fontSize: "14px", color: T.text, WebkitTextFillColor: T.text, caretColor: T.text }}
+                  style={{ ...inp, paddingRight: "36px", fontSize: FS.subtitulo, color: T.text, WebkitTextFillColor: T.text, caretColor: T.text }}
                   type={showNueva ? "text" : "password"} value={passNueva} onChange={e => setPassNueva(e.target.value)}
                   autoComplete="new-password" placeholder="••••••••"
                   onFocus={e => e.target.style.borderColor = "#F47920"}
@@ -273,12 +286,12 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
                   <div style={{ flex: 1, height: "4px", borderRadius: "99px", background: isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb", overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${evaluacion.pct}%`, background: evaluacion.color, borderRadius: "99px", transition: "width 0.2s, background 0.2s" }} />
                   </div>
-                  <span style={{ fontSize: "0.7rem", fontWeight: 700, color: evaluacion.color, whiteSpace: "nowrap" }}>{evaluacion.etiqueta}</span>
+                  <span style={{ fontSize: FS.etiqueta, fontWeight: 700, color: evaluacion.color, whiteSpace: "nowrap" }}>{evaluacion.etiqueta}</span>
                 </div>
                 <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "2px 10px" }}>
                   {evaluacion.reglas.map(r => (
                     <li key={r.id} style={{
-                      display: "flex", alignItems: "center", gap: "5px", fontSize: "0.72rem",
+                      display: "flex", alignItems: "center", gap: "5px", fontSize: FS.etiqueta,
                       color: r.ok ? "#16a34a" : (isDark ? "rgba(255,255,255,0.35)" : "#94a3b8"),
                     }}>
                       {r.ok
@@ -289,7 +302,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
                   ))}
                 </ul>
                 {evaluacion.cumple && (
-                  <p style={{ margin: 0, fontSize: "0.72rem", fontWeight: 700, color: "#16a34a" }}>
+                  <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, color: "#16a34a" }}>
                     Contraseña segura — cumple la política
                   </p>
                 )}
@@ -299,10 +312,10 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             {/* Confirmar Contraseña */}
             <div style={{ display: "grid", gridTemplateColumns: "14px 140px 1fr", alignItems: "baseline", gap: "10px", padding: "8px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}` }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isDark ? "rgba(255,255,255,0.22)" : "#c0c9d6"} strokeWidth="2" style={{ marginTop: "1px" }}><polyline points="20 6 9 17 4 12"/></svg>
-              <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0" }}>Confirmar</span>
+              <span style={{ fontSize: FS.etiqueta, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0" }}>Confirmar</span>
               <div style={{ position: "relative" }}>
                 <input
-                  style={{ ...inp, paddingRight: "36px", fontSize: "14px", color: T.text, WebkitTextFillColor: T.text, caretColor: T.text }}
+                  style={{ ...inp, paddingRight: "36px", fontSize: FS.subtitulo, color: T.text, WebkitTextFillColor: T.text, caretColor: T.text }}
                   type={showConf ? "text" : "password"} value={passConf} onChange={e => setPassConf(e.target.value)}
                   autoComplete="new-password" placeholder="••••••••"
                   onFocus={e => e.target.style.borderColor = "#F47920"}
@@ -315,7 +328,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             {/* Aviso en vivo si la confirmación no coincide */}
             {passConf && passConf !== passNueva && (
               <p role="alert" style={{
-                gridColumn: "1 / -1", margin: "0 0 4px", fontSize: "0.75rem", fontWeight: 600,
+                gridColumn: "1 / -1", margin: "0 0 4px", fontSize: FS.etiqueta, fontWeight: 600,
                 color: "#dc2626", display: "flex", alignItems: "center", gap: "5px",
               }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -326,7 +339,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             {/* Mensaje feedback */}
             {msg && (
               <div style={{
-                padding: "8px 12px", borderRadius: "7px", fontSize: "0.85rem", fontWeight: 600,
+                padding: "8px 12px", borderRadius: "7px", fontSize: FS.secundario, fontWeight: 600,
                 display: "flex", alignItems: "center", gap: "6px",
                 background: msg.tipo === "ok" ? (isDark ? "rgba(22,163,74,0.15)" : "#dcfce7") : (isDark ? "rgba(220,38,38,0.15)" : "#fee2e2"),
                 color: msg.tipo === "ok" ? "#16a34a" : "#dc2626",
@@ -351,7 +364,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
               onClick={guardar} disabled={loading}
               style={{
                 padding: "6px 18px", borderRadius: "6px",
-                fontSize: "1rem", fontWeight: 600,
+                fontSize: FS.cuerpo, fontWeight: 600,
                 background: `linear-gradient(135deg, #F47920, #d97400)`,
                 border: "none", color: "#fff", cursor: loading ? "not-allowed" : "pointer",
                 opacity: loading ? 0.7 : 1,
@@ -373,7 +386,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
         <div className="rounded-xl overflow-hidden" style={card}>
           <div className="px-5 py-3 flex flex-wrap items-center gap-2" style={hdr}>
             <div className="w-1 h-3.5 rounded-full" style={{ background: T.orange }} />
-            <p className="text-xs font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Historial de Accesos</p>
+            <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Historial de Accesos</p>
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
               style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, color: T.textMuted }}>
               {`Últimos ${accesos.length}`}
@@ -381,7 +394,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             <div className="ml-auto">
               <button onClick={() => setModalReporte(true)}
                 disabled={accesos.length === 0}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background: `linear-gradient(135deg,${T.orange},#d97400)`, color: "#fff", boxShadow: "0 2px 8px rgba(244,121,32,0.3)" }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/></svg>
                 Generar Reporte
@@ -390,7 +403,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
           </div>
 
           {accesos.length > 0 && (
-            <div className="grid grid-cols-4 gap-0" style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` }}>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-0" style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` }}>
               {[{ label: "Sesiones", val: accesosFiltrados.length, color: T.orange },
                 { label: "Cerradas", val: accesosFiltrados.filter(a => a.fecha_salida).length, color: "#16a34a" },
                 { label: "Prom. dur.", val: fmtMin(durPromedio), color: "#3b82f6" },
@@ -398,8 +411,8 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
                 .map(({ label, val, color }, i) => (
                   <div key={label} className="px-4 py-2.5 flex flex-col gap-0.5"
                     style={{ borderRight: i < 3 ? `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` : "none" }}>
-                    <p className="text-[8px] font-bold uppercase tracking-wider" style={{ color: T.textFaint }}>{label}</p>
-                    <p className="text-sm font-black" style={{ color }}>{val}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: T.textFaint }}>{label}</p>
+                    <p className="text-[12px] font-black" style={{ color }}>{val}</p>
                   </div>
                 ))}
             </div>
@@ -417,19 +430,19 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
               </thead>
               <tbody>
                 {accesos.length === 0 ? (
-                  <tr><td colSpan={4} className="px-5 py-6 text-center text-xs" style={{ color: T.textFaint }}>Sin registros</td></tr>
+                  <tr><td colSpan={4} className="px-5 py-6 text-center text-[11px]" style={{ color: T.textFaint }}>Sin registros</td></tr>
                 ) : accesos.slice(0, 10).map((a, i) => {
                   const entrada = a.fecha_entrada ? new Date(a.fecha_entrada) : null;
                   const salida  = a.fecha_salida  ? new Date(a.fecha_salida)  : null;
                   const durMin  = entrada && salida ? Math.round((salida - entrada) / 60000) : null;
                   return (
                     <tr key={a.id_acceso} style={{ background: i % 2 === 0 ? (isDark ? "#141720" : T.surface) : (isDark ? "#1a1f2e" : T.surfaceAlt), borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : T.border}` }}>
-                      <td className="px-5 py-2.5 text-[10px] font-mono font-bold" style={{ color: T.orange }}>{a.id_acceso}</td>
-                      <td className="px-5 py-2.5 text-[10px]" style={{ color: T.text }}>{fmtDT(entrada)}</td>
-                      <td className="px-5 py-2.5 text-[10px]" style={{ color: salida ? "#16a34a" : T.textFaint }}>
+                      <td className="px-5 py-2.5 text-[9px] font-mono font-bold" style={{ color: T.orange }}>{a.id_acceso}</td>
+                      <td className="px-5 py-2.5 text-[9px]" style={{ color: T.text }}>{fmtDT(entrada)}</td>
+                      <td className="px-5 py-2.5 text-[9px]" style={{ color: salida ? "#16a34a" : T.textFaint }}>
                         {salida ? fmtDT(salida) : <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: "rgba(244,121,32,0.12)", color: T.orange }}>Activo</span>}
                       </td>
-                      <td className="px-5 py-2.5 text-[10px] font-semibold" style={{ color: T.textMuted }}>
+                      <td className="px-5 py-2.5 text-[9px] font-semibold" style={{ color: T.textMuted }}>
                         {durMin === null ? "-" : fmtMin(durMin)}
                       </td>
                     </tr>
@@ -438,7 +451,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
               </tbody>
             </table>
             {accesos.length > 10 && (
-              <p className="text-center text-[10px] py-2.5 font-semibold" style={{ color: T.textFaint, borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : T.border}` }}>
+              <p className="text-center text-[9px] py-2.5 font-semibold" style={{ color: T.textFaint, borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : T.border}` }}>
                 Mostrando los últimos 10 de {accesos.length} registros — exporta el PDF para ver el historial completo.
               </p>
             )}
@@ -481,22 +494,18 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             gap: "12px", flexShrink: 0,
           }}>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: T.orange }}>
+              <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: T.orange }}>
                 Historial de Accesos
               </p>
-              <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: T.text, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+              <h2 style={{ margin: "3px 0 0", fontSize: FS.subtitulo, fontWeight: 700, color: T.text, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
                 Generar Reporte
               </h2>
-              <p style={{ margin: "3px 0 0", fontSize: "12px", color: T.textMuted }}>
+              <p style={{ margin: "3px 0 0", fontSize: FS.cuerpo, color: T.textMuted }}>
                 Filtra por período y exporta como PDF
               </p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
-              <img
-                src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
-                alt="Precision Trucks"
-                style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
-              />
+              <LogoModal />
               <button
                 onClick={() => { setModalReporte(false); setRptDesde(""); setRptHasta(""); setMesFiltro("Todos"); setAnioFiltro("Todos"); }}
                 style={{
@@ -516,7 +525,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
 
           {/* Body */}
           <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px", display: "flex", flexDirection: "column", gap: "14px" }}>
-            <p style={{ margin: 0, fontSize: "11px", color: T.textMuted }}>
+            <p style={{ margin: 0, fontSize: FS.secundario, color: T.textMuted }}>
               Selecciona el rango de fechas. Si no seleccionas ninguna se incluyen todos los registros.
             </p>
 
@@ -527,7 +536,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
                     { label: "Mes",  val: mesFiltro,  set: setMesFiltro, opts: mesesDisponibles, placeholder: "Todos los meses" }]
                     .map(({ label, val, set, opts, placeholder }) => (
                       <div key={label} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                        <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>{label}</span>
+                        <span style={{ fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>{label}</span>
                         <select value={val} onChange={e => set(e.target.value)}
                           style={{ ...inp, cursor: "pointer", colorScheme: isDark ? "dark" : "light",
                             borderColor: val !== "Todos" ? T.orange : T.border,
@@ -546,7 +555,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             {[{ label: "Desde", val: rptDesde, set: setRptDesde }, { label: "Hasta", val: rptHasta, set: setRptHasta }]
               .map(({ label, val, set }) => (
                 <div key={label} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>{label}</span>
+                  <span style={{ fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint }}>{label}</span>
                   <input type="date" value={val} onChange={e => set(e.target.value)}
                     style={{ ...inp, colorScheme: isDark ? "dark" : "light" }}
                     onFocus={e => e.target.style.borderColor = T.orange}
@@ -567,7 +576,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
               onClick={() => { setModalReporte(false); setRptDesde(""); setRptHasta(""); setMesFiltro("Todos"); setAnioFiltro("Todos"); }}
               style={{
                 padding: "6px 16px", borderRadius: "6px",
-                fontSize: "12px", fontWeight: 600,
+                fontSize: FS.cuerpo, fontWeight: 600,
                 background: "transparent", border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}`,
                 color: T.textMuted, cursor: "pointer", transition: "all 0.12s",
               }}
@@ -590,7 +599,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
               }}
               style={{
                 padding: "6px 18px", borderRadius: "6px",
-                fontSize: "12px", fontWeight: 700,
+                fontSize: FS.cuerpo, fontWeight: 700,
                 background: T.orange, border: "none", color: "#fff",
                 cursor: "pointer", transition: "opacity 0.12s",
               }}

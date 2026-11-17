@@ -1,4 +1,4 @@
-<#
+﻿<#
   restaurar.ps1 — Recuperar una copia de seguridad
   ══════════════════════════════════════════════════════════════
 

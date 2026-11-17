@@ -14,6 +14,10 @@
  *
  * Ambos iconos usan currentColor para heredar el color del padre
  * y tienen dimensiones de 16x16 (h-4 w-4 de Tailwind).
+ *
+ * @module client/components/Icons
+ * @exports EyeIcon
+ * @exports EyeOffIcon
  */
 // ================================================================
 //  ICONS - Precision Truck Parts HelpDesk

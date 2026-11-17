@@ -1,6 +1,26 @@
+/**
+ * ModalDetalleInsumo.jsx
+ *
+ * Modal de solo lectura con la ficha completa de un insumo: imagen ampliable,
+ * marca, modelo, serie, categoría, estado y stock con color por nivel.
+ *
+ * Export default: ModalDetalleInsumo
+ * Props: insumo, onClose, T (tokens de tema), ocultarStock (true para el rol
+ *    Usuario: el stock es dato interno).
+ * Teclado: Escape cierra primero la imagen ampliada y después el modal.
+ *
+ * @module client/components/Inventario/ModalDetalleInsumo
+ * @requires react
+ * @requires lucide-react
+ * @requires ../../utils/tipografia.js
+ * @requires ../LogoModal.jsx
+ * @exports ModalDetalleInsumo (default)
+ */
 import { useState, useEffect } from "react";
 import { X, Package, Hash, Layers, Tag, AlignLeft, BarChart2, ZoomIn } from "lucide-react";
 
+import { FS } from '../../utils/tipografia.js';
+import LogoModal from '../LogoModal.jsx';
 const ORANGE = "var(--color-primary)";
 
 const ESTADO_META = {
@@ -22,7 +42,7 @@ function Badge({ value, map }) {
     <span style={{
       display: "inline-flex", alignItems: "center", gap: "4px",
       padding: "14px 16px", borderRadius: "99px",
-      fontSize: "14px", fontWeight: 500,
+      fontSize: FS.subtitulo, fontWeight: 500,
       background: s.bg, color: s.color, border: `1px solid ${s.border}`,
     }}>
       <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: s.color, flexShrink: 0 }} />
@@ -42,10 +62,10 @@ function DataRow({ icon: Icon, label, value, T, multiline = false, highlight }) 
       borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}`,
     }}>
       <Icon size={12} style={{ color: isDark ? "rgba(255,255,255,0.22)" : "#c0c9d6", marginTop: multiline ? "2px" : "1px" }} />
-      <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0", paddingTop: multiline ? "1px" : 0 }}>
+      <span style={{ fontSize: FS.secundario, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0", paddingTop: multiline ? "1px" : 0 }}>
         {label}
       </span>
-      <span style={{ fontSize: "13px", color: highlight ?? (T?.text ?? "#1a202c"), fontWeight: highlight ? 700 : 500, lineHeight: multiline ? "1.55" : "inherit" }}>
+      <span style={{ fontSize: FS.enfasis, color: highlight ?? (T?.text ?? "#1a202c"), fontWeight: highlight ? 700 : 500, lineHeight: multiline ? "1.55" : "inherit" }}>
         {value}
       </span>
     </div>
@@ -71,14 +91,14 @@ function SpecCard({ icon: Icon, label, value, isDark, mono = false }) {
       </div>
       <div style={{ minWidth: 0, flex: 1 }}>
         <p style={{
-          margin: 0, fontSize: "14px", fontWeight: 600, textTransform: "uppercase",
+          margin: 0, fontSize: FS.subtitulo, fontWeight: 600, textTransform: "uppercase",
           letterSpacing: "0.08em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0",
         }}>
           {label}
         </p>
         <p style={{
           margin: "2px 0 0",
-          fontSize: mono ? "11px" : "13px", fontWeight: 600,
+          fontSize: mono ? FS.secundario : FS.enfasis, fontWeight: 600,
           fontFamily: mono ? "'JetBrains Mono','Courier New',monospace" : "inherit",
           color: isDark ? "#e2e8f0" : "#1a202c",
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -174,14 +194,14 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
           gap: "12px", flexShrink: 0,
         }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>
+            <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>
               Insumo
             </p>
-            <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+            <h2 style={{ margin: "3px 0 0", fontSize: FS.subtitulo, fontWeight: 700, color: textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
               {insumo.nombre}
             </h2>
             {(insumo.marca || insumo.modelo) && (
-              <p style={{ margin: "4px 0 0", fontSize: "12px", color: textMuted, fontWeight: 400 }}>
+              <p style={{ margin: "4px 0 0", fontSize: FS.cuerpo, color: textMuted, fontWeight: 400 }}>
                 {[insumo.marca, insumo.modelo].filter(Boolean).join(" · ")}
               </p>
             )}
@@ -189,11 +209,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
 
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
             {/* Logo adaptativo al tema */}
-            <img
-              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
-              alt="Precision Trucks"
-              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
-            />
+            <LogoModal />
             <button
               onClick={onClose}
               aria-label="Cerrar"
@@ -243,7 +259,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
                 position: "absolute", right: 8, bottom: 8,
                 display: "inline-flex", alignItems: "center", gap: 4,
                 padding: "3px 8px", borderRadius: "99px",
-                fontSize: 10, fontWeight: 700,
+                fontSize: FS.etiqueta, fontWeight: 700,
                 background: isDark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.85)",
                 color: isDark ? "rgba(255,255,255,0.8)" : "#475569",
                 border: `1px solid ${border}`, pointerEvents: "none",
@@ -271,7 +287,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
               {insumo.nombre_categoria && (
                 <span style={{
                   display: "inline-flex", alignItems: "center", gap: "4px",
-                  padding: "2px 9px", borderRadius: "99px", fontSize: "0.95rem", fontWeight: 600,
+                  padding: "2px 9px", borderRadius: "99px", fontSize: FS.secundario, fontWeight: 600,
                   background: isDark ? "rgba(244,121,32,0.10)" : "rgba(244,121,32,0.08)",
                   color: ORANGE, border: `1px solid rgba(244,121,32,0.22)`,
                 }}>
@@ -298,13 +314,13 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <BarChart2 size={16} style={{ color: stockColor }} />
-                  <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: textMuted }}>
+                  <span style={{ fontSize: FS.secundario, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: textMuted }}>
                     Stock disponible
                   </span>
                 </div>
-                <span style={{ fontSize: "22px", fontWeight: 800, color: stockColor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                <span style={{ fontSize: FS.kpi, fontWeight: 800, color: stockColor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
                   {insumo.stock}
-                  <span style={{ fontSize: "11px", fontWeight: 600, marginLeft: "3px", color: textMuted }}>
+                  <span style={{ fontSize: FS.secundario, fontWeight: 600, marginLeft: "3px", color: textMuted }}>
                     unid.
                   </span>
                 </span>
@@ -324,13 +340,13 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "6px" }}>
                 <AlignLeft size={12} style={{ color: ORANGE }} />
-                <span style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: textMuted }}>
+                <span style={{ fontSize: FS.etiqueta, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: textMuted }}>
                   Descripción
                 </span>
               </div>
               {insumo.descripcion?.trim() ? (
                 <p style={{
-                  margin: 0, fontSize: "13px", lineHeight: "1.65",
+                  margin: 0, fontSize: FS.enfasis, lineHeight: "1.65",
                   color: isDark ? "#cbd5e1" : "#475569",
                   whiteSpace: "pre-wrap", wordBreak: "break-word",
                   padding: "12px 14px", borderRadius: "8px",
@@ -342,7 +358,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
                 </p>
               ) : (
                 <p style={{
-                  margin: 0, fontSize: "12px", fontStyle: "italic",
+                  margin: 0, fontSize: FS.cuerpo, fontStyle: "italic",
                   color: textFaint, padding: "12px 14px", borderRadius: "8px",
                   background: isDark ? "rgba(255,255,255,0.015)" : "#fafbfc",
                   border: `1px dashed ${border}`,
@@ -366,7 +382,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
             onClick={onClose}
             style={{
               padding: "14px 24px", borderRadius: "6px",
-              fontSize: "14px", fontWeight: 600,
+              fontSize: FS.subtitulo, fontWeight: 600,
               background: "transparent",
               border: `1px solid ${border}`,
               color: textMuted, cursor: "pointer", transition: "all 0.12s",
@@ -385,6 +401,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
           role="dialog"
           aria-modal="true"
           aria-label={`Imagen de ${insumo.nombre} en grande`}
+          
           onMouseDown={(e) => { if (e.target === e.currentTarget) setAmpliar(false); }}
           style={{
             position: "fixed", inset: 0, zIndex: 1100,
@@ -393,6 +410,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
             padding: "24px", cursor: "zoom-out", animation: "dmFade 0.15s ease",
           }}
         >
+          <LogoModal claro alto={18} style={{ position: "absolute", top: 16, left: 16 }} />
           <img
             src={imgSrc}
             alt={insumo.nombre}
@@ -426,7 +444,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
           <p style={{
             position: "absolute", bottom: 16, left: 0, right: 0,
             margin: 0, textAlign: "center",
-            fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.75)",
+            fontSize: FS.cuerpo, fontWeight: 600, color: "rgba(255,255,255,0.75)",
             pointerEvents: "none",
           }}>
             {insumo.nombre} · clic o Esc para cerrar

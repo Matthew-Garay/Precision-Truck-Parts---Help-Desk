@@ -12,6 +12,11 @@
  *   DOMINIOS_PERMITIDOS            - lista blanca de dominios (congelada)
  *   mensajeDominiosPermitidos()    - texto estándar con la lista
  *   emailCorporativoValido(valor)  - null si es válido, o mensaje de error
+ *
+ * @module client/utils/email
+ * @exports DOMINIOS_PERMITIDOS
+ * @exports mensajeDominiosPermitidos
+ * @exports emailCorporativoValido
  */
 export const DOMINIOS_PERMITIDOS = Object.freeze([
   "refividrio.com.mx",

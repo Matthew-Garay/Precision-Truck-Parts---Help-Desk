@@ -1,3 +1,27 @@
+/**
+ * VistaSolicitud.jsx
+ *
+ * Detalle de una solicitud de insumos. Para Usuario es solo lectura; para
+ * Administrador o Soporte Técnico permite aprobar o negar cada ítem, ajustar
+ * cantidades, fijar la ruta del material, escribir la observación y aceptar o
+ * rechazar.
+ *
+ * Export default: VistaSolicitud
+ * Props: id_solicitud, T, esAdmin, onBack.
+ * Endpoints: GET /api/solicitudes/:id, PATCH /api/solicitudes/:id/estatus |
+ *    /items | /ruta | /observacion, GET /api/auth/sucursales.
+ * Soporte Técnico se identifica por el NOMBRE del departamento, no por id.
+ *
+ * @module client/pages/Usuario/VistaSolicitud
+ * @requires react
+ * @requires lucide-react
+ * @requires ../../services/api-client.js
+ * @requires ../../utils/session.js
+ * @requires ../../components/Modal.jsx
+ * @requires ../../components/Inventario/ModalDetalleInsumo.jsx
+ * @requires ../../utils/tipografia.js
+ * @exports VistaSolicitud (default)
+ */
 import { useState, useEffect, useCallback } from "react";
 import {
   ArrowLeft, Package, User, Calendar, Tag, AlertTriangle,
@@ -9,6 +33,7 @@ import { getUsuario } from '../../utils/session.js';
 import Modal from '../../components/Modal.jsx';
 import ModalDetalleInsumo from '../../components/Inventario/ModalDetalleInsumo.jsx';
 
+import { FS } from '../../utils/tipografia.js';
 const ESTATUS_META = {
   "En proceso": { color: "#d97706", bgL: "#fef3c7", bgD: "rgba(217,119,6,0.15)",  borderL: "#fde68a", borderD: "rgba(217,119,6,0.3)",   icon: AlertTriangle },
   "Aceptado":   { color: "#16a34a", bgL: "#dcfce7", bgD: "rgba(22,163,74,0.15)",  borderL: "#86efac", borderD: "rgba(22,163,74,0.3)",   icon: CheckCircle2  },
@@ -56,7 +81,7 @@ function SelectSucursal({ value, onChange, sucursales, T, isDark }) {
     <select
       value={value}
       onChange={e => onChange(e.target.value)}
-      className="w-full text-[12px] font-semibold rounded-xl px-2.5 py-2 outline-none"
+      className="w-full text-[11px] font-semibold rounded-xl px-2.5 py-2 outline-none"
       style={{
         background: isDark ? "rgba(255,255,255,0.06)" : (T?.surfaceAlt ?? "#fff"),
         color: T?.text, border: `1px solid ${T?.border}`,
@@ -105,19 +130,21 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
 
   // ── Observación única de la solicitud (Soporte Técnico / Administración) ──
   // "Soporte Técnico" NO es un rol (solo existen Administrador y Usuario):
-  // es el departamento 67, igual que DEPARTAMENTO_SOPORTE en el backend.
-  const DEPTO_SOPORTE = 67;
+  // se identifica por NOMBRE (igual que NOMBRE_DEPARTAMENTO_SOPORTE en el
+  // backend), porque el id cambia si la tabla se renumera o reimporta.
+  const sinAcentos = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
   const yo = getUsuario();
+  const esDeptoSoporte = sinAcentos(yo?.departamento) === "soporte tecnico";
   const puedeObservar = esAdmin
     || Number(yo?.id_rol) === 1
-    || Number(yo?.id_departamento) === DEPTO_SOPORTE;
+    || esDeptoSoporte;
 
   // La ruta del material (de donde sale y a donde llega) es logistica interna:
   // la ven Administracion y Soporte Tecnico, con los mismos privilegios que
   // para las observaciones: verla y guardarla.
   const puedeVerRuta = esAdmin
     || Number(yo?.id_rol) === 1
-    || Number(yo?.id_departamento) === DEPTO_SOPORTE;
+    || esDeptoSoporte;
 
   const [obsBorrador,  setObsBorrador]  = useState("");   // texto en edición (uno por solicitud)
   const [obsGuardando, setObsGuardando] = useState(false);
@@ -363,9 +390,9 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
   if (error || !solicitud) return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px" }}>
       <XCircle size={32} style={{ color: "#dc2626" }} />
-      <p className="text-sm font-bold" style={valStyle}>{error || "Solicitud no encontrada"}</p>
+      <p className="text-[12px] font-bold" style={valStyle}>{error || "Solicitud no encontrada"}</p>
       {onBack && (
-        <button onClick={onBack} className="text-xs font-bold px-4 py-2 rounded-xl transition-all hover:brightness-110"
+        <button onClick={onBack} className="text-[11px] font-bold px-4 py-2 rounded-xl transition-all hover:brightness-110"
           style={{ background: `${orange}15`, color: orange, border: `1px solid ${orange}40` }}>
           ← Regresar
         </button>
@@ -442,7 +469,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
           cancelLabel="Cancelar"
           maxWidth="380px"
         >
-          <p style={{ margin: 0, fontSize: "13px", lineHeight: "1.55", color: T?.text }}>
+          <p style={{ margin: 0, fontSize: FS.enfasis, lineHeight: "1.55", color: T?.text }}>
             Solo <strong>{confirmParcial.aprobadosCount}</strong> de <strong>{confirmParcial.totalItems}</strong> insumos están aprobados.
             Solo se descontará el stock de los aprobados.
           </p>
@@ -460,23 +487,23 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
               <div className="flex items-center gap-2">
                 {onBack && (
                   <button onClick={onBack}
-                    className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
+                    className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-xl transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
                     style={{ background: isDark ? "rgba(255,255,255,0.06)" : T?.surfaceAlt, color: T?.textMuted, border: `1px solid ${T?.border}` }}>
                     <ArrowLeft size={13} /> Volver
                   </button>
                 )}
-                <span className="sm:hidden font-mono text-xs font-black px-2.5 py-1 rounded-xl"
+                <span className="sm:hidden font-mono text-[11px] font-black px-2.5 py-1 rounded-xl"
                   style={{ background: isDark ? "rgba(255,255,255,0.06)" : T?.surfaceAlt, color: T?.text, border: `1px solid ${T?.border}` }}>
                   {solicitud.folio_solicitud}
                 </span>
               </div>
 
-              <h1 className="text-sm font-black leading-snug flex-1" style={{ color: T?.text }}>
+              <h1 className="text-[12px] font-black leading-snug flex-1" style={{ color: T?.text }}>
                 Solicitud de Insumos
               </h1>
 
               <div className="hidden sm:flex flex-col items-end gap-1 flex-shrink-0">
-                <span className="font-mono text-xs font-black px-2.5 py-1 rounded-xl"
+                <span className="font-mono text-[11px] font-black px-2.5 py-1 rounded-xl"
                   style={{ background: isDark ? "rgba(255,255,255,0.06)" : T?.surfaceAlt, color: T?.text, border: `1px solid ${T?.border}` }}>
                   {solicitud.folio_solicitud}
                 </span>
@@ -489,17 +516,17 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
 
             {/* Badges */}
             <div className="flex flex-wrap gap-2">
-              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold"
                 style={{ background: prioBg, color: prioMeta.color, border: `1px solid ${prioBrd}` }}>
                 <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: prioMeta.color }} />
                 Prioridad: {solicitud.prioridad}
               </span>
-              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold"
                 style={{ background: estatusBg, color: estatusMeta.color, border: `1px solid ${estatusBrd}` }}>
                 <EstatusIcon size={11} className={solicitud.estatus === "En proceso" ? "animate-spin" : ""} />
                 Estado: {solicitud.estatus || "En proceso"}
               </span>
-              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold"
                 style={{ background: isDark ? "rgba(255,255,255,0.06)" : T?.surfaceAlt, color: T?.textMuted, border: `1px solid ${T?.border}` }}>
                 <Package size={10} />
                 {solicitud.detalle?.length ?? 0} insumo{solicitud.detalle?.length !== 1 ? "s" : ""}
@@ -518,7 +545,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
             <div className="rounded-2xl overflow-hidden" style={card}>
               <div className="px-4 py-2.5 flex items-center gap-2" style={hdr}>
                 <div className="w-1 h-3.5 rounded-full flex-shrink-0" style={{ background: orange }} />
-                <p className="text-[10px] font-black uppercase tracking-widest" style={labelStyle}>Información del reporte</p>
+                <p className="text-[9px] font-black uppercase tracking-widest" style={labelStyle}>Información del reporte</p>
               </div>
               <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 {[
@@ -535,7 +562,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                     </div>
                     <div className="min-w-0">
                       <p className="text-[9px] font-black uppercase tracking-widest" style={labelStyle}>{label}</p>
-                      <p className="text-xs font-semibold truncate mt-0.5" style={valStyle}>{val}</p>
+                      <p className="text-[11px] font-semibold truncate mt-0.5" style={valStyle}>{val}</p>
                     </div>
                   </div>
                 ))}
@@ -547,14 +574,14 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
               <div className="rounded-2xl overflow-hidden" style={card}>
                 <div className="px-4 py-2.5 flex items-center gap-2" style={hdr}>
                   <div className="w-1 h-3.5 rounded-full flex-shrink-0" style={{ background: orange }} />
-                  <p className="text-[10px] font-black uppercase tracking-widest" style={labelStyle}>Justificación de la solicitud</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest" style={labelStyle}>Justificación de la solicitud</p>
                 </div>
                 <div className="px-4 py-3 flex items-start gap-2.5">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                     style={{ background: "rgba(244,121,32,0.1)" }}>
                     <FileText size={13} style={{ color: orange }} />
                   </div>
-                  <p className="text-[12px] leading-relaxed whitespace-pre-line flex-1" style={valStyle}>{justificacion}</p>
+                  <p className="text-[11px] leading-relaxed whitespace-pre-line flex-1" style={valStyle}>{justificacion}</p>
                 </div>
               </div>
             )}
@@ -565,16 +592,16 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
               <div className="px-4 py-2.5 flex items-center justify-between gap-2" style={hdr}>
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-3.5 rounded-full flex-shrink-0" style={{ background: orange }} />
-                  <p className="text-[10px] font-black uppercase tracking-widest" style={labelStyle}>Ruta del material</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest" style={labelStyle}>Ruta del material</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {rutaGuardada && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
                       style={{ background: isDark ? "rgba(22,163,74,0.12)" : "#dcfce7", color: "#16a34a", border: "1px solid rgba(22,163,74,0.3)" }}>
                       <CheckCircle2 size={10} /> Ruta guardada
                     </span>
                   )}
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
                     style={{ background: T?.bg, color: T?.textMuted, border: `1px solid ${T?.border}` }}>
                     De dónde → a dónde va
                   </span>
@@ -605,7 +632,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                       <button
                         onClick={guardarRuta}
                         disabled={guardandoRuta}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
                         style={{ background: `${orange}15`, color: orange, border: `1px solid ${orange}40` }}
                       >
                         <Save size={12} strokeWidth={2.5} />
@@ -614,7 +641,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                       
                     </div>
 
-                    <p className="text-[10px] mt-2.5 flex items-start gap-1.5" style={labelStyle}>
+                    <p className="text-[9px] mt-2.5 flex items-start gap-1.5" style={labelStyle}>
                       <MapPin size={11} className="flex-shrink-0 mt-0.5" />
                       <span>Elige la ruta antes de aceptar: es obligatoria y se imprime en la hoja de la solicitud.
                         {sucursalSolicitante ? ` El solicitante pertenece a ${sucursalSolicitante}.` : ""}</span>
@@ -623,19 +650,19 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                 ) : (
                   /* CERRADA: la ruta quedó autorizada, solo se consulta y se imprime */
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold"
+                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold"
                       style={{ background: isDark ? "rgba(255,255,255,0.05)" : T?.surfaceAlt, color: T?.text, border: `1px solid ${T?.border}` }}>
                       <MapPin size={11} style={{ color: orange }} />
                       {origenNombre || "Origen sin asignar"}
                     </span>
                     <ArrowRight size={14} style={{ color: orange }} />
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold"
+                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold"
                       style={{ background: `${orange}15`, color: orange, border: `1px solid ${orange}40` }}>
                       <Package size={11} />
                       {destinoNombre || sucursalSolicitante || "Destino sin asignar"}
                     </span>
                     {origenNombre && destinoNombre && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
                         style={{ background: "rgba(22,163,74,0.12)", color: "#16a34a", border: "1px solid rgba(22,163,74,0.3)" }}>
                         Ruta autorizada
                       </span>
@@ -652,16 +679,16 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
               <div className="px-4 py-2.5 flex items-center justify-between" style={hdr}>
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-3.5 rounded-full flex-shrink-0" style={{ background: orange }} />
-                  <p className="text-[10px] font-black uppercase tracking-widest" style={labelStyle}>Insumos Solicitados</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest" style={labelStyle}>Insumos Solicitados</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {esAdmin && !cerrado && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
                       style={{ background: isDark ? "rgba(22,163,74,0.12)" : "#dcfce7", color: "#16a34a", border: "1px solid rgba(22,163,74,0.3)" }}>
                       {aprobadosCount}/{totalItems} aprobados
                     </span>
                   )}
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
                     style={{ background: T?.bg, color: T?.textMuted, border: `1px solid ${T?.border}` }}>
                     {totalItems} ítem{totalItems !== 1 ? "s" : ""}
                   </span>
@@ -672,7 +699,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
               {esAdmin && !cerrado && (
                 <div className="px-4 py-2 flex items-center gap-2"
                   style={{ background: isDark ? "rgba(59,130,246,0.06)" : "#eff6ff", borderBottom: `1px solid ${T?.border}` }}>
-                  <p className="text-[10px] flex-1" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#64748b" }}>
+                  <p className="text-[9px] flex-1" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#64748b" }}>
                     Marca los insumos a aprobar. Al resolver, solo se descontará el stock de los marcados.
                   </p>
                   <button
@@ -683,7 +710,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                       (solicitud.detalle || []).forEach(d => { nuevo[d.id_solicitud_insumo] = nuevoVal; });
                       setAprobados(nuevo);
                     }}
-                    className="text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0 transition-all hover:brightness-110"
+                    className="text-[9px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0 transition-all hover:brightness-110"
                     style={{ background: isDark ? "rgba(255,255,255,0.06)" : T?.surfaceAlt, color: T?.textMuted, border: `1px solid ${T?.border}` }}>
                     {(solicitud.detalle || []).every(d => aprobados[d.id_solicitud_insumo] === true) ? "Desmarcar todos" : "Aprobar todos"}
                   </button>
@@ -692,7 +719,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
 
               <div className="divide-y" style={{ borderColor: isDark ? "rgba(255,255,255,0.07)" : T?.border }}>
                 {!solicitud.detalle?.length ? (
-                  <p className="px-4 py-8 text-center text-xs" style={labelStyle}>Sin insumos registrados</p>
+                  <p className="px-4 py-8 text-center text-[11px]" style={labelStyle}>Sin insumos registrados</p>
                 ) : solicitud.detalle.map((d, i) => {
                   const aprobado = aprobados[d.id_solicitud_insumo] === true;
                   // Para usuario: en solicitud cerrada, d.aprobado viene de BD (1=sí, 0=no, null=sin revisar)
@@ -741,18 +768,18 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                       <div className="flex-1 min-w-0">
                         <button
                           onClick={() => setInsumoDetalle({ ...d })}
-                          className="text-[13px] font-bold truncate block text-left w-full hover:underline"
+                          className="text-[12px] font-bold truncate block text-left w-full hover:underline"
                           style={{ ...valStyle, background: "none", border: "none", padding: 0, cursor: "pointer" }}
                         >
                           {d.nombre}
                         </button>
-                        <p className="text-[11px] mt-0.5" style={labelStyle}>
+                        <p className="text-[10px] mt-0.5" style={labelStyle}>
                           {[d.marca, d.modelo].filter(Boolean).join(" · ") || "Sin especificaciones"}
                           {d.num_serie ? ` · S/N: ${d.num_serie}` : ""}
                         </p>
                         {/* Etiqueta de entrega — visible para usuario en solicitud cerrada */}
                         {!esAdmin && cerrado && d.aprobado != null && (
-                          <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded"
+                          <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded"
                             style={{
                               background: (d.aprobado === 1 || d.aprobado === true)
                                 ? (isDark ? "rgba(22,163,74,0.15)" : "#dcfce7")
@@ -765,7 +792,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="text-[9px] font-black uppercase tracking-wide" style={labelStyle}>Solicitado</p>
-                        <p className="text-[13px] font-bold leading-none" style={{ color: orange }}>
+                        <p className="text-[12px] font-bold leading-none" style={{ color: orange }}>
                           ×{d.cantidad_solicitada ?? d.cantidad}
                         </p>
 
@@ -784,7 +811,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                                 setCantidades(prev => ({ ...prev, [d.id_solicitud_insumo]: v }));
                               }}
                               onClick={e => e.stopPropagation()}
-                              className="mt-0.5 w-14 text-center text-[11px] font-bold rounded-lg px-1 py-0.5 outline-none"
+                              className="mt-0.5 w-14 text-center text-[10px] font-bold rounded-lg px-1 py-0.5 outline-none"
                               style={{
                                 background: isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9",
                                 border: `1px solid ${orange}60`,
@@ -801,7 +828,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
 
                         {/* Solicitud cerrada: lo que realmente se va a entregar */}
                         {cerrado && d.aprobado != null && (
-                          <p className="text-[10px] font-bold mt-1"
+                          <p className="text-[9px] font-bold mt-1"
                             style={{ color: itemAprobadoBD ? "#16a34a" : "#dc2626" }}>
                             {itemAprobadoBD
                               ? `Aceptado ×${d.cantidad_a_entregar ?? d.cantidad_aprobada ?? d.cantidad}`
@@ -818,7 +845,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
               {/* Observación única de Soporte Técnico / Administración sobre toda la solicitud */}
               {(solicitud?.observacion || puedeObservar) && (
                 <div className="px-4 py-3" style={{ borderTop: `1px solid ${T?.border}`, background: isDark ? "rgba(255,255,255,0.02)" : (T?.surfaceAlt ?? "#f8fafc") }}>
-                  <p className="text-[10px] font-black uppercase mb-1.5" style={{ ...labelStyle, letterSpacing: "0.06em", color: orange }}>
+                  <p className="text-[9px] font-black uppercase mb-1.5" style={{ ...labelStyle, letterSpacing: "0.06em", color: orange }}>
                     Observación de Soporte Técnico
                   </p>
                   {puedeObservar ? (
@@ -831,7 +858,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                         maxLength={500}
                         disabled={obsGuardando}
                         aria-label="Observación de Soporte sobre la solicitud"
-                        className="w-full text-[11px] rounded-lg px-2 py-1.5 outline-none resize-y"
+                        className="w-full text-[10px] rounded-lg px-2 py-1.5 outline-none resize-y"
                         style={{
                           background: isDark ? "rgba(255,255,255,0.05)" : "#fff",
                           color: T?.text,
@@ -864,7 +891,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                       </div>
                     </>
                   ) : (
-                    <p className="text-[10px] leading-snug" style={{ ...labelStyle, color: T?.textMuted }}>
+                    <p className="text-[9px] leading-snug" style={{ ...labelStyle, color: T?.textMuted }}>
                       {solicitud?.observacion}
                       {solicitud?.observacion_autor && (
                         <span style={{ opacity: 0.7 }}>
@@ -881,12 +908,12 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
               {esAdmin && !cerrado && (
                 <div className="px-4 py-3" style={{ borderTop: `1px solid ${T?.border}` }}>
                   {itemsGuardados && (
-                    <p className="text-[10px] font-semibold mb-1.5 flex items-center gap-1" style={{ color: "#16a34a" }}>
+                    <p className="text-[9px] font-semibold mb-1.5 flex items-center gap-1" style={{ color: "#16a34a" }}>
                       <CheckCircle2 size={10} /> Selección guardada
                     </p>
                   )}
                   <button onClick={guardarAprobados} disabled={guardandoItems}
-                    className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[11px] font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[10px] font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
                     style={{ background: isDark ? "rgba(22,163,74,0.12)" : "#dcfce7", color: "#16a34a", border: "1px solid rgba(22,163,74,0.3)" }}>
                     <Save size={12} strokeWidth={2.5} />
                     {guardandoItems ? "Guardando..." : `Guardar selección (${aprobadosCount}/${totalItems})`}
@@ -897,11 +924,11 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
               {/* Total */}
               <div className="px-4 py-2.5 flex items-center justify-between"
                 style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T?.border}`, ...hdr }}>
-                <span className="text-[10px] font-black uppercase tracking-wider" style={labelStyle}>Total de piezas</span>
-                <span className="text-sm font-black" style={{ color: orange }}>
+                <span className="text-[9px] font-black uppercase tracking-wider" style={labelStyle}>Total de piezas</span>
+                <span className="text-[12px] font-black" style={{ color: orange }}>
                   {solicitud.detalle?.reduce((s, d) => s + (d.cantidad_solicitada ?? d.cantidad), 0) ?? 0} pza.
                   {cerrado && (
-                    <span className="text-[11px] font-bold ml-1" style={{ color: "#16a34a" }}>
+                    <span className="text-[10px] font-bold ml-1" style={{ color: "#16a34a" }}>
                       ({solicitud.detalle?.reduce((s, d) => s + (d.cantidad_a_entregar ?? 0), 0) ?? 0} aceptadas)
                     </span>
                   )}
@@ -918,7 +945,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
             <div className="rounded-2xl overflow-hidden" style={card}>
               <div className="px-4 py-3 flex items-center gap-2" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: orange }} />
-                <p className="text-[11px] font-black uppercase tracking-widest" style={labelStyle}>Estado de la solicitud</p>
+                <p className="text-[10px] font-black uppercase tracking-widest" style={labelStyle}>Estado de la solicitud</p>
               </div>
               <div className="p-5 flex flex-col gap-3">
 
@@ -931,7 +958,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                   </div>
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-widest" style={labelStyle}>Fecha de solicitud</p>
-                    <p className="text-xs font-semibold mt-0.5" style={valStyle}>{fmtFechaHora(solicitud.fecha)}</p>
+                    <p className="text-[11px] font-semibold mt-0.5" style={valStyle}>{fmtFechaHora(solicitud.fecha)}</p>
                   </div>
                 </div>
 
@@ -951,8 +978,8 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                         style={{ background: `${orange}25`, animationDuration: "2s" }} />
                     </div>
                     <div>
-                      <p className="text-xs font-black" style={{ color: orange }}>Pendiente de resolución</p>
-                      <p className="text-[10px] mt-0.5" style={{ color: T?.textFaint }}>En espera de acción del administrador</p>
+                      <p className="text-[11px] font-black" style={{ color: orange }}>Pendiente de resolución</p>
+                      <p className="text-[9px] mt-0.5" style={{ color: T?.textFaint }}>En espera de acción del administrador</p>
                     </div>
                   </div>
                 ) : (
@@ -975,7 +1002,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                         : <XCircle size={18} style={{ color: "#dc2626" }} />}
                     </div>
                     <div>
-                      <p className="text-xs font-black"
+                      <p className="text-[11px] font-black"
                         style={{ color: solicitud.estatus === "Aceptado" ? "#16a34a" : "#dc2626" }}>
                         {solicitud.estatus === "Aceptado" ? "Solicitud aceptada" : "Solicitud rechazada"}
                       </p>
@@ -983,7 +1010,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                         const entregados = (solicitud.detalle || []).filter(d => d.aprobado === 1 || d.aprobado === true).length;
                         const noEntregados = (solicitud.detalle || []).filter(d => d.aprobado === 0).length;
                         return (
-                          <p className="text-[10px] mt-0.5" style={{ color: T?.textFaint }}>
+                          <p className="text-[9px] mt-0.5" style={{ color: T?.textFaint }}>
                             {entregados > 0 && noEntregados > 0
                               ? `${entregados} insumo${entregados !== 1 ? "s" : ""} se entregará${entregados !== 1 ? "n" : ""} · ${noEntregados} no`
                               : entregados > 0
@@ -992,7 +1019,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                           </p>
                         );
                       })() : (
-                        <p className="text-[10px] mt-0.5" style={{ color: T?.textFaint }}>La solicitud fue denegada por el administrador</p>
+                        <p className="text-[9px] mt-0.5" style={{ color: T?.textFaint }}>La solicitud fue denegada por el administrador</p>
                       )}
                     </div>
                   </div>
@@ -1006,13 +1033,13 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-4 py-2.5 flex items-center gap-2" style={hdr}>
                 <div className="w-1 h-3.5 rounded-full flex-shrink-0" style={{ background: "#dc2626" }} />
-                <p className="text-[10px] font-black uppercase tracking-widest" style={labelStyle}>Exportar reporte</p>
+                <p className="text-[9px] font-black uppercase tracking-widest" style={labelStyle}>Exportar reporte</p>
               </div>
               <div className="px-5 py-5">
-                <p className="text-[11px] mb-3" style={{ color: T?.textFaint }}>Genera un PDF con toda la información de esta solicitud.</p>
+                <p className="text-[10px] mb-3" style={{ color: T?.textFaint }}>Genera un PDF con toda la información de esta solicitud.</p>
                 <button
                   onClick={generarReporte}
-                  className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-xs font-bold transition-all active:scale-95"
+                  className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-[11px] font-bold transition-all active:scale-95"
                   style={{
                     background: isDark ? "rgba(220,38,38,0.12)" : "#fef2f2",
                     color: "#dc2626",
@@ -1047,17 +1074,17 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                 <div className="px-4 py-3 flex items-center gap-2"
                   style={{ ...hdr, borderRadius: "0", borderTop: "none" }}>
                   <div className="w-1 h-3.5 rounded-full flex-shrink-0" style={{ background: "#16a34a" }} />
-                  <p className="text-[10px] font-black uppercase tracking-widest" style={labelStyle}>Cambiar estatus</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest" style={labelStyle}>Cambiar estatus</p>
                 </div>
                 <div className="p-4 flex flex-col gap-3">
                   {guardado && (
-                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold"
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[11px] font-semibold"
                       style={{ background: isDark ? "rgba(22,163,74,0.15)" : "#dcfce7", color: "#16a34a", border: isDark ? "1px solid rgba(22,163,74,0.3)" : "1px solid #86efac" }}>
                       <CheckCircle2 size={13} /> Estatus actualizado
                     </div>
                   )}
                   {errorAccion && (
-                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold"
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[11px] font-semibold"
                       style={{ background: isDark ? "rgba(220,38,38,0.12)" : "#fee2e2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.3)" }}>
                       <XCircle size={13} /> {errorAccion}
                     </div>
@@ -1080,7 +1107,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                               color: m.color,
                               border: `1px solid ${isDark ? `${m.color}40` : (isAceptado ? "#86efac" : "#fca5a5")}`,
                               minHeight: "52px",
-                              fontSize: "13px",
+                              fontSize: FS.enfasis,
                             }}
                           >
                             <m.icon size={17} />
@@ -1104,11 +1131,11 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                           ? <XCircle size={20} style={{ color: "#dc2626" }} />
                           : <CheckCircle2 size={20} style={{ color: "#16a34a" }} />}
                       </div>
-                      <p className="text-xs font-black"
+                      <p className="text-[11px] font-black"
                         style={{ color: solicitud.estatus === "Rechazado" ? "#dc2626" : "#16a34a" }}>
                         {solicitud.estatus === "Rechazado" ? "Rechazado" : "Aceptado"}
                       </p>
-                      <p className="text-[11px] text-center" style={{ color: T?.textFaint }}>Solicitud cerrada</p>
+                      <p className="text-[10px] text-center" style={{ color: T?.textFaint }}>Solicitud cerrada</p>
                     </div>
                   )}
                 </div>

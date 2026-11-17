@@ -1,3 +1,21 @@
+/**
+ * PrintSolicitudPage.tsx
+ *
+ * Página /print/solicitud/:folio: carga la solicitud por folio y renderiza su
+ * hoja de entrega (PrintSolicitudView).
+ *
+ * Export default: PrintSolicitudPage
+ * Endpoint: GET /api/solicitudes/folio/:folio.
+ *
+ * @module client/pages/print/PrintSolicitudPage
+ * @requires react
+ * @requires react-router-dom
+ * @requires ../../services/api-client.js
+ * @requires ../../components/print/PrintSolicitudView.tsx
+ * @requires ../../components/PrintShared.tsx
+ * @requires ../../utils/print-utils.ts
+ * @exports PrintSolicitudPage (default)
+ */
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { getToken, setToken } from '../../services/api-client.js';

@@ -1,5 +1,5 @@
 /**
- * ticketsRoutes.js
+ * tickets-routes.js
  *
  * Define todas las rutas del prefijo /api/tickets.
  * Aplica csrfProtection y requireAuth a todo el router.
@@ -27,38 +27,24 @@
  *   PUT    /:id_ticket/editar              - editar campos del ticket mientras este En proceso
  *   POST   /                               - crear nuevo ticket con evidencias opcionales
  *                                            Rate limit: 30 por hora por IP
+ *
+ * @module server/routes/tickets-routes
+ * @requires express
+ * @requires express-rate-limit
+ * @requires ../middlewares/auth-middleware.js
+ * @requires ../middlewares/security.js
+ * @requires ../middlewares/validate.js
+ * @requires ../controllers/tickets-controller.js
+ * @requires ../middlewares/upload-evidencias.js
+ * @exports router (default)
  */
 import { Router }      from "express";
 import rateLimit       from "express-rate-limit";
-import pool              from '../config/db.js';
-import { requireAuth, requireAdmin } from '../middlewares/auth-middleware.js';
+import { requireAuth, requireAdmin, requireOwnerOrAdmin } from '../middlewares/auth-middleware.js';
 import { csrfProtection } from '../middlewares/security.js';
-import { validate, schemaCrearTicket, schemaActualizarTicket, schemaCalificarTicket, schemaEditarTicket, schemaFiltrosTickets } from '../middlewares/validate.js';
+import { validate, validateQuery, schemaCrearTicket, schemaActualizarTicket, schemaCalificarTicket, schemaEditarTicket, schemaFiltrosTickets } from '../middlewares/validate.js';
 import { crearTicket, getTicketsByEmpleado, getImagenesTicket, agregarImagenesTicket, eliminarImagenTicket, getAllTickets, actualizarTicket, calificarTicket, editarTicketUsuario, getMetricas, getAdmins, getReporte, getTicketById, getTicketByFolio, cancelarTicket, getRendimientoTecnicos, getHistorialTicket } from '../controllers/tickets-controller.js';
 import { uploadEvidencias } from '../middlewares/upload-evidencias.js';
-
-// Middleware: solo el propio empleado o un admin puede acceder (por id_empleado en params)
-function requireOwnerOrAdmin(req, res, next) {
-  const idParam = parseInt(req.params.id_empleado, 10);
-  const { id_empleado, id_rol } = req.usuario;
-  if (id_rol === 1 || id_empleado === idParam) return next();
-  return res.status(403).json({ error: "Acceso no autorizado" });
-}
-
-// Middleware: verifica que el usuario sea dueño del ticket o admin (por id_ticket en params)
-async function requireTicketOwnerOrAdmin(req, res, next) {
-  if (req.usuario.id_rol === 1) return next();
-  const idTicket = parseInt(req.params.id_ticket, 10);
-  if (isNaN(idTicket)) return res.status(400).json({ error: "ID inválido" });
-  try {
-    const [rows] = await pool.query(
-      "SELECT id_empleado FROM ticket WHERE id_ticket = ? LIMIT 1", [idTicket]
-    );
-    if (!rows[0] || rows[0].id_empleado !== req.usuario.id_empleado)
-      return res.status(403).json({ error: "Acceso no autorizado" });
-    next();
-  } catch { res.status(500).json({ error: "Error de autorización" }); }
-}
 
 const router = Router();
 router.use(csrfProtection);
@@ -81,17 +67,12 @@ router.get("/metricas",    requireAdmin, getMetricas);
 router.get("/admins",     requireAdmin, getAdmins);
 router.get("/reporte",    requireAdmin, getReporte);
 router.get("/rendimiento", requireAdmin, getRendimientoTecnicos);
-router.get("/",           requireAdmin, (req, res, next) => {
-  const r = schemaFiltrosTickets.safeParse(req.query);
-  if (!r.success) return res.status(422).json({ error: "Parámetros inválidos", errores: r.error.issues.map(e => ({ campo: e.path.join("."), mensaje: e.message })) });
-  req.queryValidado = r.data;
-  next();
-}, getAllTickets);
+router.get("/",           requireAdmin, validateQuery(schemaFiltrosTickets), getAllTickets);
 router.patch("/:id_ticket", requireAdmin, validate(schemaActualizarTicket), actualizarTicket);
 
 // ── Rutas con paths fijos — deben ir ANTES de /:id_ticket ────
 router.get("/folio/:folio", getTicketByFolio);  // PrintTicketPage / Puppeteer
-router.get("/empleado/:id_empleado", requireOwnerOrAdmin, getTicketsByEmpleado);
+router.get("/empleado/:id_empleado", requireOwnerOrAdmin(), getTicketsByEmpleado);
 router.post("/", ticketLimiter, ...uploadEvidencias.array("evidencias", 8), validate(schemaCrearTicket), crearTicket);
 
 // ── Sub-rutas de un ticket — deben ir ANTES de /:id_ticket ───

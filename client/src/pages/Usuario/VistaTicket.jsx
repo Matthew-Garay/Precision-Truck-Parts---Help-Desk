@@ -1,3 +1,27 @@
+/**
+ * VistaTicket.jsx
+ *
+ * Detalle de un ticket: datos, evidencias (subir y eliminar imágenes),
+ * historial de cambios, edición por el dueño, cancelación, calificación y,
+ * para el administrador, asignación de técnico, estatus y comentarios.
+ *
+ * Export default: VistaTicket
+ * Props: T, ticket, onVolver, esAdmin, usuario.
+ * Endpoints: GET/PATCH /api/tickets/:id, PUT …/editar, PATCH …/cancelar |
+ *    …/calificar, GET/POST/DELETE …/imagenes, GET …/historial.
+ *
+ * @module client/pages/Usuario/VistaTicket
+ * @requires react
+ * @requires dompurify
+ * @requires lucide-react
+ * @requires ../../components/ProgressTimeline.jsx
+ * @requires ../../components/Modal.jsx
+ * @requires ../../services/api-client.js
+ * @requires ../../hooks/use-socket.js
+ * @requires ../../utils/tipografia.js
+ * @requires ../../components/LogoModal.jsx
+ * @exports VistaTicket (default)
+ */
 import { useState, useEffect, useRef, useCallback } from "react";
 import DOMPurify from "dompurify";
 import {
@@ -10,6 +34,8 @@ import Modal from '../../components/Modal.jsx';
 import API, { apiFetch, getToken } from '../../services/api-client.js';
 import { useSocket } from '../../hooks/use-socket.js';
 
+import { FS } from '../../utils/tipografia.js';
+import LogoModal from '../../components/LogoModal.jsx';
 function HistorialCambios({ T, id_ticket }) {
   const isDark = T.isDark;
   const [items,    setItems]    = useState([]);
@@ -52,12 +78,12 @@ function HistorialCambios({ T, id_ticket }) {
         style={{ ...hdr, borderRadius: abierto ? "16px 16px 0 0" : "16px", cursor: "pointer", background: "transparent" }}>
         <div className="flex items-center gap-2.5">
           <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: "#8b5cf6" }} />
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em]"
+          <p className="text-[9px] font-semibold uppercase tracking-[0.12em]"
             style={{ color: T.textFaint }}>Historial de cambios</p>
         </div>
         <div className="flex items-center gap-2">
           {items.length > 0 && (
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
               style={{ background: isDark ? "rgba(139,92,246,0.15)" : "#f5f3ff", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.25)" }}>
               {items.length}
             </span>
@@ -77,7 +103,7 @@ function HistorialCambios({ T, id_ticket }) {
                 stroke="#8b5cf6" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
             </div>
           ) : items.length === 0 ? (
-            <p className="text-xs text-center py-4" style={{ color: T.textFaint }}>Sin cambios registrados</p>
+            <p className="text-[11px] text-center py-4" style={{ color: T.textFaint }}>Sin cambios registrados</p>
           ) : (
             <div className="flex flex-col gap-2">
               {items.map((item) => (
@@ -85,16 +111,16 @@ function HistorialCambios({ T, id_ticket }) {
                   <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: "#8b5cf6" }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] font-black uppercase tracking-wider"
+                      <span className="text-[9px] font-black uppercase tracking-wider"
                         style={{ color: "#8b5cf6" }}>
                         {CAMPO_LABEL[item.campo_cambiado] ?? item.campo_cambiado}
                       </span>
-                      <span className="text-[10px]" style={{ color: T.textFaint }}>{fmt(item.fecha_cambio)}</span>
-                      <span className="text-[10px] font-medium" style={{ color: T.textMuted }}>por {item.nombre_empleado}</span>
+                      <span className="text-[9px]" style={{ color: T.textFaint }}>{fmt(item.fecha_cambio)}</span>
+                      <span className="text-[9px] font-medium" style={{ color: T.textMuted }}>por {item.nombre_empleado}</span>
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       {item.valor_anterior && (
-                        <span className="text-[11px] px-2 py-0.5 rounded-md line-through"
+                        <span className="text-[10px] px-2 py-0.5 rounded-md line-through"
                           style={{ background: isDark ? "rgba(220,38,38,0.1)" : "#fef2f2", color: "#dc2626" }}>
                           {item.valor_anterior}
                         </span>
@@ -105,7 +131,7 @@ function HistorialCambios({ T, id_ticket }) {
                         </svg>
                       )}
                       {item.valor_nuevo && (
-                        <span className="text-[11px] px-2 py-0.5 rounded-md font-semibold"
+                        <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold"
                           style={{ background: isDark ? "rgba(22,163,74,0.1)" : "#f0fdf4", color: "#16a34a" }}>
                           {item.campo_cambiado === "comentarios"
                             ? (item.valor_nuevo.length > 60 ? item.valor_nuevo.slice(0, 60) + "…" : item.valor_nuevo)
@@ -179,7 +205,7 @@ function CalificacionEstrellas({ T, ticket, estatusActual }) {
   };
 
   if (estatusActual === "No Resuelto") return (
-    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[11px] font-semibold"
+    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[10px] font-semibold"
       style={{ background: isDark ? "rgba(220,38,38,0.08)" : "#fef2f2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.25)" }}>
       <XCircle size={12} />
       No disponible — ticket marcado como No Resuelto
@@ -187,7 +213,7 @@ function CalificacionEstrellas({ T, ticket, estatusActual }) {
   );
 
   if (estatusActual === "En proceso") return (
-    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[11px] font-semibold"
+    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[10px] font-semibold"
       style={{ background: isDark ? "rgba(244,121,32,0.08)" : "#fff7ed", color: "#ea580c", border: "1px solid rgba(234,88,12,0.25)" }}>
       <Clock size={12} />
       Disponible una vez resuelta la incidencia
@@ -218,18 +244,18 @@ function CalificacionEstrellas({ T, ticket, estatusActual }) {
           );
         })}
       </div>
-      <p className="text-center text-[11px] font-bold"
+      <p className="text-center text-[10px] font-bold"
         style={{ color: calificacion ? "#f59e0b" : T.textFaint }}>
         {guardando ? "Guardando..." : calificacion ? MENSAJES[calificacion] : "Selecciona una calificación"}
       </p>
       {yaGuardado && (
-        <div className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold"
+        <div className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-semibold"
           style={{ background: isDark ? "rgba(22,163,74,0.08)" : "#f0fdf4", color: "#16a34a", border: "1px solid rgba(22,163,74,0.25)" }}>
           <CheckCircle2 size={12} /> Gracias por tu opinión
         </div>
       )}
       {error && (
-        <p className="text-center text-[10px] font-semibold" style={{ color: "#dc2626" }}>{error}</p>
+        <p className="text-center text-[9px] font-semibold" style={{ color: "#dc2626" }}>{error}</p>
       )}
     </div>
   );
@@ -279,7 +305,7 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
   const inputStyle = {
     background: isDark?"rgba(255,255,255,0.05)":T.surfaceAlt,
     border: `1.5px solid ${isDark?"rgba(255,255,255,0.12)":T.border}`,
-    borderRadius:"10px", color:T.text, fontSize:"13px",
+    borderRadius:"10px", color:T.text, fontSize: FS.enfasis,
     padding:"9px 12px", outline:"none", width:"100%",
     transition:"border-color .15s, box-shadow .15s",
   };
@@ -431,7 +457,7 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
 
           {/* Título */}
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{color:T.textMuted}}>Título <span style={{color:"#ef4444"}}>*</span></label>
+            <label className="block text-[9px] font-black uppercase tracking-widest mb-1.5" style={{color:T.textMuted}}>Título <span style={{color:"#ef4444"}}>*</span></label>
             <input value={form.titulo} onChange={e=>setForm(f=>({...f,titulo:e.target.value}))}
               style={inputStyle} placeholder="Título del problema" onFocus={onFI} onBlur={onBI}/>
           </div>
@@ -439,11 +465,11 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
           {/* Prioridad + Categoría */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{color:T.textMuted}}>Prioridad <span style={{color:"#ef4444"}}>*</span></label>
+              <label className="block text-[9px] font-black uppercase tracking-widest mb-1.5" style={{color:T.textMuted}}>Prioridad <span style={{color:"#ef4444"}}>*</span></label>
               <div className="grid grid-cols-4 gap-1.5">
                 {PRIOS.map(p=>(
                   <button key={p.v} type="button" onClick={()=>setForm(f=>({...f,prioridad:p.v}))}
-                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-xs font-bold transition-all"
+                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-bold transition-all"
                     style={{
                       background:form.prioridad===p.v?`${p.c}18`:isDark?"rgba(255,255,255,0.04)":T.surfaceAlt,
                       border:`2px solid ${form.prioridad===p.v?p.c:isDark?"rgba(255,255,255,0.1)":T.border}`,
@@ -459,7 +485,7 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
               </div>
             </div>
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{color:T.textMuted}}>Categoría <span style={{color:"#ef4444"}}>*</span></label>
+              <label className="block text-[9px] font-black uppercase tracking-widest mb-1.5" style={{color:T.textMuted}}>Categoría <span style={{color:"#ef4444"}}>*</span></label>
               <select value={form.id_categoria} onChange={e=>setForm(f=>({...f,id_categoria:e.target.value}))}
                 style={{...inputStyle,cursor:"pointer",colorScheme:isDark?"dark":"light"}} onFocus={onFI} onBlur={onBI}>
                 <option value="">Selecciona una categoría</option>
@@ -470,11 +496,11 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
 
           {/* Estatus */}
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{color:T.textMuted}}>Estatus</label>
+            <label className="block text-[9px] font-black uppercase tracking-widest mb-1.5" style={{color:T.textMuted}}>Estatus</label>
             <div className="flex gap-2">
               {ESTATUS_OPTS.map(s=>(
                 <button key={s.v} type="button" onClick={()=>setForm(f=>({...f,estatus:s.v}))}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[11px] font-bold transition-all"
                   style={{
                     background:form.estatus===s.v?`${s.c}18`:isDark?"rgba(255,255,255,0.04)":T.surfaceAlt,
                     border:`2px solid ${form.estatus===s.v?s.c:isDark?"rgba(255,255,255,0.1)":T.border}`,
@@ -489,30 +515,30 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
 
           {/* Descripción editor rico */}
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{color:T.textMuted}}>Descripción <span style={{color:"#ef4444"}}>*</span></label>
+            <label className="block text-[9px] font-black uppercase tracking-widest mb-1.5" style={{color:T.textMuted}}>Descripción <span style={{color:"#ef4444"}}>*</span></label>
             <div style={{border:`1.5px solid ${isDark?"rgba(255,255,255,0.12)":T.border}`,borderRadius:"10px",overflow:"hidden",background:isDark?"rgba(255,255,255,0.05)":"#fff",transition:"border-color .15s, box-shadow .15s"}}>
               <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5"
                 style={{borderBottom:`1px solid ${dividerLine}`,background:isDark?"rgba(255,255,255,0.04)":T.surfaceAlt}}>
                 {[{cmd:"bold",l:<><strong>B</strong></>,t:"Negrita"},{cmd:"italic",l:<><em>I</em></>,t:"Cursiva"},{cmd:"underline",l:<><u>U</u></>,t:"Subrayado"},{cmd:"strikeThrough",l:<><s>S</s></>,t:"Tachado"}].map(({cmd,l,t})=>(
-                  <ToolBtn key={cmd} title={t} onClick={()=>fmt(cmd)}><span className="text-[11px] font-bold">{l}</span></ToolBtn>
+                  <ToolBtn key={cmd} title={t} onClick={()=>fmt(cmd)}><span className="text-[10px] font-bold">{l}</span></ToolBtn>
                 ))}
                 <div className="w-px h-4 mx-0.5" style={{background:dividerLine}}/>
-                <ToolBtn title="Lista viñetas" onClick={()=>fmt("insertUnorderedList")}><span className="text-[10px] font-bold">•—</span></ToolBtn>
-                <ToolBtn title="Lista numerada" onClick={()=>fmt("insertOrderedList")}><span className="text-[10px] font-bold">1.</span></ToolBtn>
+                <ToolBtn title="Lista viñetas" onClick={()=>fmt("insertUnorderedList")}><span className="text-[9px] font-bold">•—</span></ToolBtn>
+                <ToolBtn title="Lista numerada" onClick={()=>fmt("insertOrderedList")}><span className="text-[9px] font-bold">1.</span></ToolBtn>
                 <div className="w-px h-4 mx-0.5" style={{background:dividerLine}}/>
-                <ToolBtn title="Izquierda" onClick={()=>fmt("justifyLeft")}><span className="text-[10px]">⬅</span></ToolBtn>
-                <ToolBtn title="Centro" onClick={()=>fmt("justifyCenter")}><span className="text-[10px]">≡</span></ToolBtn>
-                <ToolBtn title="Derecha" onClick={()=>fmt("justifyRight")}><span className="text-[10px]">➡</span></ToolBtn>
+                <ToolBtn title="Izquierda" onClick={()=>fmt("justifyLeft")}><span className="text-[9px]">⬅</span></ToolBtn>
+                <ToolBtn title="Centro" onClick={()=>fmt("justifyCenter")}><span className="text-[9px]">≡</span></ToolBtn>
+                <ToolBtn title="Derecha" onClick={()=>fmt("justifyRight")}><span className="text-[9px]">➡</span></ToolBtn>
                 <div className="w-px h-4 mx-0.5" style={{background:dividerLine}}/>
-                <ToolBtn title="Línea" onClick={()=>fmt("insertHorizontalRule")}><span className="text-[10px] font-bold">—</span></ToolBtn>
-                <ToolBtn title="Quitar formato" onClick={()=>fmt("removeFormat")}><span className="text-[10px] font-black">Aa</span></ToolBtn>
+                <ToolBtn title="Línea" onClick={()=>fmt("insertHorizontalRule")}><span className="text-[9px] font-bold">—</span></ToolBtn>
+                <ToolBtn title="Quitar formato" onClick={()=>fmt("removeFormat")}><span className="text-[9px] font-black">Aa</span></ToolBtn>
               </div>
               <div contentEditable suppressContentEditableWarning
                 ref={el=>{editorRef.current=el;}}
                 onInput={onEditorInput}
                 onFocus={e=>{e.currentTarget.parentElement.style.borderColor=T.orange;e.currentTarget.parentElement.style.boxShadow="0 0 0 3px rgba(244,121,32,0.1)";setError("");}}
                 onBlur={e=>{e.currentTarget.parentElement.style.borderColor=isDark?"rgba(255,255,255,0.12)":T.border;e.currentTarget.parentElement.style.boxShadow="none";}}
-                className="outline-none px-3.5 py-3 text-sm leading-relaxed ticket-desc"
+                className="outline-none px-3.5 py-3 text-[12px] leading-relaxed ticket-desc"
                 style={{minHeight:"120px",color:T.text,background:"transparent"}}
                 data-placeholder="Describe el problema..."/>
             </div>
@@ -521,8 +547,8 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
           {/* Evidencias */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[10px] font-black uppercase tracking-widest" style={{color:T.textMuted}}>Evidencias fotográficas</label>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+              <label className="block text-[9px] font-black uppercase tracking-widest" style={{color:T.textMuted}}>Evidencias fotográficas</label>
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
                 style={{background:isDark?"rgba(255,255,255,0.06)":T.bg,color:T.textMuted,border:`1px solid ${dividerLine}`}}>
                 {totalFotos}/8
               </span>
@@ -531,7 +557,7 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
             {/* Fotos existentes */}
             {imgs.length > 0 && (
               <div className="mb-2">
-                <p className="text-[10px] mb-1.5" style={{color:T.textFaint}}>Actuales — clic para marcar eliminación</p>
+                <p className="text-[9px] mb-1.5" style={{color:T.textFaint}}>Actuales — clic para marcar eliminación</p>
                 <div className="flex flex-wrap gap-2">
                   {imgs.map(nombre=>{
                     const marcada = eliminarEv.includes(nombre);
@@ -543,7 +569,7 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
                         <button type="button" onClick={()=>toggleEliminar(nombre)}
                           className="absolute inset-0 flex items-center justify-center rounded-xl transition-all"
                           style={{background:marcada?"rgba(220,38,38,0.3)":"rgba(0,0,0,0)"}}>
-                          {marcada && <span className="text-white font-black text-lg">✕</span>}
+                          {marcada && <span className="text-white font-black text-[16px]">✕</span>}
                         </button>
                       </div>
                     );
@@ -555,7 +581,7 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
             {/* Nuevas fotos */}
             {nuevasEv.length > 0 && (
               <div className="mb-2">
-                <p className="text-[10px] mb-1.5" style={{color:T.textFaint}}>Nuevas a agregar</p>
+                <p className="text-[9px] mb-1.5" style={{color:T.textFaint}}>Nuevas a agregar</p>
                 <div className="flex flex-wrap gap-2">
                   {nuevasEv.map((ev,i)=>(
                     <div key={i} className="relative" style={{width:72,height:72}}>
@@ -582,7 +608,7 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
 
             {/* Botón agregar */}
             {totalFotos < 8 && (
-              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer text-xs font-semibold transition-all"
+              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer text-[11px] font-semibold transition-all"
                 style={{background:isDark?"rgba(255,255,255,0.04)":T.surfaceAlt,border:`1.5px dashed ${isDark?"rgba(255,255,255,0.15)":T.border}`,color:T.orange}}>
                 <input ref={fileRef} type="file" accept="image/*,video/mp4,video/webm,video/quicktime,video/x-msvideo" multiple className="hidden"
                   onChange={e=>{agregarNuevas(e.target.files);e.target.value="";}}/>
@@ -592,7 +618,7 @@ function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuardado })
           </div>
 
           {error && (
-            <p className="text-xs font-semibold px-3 py-2 rounded-lg"
+            <p className="text-[11px] font-semibold px-3 py-2 rounded-lg"
               style={{background:isDark?"rgba(220,38,38,0.15)":"#fee2e2",color:"#dc2626",border:"1px solid rgba(220,38,38,0.3)"}}>
               ⚠ {error}
             </p>
@@ -866,11 +892,11 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
           variant="danger"
           closeOnOverlay={false}
         >
-          <p className="text-xs leading-relaxed" style={{color: T.isDark ? "rgba(255,255,255,0.75)" : T.text}}>
+          <p className="text-[11px] leading-relaxed" style={{color: T.isDark ? "rgba(255,255,255,0.75)" : T.text}}>
             Esta acción no se puede deshacer. El ticket quedará marcado como <strong style={{color: T.isDark ? "#fff" : T.text}}>Cancelado</strong> y no podrá editarse.
           </p>
           {errorCancel && (
-            <p className="text-xs font-semibold px-3 py-2 rounded-lg mt-3"
+            <p className="text-[11px] font-semibold px-3 py-2 rounded-lg mt-3"
               style={{background:"rgba(220,38,38,0.2)",color:"#fca5a5",border:"1px solid rgba(220,38,38,0.4)"}}>
               {errorCancel}
             </p>
@@ -890,7 +916,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
           variant="success"
           closeOnOverlay={false}
         >
-          <p className="text-xs leading-relaxed" style={{ color: T.isDark ? "rgba(255,255,255,0.75)" : T.text }}>
+          <p className="text-[11px] leading-relaxed" style={{ color: T.isDark ? "rgba(255,255,255,0.75)" : T.text }}>
             Marcará el ticket como <strong style={{ color: T.isDark ? "#fff" : T.text }}>Resuelto</strong> y guardará los comentarios.
           </p>
         </Modal>
@@ -929,27 +955,27 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button onClick={onVolver}
                   className="vt-btn flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-full transition-all hover:brightness-95 active:scale-95"
-                  style={{ fontSize:12, background: isDark?"rgba(255,255,255,0.06)":"#f1f5f9", color:T.textMuted, border:`1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)"}` }}>
+                  style={{ fontSize: FS.cuerpo, background: isDark?"rgba(255,255,255,0.06)":"#f1f5f9", color:T.textMuted, border:`1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)"}` }}>
                   <ArrowLeft size={11}/> Volver
                 </button>
                 {estatus === "En proceso" && (
                   <button onClick={() => setModalEditar(true)}
                     className="vt-btn flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-full transition-all active:scale-95"
-                    style={{ fontSize:12, background: isDark?"rgba(244,121,32,0.1)":"rgba(244,121,32,0.08)", color:T.orange, border:`1px solid rgba(244,121,32,0.25)` }}>
+                    style={{ fontSize: FS.cuerpo, background: isDark?"rgba(244,121,32,0.1)":"rgba(244,121,32,0.08)", color:T.orange, border:`1px solid rgba(244,121,32,0.25)` }}>
                     <Pencil size={11}/> Editar
                   </button>
                 )}
                 {!esAdmin && estatus === "En proceso" && (
                   <button onClick={() => setConfirmCancel(true)}
                     className="vt-btn flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-full transition-all active:scale-95"
-                    style={{ fontSize:12, background: isDark?"rgba(220,38,38,0.1)":"rgba(220,38,38,0.07)", color:"#dc2626", border:"1px solid rgba(220,38,38,0.25)" }}>
+                    style={{ fontSize: FS.cuerpo, background: isDark?"rgba(220,38,38,0.1)":"rgba(220,38,38,0.07)", color:"#dc2626", border:"1px solid rgba(220,38,38,0.25)" }}>
                     <XCircle size={11}/> Cancelar ticket
                   </button>
                 )}
                 {/* Folio alineado junto a los botones */}
                 <span
                   className="vt-folio font-mono font-bold px-3 py-1.5 rounded-full"
-                  style={{ fontSize:12, color: T.orange, background: isDark?"rgba(249,115,22,0.1)":"#fff7ed", border:"1px solid rgba(249,115,22,0.2)" }}>
+                  style={{ fontSize: FS.cuerpo, color: T.orange, background: isDark?"rgba(249,115,22,0.1)":"#fff7ed", border:"1px solid rgba(249,115,22,0.2)" }}>
                   {ticketLocal.folio_ticket}
                 </span>
               </div>
@@ -964,14 +990,14 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
 
             {/* Título */}
             <div className="mb-3">
-              <p className="vt-lbl font-semibold uppercase tracking-[0.12em] mb-1" style={{ fontSize:10, color:"#94a3b8" }}>Asunto</p>
-              <h1 className="vt-title font-semibold leading-snug" style={{ fontSize:13, color:T.text }}>{ticketLocal.titulo}</h1>
+              <p className="vt-lbl font-semibold uppercase tracking-[0.12em] mb-1" style={{ fontSize: FS.etiqueta, color:"#94a3b8" }}>Asunto</p>
+              <h1 className="vt-title font-semibold leading-snug" style={{ fontSize: FS.enfasis, color:T.text }}>{ticketLocal.titulo}</h1>
             </div>
 
             {/* pills */}
             <div className="flex flex-wrap gap-1.5 pt-3" style={{ borderTop:`1px solid ${isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.05)"}` }}>
               {/* Prioridad */}
-              <span className="vt-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold"
+              <span className="vt-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-semibold"
                 style={{
                   background: ticket.prioridad === "Alta"
                     ? (isDark ? "rgba(249,115,22,0.15)" : "#fff7ed")
@@ -983,7 +1009,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               </span>
 
               {/* Estatus */}
-              <span className="vt-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold"
+              <span className="vt-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-semibold"
                 style={{
                   background: estatus==="Resuelto"?(isDark?"rgba(22,163,74,0.15)":"#f0fdf4"):estatus==="No Resuelto"||estatus==="Cancelado"?(isDark?"rgba(220,38,38,0.15)":"#fef2f2"):(isDark?"rgba(244,121,32,0.15)":"rgba(244,121,32,0.08)"),
                   color: estatus==="Resuelto"?"#16a34a":estatus==="No Resuelto"||estatus==="Cancelado"?"#dc2626":T.orange,
@@ -995,13 +1021,13 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               </span>
 
               {ticket.nombre_categoria && (
-                <span className="vt-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-medium"
+                <span className="vt-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-medium"
                   style={{ background: isDark?"rgba(255,255,255,0.05)":"#f1f5f9", color:T.textMuted, border:`1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)"}` }}>
                   <Tag size={10}/>{ticket.nombre_categoria}
                 </span>
               )}
               {tiempoResolucion && (
-                <span className="vt-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold"
+                <span className="vt-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-semibold"
                   style={{ background: isDark?"rgba(22,163,74,0.12)":"#f0fdf4", color:"#16a34a", border:"1px solid rgba(22,163,74,0.2)" }}>
                   <CheckCircle2 size={10}/> Resuelto en {tiempoResolucion}
                 </span>
@@ -1024,14 +1050,14 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                 onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
                 <div className="px-4 py-3 flex items-center gap-2.5" style={hdr}>
                   <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: "#3b82f6" }} />
-                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Acceso remoto (TeamViewer)</p>
+                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize: FS.secundario, color: T.textFaint }}>Acceso remoto (TeamViewer)</p>
                 </div>
                 <div className="px-4 py-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[{ label: "ID de TeamViewer", value: tvId, setter: setTvId, placeholder: "Ej. 123 456 789" },
                     { label: "Contraseña",        value: tvPass, setter: setTvPass, placeholder: "Contraseña de sesión" }]
                     .map(({ label, value, setter, placeholder }) => (
                       <div key={label}>
-                        <p className="font-bold uppercase tracking-widest mb-1.5" style={{ fontSize:11, color: T.textMuted }}>
+                        <p className="font-bold uppercase tracking-widest mb-1.5" style={{ fontSize: FS.secundario, color: T.textMuted }}>
                           {label} <span style={{ color: "#ef4444" }}>*</span>
                         </p>
                         <input
@@ -1040,7 +1066,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                           placeholder={placeholder}
                           disabled={cerrado}
                           style={{
-                            width: "100%", fontSize: "13px", padding: "9px 12px",
+                            width: "100%", fontSize: FS.enfasis, padding: "9px 12px",
                             borderRadius: "10px", outline: "none",
                             background: cerrado ? (isDark?"rgba(255,255,255,0.02)":"#f4f4f4") : (isDark?"rgba(255,255,255,0.05)":"#fafafa"),
                             border: `1.5px solid ${isDark?"rgba(255,255,255,0.1)":"#e2e8f0"}`,
@@ -1063,17 +1089,17 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-4 py-3 flex items-center gap-2.5" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: T.orange }} />
-              <p className="vt-shdr font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Descripción del problema</p>
+              <p className="vt-shdr font-semibold uppercase tracking-[0.12em]" style={{ fontSize: FS.secundario, color: T.textFaint }}>Descripción del problema</p>
               </div>
               <div className="px-4 py-3">
                 {ticketLocal.descripcion ? (
                   <div
                     className="vt-body leading-relaxed break-words ticket-desc"
-                    style={{ fontSize:13, color: T.text, lineHeight: "1.7" }}
+                    style={{ fontSize: FS.enfasis, color: T.text, lineHeight: "1.7" }}
                     dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(ticketLocal.descripcion, { ALLOWED_TAGS: ["p","br","strong","b","em","i","u","s","ul","ol","li","hr","div","span"], ALLOWED_ATTR: ["style"] }) }}
                   />
                 ) : (
-                  <p className="italic" style={{ fontSize:13, color: T.textFaint }}>Sin descripción registrada.</p>
+                  <p className="italic" style={{ fontSize: FS.enfasis, color: T.textFaint }}>Sin descripción registrada.</p>
                 )}
               </div>
             </div>
@@ -1085,7 +1111,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-6 py-4 flex items-center gap-2.5" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: T.orange }} />
-                <p className="vt-shdr font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Información del reporte</p>
+                <p className="vt-shdr font-semibold uppercase tracking-[0.12em]" style={{ fontSize: FS.secundario, color: T.textFaint }}>Información del reporte</p>
               </div>
               <div className="vt-info-grid px-4 sm:px-8 py-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-x-8 sm:gap-y-4">
                 {[
@@ -1097,11 +1123,11 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                   { icon: User,         label: "Resuelto por",       val: resueltoporState || "Pendiente" },
                 ].map(({ icon: Icon, label, val }) => (
                   <div key={label} className="flex flex-col gap-1">
-                    <p className="vt-lbl font-semibold uppercase tracking-[0.12em] flex items-center gap-1" style={{ fontSize:11, color: T.textFaint }}>
+                    <p className="vt-lbl font-semibold uppercase tracking-[0.12em] flex items-center gap-1" style={{ fontSize: FS.secundario, color: T.textFaint }}>
                       <Icon size={9} style={{ color: T.orange, flexShrink: 0 }} />
                       {label}
                     </p>
-                    <p className="vt-val font-medium truncate" style={{ fontSize:13, color: T.text }}>{val}</p>
+                    <p className="vt-val font-medium truncate" style={{ fontSize: FS.enfasis, color: T.text }}>{val}</p>
                   </div>
                 ))}
               </div>
@@ -1115,10 +1141,10 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               <div className="px-6 py-4 flex items-center justify-between" style={hdr}>
                 <div className="flex items-center gap-2.5">
                   <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: T.orange }} />
-                  <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Evidencias adjuntas</p>
+                  <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize: FS.secundario, color: T.textFaint }}>Evidencias adjuntas</p>
                 </div>
                 <span className="font-semibold px-3 py-1 rounded-full flex-shrink-0"
-                  style={{ fontSize:11, background: isDark?"rgba(255,255,255,0.06)":"#f1f5f9", color: T.textMuted, border:`1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)"}` }}>
+                  style={{ fontSize: FS.secundario, background: isDark?"rgba(255,255,255,0.06)":"#f1f5f9", color: T.textMuted, border:`1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)"}` }}>
                   {imgs.length} archivo{imgs.length !== 1 ? "s" : ""}
                 </span>
               </div>
@@ -1126,7 +1152,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                 {imgs.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <ImageOff size={22} style={{ color: T.textFaint }} />
-                    <p className="text-xs" style={{ color: T.textFaint }}>No se adjuntaron archivos</p>
+                    <p className="text-[11px]" style={{ color: T.textFaint }}>No se adjuntaron archivos</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
@@ -1169,7 +1195,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-6 py-4 flex items-center gap-2.5" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: T.orange }} />
-                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Comentarios del técnico</p>
+                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize: FS.secundario, color: T.textFaint }}>Comentarios del técnico</p>
               </div>
               <div className="p-5 sm:p-6">
                 {esAdmin ? (
@@ -1180,14 +1206,14 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                       <textarea
                         rows={5}
                         disabled={cerrado}
-                        className="w-full rounded-xl text-sm outline-none resize-none transition-all"
+                        className="w-full rounded-xl text-[12px] outline-none resize-none transition-all"
                         style={{
                           background: cerrado
                             ? isDark ? "rgba(255,255,255,0.02)" : "#f4f4f4"
                             : isDark ? "rgba(255,255,255,0.04)" : "#fafafa",
                           border: `1.5px solid ${cerrado ? T.border : isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}`,
                           color: cerrado ? T.textMuted : T.text,
-                          fontSize: "13px",
+                          fontSize: FS.enfasis,
                           lineHeight: "1.65",
                           padding: "12px 14px 12px 28px",
                           letterSpacing: "0.01em",
@@ -1213,11 +1239,11 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                       />
                     </div>
                     <div className="flex items-center justify-between px-1">
-                      <span className="text-[10px]" style={{ color: T.textFaint }}>
+                      <span className="text-[9px]" style={{ color: T.textFaint }}>
                         {cerrado ? "Ticket cerrado - comentarios bloqueados" : "Visible para el solicitante una vez guardado"}
                       </span>
                       {!cerrado && (
-                        <span className="text-[10px] font-semibold" style={{ color: comentario.length > 900 ? "#dc2626" : T.textFaint }}>
+                        <span className="text-[9px] font-semibold" style={{ color: comentario.length > 900 ? "#dc2626" : T.textFaint }}>
                           {comentario.length} / 1000
                         </span>
                       )}
@@ -1229,7 +1255,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                       style={{ background: "rgba(244,121,32,0.1)", border: "1px solid rgba(244,121,32,0.2)" }}>
                       <MessageSquare size={13} style={{ color: T.orange }} />
                     </div>
-                    <div className="flex-1 px-3 py-2.5 rounded-xl text-sm leading-relaxed break-words"
+                    <div className="flex-1 px-3 py-2.5 rounded-xl text-[12px] leading-relaxed break-words"
                       style={{ background: isDark ? "rgba(255,255,255,0.04)" : T.bg, color: T.text, border: `1px solid ${T.border}` }}>
                       {comentario}
                     </div>
@@ -1240,8 +1266,8 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                       style={{ background: isDark ? "rgba(255,255,255,0.04)" : T.surfaceAlt, border: `1px solid ${T.border}` }}>
                       <MessageSquare size={18} style={{ color: T.textFaint }} />
                     </div>
-                    <p className="text-xs font-semibold" style={{ color: T.textMuted }}>Sin comentarios aún</p>
-                    <p className="text-[11px]" style={{ color: T.textFaint }}>El técnico asignado agregará notas aquí</p>
+                    <p className="text-[11px] font-semibold" style={{ color: T.textMuted }}>Sin comentarios aún</p>
+                    <p className="text-[10px]" style={{ color: T.textFaint }}>El técnico asignado agregará notas aquí</p>
                   </div>
                 )}
               </div>
@@ -1260,10 +1286,10 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               <div className="px-6 py-4 flex items-center justify-between" style={hdr}>
                 <div className="flex items-center gap-2.5">
                   <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background:T.orange }}/>
-                  <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Progreso</p>
+                  <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize: FS.secundario, color: T.textFaint }}>Progreso</p>
                 </div>
                 <span className="font-semibold px-3 py-1 rounded-full"
-                  style={{ fontSize:11, background: isDark?"rgba(255,255,255,0.06)":"#f1f5f9", color:T.textMuted, border:`1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)"}` }}>
+                  style={{ fontSize: FS.secundario, background: isDark?"rgba(255,255,255,0.06)":"#f1f5f9", color:T.textMuted, border:`1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)"}` }}>
                   {pasoActual+1} / 4
                 </span>
               </div>
@@ -1334,7 +1360,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-6 py-4 flex items-center gap-2.5" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: "#f59e0b" }} />
-                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Calificar atención</p>
+                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize: FS.secundario, color: T.textFaint }}>Calificar atención</p>
               </div>
               <div className="px-6 py-6 flex flex-col gap-3">
                 <CalificacionEstrellas T={T} ticket={ticketLocal} estatusActual={estatus} />
@@ -1347,7 +1373,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-6 py-4 flex items-center gap-2.5" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: "#f59e0b" }} />
-                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Calificación del usuario</p>
+                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize: FS.secundario, color: T.textFaint }}>Calificación del usuario</p>
               </div>
               <div className="px-6 py-5 flex flex-col gap-2">
                 {(() => {
@@ -1362,12 +1388,12 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                               filter: n <= calNum ? "drop-shadow(0 0 4px rgba(245,158,11,0.5))" : "none" }}/>
                         ))}
                       </div>
-                      <p className="text-center text-[11px] font-bold" style={{ color: "#f59e0b" }}>
+                      <p className="text-center text-[10px] font-bold" style={{ color: "#f59e0b" }}>
                         {MENSAJES[calNum]} · {calNum}/5
                       </p>
                     </>
                   ) : (
-                    <p className="text-center text-xs py-3" style={{ color: T.textFaint }}>Sin calificación aún</p>
+                    <p className="text-center text-[11px] py-3" style={{ color: T.textFaint }}>Sin calificación aún</p>
                   );
                 })()}
               </div>
@@ -1381,13 +1407,13 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               onMouseLeave={e => Object.assign(e.currentTarget.style, { boxShadow: card.boxShadow })}>
               <div className="px-6 py-4 flex items-center gap-2.5" style={hdr}>
                 <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: "#dc2626" }} />
-                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Exportar reporte</p>
+                <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize: FS.secundario, color: T.textFaint }}>Exportar reporte</p>
               </div>
               <div className="px-5 py-5">
-                <p className="mb-3" style={{ fontSize:12, color: T.textFaint }}>Genera un PDF con toda la información de esta incidencia.</p>
+                <p className="mb-3" style={{ fontSize: FS.cuerpo, color: T.textFaint }}>Genera un PDF con toda la información de esta incidencia.</p>
                 <button
                   onClick={generarReporte}
-                  className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-xs font-bold transition-all active:scale-95"
+                  className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-[11px] font-bold transition-all active:scale-95"
                   style={{
                     background: isDark ? "rgba(220,38,38,0.12)" : "#fef2f2",
                     color: "#dc2626",
@@ -1425,24 +1451,24 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                 <div className="px-6 py-4 flex items-center justify-between" style={hdr}>
                   <div className="flex items-center gap-2.5">
                     <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: "#16a34a" }} />
-                    <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize:11, color: T.textFaint }}>Acciones del administrador</p>
+                    <p className="font-semibold uppercase tracking-[0.12em]" style={{ fontSize: FS.secundario, color: T.textFaint }}>Acciones del administrador</p>
                   </div>
                   {estatus === "Resuelto" && (
                     <span className="flex items-center gap-1 px-3 py-1 rounded-full font-semibold"
-                      style={{ fontSize:11, background: isDark ? "rgba(22,163,74,0.12)" : "#f0fdf4", color: "#16a34a", border: "1px solid rgba(22,163,74,0.2)" }}>
+                      style={{ fontSize: FS.secundario, background: isDark ? "rgba(22,163,74,0.12)" : "#f0fdf4", color: "#16a34a", border: "1px solid rgba(22,163,74,0.2)" }}>
                       <CheckCircle2 size={10}/> Cerrado
                     </span>
                   )}
                 </div>
                 <div className="px-6 py-5 flex flex-col gap-3">
                   {errorGuard && (
-                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold"
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[11px] font-semibold"
                       style={{ background: isDark ? "rgba(220,38,38,0.15)" : "#fee2e2", color: "#dc2626", border: isDark ? "1px solid rgba(220,38,38,0.3)" : "1px solid #fca5a5" }}>
                       <XCircle size={13}/> {errorGuard}
                     </div>
                   )}
                   {guardado && (
-                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold"
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[11px] font-semibold"
                       style={{ background: isDark ? "rgba(22,163,74,0.15)" : "#dcfce7", color: "#16a34a", border: isDark ? "1px solid rgba(22,163,74,0.3)" : "1px solid #86efac" }}>
                       <CheckCircle2 size={13}/> Cambios guardados
                     </div>
@@ -1452,14 +1478,14 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                       <button
                         onClick={() => guardarCambios(null)}
                         disabled={guardando}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12px] font-bold active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{ background: `linear-gradient(135deg,${T.orange},#ea6000)`, color: "#fff", boxShadow: "0 4px 14px rgba(249,115,22,0.35)", minHeight: "48px", transition: "all 0.18s ease" }}
                         onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 20px rgba(249,115,22,0.45)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                         onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 14px rgba(249,115,22,0.35)"; e.currentTarget.style.transform = "none"; }}>
                         <MessageSquare size={14}/> {guardando ? "Guardando..." : "Guardar comentario"}
                       </button>
                       <button onClick={() => setConfirmCierre(true)}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-95"
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12px] font-bold transition-all hover:brightness-110 active:scale-95"
                         style={{ background: "linear-gradient(135deg,#16a34a,#15803d)", color: "#fff", boxShadow: "0 3px 12px rgba(22,163,74,0.3)", minHeight: "48px" }}>
                         <CheckCircle2 size={14}/> Cerrar ticket
                       </button>
@@ -1470,8 +1496,8 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                         style={{ background: isDark ? "rgba(22,163,74,0.15)" : "#dcfce7", border: isDark ? "2px solid rgba(22,163,74,0.3)" : "2px solid #86efac" }}>
                         <CheckCircle2 size={20} style={{ color: "#16a34a" }}/>
                       </div>
-                      <p className="text-xs font-black" style={{ color: "#16a34a" }}>Ticket cerrado</p>
-                      <p className="text-[11px] text-center" style={{ color: T.textFaint }}>No se pueden realizar más acciones</p>
+                      <p className="text-[11px] font-black" style={{ color: "#16a34a" }}>Ticket cerrado</p>
+                      <p className="text-[10px] text-center" style={{ color: T.textFaint }}>No se pueden realizar más acciones</p>
                     </div>
                   )}
                 </div>
@@ -1491,6 +1517,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
           onClick={() => setVisor(null)}>
           <div className="relative w-full max-w-3xl flex flex-col items-center gap-4"
             onClick={e => e.stopPropagation()}>
+            <LogoModal claro alto={18} />
             {/\.(mp4|webm|mov|avi)$/i.test(imgs[visor]) ? (
               <video
                 src={`${API}/storage/Evidencias_Tickets/${ticket.folio_ticket}/${imgs[visor]}`}
@@ -1505,7 +1532,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                 style={{ maxHeight: "70vh", boxShadow: "0 20px 60px rgba(0,0,0,0.8)" }}
               />
             )}
-            <p className="text-xs text-center px-4" style={{ color: "rgba(255,255,255,0.4)" }}>
+            <p className="text-[11px] text-center px-4" style={{ color: "rgba(255,255,255,0.4)" }}>
               {imgs[visor]} · {visor + 1} de {imgs.length}
             </p>
             <div className="flex items-center gap-3">
@@ -1514,7 +1541,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                 style={{ background: "rgba(255,255,255,0.12)", color: "#fff" }}>
                 <ChevronLeft size={20} />
               </button>
-              <span className="text-sm font-bold text-white">{visor + 1} / {imgs.length}</span>
+              <span className="text-[12px] font-bold text-white">{visor + 1} / {imgs.length}</span>
               <button onClick={() => setVisor(v => Math.min(imgs.length - 1, v + 1))} disabled={visor === imgs.length - 1}
                 className="w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-25 hover:scale-110 active:scale-95 transition-all"
                 style={{ background: "rgba(255,255,255,0.12)", color: "#fff" }}>

@@ -18,10 +18,19 @@
  *   noBodyPadding  — suprime padding del body
  *   closeOnOverlay — click en overlay cierra (default true)
  *   T              — tokens del tema (opcional)
+ *
+ * @module client/components/Modal
+ * @requires react
+ * @requires lucide-react
+ * @requires ../utils/tipografia.js
+ * @requires ./LogoModal.jsx
+ * @exports Modal (default)
  */
 import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
+import { FS } from '../utils/tipografia.js';
+import LogoModal from './LogoModal.jsx';
 const ACCENT_COLORS = {
   default: "#F47920",
   danger:  "#DC2626",
@@ -168,7 +177,7 @@ export default function Modal({
         }}>
           <div style={{ minWidth: 0, flex: 1 }}>
             {subtitle && (
-              <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: accentColor }}>
+              <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: accentColor }}>
                 {subtitle}
               </p>
             )}
@@ -184,7 +193,7 @@ export default function Modal({
                 </div>
               )}
               <p id="_modal_title" style={{
-                margin: 0, fontSize: "16px", fontWeight: 700,
+                margin: 0, fontSize: FS.subtitulo, fontWeight: 700,
                 color: textMain, lineHeight: "1.2",
                 letterSpacing: "-0.02em",
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -195,11 +204,7 @@ export default function Modal({
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
-            <img
-              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
-              alt="Precision Trucks"
-              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
-            />
+            <LogoModal />
             {!loading && (
               <button
                 type="button"
@@ -227,7 +232,7 @@ export default function Modal({
           style={{
             padding: noBodyPadding ? 0 : "16px 18px",
             overflowY: "auto", flex: 1,
-            fontSize: "13px", lineHeight: "1.55",
+            fontSize: FS.enfasis, lineHeight: "1.55",
             color: bodyColor,
           }}
         >
@@ -253,7 +258,7 @@ export default function Modal({
                   color: textMuted,
                   background: "transparent",
                   borderRadius: "6px",
-                  fontSize: "12px", fontWeight: 600,
+                  fontSize: FS.cuerpo, fontWeight: 600,
                   cursor: loading ? "not-allowed" : "pointer",
                   opacity: loading ? 0.5 : 1,
                   transition: "all 0.12s",
@@ -275,7 +280,7 @@ export default function Modal({
                   borderRadius: "6px", border: "none",
                   background: loading ? `${accentColor}99` : accentColor,
                   color: "#ffffff",
-                  fontSize: "12px", fontWeight: 700,
+                  fontSize: FS.cuerpo, fontWeight: 700,
                   cursor: loading ? "not-allowed" : "pointer",
                   display: "inline-flex", alignItems: "center", gap: "6px",
                   whiteSpace: "nowrap",

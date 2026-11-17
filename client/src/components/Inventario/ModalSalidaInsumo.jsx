@@ -11,6 +11,15 @@
  *
  * Validación: el backend convierte "" → null antes de validar, por lo que un
  * campo sin elegir ya NUNCA provoca el 422 "Datos inválidos".
+ *
+ * @module client/components/Inventario/ModalSalidaInsumo
+ * @requires react
+ * @requires lucide-react
+ * @requires ../../services/api-client.js
+ * @requires ../Feedback.jsx
+ * @requires ../../utils/tipografia.js
+ * @requires ../LogoModal.jsx
+ * @exports ModalSalidaInsumo (default)
  */
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
@@ -20,6 +29,8 @@ import {
 import { apiFetch, API_ROUTES } from '../../services/api-client.js';
 import { useToast } from '../Feedback.jsx';
 
+import { FS } from '../../utils/tipografia.js';
+import LogoModal from '../LogoModal.jsx';
 const ROJO = "#dc2626";
 const PRIORIDADES = ["Urgente", "Alta", "Media", "Baja"];
 
@@ -43,7 +54,7 @@ const fotoEmpleadoUrl = (foto) => {
 function Field({ label, htmlFor, required, children, textFaint }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-      <label htmlFor={htmlFor} style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: textFaint }}>
+      <label htmlFor={htmlFor} style={{ fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: textFaint }}>
         {label}{required && <span style={{ color: ROJO, marginLeft: "2px" }}>*</span>}
       </label>
       {children}
@@ -118,7 +129,7 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
 
   const inp = {
     background: inputBg, border: `1px solid ${border}`, borderRadius: "6px",
-    padding: "0 10px", height: "34px", fontSize: "13px", color: textMain,
+    padding: "0 10px", height: "34px", fontSize: FS.enfasis, color: textMain,
     width: "100%", outline: "none",
   };
   const onFocus = e => { e.target.style.borderColor = "#2563eb"; };
@@ -262,17 +273,13 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
             <ArrowUpFromLine size={15} style={{ color: ROJO }} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ROJO }}>
+            <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ROJO }}>
               Salida interna de insumos
             </p>
-            <div style={{ fontSize: "13px", fontWeight: 700, color: textMain, lineHeight: 1.25 }}>Formato de salida de material</div>
-            <div style={{ fontSize: "11px", color: textMuted }}>Se acepta automáticamente · descuenta stock y genera la hoja para imprimir</div>
+            <div style={{ fontSize: FS.enfasis, fontWeight: 700, color: textMain, lineHeight: 1.25 }}>Formato de salida de material</div>
+            <div style={{ fontSize: FS.secundario, color: textMuted }}>Se acepta automáticamente · descuenta stock y genera la hoja para imprimir</div>
           </div>
-          <img
-            src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
-            alt="Precision Trucks"
-            style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70, flexShrink: 0 }}
-          />
+          <LogoModal />
           <button type="button" onClick={onClose} disabled={saving} title="Cerrar (Esc)" aria-label="Cerrar"
             style={{ border: "none", background: "transparent", cursor: "pointer",
               color: textFaint, padding: "4px", borderRadius: "6px", display: "flex", opacity: saving ? 0.4 : 1 }}>
@@ -286,10 +293,10 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
           {/* Insumos: "Insumo 1", "Insumo 2"… con foto */}
           <section>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: textFaint }}>
+              <span style={{ fontSize: FS.secundario, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: textFaint }}>
                 Insumos
               </span>
-              <span style={{ fontSize: "11px", color: textMuted, fontVariantNumeric: "tabular-nums" }}>
+              <span style={{ fontSize: FS.secundario, color: textMuted, fontVariantNumeric: "tabular-nums" }}>
                 {renglones.length} · {totalPiezas} pieza{totalPiezas !== 1 ? "s" : ""}
               </span>
             </div>
@@ -306,7 +313,7 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
                     display: "flex", flexDirection: "column", gap: "8px",
                   }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: "11px", fontWeight: 800, color: textMuted }}>Insumo {idx + 1}</span>
+                      <span style={{ fontSize: FS.secundario, fontWeight: 800, color: textMuted }}>Insumo {idx + 1}</span>
                       {renglones.length > 1 && (
                         <button type="button" title="Quitar insumo"
                           onClick={() => setRenglones(rs => rs.filter(x => x.key !== r.key))}
@@ -368,12 +375,12 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
                     {/* Detalle del elegido: marca / MODELO GRANDE / stock */}
                     {r.id_insumo && (
                       <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
-                        <span style={{ fontSize: "14px", fontWeight: 800, color: textMain }}>{marcaDe(r.id_insumo)}</span>
-                        <span style={{ fontSize: "11px", color: textMuted }}>
+                        <span style={{ fontSize: FS.subtitulo, fontWeight: 800, color: textMain }}>{marcaDe(r.id_insumo)}</span>
+                        <span style={{ fontSize: FS.secundario, color: textMuted }}>
                           Stock: {stockDe(r.id_insumo)}
                           {rest !== null && <> · queda {Math.max(rest, 0)}</>}
                         </span>
-                        {sinStock && <span style={{ fontSize: "11px", fontWeight: 700, color: "#dc2626" }}>— excede lo disponible</span>}
+                        {sinStock && <span style={{ fontSize: FS.secundario, fontWeight: 700, color: "#dc2626" }}>— excede lo disponible</span>}
                       </div>
                     )}
                   </div>
@@ -382,7 +389,7 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
 
               <button type="button" onClick={() => setRenglones(rs => [...rs, nuevoRenglon()])}
                 style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px",
-                  padding: "7px", borderRadius: "6px", fontSize: "12px", fontWeight: 600,
+                  padding: "7px", borderRadius: "6px", fontSize: FS.cuerpo, fontWeight: 600,
                   background: "transparent", border: `1px dashed ${border}`, color: textMuted, cursor: "pointer" }}>
                 <Plus size={13} /> Agregar otro insumo
               </button>
@@ -392,11 +399,11 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
           {/* Quién solicita: lista + buscador con filtros */}
           <section>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: textFaint }}>
+              <span style={{ fontSize: FS.secundario, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: textFaint }}>
                 Quién solicita
               </span>
               <button type="button" onClick={() => setBuscandoPersona(true)}
-                style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 700,
+                style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: FS.secundario, fontWeight: 700,
                   padding: "4px 9px", borderRadius: "6px", cursor: "pointer",
                   background: "transparent", border: `1px solid ${border}`, color: textMuted }}>
                 <Search size={12} /> Buscar persona
@@ -424,7 +431,7 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
 
           {/* Ruta del material + fecha con hora */}
           <section>
-            <div style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: textFaint, marginBottom: "8px" }}>
+            <div style={{ fontSize: FS.secundario, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: textFaint, marginBottom: "8px" }}>
               Ruta y fecha
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
@@ -447,7 +454,7 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
                 </select>
               </Field>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "8px", fontSize: "11px", color: textMuted }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "8px", fontSize: FS.secundario, color: textMuted }}>
               <MapPin size={12} />
               <span>{nombreSucursalDe(rutaOrigen) || "Origen"} → {nombreSucursalDe(rutaDestino) || "Destino"}</span>
             </div>
@@ -463,7 +470,7 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
 
           {/* Justificación + prioridad (igual que el formulario del usuario) */}
           <section>
-            <div style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: textFaint, marginBottom: "8px" }}>
+            <div style={{ fontSize: FS.secundario, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: textFaint, marginBottom: "8px" }}>
               Justificación
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: "10px" }}>
@@ -483,12 +490,12 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
             </div>
           </section>
 
-          <p style={{ margin: 0, fontSize: "11px", color: textMuted, fontVariantNumeric: "tabular-nums" }}>
+          <p style={{ margin: 0, fontSize: FS.secundario, color: textMuted, fontVariantNumeric: "tabular-nums" }}>
             Total: <strong style={{ color: textMain }}>{totalPiezas}</strong> pieza{totalPiezas !== 1 ? "s" : ""} en {renglones.filter(r => r.id_insumo).length} renglón{renglones.filter(r => r.id_insumo).length !== 1 ? "es" : ""}. Al guardar se descuenta del inventario.
           </p>
 
           {error && (
-            <p role="alert" style={{ margin: 0, padding: "8px 12px", borderRadius: "6px", fontSize: "12px",
+            <p role="alert" style={{ margin: 0, padding: "8px 12px", borderRadius: "6px", fontSize: FS.cuerpo,
               fontWeight: 500, color: "#dc2626", background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2",
               border: `1px solid ${isDark ? "rgba(220,38,38,0.25)" : "#fecaca"}` }}>{error}</p>
           )}
@@ -497,19 +504,19 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
         {/* ── Pie ────────────────────────────────────────────────────── */}
         <div style={{ padding: "10px 18px", borderTop: `1px solid ${border}`, background: surfaceAlt,
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", flexShrink: 0 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 700, color: "#16a34a" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: FS.secundario, fontWeight: 700, color: "#16a34a" }}>
             <CheckCircle2 size={13} /> Aceptada automáticamente
           </span>
           <div style={{ display: "flex", gap: "8px" }}>
             <button type="button" onClick={onClose} disabled={saving}
-              style={{ padding: "6px 16px", borderRadius: "6px", fontSize: "12px", fontWeight: 600,
+              style={{ padding: "6px 16px", borderRadius: "6px", fontSize: FS.cuerpo, fontWeight: 600,
                 background: "transparent", border: `1px solid ${border}`, color: textMuted,
                 cursor: "pointer", opacity: saving ? 0.5 : 1 }}>
               Cancelar
             </button>
             <button type="submit" disabled={saving}
               style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 18px",
-                borderRadius: "6px", fontSize: "12px", fontWeight: 700,
+                borderRadius: "6px", fontSize: FS.cuerpo, fontWeight: 700,
                 background: saving ? "rgba(220,38,38,0.12)" : ROJO, color: "#fff",
                 border: "none", cursor: saving ? "not-allowed" : "pointer" }}>
               {saving ? <Printer size={13} /> : <ArrowUpFromLine size={13} />}
@@ -556,7 +563,7 @@ function ModalBusquedaPersona({ empleados = [], sucursales = [], isDark = false,
 
   const inp = {
     background: inputBg, border: `1px solid ${border}`, borderRadius: "6px",
-    padding: "0 10px", height: "34px", fontSize: "13px", color: textMain,
+    padding: "0 10px", height: "34px", fontSize: FS.enfasis, color: textMain,
     width: "100%", outline: "none",
   };
   const onFocus = e => { e.target.style.borderColor = "#2563eb"; };
@@ -613,16 +620,12 @@ function ModalBusquedaPersona({ empleados = [], sucursales = [], isDark = false,
         <div style={{ height: "3px", background: "linear-gradient(90deg,#dc2626,#f59e0b)" }} />
         <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", borderBottom: `1px solid ${border}` }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ROJO }}>
+            <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ROJO }}>
               Quién solicita
             </p>
-            <div style={{ fontSize: "13px", fontWeight: 700, color: textMain }}>Buscar persona</div>
+            <div style={{ fontSize: FS.enfasis, fontWeight: 700, color: textMain }}>Buscar persona</div>
           </div>
-          <img
-            src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
-            alt="Precision Trucks"
-            style={{ height: "24px", width: "auto", objectFit: "contain", opacity: isDark ? 0.8 : 0.7, flexShrink: 0 }}
-          />
+          <LogoModal />
           <button type="button" onClick={onClose} title="Cerrar (Esc)" aria-label="Cerrar"
             style={{ border: "none", background: "transparent", cursor: "pointer", color: textFaint, padding: "4px", display: "flex" }}>
             <X size={16} />
@@ -660,7 +663,7 @@ function ModalBusquedaPersona({ empleados = [], sucursales = [], isDark = false,
 
         <div style={{ padding: "8px", overflowY: "auto", flex: 1 }}>
           {filtrados.length === 0 ? (
-            <p style={{ margin: 0, padding: "24px 12px", textAlign: "center", fontSize: "12px", color: textMuted }}>
+            <p style={{ margin: 0, padding: "24px 12px", textAlign: "center", fontSize: FS.cuerpo, color: textMuted }}>
               Sin coincidencias con esos filtros.
             </p>
           ) : filtrados.map(e => {
@@ -679,14 +682,14 @@ function ModalBusquedaPersona({ empleados = [], sucursales = [], isDark = false,
                     style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: `1px solid ${border}`, flexShrink: 0 }} />
                 ) : (
                   <span aria-hidden style={{
-                    width: 34, height: 34, borderRadius: "50%", flexShrink: 0, fontSize: "12px", fontWeight: 800,
+                    width: 34, height: 34, borderRadius: "50%", flexShrink: 0, fontSize: FS.cuerpo, fontWeight: 800,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     background: isDark ? "rgba(220,38,38,0.15)" : "#fef2f2", color: ROJO,
                   }}>{iniciales(nom)}</span>
                 )}
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: "13px", fontWeight: 600, color: textMain, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{nom}</span>
-                  <span style={{ display: "block", fontSize: "11px", color: textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <span style={{ display: "block", fontSize: FS.enfasis, fontWeight: 600, color: textMain, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{nom}</span>
+                  <span style={{ display: "block", fontSize: FS.secundario, color: textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {[e.puesto, nombreSucursalDe(e.id_sucursal)].filter(Boolean).join(" · ")}
                   </span>
                 </span>
@@ -697,11 +700,11 @@ function ModalBusquedaPersona({ empleados = [], sucursales = [], isDark = false,
 
         <div style={{ padding: "10px 16px", borderTop: `1px solid ${border}`, background: surfaceAlt,
           display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-          <span style={{ fontSize: "11px", color: textMuted, fontVariantNumeric: "tabular-nums" }}>
+          <span style={{ fontSize: FS.secundario, color: textMuted, fontVariantNumeric: "tabular-nums" }}>
             {filtrados.length} persona{filtrados.length === 1 ? "" : "s"}
           </span>
           <button type="button" onClick={onClose}
-            style={{ padding: "6px 16px", borderRadius: "6px", fontSize: "12px", fontWeight: 600,
+            style={{ padding: "6px 16px", borderRadius: "6px", fontSize: FS.cuerpo, fontWeight: 600,
               background: "transparent", border: `1px solid ${border}`, color: textMuted, cursor: "pointer" }}>
             Cancelar
           </button>

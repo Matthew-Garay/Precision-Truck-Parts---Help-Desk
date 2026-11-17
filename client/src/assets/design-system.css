@@ -1,4 +1,4 @@
-﻿/*
+/*
  * PRECISION TRUCK PARTS — Design System CSS
  * Estrategia 60-30-10 · Atomic Design · Nielsen · Mobile-First
  *
@@ -108,12 +108,12 @@
   --ptp-radius-card:   6px;  /* enterprise: máximo 6px en organismos */
 
   /* ── Escala tipográfica (alias cortos) ──────────────────── */
-  --ptp-text-h1:        22px;
-  --ptp-text-h2:        16px;
-  --ptp-text-h3:        14px;
-  --ptp-text-body:      13px;
-  --ptp-text-label:     11px;
-  --ptp-text-mono:      12px;
+  --ptp-text-h1:        16px;  /* estándar: titulo (utils/tipografia.js) */
+  --ptp-text-h2:        13px;  /* subtitulo */
+  --ptp-text-h3:        12px;  /* enfasis */
+  --ptp-text-body:      11px;  /* cuerpo */
+  --ptp-text-label:     9px;   /* etiqueta */
+  --ptp-text-mono:      10px;  /* secundario */
   --ptp-h-btn:         34px;
   --ptp-h-input:       34px;
   --ptp-orange:        #F47920;
@@ -139,7 +139,7 @@ html {
 
 body {
   font-family:             var(--font-sans);
-  font-size:               clamp(9px, 0.72vw, 11.5px);
+  font-size:               11px;  /* cuerpo: texto base fijo (antes 9–11.5px fluido) */
   line-height:             1.5;
   color:                   var(--ptp-text);
   background-color:        var(--ptp-page-bg);
@@ -719,13 +719,13 @@ body {
   --panel-r-w:      clamp(200px, 16vw, 250px);
   --header-h:       clamp(58px, 7vh, 72px);
   --sidebar-logo-h: clamp(36px, 4vw, 56px);
-  --fs-nav:         clamp(10px, 0.7vw, 12px);
-  --fs-body:        clamp(10px, 0.65vw, 12px);
-  --fs-label:       clamp(8px, 0.58vw, 10px);
+  --fs-nav:         11px;   /* cuerpo (antes fluido 10–12px) */
+  --fs-body:        11px;   /* cuerpo */
+  --fs-label:       9px;    /* etiqueta (antes bajaba a 8px) */
   --icon-nav:       clamp(13px, 1.1vw, 16px);
   --content-px:     clamp(8px, 1vw, 16px);
   --content-pt:     clamp(6px, 0.8vh, 12px);
-  --kpi-fs-val:     clamp(16px, 1.5vw, 26px);
+  --kpi-fs-val:     18px;   /* kpi */
 }
 
 /* En móvil (<640px) usar sidebar de ancho completo razonable */

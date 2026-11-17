@@ -1,5 +1,5 @@
 /**
- * uploadInsumos.js
+ * upload-insumos.js
  *
  * Configura el middleware de subida de imagenes para los insumos del inventario.
  * Sigue la misma arquitectura de doble validacion que uploadEvidencias.js
@@ -27,6 +27,17 @@
  *   uploadInsumo - objeto con metodo single(campo) que retorna un arreglo
  *                  [middlewareMulter, middlewareMagicBytes]
  *   INSUMOS_DIR  - ruta absoluta del directorio de imagenes de insumos
+ *
+ * @module server/middlewares/upload-insumos
+ * @requires multer
+ * @requires path
+ * @requires fs
+ * @requires crypto
+ * @requires url
+ * @requires file-type
+ * @requires ./security.js
+ * @exports uploadInsumo
+ * @exports INSUMOS_DIR
  */
 import multer            from "multer";
 import path              from "path";

@@ -1,5 +1,5 @@
 /**
- * Solicitud.js
+ * solicitud.js
  *
  * Modelo que encapsula todas las operaciones sobre las tablas `solicitud`
  * y `solicitud_insumo`. Una solicitud es una peticion de insumos que un
@@ -12,7 +12,7 @@
  *       1. Bloquea con FOR UPDATE los folios del mes actual para evitar
  *          duplicados bajo concurrencia (race condition entre peticiones simultaneas).
  *       2. Calcula el siguiente numero secuencial y genera el folio con el
- *          formato SAL-{anno}{mes}-{numero} (ej. SAL-202610-0001).
+ *          formato SOL-{anno}{mes}-{numero} (ej. SOL-202611-0001).
  *       3. Inserta el registro principal en la tabla solicitud.
  *       4. Verifica que todos los insumos del arreglo existen y tienen
  *          stock suficiente para la cantidad solicitada.
@@ -37,9 +37,14 @@
  *
  *   actualizarEstatus(id_solicitud, estatus)
  *     Actualiza el estatus de una solicitud validando que el valor pertenezca
- *     al conjunto de estatus permitidos (En proceso, Resuelto, No Resuelto).
+ *     al conjunto de estatus permitidos (En proceso, Aceptado, Rechazado).
  *     No descuenta stock; eso lo hace el controlador en una transaccion propia.
  *     Retorna true si se afecto al menos un registro.
+ *
+ * @module server/services/solicitud
+ * @requires ../config/db.js
+ * @requires ../utils/helpers.js
+ * @exports Solicitud (default)
  */
 import pool from '../config/db.js';
 import { generarFolio } from '../utils/helpers.js';
@@ -50,8 +55,10 @@ const Solicitud = {
     try {
       await conn.beginTransaction();
 
-      // Folio con prefijo SAL-: SAL-YYYYMM-NNNN (ej. SAL-202610-0001).
-      const folio = await generarFolio(conn, "solicitud", "folio_solicitud", "SAL");
+      // Folio con prefijo SOL-: SOL-YYYYMM-NNNN (ej. SOL-202611-0001).
+      // SAL- queda reservado para las salidas internas manuales; el frontend
+      // (HistorialInsumos, SolicitudInsumo) distingue ambos por el prefijo.
+      const folio = await generarFolio(conn, "solicitud", "folio_solicitud", "SOL");
 
       // Observaciones generales de la solicitud: un único texto para toda la
       // solicitud, guardado en el encabezado (solicitud.observacion). No se
@@ -67,19 +74,27 @@ const Solicitud = {
       // 1) Validar que todos los insumos existen y tienen stock suficiente.
       //    IMPORTANTE: crear la solicitud NO descuenta stock; el descuento ocurre
       //    solo cuando un administrador la acepta (ver aceptarSolicitud).
-      for (const { id_insumo, cantidad } of insumos) {
+      //    Un mismo insumo puede venir en varios renglones: se valida la SUMA,
+      //    no cada renglon por separado (antes 2 renglones de 3 pasaban con stock 3).
+      const totalPorInsumo = new Map();
+      for (const { id_insumo, cantidad } of insumos)
+        totalPorInsumo.set(id_insumo, (totalPorInsumo.get(id_insumo) || 0) + cantidad);
+      for (const [id_insumo, cantidad] of totalPorInsumo) {
         const [[insumo]] = await conn.query(
-          "SELECT id_insumo, nombre, stock FROM insumo WHERE id_insumo = ? LIMIT 1 FOR UPDATE",
+          "SELECT id_insumo, nombre, stock, activo FROM insumo WHERE id_insumo = ? LIMIT 1 FOR UPDATE",
           [id_insumo]
         );
         if (!insumo) {
-          await conn.rollback();
           const err = new Error(`El insumo con id ${id_insumo} no existe`);
           err.statusCode = 400;
           throw err;
         }
+        if (Number(insumo.activo) === 0) {
+          const err = new Error(`El insumo "${insumo.nombre}" está inhabilitado`);
+          err.statusCode = 400;
+          throw err;
+        }
         if (insumo.stock < cantidad) {
-          await conn.rollback();
           const err = new Error(`Stock insuficiente para "${insumo.nombre}": disponible ${insumo.stock}, solicitado ${cantidad}`);
           err.statusCode = 400;
           throw err;
@@ -288,11 +303,16 @@ const Solicitud = {
     const PERMITIDOS = new Set(["En proceso", "Aceptado", "Rechazado"]);
     if (!PERMITIDOS.has(estatus)) throw new Error("Estatus no válido");
     // Al cerrar la solicitud se sella la fecha de atencion (para la hoja impresa).
+    // La condicion de estatus hace el cambio atomico: si otra peticion la
+    // acepto/rechazo entre la lectura del controlador y este UPDATE, no se
+    // pisa (antes un rechazo podia sobreescribir una solicitud ya Aceptada
+    // cuyo stock ya se habia descontado).
     const [result] = await pool.query(
       `UPDATE solicitud
           SET estatus = ?
               ${estatus === "En proceso" ? "" : ", fecha_atencion = NOW()"}
-        WHERE id_solicitud = ?`,
+        WHERE id_solicitud = ?
+          AND estatus NOT IN ('Aceptado', 'Rechazado')`,
       [estatus, id_solicitud]
     );
     return result.affectedRows > 0;

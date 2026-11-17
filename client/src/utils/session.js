@@ -26,6 +26,14 @@
  *
  *   Solo se persisten los campos de CAMPOS_PUBLICOS para evitar almacenar
  *   información sensible (password, datos internos) en el navegador.
+ *
+ * @module client/utils/session
+ * @exports getUsuario
+ * @exports setUsuario
+ * @exports clearUsuario
+ * @exports getIdAcceso
+ * @exports setIdAcceso
+ * @exports clearIdAcceso
  */
 
 const CAMPOS_PUBLICOS = ["id_empleado", "num_empleado", "nombre", "ap_paterno", "ap_materno",

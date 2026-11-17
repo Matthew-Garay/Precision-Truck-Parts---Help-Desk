@@ -1,5 +1,5 @@
 /**
- * resetController.js
+ * reset-controller.js
  *
  * Controlador que implementa el flujo completo de recuperacion de contrasena
  * en tres pasos: solicitud del codigo, verificacion del codigo y restablecimiento.
@@ -35,6 +35,19 @@
  *     que el empleado este activo (puede haber sido desactivado durante la ventana
  *     de 10 minutos del token). Hashea la nueva contrasena con bcrypt (12 rounds)
  *     y la guarda en la base de datos. Elimina la entrada del Map al terminar.
+ *
+ * @module server/controllers/reset-controller
+ * @requires bcryptjs
+ * @requires crypto
+ * @requires fs
+ * @requires path
+ * @requires url
+ * @requires ../services/empleado.js
+ * @requires ../config/mailer.js
+ * @requires ../middlewares/validate.js
+ * @exports solicitarRecuperacion
+ * @exports verificarCodigo
+ * @exports resetPassword
  */
 import bcrypt   from "bcryptjs";
 import crypto   from "crypto";

@@ -1,5 +1,5 @@
 /**
- * alertState.js
+ * alert-state.js
  *
  * Persiste en disco los Sets de deduplicacion de alertas para que
  * sobrevivan reinicios del servidor sin volver a emitir alertas ya enviadas.
@@ -16,6 +16,12 @@
  * stockEnviadoHoy guarda la fecha (YYYY-MM-DD) en que se enviaron las alertas
  * de stock critico a cada admin (por id_empleado). Si la fecha guardada es la
  * de hoy, no se vuelven a emitir hasta el dia siguiente.
+ *
+ * @module server/workers/alert-state
+ * @requires fs
+ * @requires path
+ * @requires url
+ * @exports crearSetsPersistentes
  */
 import fs   from "fs";
 import path from "path";

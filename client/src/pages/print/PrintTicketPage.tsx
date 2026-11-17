@@ -1,3 +1,21 @@
+/**
+ * PrintTicketPage.tsx
+ *
+ * Página /print/ticket/:folio: carga el ticket por folio y renderiza su hoja
+ * imprimible (PrintReportView).
+ *
+ * Export default: PrintTicketPage
+ * Endpoint: GET /api/tickets/folio/:folio.
+ *
+ * @module client/pages/print/PrintTicketPage
+ * @requires react
+ * @requires react-router-dom
+ * @requires ../../services/api-client.js
+ * @requires ../../components/print/PrintReportView.tsx
+ * @requires ../../components/PrintShared.tsx
+ * @requires ../../utils/print-utils.ts
+ * @exports PrintTicketPage (default)
+ */
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getToken, setToken } from '../../services/api-client.js';

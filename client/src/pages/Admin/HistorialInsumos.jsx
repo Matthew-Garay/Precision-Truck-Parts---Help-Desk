@@ -1,3 +1,31 @@
+/**
+ * HistorialInsumos.jsx
+ *
+ * Historial de insumos del administrador: mezcla solicitudes (folio SOL-) y
+ * salidas internas (folio SAL-) en una sola tabla con filtros, métricas,
+ * exportación a Excel y reporte imprimible.
+ *
+ * Export default: HistorialInsumos
+ * Props: T.
+ * Endpoints: GET /api/solicitudes, /api/solicitudes/metricas,
+ *    /api/solicitudes/reporte y /api/solicitudes/movimientos?tipo=Salida (vía
+ *    services/salidas-historial.js).
+ *
+ * @module client/pages/Admin/HistorialInsumos
+ * @requires react
+ * @requires lucide-react
+ * @requires ../../services/api-client.js
+ * @requires ../print/PrintReportePage.tsx
+ * @requires ../../hooks/use-auto-refresh.js
+ * @requires ../../components/FiltrosToolbar.jsx
+ * @requires ../../components/Paginacion.jsx
+ * @requires ../../components/Card.jsx
+ * @requires ../Usuario/VistaSolicitud.jsx
+ * @requires ../../components/ModalReporte.jsx
+ * @requires ../../services/salidas-historial.js
+ * @requires ../../utils/tipografia.js
+ * @exports HistorialInsumos (default)
+ */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Inbox, FileDown } from "lucide-react";
 import { apiFetch } from '../../services/api-client.js';
@@ -13,6 +41,7 @@ import {
   traerSalidasManualesAdmin, traerSolicitudesAdmin,
 } from '../../services/salidas-historial.js';
 
+import { FS } from '../../utils/tipografia.js';
 const PCOLOR = { Urgente: "#dc2626", Alta: "#ea580c", Media: "#ca8a04", Baja: "#16a34a" };
 const ESTATUS_COLOR = { Resuelto: "#16a34a", Pendiente: "#3b82f6", "En proceso": "#d97706", Aceptado: "#16a34a", Rechazado: "#dc2626", Entregado: "#0d9488" };
 const ESTATUS_BG    = { Resuelto: "rgba(22,163,74,0.13)", Pendiente: "rgba(59,130,246,0.13)", "En proceso": "rgba(217,119,6,0.13)", Aceptado: "rgba(22,163,74,0.13)", Rechazado: "rgba(220,38,38,0.13)", Entregado: "rgba(13,148,136,0.13)" };
@@ -235,11 +264,11 @@ export default function HistorialInsumos({ T }) {
             <div className="p-2 flex flex-col gap-1">
               <div className="flex items-center gap-1">
                 <div className="w-1 h-2.5 rounded-full" style={{ background: T.orange }} />
-                <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Distribución</p>
+                <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Distribución</p>
               </div>
               <div className="flex items-end gap-2">
-                <span className="text-2xl font-black leading-none" style={{ color: T.orange }}>{totalKpi}</span>
-                <span className="text-[11px] font-semibold mb-0.5" style={{ color: T.textMuted }}>solicitudes totales</span>
+                <span className="text-[18px] font-black leading-none" style={{ color: T.orange }}>{totalKpi}</span>
+                <span className="text-[10px] font-semibold mb-0.5" style={{ color: T.textMuted }}>solicitudes totales</span>
               </div>
               <div className="flex flex-col gap-0.5 pt-1">
                 {[
@@ -251,12 +280,12 @@ export default function HistorialInsumos({ T }) {
                   return (
                     <div key={label} className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
-                      <span className="text-[10px] font-semibold w-20 flex-shrink-0" style={{ color: T.text }}>{label}</span>
+                      <span className="text-[9px] font-semibold w-20 flex-shrink-0" style={{ color: T.text }}>{label}</span>
                       <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.06)" : `${color}15` }}>
                         <div className="h-full rounded-full transition-all duration-700"
                           style={{ width: `${pct > 0 ? Math.max(pct, 4) : 0}%`, background: color }} />
                       </div>
-                      <span className="text-[10px] font-black w-4 text-right flex-shrink-0" style={{ color }}>{val}</span>
+                      <span className="text-[9px] font-black w-4 text-right flex-shrink-0" style={{ color }}>{val}</span>
                     </div>
                   );
                 })}
@@ -275,12 +304,12 @@ export default function HistorialInsumos({ T }) {
               <div key={label} className="rounded-lg p-1.5 flex flex-col gap-0.5 relative overflow-hidden" style={card}>
                 <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg,${color},${color}33)` }} />
                 <p className="text-[9px] font-black uppercase tracking-wider leading-tight" style={{ color: T.textMuted }}>{label}</p>
-                <span className="text-xl font-black leading-none" style={{ color }}>{val}</span>
+                <span className="text-[18px] font-black leading-none" style={{ color }}>{val}</span>
                 <div className="h-1 rounded-full overflow-hidden" style={{ background: T.border }}>
                   <div className="h-full rounded-full transition-all duration-700"
                     style={{ width: `${totalKpi > 0 ? Math.round(val / totalKpi * 100) : 0}%`, background: color, boxShadow: `0 0 4px ${color}44` }} />
                 </div>
-                <span className="text-[10px] font-semibold" style={{ color: subColor }}>{sub}</span>
+                <span className="text-[9px] font-semibold" style={{ color: subColor }}>{sub}</span>
               </div>
             ))}
           </div>
@@ -294,7 +323,7 @@ export default function HistorialInsumos({ T }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
                   <div className="w-1 h-2.5 rounded-full" style={{ background: "#16a34a" }} />
-                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Resolución</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Resolución</p>
                 </div>
                 {(() => {
                   const resueltos = Number(metricas.resueltos ?? 0);
@@ -303,7 +332,7 @@ export default function HistorialInsumos({ T }) {
                   const label = pct >= 75 ? "Excelente" : pct >= 50 ? "Regular" : "Bajo";
                   const color = pct >= 75 ? "#16a34a" : pct >= 50 ? "#ca8a04" : "#dc2626";
                   return (
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                       style={{ background: `${color}15`, color, border: `1px solid ${color}30` }}>
                       {label}
                     </span>
@@ -319,8 +348,8 @@ export default function HistorialInsumos({ T }) {
                 return (
                   <>
                     <div className="flex items-end gap-1">
-                      <span className="text-2xl font-black leading-none" style={{ color }}>{pct}%</span>
-                      <span className="text-[11px] font-semibold mb-0.5" style={{ color: T.textMuted }}>tasa de éxito</span>
+                      <span className="text-[18px] font-black leading-none" style={{ color }}>{pct}%</span>
+                      <span className="text-[10px] font-semibold mb-0.5" style={{ color: T.textMuted }}>tasa de éxito</span>
                     </div>
                     <div className="h-1.5 rounded-full overflow-hidden" style={{ background: T.border }}>
                       <div className="h-full rounded-full transition-all duration-1000"
@@ -329,15 +358,15 @@ export default function HistorialInsumos({ T }) {
                     <div className="grid grid-cols-2 gap-1">
                       <div className="rounded-lg p-1" style={{ background: isDark ? "rgba(59,130,246,0.1)" : "#eff6ff", border: "1px solid rgba(59,130,246,0.2)" }}>
                         <p className="text-[9px] font-black uppercase" style={{ color: "#3b82f6" }}>Pendientes</p>
-                        <p className="text-[11px] font-black" style={{ color: "#3b82f6" }}>{Number(metricas.pendientes ?? 0)}</p>
+                        <p className="text-[10px] font-black" style={{ color: "#3b82f6" }}>{Number(metricas.pendientes ?? 0)}</p>
                       </div>
                       <div className="rounded-lg p-1" style={{ background: isDark ? "rgba(220,38,38,0.1)" : "#fef2f2", border: "1px solid rgba(220,38,38,0.2)" }}>
                         <p className="text-[9px] font-black uppercase" style={{ color: "#dc2626" }}>Rechazados</p>
-                        <p className="text-[11px] font-black" style={{ color: "#dc2626" }}>{rechazados}</p>
+                        <p className="text-[10px] font-black" style={{ color: "#dc2626" }}>{rechazados}</p>
                       </div>
                     </div>
                     <div className="pt-1" style={{ borderTop: `1px solid ${T.border}` }}>
-                      <p className="text-[10px]" style={{ color: T.textFaint }}>{resueltos} resueltas de {cerrados} cerradas</p>
+                      <p className="text-[9px]" style={{ color: T.textFaint }}>{resueltos} resueltas de {cerrados} cerradas</p>
                     </div>
                   </>
                 );
@@ -349,7 +378,7 @@ export default function HistorialInsumos({ T }) {
           <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden flex flex-col" style={card}>
             <div className="px-2 py-1 flex items-center gap-1" style={hdr}>
               <div className="w-1 h-2.5 rounded-full" style={{ background: T.orange }} />
-              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Por Prioridad</p>
+              <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Por Prioridad</p>
             </div>
             <div className="px-2 pt-1 pb-1 flex flex-col gap-0.5">
               {[{ l: "Urgente", c: "#dc2626", k: "p_urgente" }, { l: "Alta", c: "#ea580c", k: "p_alta" }, { l: "Media", c: "#ca8a04", k: "p_media" }, { l: "Baja", c: "#16a34a", k: "p_baja" }].map(({ l, c, k }) => {
@@ -358,12 +387,12 @@ export default function HistorialInsumos({ T }) {
                 return (
                   <div key={l} className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: c }} />
-                    <span className="text-[10px] font-semibold w-12 flex-shrink-0" style={{ color: T.text }}>{l}</span>
+                    <span className="text-[9px] font-semibold w-12 flex-shrink-0" style={{ color: T.text }}>{l}</span>
                     <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.06)" : `${c}15` }}>
                       <div className="h-full rounded-full transition-all duration-700"
                         style={{ width: `${pct > 0 ? Math.max(pct, 4) : 0}%`, background: c }} />
                     </div>
-                    <span className="text-[10px] font-black w-4 text-right flex-shrink-0" style={{ color: c }}>{n}</span>
+                    <span className="text-[9px] font-black w-4 text-right flex-shrink-0" style={{ color: c }}>{n}</span>
                   </div>
                 );
               })}
@@ -371,7 +400,7 @@ export default function HistorialInsumos({ T }) {
             <div className="mx-2" style={{ height: "1px", background: T.border }} />
             <div className="px-2 py-1 flex items-center gap-1">
               <div className="w-1 h-2.5 rounded-full" style={{ background: T.orange }} />
-              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Top Áreas</p>
+              <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Top Áreas</p>
             </div>
             <div className="px-2 pb-1 flex flex-col gap-0.5">
               {(() => {
@@ -392,12 +421,12 @@ export default function HistorialInsumos({ T }) {
                   : top.map(([area, n], idx) => (
                     <div key={area} className="flex items-center gap-1.5">
                       <span className="text-[9px] font-black w-3 flex-shrink-0 text-center" style={{ color: rankColors[idx] }}>#{idx + 1}</span>
-                      <span className="text-[10px] font-semibold flex-1 truncate" style={{ color: T.text }}>{area}</span>
+                      <span className="text-[9px] font-semibold flex-1 truncate" style={{ color: T.text }}>{area}</span>
                       <div className="w-10 h-1.5 rounded-full overflow-hidden flex-shrink-0" style={{ background: T.border }}>
                         <div className="h-full rounded-full transition-all duration-700"
                           style={{ width: `${Math.round(n / maxN * 100)}%`, background: rankColors[idx] }} />
                       </div>
-                      <span className="text-[10px] font-black w-4 text-right flex-shrink-0" style={{ color: rankColors[idx] }}>{n}</span>
+                      <span className="text-[9px] font-black w-4 text-right flex-shrink-0" style={{ color: rankColors[idx] }}>{n}</span>
                     </div>
                   ));
               })()}
@@ -418,7 +447,7 @@ export default function HistorialInsumos({ T }) {
           >
             <button onClick={() => setModalReporte(true)}
               style={{ display: "flex", alignItems: "center", gap: "4px", padding: "3px 8px", borderRadius: "4px",
-                fontSize: "10px", fontWeight: 700, background: "#F47920", color: "#fff", border: "none", cursor: "pointer",
+                fontSize: FS.etiqueta, fontWeight: 700, background: "#F47920", color: "#fff", border: "none", cursor: "pointer",
                 whiteSpace: "nowrap", transition: "filter 0.15s" }}
               onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.08)"}
               onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -432,13 +461,13 @@ export default function HistorialInsumos({ T }) {
           <div className="flex items-center justify-between px-3 py-2 flex-shrink-0" style={hdr}>
             <div className="flex items-center gap-1.5">
               <div className="w-0.5 h-3.5 rounded-full" style={{ background: T.orange }} />
-              <p className="text-xs font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Registros</p>
+              <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Registros</p>
             </div>
             <div className="flex items-center gap-2">
               {cargando && (
                 <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.orange} strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
               )}
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                 style={{ background: T.bg, color: T.textMuted, border: `1px solid ${T.border}` }}>
                 {totalCount} resultado{totalCount !== 1 ? "s" : ""}
               </span>
@@ -452,7 +481,7 @@ export default function HistorialInsumos({ T }) {
               {solicitudes.length === 0
                 ? <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <Inbox size={20} style={{ color: T.textFaint }} />
-                    <p className="text-xs font-bold" style={{ color: T.textMuted }}>
+                    <p className="text-[11px] font-bold" style={{ color: T.textMuted }}>
                       {hayFiltros ? "Sin resultados" : "No hay solicitudes"}
                     </p>
                   </div>
@@ -465,19 +494,19 @@ export default function HistorialInsumos({ T }) {
                         style={{ background: isDark ? "rgba(255,255,255,0.04)" : T.surfaceAlt, border: `1px solid ${T.border}` }}
                         onClick={() => (s.es_salida ? abrirHojaSalida(s) : setSolicitudVer(s))}>
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono text-[11px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: eBg, color: eColor }}>{s.estatus}</span>
+                          <span className="font-mono text-[10px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold" style={{ background: eBg, color: eColor }}>{s.estatus}</span>
                         </div>
-                        <p className="text-xs font-semibold leading-snug" style={{ color: T.text }}>{s.nombre_empleado || "-"}</p>
+                        <p className="text-[11px] font-semibold leading-snug" style={{ color: T.text }}>{s.nombre_empleado || "-"}</p>
                         <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-1 text-[11px] font-bold">
+                          <span className="flex items-center gap-1 text-[10px] font-bold">
                             <span className="w-2 h-2 rounded-full" style={{ background: PCOLOR[s.prioridad] || "#94a3b8" }} />
                             <span style={{ color: PCOLOR[s.prioridad] || T.textMuted }}>{s.prioridad}</span>
                           </span>
-                          <span className="text-[11px]" style={{ color: T.textFaint }}>{s.nombre_departamento || (s.es_salida && s.registrado_por ? `Registró: ${s.registrado_por}` : "—")}</span>
+                          <span className="text-[10px]" style={{ color: T.textFaint }}>{s.nombre_departamento || (s.es_salida && s.registrado_por ? `Registró: ${s.registrado_por}` : "—")}</span>
                         </div>
                         <div className="flex items-center justify-between pt-1" style={{ borderTop: `1px solid ${T.border}` }}>
-                          <span className="text-[10px]" style={{ color: T.textFaint }}>{fmt(s.fecha)}</span>
+                          <span className="text-[9px]" style={{ color: T.textFaint }}>{fmt(s.fecha)}</span>
                         </div>
                       </div>
                     );
@@ -486,12 +515,12 @@ export default function HistorialInsumos({ T }) {
             </div>
 
             {/* Tablet (640–1023px) */}
-            <div className="hidden sm:block lg:hidden">
+            <div className="hidden sm:block lg:hidden overflow-x-auto">
               <table className="w-full border-collapse" style={{ minWidth: "560px" }}>
                 <thead className="sticky top-0 z-10">
                   <tr style={{ background: isDark ? "#1c2030" : T.surfaceAlt }}>
                     {["Folio", "Empleado / Área", "Prioridad", "Estatus", "Fecha", ""].map((col, i) => (
-                      <th key={i} className="text-left px-2 py-1.5 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
+                      <th key={i} className="text-left px-2 py-1.5 text-[9px] font-black uppercase tracking-widest whitespace-nowrap"
                         style={{ color: T.textMuted, borderBottom: `1px solid ${T.border}` }}>
                         {col}
                       </th>
@@ -503,7 +532,7 @@ export default function HistorialInsumos({ T }) {
                     <tr><td colSpan={6}>
                       <div className="flex flex-col items-center justify-center py-10 gap-2">
                         <Inbox size={20} style={{ color: T.textFaint }} />
-                        <p className="text-xs font-bold" style={{ color: T.textMuted }}>
+                        <p className="text-[11px] font-bold" style={{ color: T.textMuted }}>
                           {hayFiltros ? "Sin resultados" : "No hay solicitudes registradas"}
                         </p>
                       </div>
@@ -518,25 +547,25 @@ export default function HistorialInsumos({ T }) {
                         onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(244,121,32,0.05)" : "rgba(244,121,32,0.03)"}
                         onMouseLeave={e => e.currentTarget.style.background = bgRow}>
                         <td className="px-2 py-1.5">
-                          <span className="font-mono text-[10px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
+                          <span className="font-mono text-[9px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
                         </td>
                         <td className="px-2 py-1.5" style={{ maxWidth: "160px" }}>
-                          <span className="block truncate text-[11px] font-semibold" style={{ color: T.text }}>{s.nombre_empleado || "-"}</span>
-                          <span className="block text-[10px] truncate" style={{ color: T.textMuted }}>{s.nombre_departamento || (s.es_salida && s.registrado_por ? `Registró: ${s.registrado_por}` : "—")}</span>
+                          <span className="block truncate text-[10px] font-semibold" style={{ color: T.text }}>{s.nombre_empleado || "-"}</span>
+                          <span className="block text-[9px] truncate" style={{ color: T.textMuted }}>{s.nombre_departamento || (s.es_salida && s.registrado_por ? `Registró: ${s.registrado_por}` : "—")}</span>
                         </td>
                         <td className="px-2 py-1.5">
                           <span className="flex items-center gap-1 mt-0.5">
                             <span className="w-1.5 h-1.5 rounded-full" style={{ background: PCOLOR[s.prioridad] || "#94a3b8" }} />
-                            <span className="text-[10px] font-bold" style={{ color: PCOLOR[s.prioridad] || T.textMuted }}>{s.prioridad}</span>
+                            <span className="text-[9px] font-bold" style={{ color: PCOLOR[s.prioridad] || T.textMuted }}>{s.prioridad}</span>
                           </span>
                         </td>
                         <td className="px-2 py-1.5">
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap" style={{ background: eBg, color: eColor }}>{s.estatus}</span>
+                          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold whitespace-nowrap" style={{ background: eBg, color: eColor }}>{s.estatus}</span>
                         </td>
-                        <td className="px-2 py-1.5 text-[10px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmt(s.fecha)}</td>
+                        <td className="px-2 py-1.5 text-[9px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmt(s.fecha)}</td>
                         <td className="px-2 py-1.5">
                           <button onClick={() => (s.es_salida ? abrirHojaSalida(s) : setSolicitudVer(s))}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all hover:brightness-110 active:scale-95"
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold transition-all hover:brightness-110 active:scale-95"
                             style={{ background: "rgba(244,121,32,0.08)", color: T.orange, border: "1px solid rgba(244,121,32,0.2)" }}>
                             {s.es_salida ? "Hoja" : "Ver"}
                           </button>
@@ -549,12 +578,12 @@ export default function HistorialInsumos({ T }) {
             </div>
 
             {/* Desktop (≥1024px) */}
-            <div className="hidden lg:block">
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full border-collapse" style={{ minWidth: "860px" }}>
                 <thead className="sticky top-0 z-10">
                   <tr style={{ background: isDark ? "#1c2030" : T.surfaceAlt }}>
                     {["Folio", "Empleado / Área", "Sucursal", "Prioridad", "Estatus", "Insumos", "Piezas", "Autorizados", "Fecha", ""].map((col, i) => (
-                      <th key={i} className="text-left px-2 py-1.5 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
+                      <th key={i} className="text-left px-2 py-1.5 text-[9px] font-black uppercase tracking-widest whitespace-nowrap"
                         style={{ color: T.textMuted, borderBottom: `1px solid ${T.border}` }}>
                         {col}
                       </th>
@@ -566,7 +595,7 @@ export default function HistorialInsumos({ T }) {
                     <tr><td colSpan={10}>
                       <div className="flex flex-col items-center justify-center py-12 gap-2">
                         <Inbox size={22} style={{ color: T.textFaint }} />
-                        <p className="text-xs font-bold" style={{ color: T.textMuted }}>
+                        <p className="text-[11px] font-bold" style={{ color: T.textMuted }}>
                           {hayFiltros ? "Sin resultados" : "No hay solicitudes registradas"}
                         </p>
                       </div>
@@ -581,24 +610,24 @@ export default function HistorialInsumos({ T }) {
                         onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(244,121,32,0.05)" : "rgba(244,121,32,0.03)"}
                         onMouseLeave={e => e.currentTarget.style.background = bgRow}>
                         <td className="px-2 py-1.5">
-                          <span className="font-mono text-[10px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
+                          <span className="font-mono text-[9px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
                         </td>
                         <td className="px-2 py-1.5">
-                          <span className="block text-[11px] font-semibold" style={{ color: T.text }}>{s.nombre_empleado || "-"}</span>
-                          <span className="block text-[10px]" style={{ color: T.textMuted }}>{s.nombre_departamento || (s.es_salida && s.registrado_por ? `Registró: ${s.registrado_por}` : "—")}</span>
+                          <span className="block text-[10px] font-semibold" style={{ color: T.text }}>{s.nombre_empleado || "-"}</span>
+                          <span className="block text-[9px]" style={{ color: T.textMuted }}>{s.nombre_departamento || (s.es_salida && s.registrado_por ? `Registró: ${s.registrado_por}` : "—")}</span>
                         </td>
-                        <td className="px-2 py-1.5 text-[11px]" style={{ color: T.textMuted }}>{s.nombre_sucursal || "-"}</td>
+                        <td className="px-2 py-1.5 text-[10px]" style={{ color: T.textMuted }}>{s.nombre_sucursal || "-"}</td>
                         <td className="px-2 py-1.5">
                           <span className="flex items-center gap-1 mt-0.5">
                             <span className="w-1.5 h-1.5 rounded-full" style={{ background: PCOLOR[s.prioridad] || "#94a3b8" }} />
-                            <span className="text-[10px] font-bold" style={{ color: PCOLOR[s.prioridad] || T.textMuted }}>{s.prioridad}</span>
+                            <span className="text-[9px] font-bold" style={{ color: PCOLOR[s.prioridad] || T.textMuted }}>{s.prioridad}</span>
                           </span>
                         </td>
                         <td className="px-2 py-1.5">
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap" style={{ background: eBg, color: eColor }}>{s.estatus}</span>
+                          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold whitespace-nowrap" style={{ background: eBg, color: eColor }}>{s.estatus}</span>
                         </td>
-                        <td className="px-2 py-1.5 text-[11px]" style={{ color: T.textMuted }}>{s.total_insumos ?? "-"}</td>
-                        <td className="px-2 py-1.5 text-[11px]" style={{ color: T.textMuted }}>{s.total_piezas ?? "-"}</td>
+                        <td className="px-2 py-1.5 text-[10px]" style={{ color: T.textMuted }}>{s.total_insumos ?? "-"}</td>
+                        <td className="px-2 py-1.5 text-[10px]" style={{ color: T.textMuted }}>{s.total_piezas ?? "-"}</td>
                         {/* Pedidos autorizados: piezas que el admin aprobó */}
                         <td className="px-2 py-1.5">
                           {(() => {
@@ -610,7 +639,7 @@ export default function HistorialInsumos({ T }) {
                               : aut < ped ? "#d97706" : "#16a34a";
                             return (
                               <span className="flex flex-col items-start leading-tight">
-                                <span className="text-[11px] font-bold" style={{ color }} title="Piezas autorizadas por el administrador">
+                                <span className="text-[10px] font-bold" style={{ color }} title="Piezas autorizadas por el administrador">
                                   {sinAutorizar ? "—" : aut}
                                 </span>
                                 {!sinAutorizar && aut > 0 && (
@@ -622,10 +651,10 @@ export default function HistorialInsumos({ T }) {
                             );
                           })()}
                         </td>
-                        <td className="px-2 py-1.5 text-[10px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmt(s.fecha)}</td>
+                        <td className="px-2 py-1.5 text-[9px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmt(s.fecha)}</td>
                         <td className="px-2 py-1.5">
                           <button onClick={() => (s.es_salida ? abrirHojaSalida(s) : setSolicitudVer(s))}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all hover:brightness-110 active:scale-95"
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold transition-all hover:brightness-110 active:scale-95"
                             style={{ background: "rgba(244,121,32,0.08)", color: T.orange, border: "1px solid rgba(244,121,32,0.2)" }}>
                             {s.es_salida ? "Hoja" : "Ver"}
                           </button>

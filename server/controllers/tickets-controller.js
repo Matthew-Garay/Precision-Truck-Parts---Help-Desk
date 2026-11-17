@@ -1,5 +1,5 @@
 /**
- * ticketsController.js
+ * tickets-controller.js
  *
  * Controlador que gestiona el ciclo de vida completo de los tickets de soporte
  * tecnico dentro del sistema HelpDesk.
@@ -78,6 +78,34 @@
  *   getTicketByFolio
  *     Busca un ticket por su folio e incluye las imagenes de evidencia.
  *     Usado por las paginas de impresion.
+ *
+ * @module server/controllers/tickets-controller
+ * @requires ../services/ticket.js
+ * @requires ../services/empleado.js
+ * @requires ../config/socket-instance.js
+ * @requires path
+ * @requires fs
+ * @requires ../middlewares/security.js
+ * @requires ../middlewares/upload-evidencias.js
+ * @requires ../config/db.js
+ * @requires ../config/cache.js
+ * @exports getHistorialTicket
+ * @exports getTicketByFolio
+ * @exports getTicketById
+ * @exports crearTicket
+ * @exports getImagenesTicket
+ * @exports getTicketsByEmpleado
+ * @exports actualizarTicket
+ * @exports calificarTicket
+ * @exports editarTicketUsuario
+ * @exports agregarImagenesTicket
+ * @exports eliminarImagenTicket
+ * @exports cancelarTicket
+ * @exports getAdmins
+ * @exports getReporte
+ * @exports getMetricas
+ * @exports getRendimientoTecnicos
+ * @exports getAllTickets
  */
 import Ticket   from '../services/ticket.js';
 import Empleado from '../services/empleado.js';

@@ -1,5 +1,5 @@
 /**
- * Categoria.js
+ * categoria.js
  *
  * Modelo que encapsula las operaciones sobre la tabla "categoria".
  * Las categorias son etiquetas que clasifican los tickets, manuales e insumos
@@ -21,6 +21,11 @@
  *     Lanza un error 400 si el tipo no es uno de los tres valores permitidos.
  *     Se usa en los formularios de creacion para mostrar solo las categorias
  *     relevantes al modulo activo.
+ *
+ * @module server/services/categoria
+ * @requires ../config/db.js
+ * @requires ../config/cache.js
+ * @exports Categoria (default)
  */
 import pool from '../config/db.js';
 import { cache } from '../config/cache.js';

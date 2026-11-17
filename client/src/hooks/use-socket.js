@@ -1,5 +1,5 @@
 /**
- * useSocket.js
+ * use-socket.js
  *
  * Hook de React que establece y gestiona la conexion de Socket.io con el servidor.
  * Envia el JWT en el handshake para que el servidor autentique al empleado y lo
@@ -29,6 +29,12 @@
  * La conexion se cierra automaticamente cuando el componente se desmonta.
  * La URL del servidor se deriva de VITE_API_URL o de window.location.origin.
  * El proxy de Vite reenvía /socket.io al backend tanto en localhost como por IP.
+ *
+ * @module client/hooks/use-socket
+ * @requires react
+ * @requires socket.io-client
+ * @requires ../services/api-client.js
+ * @exports useSocket
  */
 import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";

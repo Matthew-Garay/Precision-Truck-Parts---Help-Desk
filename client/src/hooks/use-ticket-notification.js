@@ -1,5 +1,5 @@
 /**
- * useTicketNotification.js
+ * use-ticket-notification.js
  *
  * Hook principal que orquesta el sistema completo de notificaciones en tiempo real.
  * Combina Socket.io, sonido, toasts visuales e historial persistente.
@@ -41,6 +41,13 @@
  *   onDismiss      - elimina una notificacion del historial por id
  *   onDismissAll   - elimina todas las notificaciones del historial
  *   onClickNotif   - marca como leida y llama a onNavegar
+ *
+ * @module client/hooks/use-ticket-notification
+ * @requires react
+ * @requires ./use-socket.js
+ * @requires ../components/Feedback.jsx
+ * @requires ../services/notification-service.js
+ * @exports useTicketNotification
  */
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useSocket } from './use-socket.js';

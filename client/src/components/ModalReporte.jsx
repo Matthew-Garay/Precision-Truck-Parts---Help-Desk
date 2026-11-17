@@ -1,6 +1,25 @@
+/**
+ * ModalReporte.jsx
+ *
+ * Modal para generar reportes imprimibles por rango de fechas y técnico
+ * (incidencias o insumos).
+ *
+ * Export default: ModalReporte
+ * Props: T, admins (técnicos para filtrar), onClose, onGenerar(filtros),
+ *    generando, titulo.
+ *
+ * @module client/components/ModalReporte
+ * @requires react
+ * @requires lucide-react
+ * @requires ../utils/tipografia.js
+ * @requires ./LogoModal.jsx
+ * @exports ModalReporte (default)
+ */
 import { useState, useEffect } from "react";
 import { X, FileDown, Calendar, User } from "lucide-react";
 
+import { FS } from '../utils/tipografia.js';
+import LogoModal from './LogoModal.jsx';
 const ORANGE = "#F47920";
 
 function Field({ icon: Icon, label, children, T }) {
@@ -13,7 +32,7 @@ function Field({ icon: Icon, label, children, T }) {
       borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}`,
     }}>
       <Icon size={12} style={{ color: isDark ? "rgba(255,255,255,0.22)" : "#c0c9d6" }} />
-      <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase",
+      <span style={{ fontSize: FS.secundario, fontWeight: 600, textTransform: "uppercase",
         letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0" }}>
         {label}
       </span>
@@ -56,7 +75,7 @@ export default function ModalReporte({ T, admins = [], onClose, onGenerar, gener
     outline:     "none",
     borderRadius: "6px",
     padding:     "6px 10px",
-    fontSize:    "13px",
+    fontSize: FS.enfasis,
     width:       "100%",
     transition:  "border-color 0.15s",
     colorScheme: isDark ? "dark" : "light",
@@ -107,25 +126,21 @@ export default function ModalReporte({ T, admins = [], onClose, onGenerar, gener
           gap: "12px", flexShrink: 0,
         }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase",
+            <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase",
               letterSpacing: "0.09em", color: ORANGE }}>
               {titulo}
             </p>
-            <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: textMain,
+            <h2 style={{ margin: "3px 0 0", fontSize: FS.subtitulo, fontWeight: 700, color: textMain,
               letterSpacing: "-0.02em", lineHeight: 1.2 }}>
               Generar Reporte
             </h2>
-            <p style={{ margin: "4px 0 0", fontSize: "12px", color: textMuted, fontWeight: 400 }}>
+            <p style={{ margin: "4px 0 0", fontSize: FS.cuerpo, color: textMuted, fontWeight: 400 }}>
               Define el rango y los parámetros
             </p>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
-            <img
-              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
-              alt="Precision Trucks"
-              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
-            />
+            <LogoModal />
             <button
               onClick={onClose}
               aria-label="Cerrar"
@@ -188,7 +203,7 @@ export default function ModalReporte({ T, admins = [], onClose, onGenerar, gener
           )}
 
           {!valido && params.fecha_inicio && params.fecha_fin && (
-            <p style={{ margin: "10px 0 0", fontSize: "11px", color: "#dc2626", fontWeight: 600 }}>
+            <p style={{ margin: "10px 0 0", fontSize: FS.secundario, color: "#dc2626", fontWeight: 600 }}>
               La fecha de inicio no puede ser mayor a la fecha fin.
             </p>
           )}
@@ -206,7 +221,7 @@ export default function ModalReporte({ T, admins = [], onClose, onGenerar, gener
             onClick={onClose}
             style={{
               padding: "6px 16px", borderRadius: "6px",
-              fontSize: "12px", fontWeight: 600,
+              fontSize: FS.cuerpo, fontWeight: 600,
               background: "transparent",
               border: `1px solid ${border}`,
               color: textMuted, cursor: "pointer", transition: "all 0.12s",
@@ -221,7 +236,7 @@ export default function ModalReporte({ T, admins = [], onClose, onGenerar, gener
             disabled={!valido || generando}
             style={{
               padding: "6px 16px", borderRadius: "6px",
-              fontSize: "12px", fontWeight: 700,
+              fontSize: FS.cuerpo, fontWeight: 700,
               background: valido && !generando ? ORANGE : isDark ? "rgba(255,255,255,0.06)" : "#e2e8f0",
               color: valido && !generando ? "#fff" : textFaint,
               border: "none", cursor: valido && !generando ? "pointer" : "not-allowed",

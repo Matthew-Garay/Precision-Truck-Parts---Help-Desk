@@ -1,3 +1,26 @@
+/**
+ * ManualesIncidencias.jsx
+ *
+ * Biblioteca de manuales técnicos (solo lectura) con búsqueda, filtro por
+ * categoría y visor PDF integrado.
+ *
+ * Export default: ManualesIncidencias
+ * Props: T.
+ * Endpoint: GET /api/manuales.
+ *
+ * @module client/pages/Usuario/ManualesIncidencias
+ * @requires react
+ * @requires ../../components/PdfViewer.jsx
+ * @requires react-router-dom
+ * @requires lucide-react
+ * @requires ../../services/api-client.js
+ * @requires ../../utils/design-system.js
+ * @requires ../../hooks/use-pdf-cover.js
+ * @requires ../../hooks/use-auto-refresh.js
+ * @requires ../../utils/tipografia.js
+ * @requires ../../components/LogoModal.jsx
+ * @exports ManualesIncidencias (default)
+ */
 import { useState, useRef } from "react";
 import PdfViewer from '../../components/PdfViewer.jsx';
 import { useNavigate } from "react-router-dom";
@@ -11,6 +34,8 @@ import { RADIUS, SLATE } from '../../utils/design-system.js';
 import { usePdfCover } from '../../hooks/use-pdf-cover.js';
 import { useAutoRefresh } from '../../hooks/use-auto-refresh.js';
 
+import { FS } from '../../utils/tipografia.js';
+import LogoModal from '../../components/LogoModal.jsx';
 const BRAND = "#F47920";
 
 // ── Categorías ────────────────────────────────────────────────────
@@ -42,10 +67,11 @@ function DrawerVisor({ manual, T, onClose }) {
         <style>{`@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
         <div style={{ height: 54, padding: "0 20px", flexShrink: 0, display: "flex", alignItems: "center", gap: 12, background: "#1e293b", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <FileText size={15} color="rgba(255,255,255,0.6)" />
-          <span style={{ flex: 1, color: "#fff", fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</span>
-          <a href={pdfUrl} download={nombre} style={{ height: 30, padding: "0 12px", borderRadius: RADIUS.sm, display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 500, textDecoration: "none" }}>
+          <span style={{ flex: 1, color: "#fff", fontWeight: 600, fontSize: FS.enfasis, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</span>
+          <a href={pdfUrl} download={nombre} style={{ height: 30, padding: "0 12px", borderRadius: RADIUS.sm, display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.8)", fontSize: FS.cuerpo, fontWeight: 500, textDecoration: "none" }}>
             <Download size={12} /> Descargar
           </a>
+          <LogoModal claro alto={18} style={{ marginRight: 4 }} />
           <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: RADIUS.sm, background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.5)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <X size={14} />
           </button>
@@ -93,7 +119,7 @@ function PdfThumb({ url, isDark }) {
       )}
       <span style={{
         position: "absolute", top: 8, right: 8,
-        fontSize: 9, fontWeight: 800, letterSpacing: "0.05em",
+        fontSize: FS.etiqueta, fontWeight: 800, letterSpacing: "0.05em",
         padding: "2px 6px", borderRadius: 4,
         background: isDark ? "rgba(244,121,32,0.18)" : "#fff7ed",
         color: BRAND, border: `1px solid rgba(244,121,32,0.3)`,
@@ -138,7 +164,7 @@ function CardManual({ m, T, onVer }) {
       {/* Info */}
       <div style={{ padding: "12px 14px", flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
         <p style={{
-          fontSize: 12, fontWeight: 700, lineHeight: 1.4,
+          fontSize: FS.cuerpo, fontWeight: 700, lineHeight: 1.4,
           color: isDark ? "#eef0f2" : SLATE[700],
           overflow: "hidden", display: "-webkit-box",
           WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
@@ -151,7 +177,7 @@ function CardManual({ m, T, onVer }) {
           {m.nombre_categoria && (
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 3,
-              fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 99,
+              fontSize: FS.etiqueta, fontWeight: 700, padding: "2px 7px", borderRadius: 99,
               background: def.bg, color: def.color, border: `1px solid ${def.border}`,
             }}>
               <Tag size={7} /> {m.nombre_categoria}
@@ -160,7 +186,7 @@ function CardManual({ m, T, onVer }) {
           {fecha && (
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 3,
-              fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 99,
+              fontSize: FS.etiqueta, fontWeight: 700, padding: "2px 7px", borderRadius: 99,
               background: isDark ? "rgba(255,255,255,0.06)" : SLATE[100],
               color: isDark ? "rgba(255,255,255,0.38)" : SLATE[400],
               border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : SLATE[200]}`,
@@ -185,7 +211,7 @@ function CardManual({ m, T, onVer }) {
             flex: 1, height: 30, borderRadius: RADIUS.sm,
             display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
             background: `linear-gradient(135deg,${BRAND},#d97400)`,
-            color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer",
+            color: "#fff", fontSize: FS.secundario, fontWeight: 600, cursor: "pointer",
             border: "none",
           }}
         >
@@ -277,8 +303,8 @@ export default function ManualesIncidencias({ T }) {
             <path d="M26 8v24M14 20l12-12 12 12" stroke="#F47920" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M6 40v3a3 3 0 003 3h34a3 3 0 003-3v-3" stroke="#F47920" strokeWidth="3" strokeLinecap="round"/>
           </svg>
-          <p style={{ fontSize: 20, fontWeight: 900, color: "#F47920", margin: 0 }}>Suelta las imágenes</p>
-          <p style={{ fontSize: 13, color: isDark ? "rgba(255,255,255,0.5)" : "#64748b", margin: 0 }}>Se abrirá Nuevo Reporte con las fotos adjuntas</p>
+          <p style={{ fontSize: FS.titulo, fontWeight: 900, color: "#F47920", margin: 0 }}>Suelta las imágenes</p>
+          <p style={{ fontSize: FS.enfasis, color: isDark ? "rgba(255,255,255,0.5)" : "#64748b", margin: 0 }}>Se abrirá Nuevo Reporte con las fotos adjuntas</p>
         </div>
       )}
 
@@ -301,20 +327,20 @@ export default function ManualesIncidencias({ T }) {
             />
             <div style={{ width: 1, height: 40, background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.10)", flexShrink: 0 }} />
             <div>
-              <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: isDark ? "rgba(255,255,255,0.32)" : SLATE[400] }}>
+              <p style={{ fontSize: FS.etiqueta, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: isDark ? "rgba(255,255,255,0.32)" : SLATE[400] }}>
                 Precision Truck Parts, Parts and Accesories, S.A de C.V.
               </p>
-              <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? "rgba(255,255,255,0.58)" : SLATE[600] }}>
+              <p style={{ fontSize: FS.enfasis, fontWeight: 700, color: isDark ? "rgba(255,255,255,0.58)" : SLATE[600] }}>
                 Centro de Conocimientos
               </p>
             </div>
           </div>
 
           <div style={{ textAlign: "center" }}>
-            <h1 style={{ fontSize: 24, fontWeight: 800, color: isDark ? "#fff" : SLATE[900], margin: 0, lineHeight: 1.2 }}>
+            <h1 style={{ fontSize: FS.titulo, fontWeight: 800, color: isDark ? "#fff" : SLATE[900], margin: 0, lineHeight: 1.2 }}>
               ¿En qué podemos ayudarte hoy?
             </h1>
-            <p style={{ fontSize: 13, color: isDark ? "rgba(255,255,255,0.35)" : SLATE[400], marginTop: 6 }}>
+            <p style={{ fontSize: FS.enfasis, color: isDark ? "rgba(255,255,255,0.35)" : SLATE[400], marginTop: 6 }}>
               {manuales.length} manuales técnicos disponibles
             </p>
           </div>
@@ -341,7 +367,7 @@ export default function ManualesIncidencias({ T }) {
               style={{
                 width: "100%", background: "transparent", border: "none", outline: "none",
                 padding: "13px 42px 13px 44px",
-                fontSize: 14, color: isDark ? "#fff" : SLATE[700],
+                fontSize: FS.subtitulo, color: isDark ? "#fff" : SLATE[700],
                 fontFamily: "'Inter','Segoe UI',sans-serif",
               }}
             />
@@ -366,7 +392,7 @@ export default function ManualesIncidencias({ T }) {
                     key={c.id}
                     onClick={() => setCategoria(active ? "" : String(c.id))}
                     style={{
-                      padding: "5px 13px", borderRadius: 99, fontSize: 11, fontWeight: 700,
+                      padding: "5px 13px", borderRadius: 99, fontSize: FS.secundario, fontWeight: 700,
                       cursor: "pointer", transition: "all 0.15s",
                       background: active ? BRAND : (isDark ? "rgba(255,255,255,0.06)" : "#fff"),
                       color: active ? "#fff" : (isDark ? "rgba(255,255,255,0.55)" : SLATE[500]),
@@ -389,11 +415,11 @@ export default function ManualesIncidencias({ T }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 3, height: 14, borderRadius: 99, background: `linear-gradient(180deg,${BRAND},#d97400)` }} />
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: isDark ? "rgba(255,255,255,0.42)" : SLATE[600] }}>
+            <span style={{ fontSize: FS.secundario, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: isDark ? "rgba(255,255,255,0.42)" : SLATE[600] }}>
               {busqueda || categoria ? "Resultados" : "Documentos disponibles"}
             </span>
             <span style={{
-              fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 99,
+              fontSize: FS.etiqueta, fontWeight: 700, padding: "1px 7px", borderRadius: 99,
               background: isDark ? "rgba(244,121,32,0.14)" : "rgba(244,121,32,0.08)",
               color: BRAND, border: "1px solid rgba(244,121,32,0.22)",
             }}>
@@ -402,7 +428,7 @@ export default function ManualesIncidencias({ T }) {
           </div>
           {(busqueda || categoria) && (
             <button onClick={limpiarFiltros} style={{
-              fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.35)" : SLATE[400],
+              fontSize: FS.secundario, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.35)" : SLATE[400],
               background: "none", border: "none", cursor: "pointer",
               display: "flex", alignItems: "center", gap: 4,
             }}>
@@ -433,10 +459,10 @@ export default function ManualesIncidencias({ T }) {
             }}>
               <Inbox size={24} style={{ color: isDark ? "rgba(255,255,255,0.18)" : SLATE[400] }} />
             </div>
-            <p style={{ fontSize: 14, fontWeight: 700, color: isDark ? "rgba(255,255,255,0.42)" : SLATE[600], margin: 0 }}>
+            <p style={{ fontSize: FS.subtitulo, fontWeight: 700, color: isDark ? "rgba(255,255,255,0.42)" : SLATE[600], margin: 0 }}>
               {busqueda || categoria ? "Sin resultados" : "No hay manuales disponibles"}
             </p>
-            <p style={{ fontSize: 12, color: isDark ? "rgba(255,255,255,0.22)" : SLATE[400], textAlign: "center", margin: 0 }}>
+            <p style={{ fontSize: FS.cuerpo, color: isDark ? "rgba(255,255,255,0.22)" : SLATE[400], textAlign: "center", margin: 0 }}>
               {busqueda ? `No se encontraron coincidencias para "${busqueda}"` : "Pronto habrá contenido disponible aquí"}
             </p>
           </div>

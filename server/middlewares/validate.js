@@ -67,6 +67,35 @@
  *     (enum: Excelente, Bueno, Regular, Malo, Dañado) y stock como entero >= 0.
  *     Los campos de texto opcionales (num_serie, descripcion, marca, modelo)
  *     que se dejen en blanco se guardan automaticamente como "N/A".
+ *
+ * @module server/middlewares/validate
+ * @requires zod
+ * @exports validate
+ * @exports validateQuery
+ * @exports nombrePropio
+ * @exports DOMINIOS_PERMITIDOS
+ * @exports mensajeDominiosPermitidos
+ * @exports validarEmailCorporativo
+ * @exports zEmailCorporativo
+ * @exports schemaLogin
+ * @exports schemaLogout
+ * @exports schemaActualizarPerfil
+ * @exports schemaCrearEmpleado
+ * @exports schemaUpdateEmpleadoAdmin
+ * @exports schemaCrearTicket
+ * @exports schemaActualizarTicket
+ * @exports schemaCalificarTicket
+ * @exports schemaEditarTicket
+ * @exports schemaCrearSolicitud
+ * @exports schemaActualizarEstatusSolicitud
+ * @exports schemaEntradaInsumo
+ * @exports schemaSalidaInsumo
+ * @exports schemaRutaSolicitud
+ * @exports schemaItemsSolicitud
+ * @exports schemaObservacionSolicitud
+ * @exports schemaFiltrosTickets
+ * @exports schemaInsumo
+ * @exports schemaActualizarInsumo
  */
 import { z } from "zod";
 
@@ -105,6 +134,38 @@ export function validate(schema) {
     next();
   };
 }
+
+/**
+ * validateQuery(schema)
+ *
+ * Igual que validate() pero para la query string. El resultado validado y
+ * convertido queda en req.queryValidado (req.query es de solo lectura en
+ * Express 5). Responde 422 con el detalle si no pasa.
+ */
+export function validateQuery(schema) {
+  return (req, res, next) => {
+    const result = schema.safeParse(req.query ?? {});
+    if (!result.success) {
+      const errores = (result.error?.issues ?? []).map(e => ({
+        campo:   e.path.join("."),
+        mensaje: e.message,
+      }));
+      return res.status(422).json({ error: "Parámetros inválidos", errores });
+    }
+    req.queryValidado = result.data;
+    next();
+  };
+}
+
+/**
+ * Nombre propio en formato título: primera letra de CADA palabra en mayúscula
+ * ("MIGUEL JOVANY" -> "Miguel Jovany", "ana karen" -> "Ana Karen"). Se aplica
+ * a nombre y apellidos al crear o editar empleados para que la base no mezcle
+ * MAYÚSCULAS, minúsculas y formato título.
+ */
+export const nombrePropio = (s) => String(s ?? "")
+  .trim().replace(/\s+/g, " ").toLocaleLowerCase("es-MX")
+  .replace(/(^|[\s\-'])(\p{L})/gu, (_, sep, letra) => sep + letra.toLocaleUpperCase("es-MX"));
 
 // -- SCHEMAS --------------------------------------------------
 
@@ -205,9 +266,9 @@ export const schemaLogout = z.object({
 });
 
 export const schemaActualizarPerfil = z.object({
-  nombre:          z.string().trim().min(1).max(80).optional(),
-  ap_paterno:      z.string().trim().min(1).max(80).optional(),
-  ap_materno:      z.string().trim().max(80).optional(),
+  nombre:          z.string().trim().min(1).max(80).transform(nombrePropio).optional(),
+  ap_paterno:      z.string().trim().min(1).max(80).transform(nombrePropio).optional(),
+  ap_materno:      z.string().trim().max(80).transform(nombrePropio).optional(),
   email:           zEmailCorporativo.optional(),
   password_actual: z.string().min(1).optional(),
   password_nueva:  passwordPolicy.optional(),
@@ -218,9 +279,9 @@ export const schemaActualizarPerfil = z.object({
 
 export const schemaCrearEmpleado = z.object({
   num_empleado:    z.union([z.string().trim().max(20), z.literal(""), z.null()]).transform(v => (v === "" || v === null || (typeof v === "string" && !v.trim())) ? null : String(v).trim()).optional(),
-  nombre:          z.string().trim().min(1).max(80),
-  ap_paterno:      z.string().trim().min(1).max(80),
-  ap_materno:      z.string().trim().max(80).optional().default(""),
+  nombre:          z.string().trim().min(1).max(80).transform(nombrePropio),
+  ap_paterno:      z.string().trim().min(1).max(80).transform(nombrePropio),
+  ap_materno:      z.string().trim().max(80).transform(nombrePropio).optional().default(""),
   email:           zEmailCorporativo,
   password:        passwordPolicy,
   id_rol:          z.number({ coerce: true }).int().positive(),
@@ -230,9 +291,9 @@ export const schemaCrearEmpleado = z.object({
 
 export const schemaUpdateEmpleadoAdmin = z.object({
   num_empleado:    z.union([z.string().trim().max(20), z.literal(""), z.null()]).transform(v => (v === "" || v === null || (typeof v === "string" && !v.trim())) ? null : String(v).trim()).optional(),
-  nombre:          z.string().trim().min(1).max(80).optional(),
-  ap_paterno:      z.string().trim().min(1).max(80).optional(),
-  ap_materno:      z.string().trim().max(80).optional(),
+  nombre:          z.string().trim().min(1).max(80).transform(nombrePropio).optional(),
+  ap_paterno:      z.string().trim().min(1).max(80).transform(nombrePropio).optional(),
+  ap_materno:      z.string().trim().max(80).transform(nombrePropio).optional(),
   email:           zEmailCorporativo.optional(),
   id_rol:          z.number({ coerce: true }).int().positive().optional(),
   id_departamento: z.number({ coerce: true }).int().positive().optional(),
@@ -329,6 +390,12 @@ export const schemaEntradaInsumo = z.object({
       const d = new Date(s.replace(" ", "T").replace(/(T\d{2}:\d{2})$/, "$1:00"));
       return !Number.isNaN(d.getTime());
     }, "Fecha inválida")
+    // Un movimiento no puede ocurrir en el futuro (solo fecha = mediodía de ese día;
+    // se tolera 1 día para no rechazar "hoy" capturado sin hora).
+    .refine((s) => {
+      const d = new Date(s.replace(" ", "T").replace(/(T\d{2}:\d{2})$/, "$1:00"));
+      return d.getTime() <= Date.now() + 86_400_000;
+    }, "La fecha no puede ser futura")
     .optional().nullable().default(null),
 });
 
@@ -361,6 +428,12 @@ export const schemaSalidaInsumo = z.object({
       const d = new Date(s.replace(" ", "T").replace(/(T\d{2}:\d{2})$/, "$1:00"));
       return !Number.isNaN(d.getTime());
     }, "Fecha inválida")
+    // Un movimiento no puede ocurrir en el futuro (solo fecha = mediodía de ese día;
+    // se tolera 1 día para no rechazar "hoy" capturado sin hora).
+    .refine((s) => {
+      const d = new Date(s.replace(" ", "T").replace(/(T\d{2}:\d{2})$/, "$1:00"));
+      return d.getTime() <= Date.now() + 86_400_000;
+    }, "La fecha no puede ser futura")
     .optional().nullable().default(null),
   // Quien entrega / solicitante interno (texto libre, se imprime en la hoja).
   solicitante: z.string().trim().max(200).optional().nullable().default(null),
@@ -465,6 +538,9 @@ export const schemaInsumo = z.object({
     .preprocess((v) => v === undefined || v === null ? undefined : Number(v), z.number({ coerce: true }).int().min(0).max(1))
     .optional()
     .default(1),
+  // Motivo del stock inicial (ej. "Traído de Sucursal Tizayuca"). Se guarda en
+  // el movimiento de Entrada; si no viene se usa "Stock inicial al ingresar el insumo".
+  motivo:       z.string().trim().max(500).optional().nullable().default(null),
 });
 
 // Schema para actualización parcial de insumo (PUT /insumos/:id)

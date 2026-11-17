@@ -19,6 +19,9 @@
  *
  * No recibe props. Todas las animaciones son CSS puro definidas en
  * un bloque de style inline dentro del componente.
+ *
+ * @module client/components/PantallaSalida
+ * @exports PantallaSalida (default)
  */
 export default function PantallaSalida() {
   return (
@@ -42,11 +45,11 @@ export default function PantallaSalida() {
         </div>
 
         <div className="text-center flex flex-col gap-1">
-          <p className="text-white text-lg font-black uppercase tracking-widest leading-none"
+          <p className="text-white text-[16px] font-black uppercase tracking-widest leading-none"
             style={{ animation: "slide-up 0.5s 0.15s ease-out both" }}>
             Precision Truck Parts, Parts and Accesories, S.A de C.V.
           </p>
-          <p className="text-[11px] font-medium uppercase tracking-widest"
+          <p className="text-[10px] font-medium uppercase tracking-widest"
             style={{ color: "rgba(255,255,255,0.35)", animation: "slide-up 0.5s 0.28s ease-out both" }}>
             Cerrando sesión · Hasta pronto
           </p>

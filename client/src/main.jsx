@@ -32,6 +32,23 @@
  *
  * 5. Favicon:
  *    Se establece dinamicamente dentro de useEffect para evitar errores en entornos SSR.
+ *
+ * @module client/main
+ * @requires react
+ * @requires react-dom/client
+ * @requires react-router-dom
+ * @requires ./pages/Login.jsx
+ * @requires ./pages/ZohoCallbackPage.jsx
+ * @requires ./pages/Admin/Dashboard.jsx
+ * @requires ./pages/Usuario/Dashboard.jsx
+ * @requires ./services/api-client.js
+ * @requires ./components/ErrorBoundary.jsx
+ * @requires ./components/PantallaSalida.jsx
+ * @requires ./components/Feedback.jsx
+ * @requires ./context/theme-provider.jsx
+ * @requires ./context/theme-context.js
+ * @requires ./utils/session.js
+ * @exports (ninguno: punto de entrada / efectos)
  */
 import { StrictMode, useState, useEffect, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'

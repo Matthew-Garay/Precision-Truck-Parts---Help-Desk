@@ -16,6 +16,10 @@
  *   4. Que el envio real funcione.
  *
  * Nunca imprime la contrasena.
+ *
+ * @module server/scripts/probar-correo
+ * @requires nodemailer
+ * @exports (ninguno: punto de entrada / efectos)
  */
 import '../load-env.js';
 import nodemailer from "nodemailer";

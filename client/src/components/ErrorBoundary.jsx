@@ -18,6 +18,10 @@
  *
  * Debe envolver el componente raiz de la aplicacion en main.jsx
  * para proteger toda la interfaz de usuario.
+ *
+ * @module client/components/ErrorBoundary
+ * @requires react
+ * @exports ErrorBoundary (default)
  */
 import { Component } from "react";
 
@@ -44,17 +48,17 @@ export default class ErrorBoundary extends Component {
         style={{ background: "#0b0e14", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
         <img src="/assets/img/logo.png" alt="PTP" style={{ height: "56px", objectFit: "contain" }} />
         <div className="text-center">
-          <p className="text-white font-black text-lg">Algo salió mal</p>
-          <p className="text-white/40 text-sm mt-1">Ocurrió un error inesperado en la aplicación.</p>
+          <p className="text-white font-black text-[16px]">Algo salió mal</p>
+          <p className="text-white/40 text-[12px] mt-1">Ocurrió un error inesperado en la aplicación.</p>
         </div>
         <button
           onClick={() => { this.setState({ error: null }); window.location.href = "/login"; }}
-          className="px-6 py-2.5 rounded-xl text-sm font-bold text-white"
+          className="px-6 py-2.5 rounded-xl text-[12px] font-bold text-white"
           style={{ background: "linear-gradient(135deg, #F47920, #d97400)" }}>
           Volver al inicio
         </button>
         {import.meta.env.DEV && (
-          <pre className="text-red-400 text-xs max-w-lg overflow-auto mt-2 p-3 rounded-xl"
+          <pre className="text-red-400 text-[11px] max-w-lg overflow-auto mt-2 p-3 rounded-xl"
             style={{ background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)" }}>
             {this.state.error?.stack || this.state.error?.message}
           </pre>

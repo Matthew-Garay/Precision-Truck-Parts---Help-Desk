@@ -1,3 +1,18 @@
+/**
+ * PrintInventarioPage.tsx
+ *
+ * Página /print/inventario: lee de sessionStorage los insumos y filtros y
+ * renderiza PrintInventarioView.
+ *
+ * Export default: PrintInventarioPage
+ *
+ * @module client/pages/print/PrintInventarioPage
+ * @requires react
+ * @requires ../../components/print/PrintInventarioView.tsx
+ * @requires ../../components/PrintShared.tsx
+ * @requires ../../utils/print-utils.ts
+ * @exports PrintInventarioPage (default)
+ */
 import { useEffect, useState } from "react";
 import PrintInventarioView from '../../components/print/PrintInventarioView.tsx';
 import { LoadingPrint, ErrorPrint } from '../../components/PrintShared.tsx';

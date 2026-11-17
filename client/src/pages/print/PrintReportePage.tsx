@@ -1,3 +1,22 @@
+/**
+ * PrintReportePage.tsx
+ *
+ * Página /print/reporte: renderiza PrintReporteListaView con el payload
+ * guardado en sessionStorage.
+ *
+ * Exports: PrintReportePage (default), REPORTE_STORAGE_KEY,
+ *    abrirReporteLista(payload) (guarda el payload y abre la pestaña de
+ *    impresión).
+ *
+ * @module client/pages/print/PrintReportePage
+ * @requires react
+ * @requires ../../components/print/PrintReporteListaView.tsx
+ * @requires ../../components/PrintShared.tsx
+ * @requires ../../utils/print-utils.ts
+ * @exports REPORTE_STORAGE_KEY
+ * @exports PrintReportePage (default)
+ * @exports abrirReporteLista
+ */
 import { useEffect, useState } from "react";
 import PrintReporteListaView, { type ReportePayload } from '../../components/print/PrintReporteListaView.tsx';
 import { LoadingPrint, ErrorPrint } from '../../components/PrintShared.tsx';

@@ -1,5 +1,5 @@
 /**
- * DesignSystem.js
+ * design-system.js
  *
  * Sistema de diseno centralizado de Precision Truck Parts, Parts and Accesories, S.A de C.V. HelpDesk.
  * Define todos los tokens visuales, estilos de componentes atomicos,
@@ -39,7 +39,60 @@
  *   NAVBAR, SIDEBAR, TABLE, MODAL    - organismos
  *   CONFIRM_PATTERN, LOADING_PATTERNS- patrones de UX
  *   BREAKPOINTS                      - puntos de quiebre responsive
+ *
+ * @module client/utils/design-system
+ * @requires ./tipografia.js
+ * @exports NEUTRAL
+ * @exports SLATE
+ * @exports ACCENT
+ * @exports BRAND
+ * @exports TICKET_STATUS
+ * @exports getTicketStatus
+ * @exports SEMANTIC
+ * @exports COLORS
+ * @exports FONT
+ * @exports SPACE
+ * @exports RADIUS
+ * @exports SHADOWS
+ * @exports BTN_PRIMARY
+ * @exports BTN_PRIMARY_HOVER
+ * @exports BTN_GHOST
+ * @exports BTN_GHOST_HOVER
+ * @exports BTN_DANGER
+ * @exports BTN_LOADING
+ * @exports INPUT_BASE
+ * @exports INPUT_STYLE
+ * @exports INPUT_FOCUS
+ * @exports INPUT_BLUR
+ * @exports INPUT_ERROR_STYLE
+ * @exports BADGE
+ * @exports FORM_FIELD
+ * @exports ICON_ACTION
+ * @exports CARD
+ * @exports CARD_FLAT
+ * @exports CARD_ELEVATED
+ * @exports CARD_HEADER
+ * @exports CARD_BODY
+ * @exports CARD_FOOTER
+ * @exports NAVBAR
+ * @exports SIDEBAR
+ * @exports TABLE
+ * @exports SOLICITUD_PANEL
+ * @exports MODAL
+ * @exports CONFIRM_PATTERN
+ * @exports SPACING_RULES
+ * @exports LOADING_PATTERNS
+ * @exports SKELETON_ROWS
+ * @exports BREAKPOINTS
+ * @exports DIAGONAL
+ * @exports BG_OVERLAY
+ * @exports BG_IMAGE
+ * @exports ACCENT_BAR
+ * @exports BTN_SECONDARY
+ * @exports BTN_ICON
+ * @exports HEADER
  */
+import { FS } from './tipografia.js';
 // ================================================================
 //  PRECISION TRUCK PARTS — Design System
 //  Atomic Design · Regla 60-30-10 · Heurísticas de Nielsen · Mobile-First
@@ -223,14 +276,14 @@ export const COLORS = {
 // Semibold (600/700) → encabezados
 // Regular  (400)     → cuerpo
 export const FONT = {
-  h1:    { fontSize: "1.375rem", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: "1.25", color: SLATE[900] },
-  h2:    { fontSize: "1rem", fontWeight: 600, letterSpacing: "-0.01em", lineHeight: "1.3",  color: SLATE[900] },
-  h3:    { fontSize: "0.875rem", fontWeight: 600, letterSpacing: "-0.005em",lineHeight: "1.4",  color: SLATE[700] },
-  body:  { fontSize: "1rem", fontWeight: 400, lineHeight: "1.6",                            color: SLATE[700] },
-  small: { fontSize: "0.75rem", fontWeight: 400, lineHeight: "1.5",                            color: SLATE[600] },
-  label: { fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.06em",  textTransform: "uppercase", color: SLATE[600] },
-  micro: { fontSize: "0.7rem", fontWeight: 600, letterSpacing: "0.08em",  textTransform: "uppercase", color: SLATE[400] },
-  mono:  { fontFamily: "'JetBrains Mono','Fira Code','Courier New',monospace", fontSize: "0.75rem" },
+  h1:    { fontSize: FS.titulo, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: "1.25", color: SLATE[900] },
+  h2:    { fontSize: FS.subtitulo, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: "1.3",  color: SLATE[900] },
+  h3:    { fontSize: FS.enfasis, fontWeight: 600, letterSpacing: "-0.005em",lineHeight: "1.4",  color: SLATE[700] },
+  body:  { fontSize: FS.cuerpo, fontWeight: 400, lineHeight: "1.6",                            color: SLATE[700] },
+  small: { fontSize: FS.secundario, fontWeight: 400, lineHeight: "1.5",                            color: SLATE[600] },
+  label: { fontSize: FS.etiqueta, fontWeight: 600, letterSpacing: "0.06em",  textTransform: "uppercase", color: SLATE[600] },
+  micro: { fontSize: FS.etiqueta, fontWeight: 600, letterSpacing: "0.08em",  textTransform: "uppercase", color: SLATE[400] },
+  mono:  { fontFamily: "'JetBrains Mono','Fira Code','Courier New',monospace", fontSize: FS.secundario },
 };
 
 // ================================================================
@@ -276,7 +329,7 @@ export const BTN_PRIMARY = {
   padding:      "0 20px",
   border:       "none",
   borderRadius: RADIUS.button,
-  fontSize:     "13px",
+  fontSize: FS.enfasis,
   fontWeight:   600,
   cursor:       "pointer",
   display:      "inline-flex",
@@ -296,7 +349,7 @@ export const BTN_GHOST = {
   padding:      "0 20px",
   border:       `1px solid ${SLATE[200]}`,
   borderRadius: RADIUS.button,
-  fontSize:     "13px",
+  fontSize: FS.enfasis,
   fontWeight:   500,
   cursor:       "pointer",
   display:      "inline-flex",
@@ -315,7 +368,7 @@ export const BTN_DANGER = {
   padding:      "0 20px",
   border:       "none",
   borderRadius: RADIUS.button,
-  fontSize:     "13px",
+  fontSize: FS.enfasis,
   fontWeight:   600,
   cursor:       "pointer",
   display:      "inline-flex",
@@ -341,7 +394,7 @@ export const INPUT_BASE = {
   border:       `1px solid ${SLATE[300]}`,
   borderRadius: RADIUS.input,
   color:        SLATE[700],
-  fontSize:     "13px",
+  fontSize: FS.enfasis,
   padding:      "0 12px",
   height:       "40px",
   width:        "100%",
@@ -372,7 +425,7 @@ export const BADGE = {
   base: {
     display: "inline-flex", alignItems: "center", gap: "4px",
     padding: "2px 8px", borderRadius: RADIUS.sm,
-    fontSize: "11px", fontWeight: 600, lineHeight: "1.4", whiteSpace: "nowrap",
+    fontSize: FS.secundario, fontWeight: 600, lineHeight: "1.4", whiteSpace: "nowrap",
   },
   info:    { background: ACCENT.light,       color: ACCENT.base,       border: `1px solid ${ACCENT.muted}` },
   danger:  { background: SEMANTIC.dangerBg,  color: SEMANTIC.danger,   border: `1px solid ${SEMANTIC.dangerBdr}` },
@@ -393,14 +446,14 @@ export const BADGE = {
 export const FORM_FIELD = {
   wrapper: { display: "flex", flexDirection: "column", gap: "4px" },
   label:   { ...FONT.label, marginBottom: "2px" },
-  error:   { fontSize: "12px", color: SEMANTIC.danger, fontWeight: 500 },
+  error:   { fontSize: FS.cuerpo, color: SEMANTIC.danger, fontWeight: 500 },
 };
 
 // ── Molécula: IconAction (Icono + Texto en línea) ────────────────
 // Para acciones en toolbar: gap: 6px, color slate-600
 export const ICON_ACTION = {
   display: "inline-flex", alignItems: "center", gap: "6px",
-  fontSize: "13px", fontWeight: 500, color: SLATE[600],
+  fontSize: FS.enfasis, fontWeight: 500, color: SLATE[600],
   cursor: "pointer",
 };
 
@@ -445,7 +498,7 @@ export const NAVBAR = {
     gap:         "16px",
     color:       "#fff",
   },
-  itemDefault: { color: "rgba(255,255,255,0.55)", fontSize: "13px", fontWeight: 500 },
+  itemDefault: { color: "rgba(255,255,255,0.55)", fontSize: FS.enfasis, fontWeight: 500 },
   itemActive:  {
     color:        "#fff",
     fontWeight:   600,
@@ -478,7 +531,7 @@ export const TABLE = {
     background:    NEUTRAL.slate50,
     borderBottom:  `2px solid ${SLATE[200]}`,
     padding:       "10px 16px",
-    fontSize:      "11px",
+    fontSize: FS.secundario,
     fontWeight:    700,
     color:         SLATE[700],       // slate, no acento — headers son estructura
     letterSpacing: "0.06em",
@@ -488,7 +541,7 @@ export const TABLE = {
   row: {
     borderBottom:  `1px solid ${SLATE[200]}`,
     padding:       "12px 16px",
-    fontSize:      "13px",
+    fontSize: FS.enfasis,
     color:         SLATE[700],
   },
   rowHover:    { background: NEUTRAL.slate50 },
@@ -498,7 +551,7 @@ export const TABLE = {
   rowWarning:  { background: SEMANTIC.warningBg },
   emptyState: {
     padding: "48px 24px", textAlign: "center",
-    color: SLATE[400], fontSize: "13px",
+    color: SLATE[400], fontSize: FS.enfasis,
   },
 };
 
@@ -520,7 +573,7 @@ export const SOLICITUD_PANEL = {
     borderBottom:  `1px solid ${SLATE[200]}`,
     background:    NEUTRAL.slate50,
     fontWeight:    700,
-    fontSize:      "14px",
+    fontSize: FS.subtitulo,
     color:         SLATE[900],
     flexShrink:    0,
   },
@@ -568,7 +621,7 @@ export const MODAL = {
     alignItems:     "center",
     justifyContent: "space-between",
     fontWeight:     700,
-    fontSize:       "15px",
+    fontSize: FS.subtitulo,
     flexShrink:     0,
   },
   body:   { padding: "24px", overflowY: "auto", flex: 1 },
@@ -706,7 +759,7 @@ export const BTN_SECONDARY = {
   padding:      "0 20px",
   border:       "none",
   borderRadius: RADIUS.button,
-  fontSize:     "13px",
+  fontSize: FS.enfasis,
   fontWeight:   500,
   cursor:       "pointer",
   display:      "inline-flex",

@@ -1,4 +1,4 @@
-﻿# ════════════════════════════════════════════════
+# ════════════════════════════════════════════════
 #   PrecisionTrucks HelpDesk — .gitignore
 #   Arquitectura: Monorepo (Vite + Express + MySQL)
 # ════════════════════════════════════════════════
@@ -134,3 +134,9 @@ docs/MYSQL Database/database.utf8.sql
 
 # Redireccion accidental de shell (archivo 'null')
 dev/
+
+# ── Respaldos y exportaciones con datos reales (NUNCA versionar) ──
+# Contienen correos y hashes de contraseña de empleados.
+/Dump*.sql
+/*.csv
+backups/

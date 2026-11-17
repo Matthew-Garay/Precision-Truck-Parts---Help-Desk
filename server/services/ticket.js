@@ -1,5 +1,5 @@
 /**
- * Ticket.js
+ * ticket.js
  *
  * Modelo que encapsula todas las operaciones sobre la tabla `ticket`.
  * Un ticket representa un reporte de incidencia tecnica que un empleado
@@ -62,6 +62,12 @@
  *
  *   getAll({ limit, offset })
  *     Retorna todos los tickets paginados con SQL_CALC_FOUND_ROWS.
+ *
+ * @module server/services/ticket
+ * @requires ../config/db.js
+ * @requires ../utils/helpers.js
+ * @requires ../config/cache.js
+ * @exports Ticket (default)
  */
 import pool from '../config/db.js';
 import { generarFolio } from '../utils/helpers.js';

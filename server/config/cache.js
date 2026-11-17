@@ -10,6 +10,9 @@
  *   cache.set(key, value, ttlMs) → guarda con tiempo de vida en ms
  *   cache.del(key)               → invalida una clave específica
  *   cache.delByPrefix(prefix)    → invalida todas las claves que empiezan con prefix
+ *
+ * @module server/config/cache
+ * @exports cache
  */
 
 const MAX_ENTRIES = 500; // límite máximo para evitar crecimiento ilimitado en memoria

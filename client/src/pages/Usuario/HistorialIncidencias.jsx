@@ -1,3 +1,26 @@
+/**
+ * HistorialIncidencias.jsx
+ *
+ * Historial de tickets del propio empleado con filtros, paginación y
+ * exportación.
+ *
+ * Export default: HistorialIncidencias
+ * Props: T, usuario.
+ * Endpoint: GET /api/tickets/empleado/:id_empleado.
+ *
+ * @module client/pages/Usuario/HistorialIncidencias
+ * @requires react
+ * @requires lucide-react
+ * @requires ../../services/api-client.js
+ * @requires ../../hooks/use-auto-refresh.js
+ * @requires ../../components/FiltrosToolbar.jsx
+ * @requires ../../components/Card.jsx
+ * @requires ../../components/Modal.jsx
+ * @requires ../../components/Paginacion.jsx
+ * @requires ../print/PrintReportePage.tsx
+ * @requires ../../utils/tipografia.js
+ * @exports HistorialIncidencias (default)
+ */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Eye, Inbox, FileDown, Star } from "lucide-react";
 import { apiFetch } from '../../services/api-client.js';
@@ -8,6 +31,7 @@ import Modal from '../../components/Modal.jsx';
 import Paginacion from '../../components/Paginacion.jsx';
 import { abrirReporteLista } from '../print/PrintReportePage.tsx';
 
+import { FS } from '../../utils/tipografia.js';
 const PCOLOR = { Urgente:"#dc2626", Alta:"#ea580c", Media:"#ca8a04", Baja:"#16a34a" };
 
 function Estrellas({ n, isDark }) {
@@ -174,7 +198,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
                   <div className="w-1 h-2.5 rounded-full" style={{ background:satColor }}/>
-                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color:T.textMuted }}>Satisfacción</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest" style={{ color:T.textMuted }}>Satisfacción</p>
                 </div>
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                   style={{ background:`${satColor}15`, color:satColor, border:`1px solid ${satColor}30` }}>
@@ -182,7 +206,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                 </span>
               </div>
               <div className="flex items-end gap-2">
-                <span className="text-2xl font-black leading-none" style={{ color:satColor }}>{pctSat}%</span>
+                <span className="text-[18px] font-black leading-none" style={{ color:satColor }}>{pctSat}%</span>
                 <div className="flex flex-col gap-1 mb-0.5 flex-1">
                   <div className="h-1.5 rounded-full overflow-hidden" style={{ background:T.border }}>
                     <div className="h-full rounded-full transition-all duration-1000"
@@ -199,8 +223,8 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                 </div>
               </div>
               <div className="pt-1 flex items-center justify-between" style={{ borderTop:`1px solid ${T.border}` }}>
-                <span className="text-[10px]" style={{ color:T.textFaint }}>Promedio</span>
-                <span className="text-[10px] font-black" style={{ color:satColor }}>
+                <span className="text-[9px]" style={{ color:T.textFaint }}>Promedio</span>
+                <span className="text-[9px] font-black" style={{ color:satColor }}>
                   {califs.length>0?(califs.reduce((a,t)=>a+parseInt(t.calificacion),0)/califs.length).toFixed(1):"-"} / 5
                 </span>
               </div>
@@ -218,12 +242,12 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
               <div key={label} className="rounded-lg p-1.5 sm:p-2 flex flex-col gap-0.5 sm:gap-1 relative overflow-hidden" style={card}>
                 <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background:`linear-gradient(90deg,${color},${color}33)` }}/>
                 <p className="text-[9px] font-black uppercase tracking-wider leading-tight" style={{ color:T.textMuted }}>{label}</p>
-                <span className="text-xl font-black leading-none" style={{ color }}>{val}</span>
+                <span className="text-[18px] font-black leading-none" style={{ color }}>{val}</span>
                 <div className="h-1 rounded-full overflow-hidden" style={{ background:T.border }}>
                   <div className="h-full rounded-full transition-all duration-700"
                     style={{ width:`${total>0?Math.round(val/total*100):0}%`, background:color, boxShadow:`0 0 4px ${color}44` }}/>
                 </div>
-                <span className="text-[10px] font-semibold" style={{ color:subColor }}>{sub}</span>
+                <span className="text-[9px] font-semibold" style={{ color:subColor }}>{sub}</span>
               </div>
             ))}
           </div>
@@ -232,7 +256,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden" style={{ ...card, flexShrink:0 }}>
             <div className="px-3 py-2 flex items-center gap-1.5" style={hdr}>
               <div className="w-1 h-3 rounded-full" style={{ background:T.orange }}/>
-              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color:T.textMuted }}>Por Prioridad</p>
+              <p className="text-[9px] font-black uppercase tracking-widest" style={{ color:T.textMuted }}>Por Prioridad</p>
             </div>
             <div className="p-3 flex flex-col gap-2">
               {[{l:"Urgente",c:"#dc2626"},{l:"Alta",c:"#ea580c"},{l:"Media",c:"#ca8a04"},{l:"Baja",c:"#16a34a"}].map(({l,c}) => {
@@ -241,12 +265,12 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                 return (
                   <div key={l} className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background:c, boxShadow:`0 0 4px ${c}88` }}/>
-                    <span className="text-[11px] font-semibold w-14 flex-shrink-0" style={{ color:T.text }}>{l}</span>
+                    <span className="text-[10px] font-semibold w-14 flex-shrink-0" style={{ color:T.text }}>{l}</span>
                     <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background:isDark?"rgba(255,255,255,0.06)":`${c}15` }}>
                       <div className="h-full rounded-full transition-all duration-700"
                         style={{ width:`${pct>0?Math.max(pct,5):0}%`, background:c, boxShadow:`0 0 4px ${c}55` }}/>
                     </div>
-                    <span className="text-[11px] font-black w-5 text-right flex-shrink-0" style={{ color:c }}>{n}</span>
+                    <span className="text-[10px] font-black w-5 text-right flex-shrink-0" style={{ color:c }}>{n}</span>
                   </div>
                 );
               })}
@@ -257,7 +281,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden" style={{ ...card, flexShrink:0 }}>
             <div className="px-3 py-2 flex items-center gap-1.5" style={hdr}>
               <div className="w-1 h-3 rounded-full" style={{ background:T.orange }}/>
-              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color:T.textMuted }}>Top Categorías</p>
+              <p className="text-[9px] font-black uppercase tracking-widest" style={{ color:T.textMuted }}>Top Categorías</p>
             </div>
             <div className="p-3 flex flex-col gap-2">
               {(() => {
@@ -270,13 +294,13 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                   ? <p className="text-[9px]" style={{ color:T.textFaint }}>Sin datos</p>
                   : top.map(([cat,n],idx) => (
                     <div key={cat} className="flex items-center gap-2">
-                      <span className="text-[10px] font-black w-3 flex-shrink-0 text-center" style={{ color:colors[idx] }}>#{idx+1}</span>
-                      <span className="text-[11px] font-semibold flex-1 truncate" style={{ color:T.text }}>{cat}</span>
+                      <span className="text-[9px] font-black w-3 flex-shrink-0 text-center" style={{ color:colors[idx] }}>#{idx+1}</span>
+                      <span className="text-[10px] font-semibold flex-1 truncate" style={{ color:T.text }}>{cat}</span>
                       <div className="w-12 h-2 rounded-full overflow-hidden flex-shrink-0" style={{ background:T.border }}>
                         <div className="h-full rounded-full transition-all duration-700"
                           style={{ width:`${Math.round(n/max*100)}%`, background:colors[idx], boxShadow:`0 0 4px ${colors[idx]}55` }}/>
                       </div>
-                      <span className="text-[11px] font-black w-4 text-right flex-shrink-0" style={{ color:colors[idx] }}>{n}</span>
+                      <span className="text-[10px] font-black w-4 text-right flex-shrink-0" style={{ color:colors[idx] }}>{n}</span>
                     </div>
                   ));
               })()}
@@ -290,7 +314,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
         <FiltrosToolbar campos={camposFiltro} valores={filtros} onChange={handleFiltroChange} onLimpiar={limpiar} T={T}>
           <button onClick={() => setModalReporte(true)}
             style={{ display:"flex", alignItems:"center", gap:"5px", padding:"5px 12px", borderRadius:"4px",
-              fontSize:"12px", fontWeight:700, background:"#F47920", color:"#fff", border:"none", cursor:"pointer",
+              fontSize: FS.cuerpo, fontWeight:700, background:"#F47920", color:"#fff", border:"none", cursor:"pointer",
               whiteSpace:"nowrap", transition:"filter 0.15s" }}
             onMouseEnter={e => e.currentTarget.style.filter="brightness(1.08)"}
             onMouseLeave={e => e.currentTarget.style.filter="none"}>
@@ -303,7 +327,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={hdr}>
             <div className="flex items-center gap-1.5">
               <div className="w-0.5 h-3.5 rounded-full" style={{ background:T.orange }}/>
-              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color:T.textMuted }}>Mis Incidencias</p>
+              <p className="text-[9px] font-black uppercase tracking-widest" style={{ color:T.textMuted }}>Mis Incidencias</p>
             </div>
             <div className="flex items-center gap-2">
               {cargando && (
@@ -321,7 +345,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
             {tickets.length === 0
               ? <div className="flex flex-col items-center justify-center py-8 gap-2">
                   <Inbox size={20} style={{ color:T.textFaint }}/>
-                  <p className="text-xs font-bold" style={{ color:T.textMuted }}>{hayFiltros?"Sin resultados":"No hay incidencias"}</p>
+                  <p className="text-[11px] font-bold" style={{ color:T.textMuted }}>{hayFiltros?"Sin resultados":"No hay incidencias"}</p>
                 </div>
               : tickets.map(t => {
                   const calNum = t.calificacion ? parseInt(t.calificacion) : 0;
@@ -333,19 +357,19 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                       style={{ background:isDark?"rgba(255,255,255,0.04)":T.surfaceAlt, border:`1px solid ${T.border}` }}
                       onClick={() => onVerTicket?.(t)}>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-[11px] font-black" style={{ color:T.orange }}>{t.folio_ticket}</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background:eBg, color:eColor }}>{t.estatus}</span>
+                        <span className="font-mono text-[10px] font-black" style={{ color:T.orange }}>{t.folio_ticket}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold" style={{ background:eBg, color:eColor }}>{t.estatus}</span>
                       </div>
-                      <p className="text-xs font-semibold leading-snug" style={{ color:T.text }}>{t.titulo}</p>
+                      <p className="text-[11px] font-semibold leading-snug" style={{ color:T.text }}>{t.titulo}</p>
                       <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1 text-[11px] font-bold">
+                        <span className="flex items-center gap-1 text-[10px] font-bold">
                           <span className="w-2 h-2 rounded-full" style={{ background:PCOLOR[t.prioridad]||"#94a3b8" }}/>
                           <span style={{ color:PCOLOR[t.prioridad]||T.textMuted }}>{t.prioridad}</span>
                         </span>
-                        <span className="text-[11px]" style={{ color:T.textFaint }}>{fmt(t.fecha_subido)}</span>
+                        <span className="text-[10px]" style={{ color:T.textFaint }}>{fmt(t.fecha_subido)}</span>
                       </div>
                       <div className="flex items-center justify-between pt-1" style={{ borderTop:`1px solid ${T.border}` }}>
-                        <span className="text-[10px]" style={{ color:T.textFaint }}>{t.nombre_categoria||"-"}</span>
+                        <span className="text-[9px]" style={{ color:T.textFaint }}>{t.nombre_categoria||"-"}</span>
                         {calNum>0 && <Estrellas n={calNum} isDark={isDark}/>}
                       </div>
                     </div>
@@ -355,7 +379,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
           </div>
 
           {/* Desktop (≥1024px) */}
-          <div className="hidden lg:flex lg:flex-col" style={{ overflowY:"auto", flex:"1 1 0", minHeight:0 }}>
+          <div className="hidden lg:flex lg:flex-col" style={{ overflowY:"auto", overflowX:"auto", flex:"1 1 0", minHeight:0 }}>
             <table className="w-full border-collapse" style={{ minWidth:"760px" }}>
               <thead className="sticky top-0 z-10">
                 <tr style={{ background:isDark?"rgba(255,255,255,0.03)":T.surfaceAlt }}>
@@ -372,7 +396,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                   ? <tr><td colSpan={9}>
                       <div className="flex flex-col items-center justify-center py-12 gap-2">
                         <Inbox size={22} style={{ color:T.textFaint }}/>
-                        <p className="text-xs font-bold" style={{ color:T.textMuted }}>{hayFiltros?"Sin resultados":"No hay incidencias registradas"}</p>
+                        <p className="text-[11px] font-bold" style={{ color:T.textMuted }}>{hayFiltros?"Sin resultados":"No hay incidencias registradas"}</p>
                       </div>
                     </td></tr>
                   : tickets.map((t,i) => {
@@ -386,12 +410,12 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                         onMouseEnter={e => e.currentTarget.style.background=isDark?"rgba(244,121,32,0.05)":"rgba(244,121,32,0.03)"}
                         onMouseLeave={e => e.currentTarget.style.background=bgRow}
                         onClick={() => onVerTicket?.(t)}>
-                        <td className="px-3 py-2 font-mono text-[10px] font-bold" style={{ color:T.orange }}>{t.folio_ticket}</td>
-                        <td className="px-3 py-2 text-[11px] font-semibold" style={{ maxWidth:"180px" }}>
+                        <td className="px-3 py-2 font-mono text-[9px] font-bold" style={{ color:T.orange }}>{t.folio_ticket}</td>
+                        <td className="px-3 py-2 text-[10px] font-semibold" style={{ maxWidth:"180px" }}>
                           <span className="block truncate" style={{ color:T.text }}>{t.titulo}</span>
                         </td>
                         <td className="px-3 py-2">
-                          <span className="flex items-center gap-1 text-[11px] font-bold">
+                          <span className="flex items-center gap-1 text-[10px] font-bold">
                             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background:PCOLOR[t.prioridad]||"#94a3b8" }}/>
                             <span style={{ color:PCOLOR[t.prioridad]||T.textMuted }}>{t.prioridad}</span>
                           </span>
@@ -400,17 +424,17 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                           <span className="px-2 py-0.5 rounded-full text-[9px] font-bold"
                             style={{ background:eBg, color:eColor }}>{t.estatus}</span>
                         </td>
-                        <td className="px-3 py-2 text-[11px]" style={{ color:T.textMuted }}>{t.nombre_categoria||"-"}</td>
-                        <td className="px-3 py-2 text-[11px]" style={{ color:t.resuelto_por?T.text:T.textFaint }}>
+                        <td className="px-3 py-2 text-[10px]" style={{ color:T.textMuted }}>{t.nombre_categoria||"-"}</td>
+                        <td className="px-3 py-2 text-[10px]" style={{ color:t.resuelto_por?T.text:T.textFaint }}>
                           {t.resuelto_por?(t.resuelto_por_np||t.resuelto_por.split(" ").filter(Boolean).slice(0,2).join(" ")):"-"}
                         </td>
-                        <td className="px-3 py-2 text-[11px] whitespace-nowrap" style={{ color:T.textMuted }}>{fmt(t.fecha_subido)}</td>
+                        <td className="px-3 py-2 text-[10px] whitespace-nowrap" style={{ color:T.textMuted }}>{fmt(t.fecha_subido)}</td>
                         <td className="px-3 py-2">
-                          {calNum>0 ? <Estrellas n={calNum} isDark={isDark}/> : <span className="text-[10px]" style={{ color:T.textFaint }}>-</span>}
+                          {calNum>0 ? <Estrellas n={calNum} isDark={isDark}/> : <span className="text-[9px]" style={{ color:T.textFaint }}>-</span>}
                         </td>
                         <td className="px-3 py-2">
                           <button onClick={e => { e.stopPropagation(); onVerTicket?.(t); }}
-                            className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-all hover:brightness-110 active:scale-95"
+                            className="flex items-center gap-1 text-[9px] font-bold px-2 py-1 rounded-lg transition-all hover:brightness-110 active:scale-95"
                             style={{ color:T.orange, background:"rgba(244,121,32,0.08)", border:"1px solid rgba(244,121,32,0.2)" }}>
                             <Eye size={10}/> Ver
                           </button>
@@ -449,12 +473,12 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
       >
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-bold uppercase tracking-wider" style={{ color:T.textMuted }}>Período rápido</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color:T.textMuted }}>Período rápido</label>
             <div className="grid grid-cols-4 gap-1">
               {[["diario","Día"],["semanal","Semana"],["mensual","Mes"],["anual","Año"]].map(([val,lbl]) => (
                 <button key={val}
                   onClick={() => setParamReporte(p => ({ ...p, periodo:val, fecha_inicio:"", fecha_fin:"" }))}
-                  className="py-1.5 rounded-lg text-[11px] font-bold transition-all"
+                  className="py-1.5 rounded-lg text-[10px] font-bold transition-all"
                   style={{
                     background: paramReporte.periodo===val && !paramReporte.fecha_inicio ? `${T.orange}20` : (isDark?"rgba(255,255,255,0.04)":T.surfaceAlt),
                     border: `1.5px solid ${paramReporte.periodo===val && !paramReporte.fecha_inicio ? T.orange : (isDark?"rgba(255,255,255,0.1)":T.border)}`,
@@ -464,17 +488,17 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-bold uppercase tracking-wider" style={{ color:T.textMuted }}>Fecha inicio (opcional)</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color:T.textMuted }}>Fecha inicio (opcional)</label>
             <input type="date" value={paramReporte.fecha_inicio}
               onChange={e => setParamReporte(p => ({ ...p, fecha_inicio: e.target.value }))}
-              className="rounded-lg px-3 py-2 text-sm"
+              className="rounded-lg px-3 py-2 text-[12px]"
               style={{ background:T.surfaceAlt, border:`1px solid ${T.border}`, color:T.text, outline:"none", colorScheme:isDark?"dark":"light" }}/>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-bold uppercase tracking-wider" style={{ color:T.textMuted }}>Fecha fin (opcional)</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color:T.textMuted }}>Fecha fin (opcional)</label>
             <input type="date" value={paramReporte.fecha_fin}
               onChange={e => setParamReporte(p => ({ ...p, fecha_fin: e.target.value }))}
-              className="rounded-lg px-3 py-2 text-sm"
+              className="rounded-lg px-3 py-2 text-[12px]"
               style={{ background:T.surfaceAlt, border:`1px solid ${T.border}`, color:T.text, outline:"none", colorScheme:isDark?"dark":"light" }}/>
           </div>
         </div>

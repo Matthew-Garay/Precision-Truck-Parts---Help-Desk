@@ -11,11 +11,19 @@
  *   2. Persiste con setUsuario / setIdAcceso / setToken (igual que el login).
  *   3. Llama onLogin para navegar al dashboard según el rol.
  * Si falta algo, muestra el error y ofrece volver al login.
+ *
+ * @module client/pages/ZohoCallbackPage
+ * @requires react
+ * @requires ../services/api-client.js
+ * @requires ../utils/session.js
+ * @requires ../utils/tipografia.js
+ * @exports ZohoCallbackPage (default)
  */
 import { useEffect, useState } from "react";
 import { setToken } from '../services/api-client.js';
 import { setUsuario, setIdAcceso } from '../utils/session.js';
 
+import { FS } from '../utils/tipografia.js';
 export default function ZohoCallbackPage({ onLogin }) {
   const [error, setError] = useState("");
 
@@ -54,7 +62,7 @@ export default function ZohoCallbackPage({ onLogin }) {
     return (
       <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
         <div className="login-spinner" aria-label="Completando inicio con Zoho" />
-        <p style={{ color: "#64748B", fontSize: 13 }}>Completando inicio de sesión con Zoho…</p>
+        <p style={{ color: "#64748B", fontSize: FS.enfasis }}>Completando inicio de sesión con Zoho…</p>
       </div>
     );
   }
@@ -62,9 +70,9 @@ export default function ZohoCallbackPage({ onLogin }) {
   return (
     <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: "#fff", border: "1px solid #FECACA", borderRadius: 8, padding: "20px 24px", maxWidth: 420, textAlign: "center" }}>
-        <p style={{ color: "#B91C1C", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>No se pudo iniciar con Zoho</p>
-        <p style={{ color: "#64748B", fontSize: 12, marginBottom: 16 }}>{error}</p>
-        <a href="/login" style={{ color: "#F47920", fontSize: 13, fontWeight: 600 }}>Volver al inicio de sesión</a>
+        <p style={{ color: "#B91C1C", fontSize: FS.enfasis, fontWeight: 600, marginBottom: 8 }}>No se pudo iniciar con Zoho</p>
+        <p style={{ color: "#64748B", fontSize: FS.cuerpo, marginBottom: 16 }}>{error}</p>
+        <a href="/login" style={{ color: "#F47920", fontSize: FS.enfasis, fontWeight: 600 }}>Volver al inicio de sesión</a>
       </div>
     </div>
   );

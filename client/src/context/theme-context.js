@@ -1,5 +1,5 @@
 /**
- * themeContext.js
+ * theme-context.js
  *
  * Define el contexto de React para el sistema de temas claro/oscuro.
  * Es un archivo JS puro (sin JSX) para evitar problemas con Fast Refresh de Vite
@@ -14,6 +14,11 @@
  * useTheme()
  *   Hook que retorna el valor actual del ThemeContext.
  *   Debe usarse dentro de un componente envuelto por ThemeProvider.
+ *
+ * @module client/context/theme-context
+ * @requires react
+ * @exports ThemeContext
+ * @exports useTheme
  */
 import { createContext, useContext } from "react";
 

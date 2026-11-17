@@ -1,3 +1,28 @@
+/**
+ * ManualesIncidencias.jsx
+ *
+ * Administración de manuales técnicos en PDF: subida individual o por lote,
+ * edición de datos, reemplazo del archivo y eliminación, con portada generada.
+ *
+ * Export default: ManualesAdmin
+ * Props: T.
+ * Endpoints: GET/POST /api/manuales, PUT/DELETE /api/manuales/:id, POST
+ *    /api/manuales/:id/reemplazar, GET /api/categorias?tipo=manual.
+ *
+ * @module client/pages/Admin/ManualesIncidencias
+ * @requires react
+ * @requires ../../components/PdfViewer.jsx
+ * @requires ../../components/Modal.jsx
+ * @requires lucide-react
+ * @requires ../../services/api-client.js
+ * @requires ../../hooks/use-auto-refresh.js
+ * @requires ../../hooks/use-pdf-cover.js
+ * @requires ../../components/FiltrosToolbar.jsx
+ * @requires ../../utils/design-system.js
+ * @requires ../../utils/tipografia.js
+ * @requires ../../components/LogoModal.jsx
+ * @exports ManualesAdmin (default)
+ */
 import { useState, useRef, useCallback, memo } from "react";
 import PdfViewer from '../../components/PdfViewer.jsx';
 import Modal from '../../components/Modal.jsx';
@@ -12,6 +37,8 @@ import { usePdfCover } from '../../hooks/use-pdf-cover.js';
 import FiltrosToolbar from '../../components/FiltrosToolbar.jsx';
 import { RADIUS, NEUTRAL, SLATE, SEMANTIC } from '../../utils/design-system.js';
 
+import { FS } from '../../utils/tipografia.js';
+import LogoModal from '../../components/LogoModal.jsx';
 const ORANGE = "#F47920";
 const OL     = "rgba(244,121,32,0.10)";
 const OB     = "rgba(244,121,32,0.22)";
@@ -37,7 +64,7 @@ function ModalForm({ T, categorias, manual, archivo, onClose, onGuardado }) {
 
   const inp = {
     background: inputBg, border: `1px solid ${border}`, borderRadius: "6px",
-    padding: "0 10px", height: "34px", fontSize: "13px", color: textMain,
+    padding: "0 10px", height: "34px", fontSize: FS.enfasis, color: textMain,
     outline: "none", width: "100%", boxSizing: "border-box",
     transition: "border-color 0.12s, box-shadow 0.12s",
   };
@@ -77,11 +104,11 @@ function ModalForm({ T, categorias, manual, archivo, onClose, onGuardado }) {
 
   const LabelField = ({ label, required, children, error }) => (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-      <label style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: textFaint }}>
+      <label style={{ fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: textFaint }}>
         {label}{required && <span style={{ color: ORANGE, marginLeft: "2px" }}>*</span>}
       </label>
       {children}
-      {error && <span style={{ fontSize: "11px", color: "#dc2626" }}>{error}</span>}
+      {error && <span style={{ fontSize: FS.secundario, color: "#dc2626" }}>{error}</span>}
     </div>
   );
 
@@ -105,8 +132,8 @@ function ModalForm({ T, categorias, manual, archivo, onClose, onGuardado }) {
               <span style={{ fontSize: "7px", fontWeight: 700, color: "#dc2626" }}>PDF</span>
             </div>
             <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: textMain, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{archivo.name}</p>
-              <p style={{ fontSize: 11, color: T.textMuted ?? "#64748b", margin: 0 }}>
+              <p style={{ fontSize: FS.enfasis, fontWeight: 600, color: textMain, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{archivo.name}</p>
+              <p style={{ fontSize: FS.secundario, color: T.textMuted ?? "#64748b", margin: 0 }}>
                 {archivo.size < 1024 * 1024 ? `${(archivo.size / 1024).toFixed(0)} KB` : `${(archivo.size / 1024 / 1024).toFixed(1)} MB`}
               </p>
             </div>
@@ -148,7 +175,7 @@ function ModalForm({ T, categorias, manual, archivo, onClose, onGuardado }) {
         </LabelField>
 
         {errores.global && (
-          <p style={{ margin: 0, padding: "8px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: 500, color: "#dc2626", background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2", border: `1px solid ${isDark ? "rgba(220,38,38,0.25)" : "#fecaca"}` }}>
+          <p style={{ margin: 0, padding: "8px 12px", borderRadius: "6px", fontSize: FS.cuerpo, fontWeight: 500, color: "#dc2626", background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2", border: `1px solid ${isDark ? "rgba(220,38,38,0.25)" : "#fecaca"}` }}>
             {errores.global}
           </p>
         )}
@@ -185,7 +212,7 @@ function ModalEliminar({ T, manual, onConfirm, onClose, loading }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div role="alert" style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 14px", borderRadius: "6px", background: warnBg, border: `1px solid ${warnBdr}` }}>
           <AlertTriangle size={16} style={{ color: "#d97706", flexShrink: 0, marginTop: 1 }} />
-          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: warnText }}>
+          <p style={{ margin: 0, fontSize: FS.enfasis, lineHeight: 1.5, color: warnText }}>
             Esta acción es <strong style={{ color: isDark ? "#fbbf24" : "#0f172a" }}>permanente</strong> y no se puede deshacer.
           </p>
         </div>
@@ -194,9 +221,9 @@ function ModalEliminar({ T, manual, onConfirm, onClose, loading }) {
             <Trash2 size={13} style={{ color: "#dc2626" }} />
           </div>
           <div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: textMain }}>{manual.nombre}</p>
+            <p style={{ margin: 0, fontSize: FS.enfasis, fontWeight: 700, color: textMain }}>{manual.nombre}</p>
             {manual.nombre_categoria && (
-              <p style={{ margin: "2px 0 0", fontSize: 11, color: textSub }}>{manual.nombre_categoria}</p>
+              <p style={{ margin: "2px 0 0", fontSize: FS.secundario, color: textSub }}>{manual.nombre_categoria}</p>
             )}
           </div>
         </div>
@@ -216,10 +243,11 @@ function DrawerVisor({ url, nombre, T, onClose }) {
         <style>{`@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
         <div style={{ height: 54, padding: "0 12px", flexShrink: 0, display: "flex", alignItems: "center", gap: 8, background: "#1e293b", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <FileText size={15} color="rgba(255,255,255,0.6)" style={{ flexShrink: 0 }} />
-          <span style={{ flex: 1, minWidth: 0, color: "#fff", fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</span>
-          <a href={url} download={nombre} style={{ flexShrink: 0, height: 30, padding: mobile ? "0 8px" : "0 12px", borderRadius: RADIUS.sm, display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 500, textDecoration: "none" }}>
+          <span style={{ flex: 1, minWidth: 0, color: "#fff", fontWeight: 600, fontSize: FS.enfasis, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</span>
+          <a href={url} download={nombre} style={{ flexShrink: 0, height: 30, padding: mobile ? "0 8px" : "0 12px", borderRadius: RADIUS.sm, display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.8)", fontSize: FS.cuerpo, fontWeight: 500, textDecoration: "none" }}>
             <Download size={12} />{!mobile && " Descargar"}
           </a>
+          <LogoModal claro alto={18} style={{ marginRight: 4 }} />
           <button onClick={onClose} style={{ flexShrink: 0, width: 30, height: 30, borderRadius: RADIUS.sm, background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.5)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <X size={14} />
           </button>
@@ -265,7 +293,7 @@ function PdfThumb({ url, isDark }) {
           <span style={{ fontSize: "7px", fontWeight: 700, color: "#dc2626" }}>PDF</span>
         </div>
       )}
-      <span style={{ position: "absolute", top: 8, right: 8, fontSize: 9, fontWeight: 800, letterSpacing: "0.05em", padding: "2px 6px", borderRadius: 4, background: isDark ? "rgba(244,121,32,0.18)" : "#fff7ed", color: ORANGE, border: "1px solid rgba(244,121,32,0.3)" }}>PDF</span>
+      <span style={{ position: "absolute", top: 8, right: 8, fontSize: FS.etiqueta, fontWeight: 800, letterSpacing: "0.05em", padding: "2px 6px", borderRadius: 4, background: isDark ? "rgba(244,121,32,0.18)" : "#fff7ed", color: ORANGE, border: "1px solid rgba(244,121,32,0.3)" }}>PDF</span>
       <style>{`@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}`}</style>
     </div>
   );
@@ -308,13 +336,13 @@ function CardManualFila({ m, T, onVer, onEditar, onEliminar }) {
       <FilaThumb pdfUrl={pdfUrl} isDark={isDark} onClick={() => onVer(pdfUrl, m.nombre)} />
       {/* Nombre + categoría — columna flex:1 */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p onClick={() => onVer(pdfUrl, m.nombre)} style={{ fontSize: 13, fontWeight: 600, color: isDark ? "#e2e8f0" : SLATE[800], margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}
+        <p onClick={() => onVer(pdfUrl, m.nombre)} style={{ fontSize: FS.enfasis, fontWeight: 600, color: isDark ? "#e2e8f0" : SLATE[800], margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}
           onMouseEnter={e => e.currentTarget.style.color = ORANGE}
           onMouseLeave={e => e.currentTarget.style.color = isDark ? "#e2e8f0" : SLATE[800]}>
           {m.nombre.replace(/\.pdf$/i, "")}
         </p>
         {m.nombre_categoria && (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: OL, color: ORANGE, border: `1px solid ${OB}` }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: FS.etiqueta, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: OL, color: ORANGE, border: `1px solid ${OB}` }}>
             <Tag size={7} /> {m.nombre_categoria}
           </span>
         )}
@@ -322,20 +350,20 @@ function CardManualFila({ m, T, onVer, onEditar, onEliminar }) {
       {/* Fecha — columna w:130 */}
       <div style={{ width: 130, flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}>
         {fecha
-          ? <span style={{ fontSize: 11, color: isDark ? "rgba(255,255,255,0.40)" : SLATE[500], display: "flex", alignItems: "center", gap: 4 }}><Clock size={10} />{fecha}</span>
-          : <span style={{ fontSize: 11, color: isDark ? "rgba(255,255,255,0.18)" : SLATE[300] }}>—</span>
+          ? <span style={{ fontSize: FS.secundario, color: isDark ? "rgba(255,255,255,0.40)" : SLATE[500], display: "flex", alignItems: "center", gap: 4 }}><Clock size={10} />{fecha}</span>
+          : <span style={{ fontSize: FS.secundario, color: isDark ? "rgba(255,255,255,0.18)" : SLATE[300] }}>—</span>
         }
       </div>
       {/* Tamaño — columna w:90 */}
       <div style={{ width: 90, flexShrink: 0 }}>
         {m.tamaño
-          ? <span style={{ fontSize: 11, color: isDark ? "rgba(255,255,255,0.40)" : SLATE[500] }}>{m.tamaño}</span>
-          : <span style={{ fontSize: 11, color: isDark ? "rgba(255,255,255,0.18)" : SLATE[300] }}>—</span>
+          ? <span style={{ fontSize: FS.secundario, color: isDark ? "rgba(255,255,255,0.40)" : SLATE[500] }}>{m.tamaño}</span>
+          : <span style={{ fontSize: FS.secundario, color: isDark ? "rgba(255,255,255,0.18)" : SLATE[300] }}>—</span>
         }
       </div>
       {/* Acciones */}
       <div style={{ display: "flex", gap: 5, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-        <button onClick={() => onVer(pdfUrl, m.nombre)} style={{ height: 28, padding: "0 10px", borderRadius: RADIUS.sm, border: "none", background: ORANGE, color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Eye size={11} /> Ver</button>
+        <button onClick={() => onVer(pdfUrl, m.nombre)} style={{ height: 28, padding: "0 10px", borderRadius: RADIUS.sm, border: "none", background: ORANGE, color: "#fff", fontSize: FS.secundario, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Eye size={11} /> Ver</button>
         <button onClick={() => onEditar(m)} style={{ width: 28, height: 28, borderRadius: RADIUS.sm, border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : SLATE[200]}`, background: "transparent", color: isDark ? "rgba(255,255,255,0.45)" : SLATE[400], cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = ORANGE; e.currentTarget.style.color = ORANGE; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.10)" : SLATE[200]; e.currentTarget.style.color = isDark ? "rgba(255,255,255,0.45)" : SLATE[400]; }}>
@@ -383,17 +411,17 @@ function CardManual({ m, T, onVer, onEditar, onEliminar }) {
       <PdfThumb url={pdfUrl} isDark={isDark} />
 
       <div style={{ padding: "12px 14px", flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-        <p style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.4, color: isDark ? "#eef0f2" : SLATE[700], overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", margin: 0 }}>
+        <p style={{ fontSize: FS.cuerpo, fontWeight: 700, lineHeight: 1.4, color: isDark ? "#eef0f2" : SLATE[700], overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", margin: 0 }}>
           {m.nombre.replace(/\.pdf$/i, "")}
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: "auto", alignItems: "center" }}>
           {m.nombre_categoria && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: OL, color: ORANGE, border: `1px solid ${OB}` }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: FS.etiqueta, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: OL, color: ORANGE, border: `1px solid ${OB}` }}>
               <Tag size={7} /> {m.nombre_categoria}
             </span>
           )}
           {fecha && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: isDark ? "rgba(255,255,255,0.06)" : SLATE[100], color: isDark ? "rgba(255,255,255,0.38)" : SLATE[400], border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : SLATE[200]}` }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: FS.etiqueta, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: isDark ? "rgba(255,255,255,0.06)" : SLATE[100], color: isDark ? "rgba(255,255,255,0.38)" : SLATE[400], border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : SLATE[200]}` }}>
               <Clock size={7} /> {fecha}
             </span>
           )}
@@ -407,7 +435,7 @@ function CardManual({ m, T, onVer, onEditar, onEliminar }) {
       >
         <button
           onClick={() => onVer(pdfUrl, m.nombre)}
-          style={{ flex: 1, height: 30, borderRadius: RADIUS.sm, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: `linear-gradient(135deg,${ORANGE},#d97400)`, color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "none" }}
+          style={{ flex: 1, height: 30, borderRadius: RADIUS.sm, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: `linear-gradient(135deg,${ORANGE},#d97400)`, color: "#fff", fontSize: FS.secundario, fontWeight: 600, cursor: "pointer", border: "none" }}
         >
           <Eye size={11} /> Ver
         </button>
@@ -550,8 +578,8 @@ export default function ManualesAdmin({ T }) {
             <path d="M26 8v24M14 20l12-12 12 12" stroke="#F47920" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M6 40v3a3 3 0 003 3h34a3 3 0 003-3v-3" stroke="#F47920" strokeWidth="3" strokeLinecap="round"/>
           </svg>
-          <p style={{ fontSize: 18, fontWeight: 900, color: "#F47920", margin: 0 }}>Suelta el PDF aquí</p>
-          <p style={{ fontSize: 13, color: isDark ? "rgba(255,255,255,0.5)" : "#64748b", margin: 0 }}>Se abrirá el formulario de subida</p>
+          <p style={{ fontSize: FS.titulo, fontWeight: 900, color: "#F47920", margin: 0 }}>Suelta el PDF aquí</p>
+          <p style={{ fontSize: FS.enfasis, color: isDark ? "rgba(255,255,255,0.5)" : "#64748b", margin: 0 }}>Se abrirá el formulario de subida</p>
         </div>
       )}
 
@@ -576,21 +604,21 @@ export default function ManualesAdmin({ T }) {
             />
             <div style={{ width: 1, height: 40, background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.10)", flexShrink: 0 }} />
             <div>
-              <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase",
+              <p style={{ fontSize: FS.etiqueta, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase",
                 color: isDark ? "rgba(255,255,255,0.32)" : SLATE[400], margin: 0 }}>
                 Precision Truck Parts, Parts and Accesories, S.A de C.V.
               </p>
-              <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? "rgba(255,255,255,0.58)" : SLATE[600], margin: 0 }}>
+              <p style={{ fontSize: FS.enfasis, fontWeight: 700, color: isDark ? "rgba(255,255,255,0.58)" : SLATE[600], margin: 0 }}>
                 Centro de Conocimientos
               </p>
             </div>
           </div>
 
           <div style={{ textAlign: "center" }}>
-            <h1 style={{ fontSize: 24, fontWeight: 800, color: isDark ? "#fff" : SLATE[900], margin: 0, lineHeight: 1.2 }}>
+            <h1 style={{ fontSize: FS.titulo, fontWeight: 800, color: isDark ? "#fff" : SLATE[900], margin: 0, lineHeight: 1.2 }}>
               Gestión de Manuales
             </h1>
-            <p style={{ fontSize: 13, color: isDark ? "rgba(255,255,255,0.35)" : SLATE[400], marginTop: 6 }}>
+            <p style={{ fontSize: FS.enfasis, color: isDark ? "rgba(255,255,255,0.35)" : SLATE[400], marginTop: 6 }}>
               {manuales.length} manuales técnicos · administración completa
             </p>
           </div>
@@ -598,7 +626,7 @@ export default function ManualesAdmin({ T }) {
           {/* Botón subir en hero */}
           <button
             onClick={() => inputSubidaRef.current?.click()}
-            style={{ height: 38, padding: "0 20px", borderRadius: RADIUS.sm, display: "flex", alignItems: "center", gap: 7, background: ORANGE, border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "filter 0.15s", boxShadow: "0 4px 14px rgba(244,121,32,0.35)" }}
+            style={{ height: 38, padding: "0 20px", borderRadius: RADIUS.sm, display: "flex", alignItems: "center", gap: 7, background: ORANGE, border: "none", color: "#fff", fontSize: FS.enfasis, fontWeight: 700, cursor: "pointer", transition: "filter 0.15s", boxShadow: "0 4px 14px rgba(244,121,32,0.35)" }}
             onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.08)"}
             onMouseLeave={e => e.currentTarget.style.filter = "brightness(1)"}
           >
@@ -624,7 +652,7 @@ export default function ManualesAdmin({ T }) {
               style={{
                 width: "100%", background: "transparent", border: "none", outline: "none",
                 padding: "13px 42px 13px 44px",
-                fontSize: 14, color: isDark ? "#fff" : SLATE[700],
+                fontSize: FS.subtitulo, color: isDark ? "#fff" : SLATE[700],
                 fontFamily: "'Inter','Segoe UI',sans-serif",
                 boxSizing: "border-box",
               }}
@@ -646,7 +674,7 @@ export default function ManualesAdmin({ T }) {
                     key={c.id}
                     onClick={() => setCategoria(active ? "" : String(c.id))}
                     style={{
-                      padding: "5px 13px", borderRadius: 99, fontSize: 11, fontWeight: 700,
+                      padding: "5px 13px", borderRadius: 99, fontSize: FS.secundario, fontWeight: 700,
                       cursor: "pointer", transition: "all 0.15s",
                       background: active ? ORANGE : (isDark ? "rgba(255,255,255,0.06)" : "#fff"),
                       color: active ? "#fff" : (isDark ? "rgba(255,255,255,0.55)" : SLATE[500]),
@@ -667,7 +695,7 @@ export default function ManualesAdmin({ T }) {
 
         {/* Toast */}
         {toast && (
-          <div style={{ padding: "10px 16px", borderRadius: RADIUS.sm, background: toast.tipo === "ok" ? SEMANTIC.successBg : SEMANTIC.dangerBg, border: `1px solid ${toast.tipo === "ok" ? SEMANTIC.successBdr : SEMANTIC.dangerBdr}`, color: toast.tipo === "ok" ? SEMANTIC.success : SEMANTIC.danger, display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 500 }}>
+          <div style={{ padding: "10px 16px", borderRadius: RADIUS.sm, background: toast.tipo === "ok" ? SEMANTIC.successBg : SEMANTIC.dangerBg, border: `1px solid ${toast.tipo === "ok" ? SEMANTIC.successBdr : SEMANTIC.dangerBdr}`, color: toast.tipo === "ok" ? SEMANTIC.success : SEMANTIC.danger, display: "flex", alignItems: "center", gap: 8, fontSize: FS.enfasis, fontWeight: 500 }}>
             {toast.msg}
             <button onClick={() => setToast(null)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "inherit" }}><X size={13} /></button>
           </div>
@@ -677,14 +705,14 @@ export default function ManualesAdmin({ T }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 3, height: 14, borderRadius: 99, background: `linear-gradient(180deg,${ORANGE},#d97400)` }} />
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: isDark ? "rgba(255,255,255,0.42)" : SLATE[600] }}>
+            <span style={{ fontSize: FS.secundario, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: isDark ? "rgba(255,255,255,0.42)" : SLATE[600] }}>
               {busqueda || categoria ? "Resultados" : "Documentos disponibles"}
             </span>
-            <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: isDark ? "rgba(244,121,32,0.14)" : "rgba(244,121,32,0.08)", color: ORANGE, border: "1px solid rgba(244,121,32,0.22)" }}>
+            <span style={{ fontSize: FS.etiqueta, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: isDark ? "rgba(244,121,32,0.14)" : "rgba(244,121,32,0.08)", color: ORANGE, border: "1px solid rgba(244,121,32,0.22)" }}>
               {filtrados.length}
             </span>
             {(busqueda || categoria) && (
-              <button onClick={limpiarFiltros} style={{ fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.35)" : SLATE[400], background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+              <button onClick={limpiarFiltros} style={{ fontSize: FS.secundario, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.35)" : SLATE[400], background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                 <X size={10} /> Limpiar
               </button>
             )}
@@ -712,16 +740,16 @@ export default function ManualesAdmin({ T }) {
             <div style={{ width: 52, height: 52, borderRadius: 12, background: isDark ? "rgba(255,255,255,0.04)" : "#f1f5f9", border: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <FileText size={24} style={{ color: isDark ? "rgba(255,255,255,0.18)" : SLATE[400] }} />
             </div>
-            <p style={{ fontSize: 14, fontWeight: 700, color: isDark ? "rgba(255,255,255,0.42)" : SLATE[600], margin: 0 }}>
+            <p style={{ fontSize: FS.subtitulo, fontWeight: 700, color: isDark ? "rgba(255,255,255,0.42)" : SLATE[600], margin: 0 }}>
               {busqueda || categoria ? "Sin resultados" : "No hay manuales aún"}
             </p>
-            <p style={{ fontSize: 12, color: isDark ? "rgba(255,255,255,0.22)" : SLATE[400], textAlign: "center", margin: 0 }}>
+            <p style={{ fontSize: FS.cuerpo, color: isDark ? "rgba(255,255,255,0.22)" : SLATE[400], textAlign: "center", margin: 0 }}>
               {busqueda || categoria ? "Prueba con otros términos o limpia los filtros." : "Sube el primer manual para que el equipo pueda consultarlo."}
             </p>
             {!busqueda && !categoria && (
               <button
                 onClick={() => inputSubidaRef.current?.click()}
-                style={{ height: 34, padding: "0 16px", borderRadius: RADIUS.sm, display: "flex", alignItems: "center", gap: 6, background: ORANGE, border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                style={{ height: 34, padding: "0 16px", borderRadius: RADIUS.sm, display: "flex", alignItems: "center", gap: 6, background: ORANGE, border: "none", color: "#fff", fontSize: FS.cuerpo, fontWeight: 600, cursor: "pointer" }}
               >
                 <Upload size={13} /> Subir primer manual
               </button>
@@ -742,7 +770,7 @@ export default function ManualesAdmin({ T }) {
                 const activo = orden.col === col;
                 return (
                   <button key={col} onClick={() => toggleOrden(col)}
-                    style={{ flex, width: w, flexShrink: w ? 0 : undefined, display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: activo ? ORANGE : (isDark ? "rgba(255,255,255,0.30)" : SLATE[400]), transition: "color 0.14s" }}>
+                    style={{ flex, width: w, flexShrink: w ? 0 : undefined, display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: FS.etiqueta, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: activo ? ORANGE : (isDark ? "rgba(255,255,255,0.30)" : SLATE[400]), transition: "color 0.14s" }}>
                     {label}
                     {activo ? (orden.dir === "asc" ? <ChevronUp size={11} style={{ color: ORANGE }} /> : <ChevronDown size={11} style={{ color: ORANGE }} />) : <ChevronDown size={11} style={{ opacity: 0.3 }} />}
                   </button>

@@ -7,6 +7,12 @@
  * Importante: Vite copia el worker a /assets/ en producción y lo sirve
  * desde ahí en desarrollo vía el sufijo `?url`. Los archivos .wasm se
  * cargan desde la misma ubicación para el soporte de OpenJPEG (JPEG2000).
+ *
+ * @module client/utils/pdfjs
+ * @requires pdfjs-dist
+ * @requires pdfjs-dist/build/pdf.worker.mjs?url
+ * @exports PDFJS_PARAMS
+ * @exports pdfjs (default)
  */
 import * as pdfjs from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";

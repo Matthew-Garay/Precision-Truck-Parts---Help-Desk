@@ -1,5 +1,5 @@
 /**
- * authMiddleware.js
+ * auth-middleware.js
  *
  * Expone dos middlewares de Express para proteger rutas mediante JWT
  * y restringir el acceso por rol de usuario.
@@ -21,6 +21,16 @@
  * empleado ya va en una version mayor, el token se rechaza. No hace falta
  * una tabla de lista negra: sobrevive a reinicios y funciona igual con
  * varias instancias del servidor.
+ *
+ * @module server/middlewares/auth-middleware
+ * @requires jsonwebtoken
+ * @requires ../config/db.js
+ * @exports requireAuth
+ * @exports requireOwnerOrAdmin
+ * @exports requireAdmin
+ * @exports NOMBRE_DEPARTAMENTO_SOPORTE
+ * @exports esSoporteOAdmin
+ * @exports requireSoporteOAdmin
  */
 import jwt  from "jsonwebtoken";
 import pool from '../config/db.js';
@@ -64,6 +74,23 @@ export async function requireAuth(req, res, next) {
   }
 }
 
+/**
+ * requireOwnerOrAdmin(param)
+ *
+ * Fabrica de middleware: deja pasar al administrador o al empleado cuyo id
+ * coincide con req.params[param]. Antes estaba copiado en auth-routes,
+ * solicitudes-routes y tickets-routes.
+ *
+ *   router.get("/empleado/:id_empleado", requireOwnerOrAdmin(), handler)
+ *   router.get("/accesos/:id",           requireOwnerOrAdmin("id"), handler)
+ */
+export const requireOwnerOrAdmin = (param = "id_empleado") => (req, res, next) => {
+  const idParam = parseInt(req.params[param], 10);
+  const { id_empleado, id_rol } = req.usuario ?? {};
+  if (id_rol === 1 || id_empleado === idParam) return next();
+  return res.status(403).json({ error: "Acceso no autorizado" });
+};
+
 export function requireAdmin(req, res, next) {
   if (req.usuario?.id_rol !== 1)
     return res.status(403).json({ error: "Acceso restringido a administradores" });
@@ -71,17 +98,13 @@ export function requireAdmin(req, res, next) {
 }
 
 /**
- * ID del departamento que puede escribir observaciones de insumos.
- * Vive en `departamento` (no en `rol`): el sistema solo tiene Administrador y
- * Usuario, y "Soporte Tecnico" es un departamento. Si se renombra o cambia el
- * id hay que actualizar esta constante.
- *
- * OJO: en la base de datos actual "Soporte Tecnico" es el id 67 (los ids de
- * `departamento` van de 21 a 73); el valor historico 2 ya no existe y dejaba
- * al personal de soporte sin permisos de ruta/observaciones (403) y sin la
- * ruta del material en la hoja impresa de solicitudes.
+ * Nombre del departamento que comparte permisos extra con los administradores
+ * (observaciones y ruta del material). Se identifica por NOMBRE y no por id:
+ * el id cambia si la tabla se renumera o se reimporta (antes estaba fijo en 67
+ * y se rompia cada vez). La comparacion usa la collation de la tabla
+ * (utf8mb4_unicode_ci), que ignora mayusculas y acentos.
  */
-export const DEPARTAMENTO_SOPORTE = 67;
+export const NOMBRE_DEPARTAMENTO_SOPORTE = "Soporte Técnico";
 
 /**
  * esSoporteOAdmin
@@ -101,10 +124,14 @@ export async function esSoporteOAdmin({ id_empleado, id_rol } = {}) {
   if (!id_empleado) return false;
   try {
     const [[emp]] = await pool.query(
-      "SELECT id_departamento FROM empleado WHERE id_empleado = ? LIMIT 1",
-      [id_empleado]
+      `SELECT 1 AS ok
+         FROM empleado e
+         JOIN departamento d ON d.id_departamento = e.id_departamento
+        WHERE e.id_empleado = ? AND d.nombre_departamento = ?
+        LIMIT 1`,
+      [id_empleado, NOMBRE_DEPARTAMENTO_SOPORTE]
     );
-    return emp?.id_departamento === DEPARTAMENTO_SOPORTE;
+    return Boolean(emp?.ok);
   } catch {
     return false;
   }

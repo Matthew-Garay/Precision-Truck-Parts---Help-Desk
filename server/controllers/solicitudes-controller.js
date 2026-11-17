@@ -1,5 +1,5 @@
 /**
- * solicitudesController.js
+ * solicitudes-controller.js
  *
  * Controlador que gestiona las solicitudes de insumos, el inventario
  * y las operaciones CRUD sobre los insumos del almacen.
@@ -60,6 +60,48 @@
  *   getReporteSolicitudes
  *     Retorna solicitudes filtradas por rango de fechas con datos agregados
  *     (total de insumos, total de piezas, detalle concatenado) para exportacion.
+ *
+ * @module server/controllers/solicitudes-controller
+ * @requires ../services/solicitud.js
+ * @requires ../services/insumo.js
+ * @requires ../services/empleado.js
+ * @requires ../services/movimiento-inventario.js
+ * @requires ../config/socket-instance.js
+ * @requires ../config/db.js
+ * @requires path
+ * @requires fs
+ * @requires ../middlewares/upload-insumos.js
+ * @requires ../middlewares/auth-middleware.js
+ * @requires ../utils/helpers.js
+ * @exports getInsumos
+ * @exports getInventario
+ * @exports getInsumosStockBajo
+ * @exports crearSolicitud
+ * @exports getSolicitudesByEmpleado
+ * @exports getSolicitudById
+ * @exports getSolicitudByFolio
+ * @exports getSolicitudesPendientes
+ * @exports getAllSolicitudes
+ * @exports getMetricasSolicitudes
+ * @exports aprobarItemsSolicitud
+ * @exports guardarObservacionSolicitud
+ * @exports actualizarEstatusSolicitud
+ * @exports crearInsumo
+ * @exports actualizarInsumo
+ * @exports getReporteSolicitudes
+ * @exports subirFotoInsumo
+ * @exports eliminarInsumo
+ * @exports cambiarActivoInsumo
+ * @exports cambiarVisiblePublico
+ * @exports getInsumosForUser
+ * @exports registrarEntradaInsumo
+ * @exports editarEntrada
+ * @exports registrarSalidaInsumo
+ * @exports guardarRutaSolicitud
+ * @exports getMovimientosInventario
+ * @exports getSalidasMiSucursal
+ * @exports getMovimientosInsumo
+ * @exports getMovimientosSolicitud
  */
 import Solicitud from '../services/solicitud.js';
 import Insumo    from '../services/insumo.js';
@@ -71,7 +113,7 @@ import path      from "path";
 import fs        from "fs";
 import { INSUMOS_DIR } from '../middlewares/upload-insumos.js';
 import { esSoporteOAdmin } from '../middlewares/auth-middleware.js';
-import { isProd } from '../utils/helpers.js';
+import { isProd, generarFolio } from '../utils/helpers.js';
 
 const errDetalle = (err) => isProd() ? {} : {
   detalle: err.message,
@@ -293,8 +335,8 @@ export const getSolicitudesPendientes = async (req, res) => {
        FROM solicitud s
        JOIN empleado e          ON s.id_empleado     = e.id_empleado
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
-       JOIN solicitud_insumo si ON s.id_solicitud    = si.id_solicitud
-       JOIN insumo i            ON si.id_insumo      = i.id_insumo
+       LEFT JOIN solicitud_insumo si ON s.id_solicitud = si.id_solicitud
+       LEFT JOIN insumo i            ON si.id_insumo   = i.id_insumo
        WHERE s.estatus = 'En proceso'
        GROUP BY s.id_solicitud
        ORDER BY FIELD(s.prioridad,'Urgente','Alta','Media','Baja'), s.fecha ASC
@@ -518,22 +560,37 @@ export const actualizarEstatusSolicitud = async (req, res) => {
           return res.status(409).json({ error: "La solicitud ya está cerrada" });
         }
 
-        // 1. Leer los ítems reales de la BD (cantidad pedida y nombre del insumo)
-        const idsBody = itemsBody.map(it => parseInt(it.id_solicitud_insumo, 10));
+        // 1. Leer TODOS los ítems reales de la solicitud (cantidad pedida y nombre)
         const [filas] = await conn.query(
           `SELECT si.id_solicitud_insumo, si.id_insumo, si.cantidad,
                   IFNULL(i.nombre, '[Insumo eliminado]') AS nombre_insumo
              FROM solicitud_insumo si
              LEFT JOIN insumo i ON si.id_insumo = i.id_insumo
-            WHERE si.id_solicitud = ? AND si.id_solicitud_insumo IN (?)`,
-          [id, idsBody]
+            WHERE si.id_solicitud = ?`,
+          [id]
         );
         const mapaItems = new Map(filas.map(f => [f.id_solicitud_insumo, f]));
+
+        // Un ítem repetido en el body descontaba el stock dos veces: se
+        // conserva solo la última decisión por id_solicitud_insumo.
+        const itemsUnicos = [...new Map(
+          itemsBody.map(it => [parseInt(it.id_solicitud_insumo, 10), it])
+        ).values()];
+
+        // Todos los renglones deben tener decisión; si falta alguno quedaba
+        // con aprobado = NULL en una solicitud ya cerrada.
+        const sinDecidir = filas.filter(f => !itemsUnicos.some(it => parseInt(it.id_solicitud_insumo, 10) === f.id_solicitud_insumo));
+        if (sinDecidir.length > 0) {
+          await conn.rollback();
+          return res.status(400).json({
+            error: `Falta aprobar o negar: ${sinDecidir.map(f => `"${f.nombre_insumo}"`).join(", ")}`,
+          });
+        }
 
         // 2. Resolver qué se acepta de cada ítem. La cantidad aceptada nunca
         //    puede exceder la cantidad solicitada ni ser menor a 1.
         const resueltos = [];
-        for (const it of itemsBody) {
+        for (const it of itemsUnicos) {
           const fila = mapaItems.get(parseInt(it.id_solicitud_insumo, 10));
           if (!fila) {
             await conn.rollback();
@@ -556,6 +613,14 @@ export const actualizarEstatusSolicitud = async (req, res) => {
           });
         }
 
+        // Aceptar sin aprobar nada dejaba una solicitud "Aceptada" sin entrega.
+        if (!resueltos.some(r => r.aprovado === 1 && r.cantidad_aprobada > 0)) {
+          await conn.rollback();
+          return res.status(400).json({
+            error: "No aprobaste ningún insumo. Si no se entregará nada, rechaza la solicitud.",
+          });
+        }
+
         // 3. Guardar aprobado / cantidad aceptada de TODOS los ítems
         for (const r of resueltos) {
           await conn.query(
@@ -575,11 +640,15 @@ export const actualizarEstatusSolicitud = async (req, res) => {
         const aDescontar = resueltos.filter(r => r.aprovado === 1 && r.cantidad_aprobada > 0);
         for (const r of aDescontar) {
           const [[inv]] = await conn.query(
-            "SELECT stock FROM insumo WHERE id_insumo = ? FOR UPDATE", [r.id_insumo]
+            "SELECT stock, activo FROM insumo WHERE id_insumo = ? FOR UPDATE", [r.id_insumo]
           );
           if (!inv) {
             await conn.rollback();
             return res.status(400).json({ error: `"${r.nombre_insumo}" ya no existe en el inventario` });
+          }
+          if (Number(inv.activo) === 0) {
+            await conn.rollback();
+            return res.status(409).json({ error: `"${r.nombre_insumo}" está inhabilitado; niégalo o habilítalo antes de aceptar` });
           }
           if (inv.stock < r.cantidad_aprobada) {
             await conn.rollback();
@@ -599,7 +668,9 @@ export const actualizarEstatusSolicitud = async (req, res) => {
             id_sucursal_destino,
             id_solicitud:       id,
             id_empleado:        idAdmin,
-            motivo:             `Entrega de material por solicitud ${sol.folio_solicitud}`,
+            // Sin motivo: el folio ya está en la solicitud ligada (id_solicitud);
+            // al leer se muestra "Entrega de material por solicitud SOL-…".
+            motivo:             null,
           });
         }
 
@@ -608,6 +679,7 @@ export const actualizarEstatusSolicitud = async (req, res) => {
           "UPDATE solicitud SET estatus = 'Aceptado', fecha_atencion = NOW() WHERE id_solicitud = ?", [id]
         );
         await conn.commit();
+        Insumo.limpiarCache();
 
         // 7. Alertas de stock crítico + avisar el movimiento (fuera de la transacción)
         if (aDescontar.length > 0) {
@@ -653,7 +725,9 @@ export const actualizarEstatusSolicitud = async (req, res) => {
         if (errRuta) return res.status(400).json({ error: errRuta.message });
         await Solicitud.actualizarRuta(id, { id_sucursal_origen, id_sucursal_destino });
       }
-      await Solicitud.actualizarEstatus(id, estatus);
+      const cambiado = await Solicitud.actualizarEstatus(id, estatus);
+      if (!cambiado)
+        return res.status(409).json({ error: "La solicitud ya está cerrada" });
     }
 
     const [[sol]] = await pool.query(
@@ -734,7 +808,9 @@ export const crearInsumo = async (req, res) => {
           stock_anterior: 0,
           stock_nuevo:   stockInicial,
           id_empleado:   idAdmin,
-          motivo:        "Entrega de proveedor de Jose Alejandro Vera Atilano",
+          // Antes estaba fijo "Entrega de proveedor de Jose Alejandro Vera
+          // Atilano" para TODO insumo nuevo, aunque viniera de una sucursal.
+          motivo:        String(req.body.motivo ?? "").trim() || "Stock inicial al ingresar el insumo",
         });
       }
       await conn.commit();
@@ -1075,6 +1151,7 @@ export const registrarEntradaInsumo = async (req, res) => {
       conn.release();
     }
 
+    Insumo.limpiarCache();
     try {
       getIO().to("admins").emit("inventario:movimiento", { tipo: "Entrada", ...resultado });
     } catch {}
@@ -1082,6 +1159,113 @@ export const registrarEntradaInsumo = async (req, res) => {
     res.json({ ok: true, ...resultado });
   } catch (err) {
     res.status(500).json({ error: "Error al registrar la entrada de material", ...errDetalle(err) });
+  }
+};
+
+/**
+ * editarEntrada
+ * PUT /api/solicitudes/movimientos/:id   (solo admin)
+ *
+ * Corrige una ENTRADA ya registrada (cantidad, motivo y/o fecha) y ajusta el
+ * inventario automáticamente, en una sola transacción:
+ *   diferencia = cantidad nueva − cantidad anterior
+ *   - la entrada queda con stock_nuevo + diferencia;
+ *   - todos los movimientos POSTERIORES del mismo insumo recorren su
+ *     stock_anterior / stock_nuevo en la misma diferencia (el kardex sigue
+ *     encadenado: cada movimiento empieza donde terminó el anterior);
+ *   - insumo.stock se ajusta en la misma diferencia.
+ * Si reducir la entrada dejaría el stock negativo en algún punto (porque ya
+ * salieron esas unidades), responde 409 y no cambia nada.
+ */
+export const editarEntrada = async (req, res) => {
+  const id = toPosId(req.params.id);
+  if (!id) return res.status(400).json({ error: "ID de movimiento inválido" });
+  const cantidadNueva = parseInt(req.body.cantidad, 10);
+  if (!Number.isFinite(cantidadNueva) || cantidadNueva < 1)
+    return res.status(400).json({ error: "La cantidad debe ser al menos 1" });
+  const motivo = req.body.motivo === undefined ? undefined : (String(req.body.motivo ?? "").trim() || null);
+
+  // Fecha manual opcional (mismo formato que al registrar la entrada).
+  const f = String(req.body.fecha ?? "").trim();
+  let fechaMySQL = null;
+  if (f) {
+    const soloFecha = (f.match(/^\d{4}-\d{2}-\d{2}/) || [])[0];
+    const tieneHora = /[T ]\d{2}:\d{2}/.test(f);
+    const d = new Date(tieneHora ? f.replace(" ", "T") : `${soloFecha}T12:00:00`);
+    if (Number.isNaN(d.getTime())) return res.status(400).json({ error: "Fecha inválida" });
+    const p = (n) => String(n).padStart(2, "0");
+    fechaMySQL = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  }
+
+  let resultado = null;
+  try {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      const [[mov]] = await conn.query(
+        "SELECT id_movimiento, id_insumo, tipo, cantidad, stock_anterior, stock_nuevo FROM movimiento_inventario WHERE id_movimiento = ? FOR UPDATE",
+        [id]
+      );
+      if (!mov) { await conn.rollback(); return res.status(404).json({ error: "Movimiento no encontrado" }); }
+      if (mov.tipo !== "Entrada") {
+        await conn.rollback();
+        return res.status(409).json({ error: "Solo se pueden editar entradas. Las salidas se corrigen con una entrada o un ajuste." });
+      }
+      const [[ins]] = await conn.query(
+        "SELECT id_insumo, nombre, stock FROM insumo WHERE id_insumo = ? FOR UPDATE", [mov.id_insumo]
+      );
+      const delta = cantidadNueva - mov.cantidad;
+
+      if (delta < 0) {
+        // El punto más bajo del kardex a partir de esta entrada no puede quedar negativo.
+        const [[min]] = await conn.query(
+          `SELECT LEAST(MIN(stock_nuevo), MIN(IF(id_movimiento > ?, stock_anterior, stock_nuevo))) AS minimo
+             FROM movimiento_inventario WHERE id_insumo = ? AND id_movimiento >= ?`,
+          [id, mov.id_insumo, id]
+        );
+        const minimo = Math.min(Number(min?.minimo ?? 0), Number(ins.stock));
+        if (minimo + delta < 0) {
+          await conn.rollback();
+          return res.status(409).json({
+            error: `No se puede bajar la entrada a ${cantidadNueva}: de "${ins.nombre}" ya salieron unidades y el inventario quedaría negativo (mínimo permitido: ${mov.cantidad - minimo}).`,
+          });
+        }
+      }
+
+      await conn.query(
+        `UPDATE movimiento_inventario
+            SET cantidad = ?, stock_nuevo = stock_nuevo + ?
+                ${motivo !== undefined ? ", motivo = ?" : ""}
+                ${fechaMySQL ? ", fecha = ?" : ""}
+          WHERE id_movimiento = ?`,
+        [cantidadNueva, delta, ...(motivo !== undefined ? [motivo] : []), ...(fechaMySQL ? [fechaMySQL] : []), id]
+      );
+      if (delta !== 0) {
+        await conn.query(
+          `UPDATE movimiento_inventario
+              SET stock_anterior = stock_anterior + ?, stock_nuevo = stock_nuevo + ?
+            WHERE id_insumo = ? AND id_movimiento > ?`,
+          [delta, delta, mov.id_insumo, id]
+        );
+        await conn.query("UPDATE insumo SET stock = stock + ? WHERE id_insumo = ?", [delta, mov.id_insumo]);
+      }
+      await conn.commit();
+      resultado = {
+        id_movimiento: id, id_insumo: mov.id_insumo, nombre_insumo: ins.nombre,
+        cantidad_anterior: mov.cantidad, cantidad: cantidadNueva, diferencia: delta,
+        stock_anterior: ins.stock, stock_nuevo: ins.stock + delta,
+      };
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+    Insumo.limpiarCache();
+    try { getIO().to("admins").emit("inventario:movimiento", { tipo: "Entrada editada", ...resultado }); } catch {}
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    res.status(500).json({ error: "Error al editar la entrada", ...errDetalle(err) });
   }
 };
 
@@ -1193,90 +1377,38 @@ export const registrarSalidaInsumo = async (req, res) => {
       const fechaMySQL = f
         ? `${pad2(base.getFullYear())}-${pad2(base.getMonth() + 1)}-${pad2(base.getDate())} ${pad2(base.getHours())}:${pad2(base.getMinutes())}:${pad2(base.getSeconds())}`
         : null;
-      // Folio de salida por MES: SAL-YYYYMM-NNNN (4 digitos, ej. SAL-202610-0001).
-      // El consecutivo es el MAXIMO + 1 de los folios del mes ya escritos en el
-      // motivo (cada salida manual deja "[SAL-YYYYMM-NNNN] ..." al inicio).
-      // El REGEXP acepta 3 o 4 digitos ([0-9]{3,4}) para incluir tambien los
-      // folios viejos de 3 digitos y que la secuencia sea consecutiva.
-      const ym = `${base.getFullYear()}${String(base.getMonth() + 1).padStart(2, "0")}`;
-      const [[{ max_n }]] = await conn.query(
-        `SELECT MAX(CAST(SUBSTRING(motivo, 13, LOCATE(']', motivo) - 13) AS UNSIGNED)) AS max_n
-           FROM movimiento_inventario
-          WHERE tipo = 'Salida' AND motivo LIKE ? AND motivo REGEXP ? FOR UPDATE`,
-        // OJO: en template literals JS, `\[` descarta el backslash (NonEscapeCharacter)
-        // y el regex llega como `[SAL-...` (clase de caracteres → error ICU "range x>y").
-        // Se necesita `\\[` en el fuente para que el string sea `\[` y el regex escape.
-        [`[SAL-${ym}-%`, `^\\[SAL-${ym}-[0-9]{3,4}\\]`]
+      // ── Cabecera de la salida (tabla salida_interna) ──────────────────
+      // Antes todo (folio, ruta, prioridad, solicitante, puesto, justificación)
+      // se concatenaba en el texto de `motivo` de CADA renglón. Ahora vive en
+      // columnas propias de una sola fila de cabecera, y los movimientos solo
+      // la referencian por id_salida. Puesto, sucursal y número de empleado del
+      // solicitante NO se copian: se obtienen por JOIN desde `empleado`.
+      //
+      // Folio por MES de la fecha física: SAL-YYYYMM-NNNN.
+      const folio = await generarFolio(conn, "salida_interna", "folio_salida", "SAL", base);
+
+      const idSucOrigen     = toPosId(id_sucursal_origen);
+      const idSucDestino    = toPosId(id_destino ?? id_sucursal_destino);
+      const idSolicitante   = toPosId(id_solicitante);
+      const idResponsable   = toPosId(id_responsable);
+      // Texto libre solo cuando no se eligió un empleado/sucursal de la lista.
+      const solicitanteTxt  = idSolicitante ? null : (String(solicitante ?? "").trim() || null);
+      const responsableTxt  = idResponsable ? null : (String(responsable ?? "").trim() || null);
+      const destinoTxt      = idSucDestino  ? null : (String(destino ?? "").trim() || null);
+      const justTxt         = (String(justificacion ?? "").trim() || String(motivo ?? "").trim() || null);
+      const PRIORIDADES     = ["Baja", "Media", "Alta", "Urgente"];
+      const prioTxt         = PRIORIDADES.includes(String(prioridad ?? "").trim()) ? String(prioridad).trim() : "Media";
+
+      const [cab] = await conn.query(
+        `INSERT INTO salida_interna
+           (folio_salida, fecha, prioridad, id_sucursal_origen, id_sucursal_destino, destino_texto,
+            id_solicitante, solicitante_texto, id_responsable, responsable_texto, justificacion, id_registro)
+         VALUES (?, COALESCE(?, NOW()), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [folio, fechaMySQL, prioTxt, idSucOrigen, idSucDestino, destinoTxt,
+         idSolicitante, solicitanteTxt, idResponsable, responsableTxt,
+         justTxt, idAdmin]
       );
-      const folio = `SAL-${ym}-${String((Number(max_n) || 0) + 1).padStart(4, "0")}`;
-
-      // Los campos del formato pueden venir como texto libre (hojas viejas) o
-      // como IDs de las listas (empleados/sucursales): se resuelven a nombre.
-      const nombreEmpleado = async (id) => {
-        if (!Number.isFinite(parseInt(id, 10))) return null;
-        const [[e]] = await conn.query(
-          `SELECT CONCAT(nombre, ' ', ap_paterno, ' ', IFNULL(ap_materno, '')) AS n FROM empleado WHERE id_empleado = ? LIMIT 1`,
-          [parseInt(id, 10)]
-        );
-        return e?.n?.replace(/\s+/g, " ").trim() || null;
-      };
-      const nombreSucursal = async (id) => {
-        if (!Number.isFinite(parseInt(id, 10))) return null;
-        const [[s]] = await conn.query(`SELECT nombre_sucursal AS n FROM sucursal WHERE id_sucursal = ? LIMIT 1`, [parseInt(id, 10)]);
-        return s?.n?.trim() || null;
-      };
-      // Detalles del SOLICITANTE (quién pide el material): puesto/área,
-      // sucursal y número de empleado. Viajan dentro del motivo para que la
-      // hoja de salida y el historial puedan mostrarlos sin columna extra.
-      const detalleSolicitante = async (id) => {
-        const idn = parseInt(id, 10);
-        if (!Number.isFinite(idn)) return null;
-        const [[e]] = await conn.query(
-          `SELECT e.num_empleado AS num,
-                  COALESCE(d.nombre_departamento, r.nombre_rol) AS puesto,
-                  s.nombre_sucursal AS sucursal
-           FROM empleado e
-           LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
-           LEFT JOIN rol r          ON e.id_rol          = r.id_rol
-           LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal
-           WHERE e.id_empleado = ? LIMIT 1`,
-          [idn]
-        );
-        if (!e) return null;
-        return {
-          puesto:   (e.puesto   || "").trim() || null,
-          sucursal: (e.sucursal || "").trim() || null,
-          num:      (e.num      || "").trim() || null,
-        };
-      };
-      const destinoTxt     = String(destino ?? "").trim() || await nombreSucursal(id_destino ?? id_sucursal_destino) || "";
-      const origenTxt      = await nombreSucursal(id_sucursal_origen) || "";
-      const responsableTxt = String(responsable ?? "").trim() || await nombreEmpleado(id_responsable) || "";
-      const solicitanteTxt = String(solicitante ?? "").trim() || await nombreEmpleado(id_solicitante) || "";
-      const detSol          = id_solicitante ? await detalleSolicitante(id_solicitante) : null;
-      const justTxt        = String(justificacion ?? "").trim() || String(motivo ?? "").trim();
-      const prioTxt        = String(prioridad ?? "").trim();
-      const rutaTxt        = [origenTxt, destinoTxt].filter(Boolean).join(" → ");
-
-      const prefijo = [`[${folio}] Uso interno`,
-        rutaTxt       ? `Ruta: ${rutaTxt}` : null,
-        destinoTxt && !origenTxt ? `Destino: ${destinoTxt}` : null,
-        tieneHora ? `Hora: ${String(f).slice(11, 16)}` : null,
-        prioTxt       ? `Prioridad: ${prioTxt}` : null,
-        responsableTxt ? `Recibe: ${responsableTxt}` : null,
-        solicitanteTxt ? `Entrega: ${solicitanteTxt}` : null,
-        detSol?.puesto   ? `Puesto: ${detSol.puesto}` : null,
-        detSol?.sucursal ? `SucSol: ${detSol.sucursal}` : null,
-        detSol?.num      ? `NumEmp: ${detSol.num}` : null,
-        justTxt       ? `Justificación: ${justTxt}` : null,
-      ].filter(Boolean).join(" · ");
-      // La columna `motivo` es VARCHAR(500): nunca debe rebasarla.
-      const motivoMov = (prefijo || `[${folio}] Uso interno`).slice(0, 500);
-
-      // La ruta del material queda registrada en el movimiento para que la
-      // sucursal de destino pueda ver estas salidas en SU historial.
-      const idSucOrigen  = toPosId(id_sucursal_origen);
-      const idSucDestino = toPosId(id_destino ?? id_sucursal_destino);
+      const idSalida = cab.insertId;
       const movs = [];
       for (const { id_insumo: idIns, cantidad: cant } of lista) {
         // `activo` puede no existir si aún no se corre la migración 027:
@@ -1317,14 +1449,15 @@ export const registrarSalidaInsumo = async (req, res) => {
           id_empleado: idAdmin,
           id_sucursal_origen:  idSucOrigen,
           id_sucursal_destino: idSucDestino,
-          motivo:      motivoMov,
+          id_salida:   idSalida,
+          motivo:      null,        // los datos de la salida están en salida_interna
           fecha: fechaMySQL,
         });
         movs.push({ id_movimiento, id_insumo: idIns, nombre_insumo: ins.nombre, descripcion: ins.descripcion ?? null, marca: ins.marca ?? null, modelo: ins.modelo ?? null, imagen_url: ins.imagen_url ?? null, cantidad: cant, stock_anterior, stock_nuevo });
       }
 
       await conn.commit();
-      resultado = { folio, total_renglones: movs.length, movimientos: movs };
+      resultado = { folio, id_salida: idSalida, total_renglones: movs.length, movimientos: movs };
     } catch (err) {
       await conn.rollback();
       throw err;
@@ -1332,6 +1465,7 @@ export const registrarSalidaInsumo = async (req, res) => {
       conn.release();
     }
 
+    Insumo.limpiarCache();
     try {
       getIO().to("admins").emit("inventario:movimiento", { tipo: "Salida", ...resultado });
     } catch {}
@@ -1410,9 +1544,6 @@ export const guardarRutaSolicitud = async (req, res) => {
  */
 export const getMovimientosInventario = async (req, res) => {
   const q = req.query ?? {};
-  console.log("[DEBUG getMovimientosInventario] Petición entrante - query:", JSON.stringify(q));
-  console.log("[DEBUG getMovimientosInventario] usuario autenticado:", req.usuario ? `empleado ${req.usuario.id_empleado}` : "NO AUTENTICADO");
-  
   // Validación: tipo es obligatorio para esta ruta de listado
   if (!q.tipo || !["Entrada", "Salida", "Ajuste"].includes(q.tipo)) {
     return res.status(400).json({ error: "Parámetro 'tipo' es requerido y debe ser Entrada, Salida o Ajuste" });
@@ -1431,10 +1562,9 @@ export const getMovimientosInventario = async (req, res) => {
       fecha_inicio: q.fecha_inicio && esFecha(q.fecha_inicio) ? q.fecha_inicio : undefined,
       fecha_fin:    q.fecha_fin    && esFecha(q.fecha_fin)    ? q.fecha_fin    : undefined,
     });
-    console.log("[DEBUG getMovimientosInventario] Resultado:", rows?.length || 0, "filas, total:", total);
     res.json({ rows, total });
   } catch (err) {
-    console.error("[DEBUG getMovimientosInventario] ERROR:", err.message);
+    console.error("[movimientos] Error al listar:", err.message);
     res.status(500).json({ error: "Error al obtener los movimientos de inventario", ...errDetalle(err) });
   }
 };
@@ -1468,7 +1598,7 @@ export const getSalidasMiSucursal = async (req, res) => {
       page:  Math.max(parseInt(q.page) || 1, 1),
       limit: Math.min(Math.max(parseInt(q.limit) || 100, 1), 500),
       tipo:  "Salida",
-      id_sucursal_destino: id_sucursal,
+      id_sucursal_relacionada: id_sucursal,
       q: typeof q.q === "string" && q.q.trim() ? q.q.trim().slice(0, 100) : undefined,
     });
     res.json({ rows, total });

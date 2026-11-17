@@ -1,5 +1,5 @@
 /**
- * printUtils.ts
+ * print-utils.ts
  *
  * Utilidades compartidas por todas las paginas de impresion PDF del sistema.
  * Estas paginas se abren en una ventana nueva y llaman a window.print()
@@ -21,6 +21,10 @@
  *       3. Espera 150 ms adicionales para que el navegador aplique los estilos CSS.
  *       4. Abre el dialogo de impresion del navegador con window.print().
  *     Retorna una promesa que se resuelve cuando el dialogo de impresion se abre.
+ *
+ * @module client/utils/print-utils
+ * @exports waitForImages
+ * @exports triggerPrint
  */
 
 /**

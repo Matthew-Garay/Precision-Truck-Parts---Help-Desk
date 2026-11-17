@@ -1,5 +1,5 @@
 /**
- * NotificationService.js
+ * notification-service.js
  *
  * Servicio centralizado de notificaciones en tiempo real.
  * Es consumido por useTicketNotification.js y no debe usarse directamente
@@ -29,6 +29,15 @@
  *    Toma el tipo de evento y el payload, aplica las funciones de titulo
  *    y mensaje del mapa NOTIFICATION_DISPLAY y retorna el objeto final
  *    { toastTipo, titulo, mensaje } listo para mostrar.
+ *
+ * @module client/services/notification-service
+ * @requires ./api-client.js
+ * @exports isMuted
+ * @exports setMuted
+ * @exports playNotificationSound
+ * @exports NOTIFICATION_DISPLAY
+ * @exports verifyTicketExists
+ * @exports buildNotification
  */
 import { apiFetch, API_ROUTES } from './api-client.js';
 

@@ -32,10 +32,25 @@
  *   InlineAlert
  *     Banner de estado inline para mostrar dentro de formularios o secciones.
  *     Soporta los mismos tipos que los toasts: success, error, warning, info.
+ *
+ * @module client/components/Feedback
+ * @requires react
+ * @requires lucide-react
+ * @requires ../context/toast-context.jsx
+ * @requires ../utils/tipografia.js
+ * @requires ./LogoModal.jsx
+ * @exports Modal
+ * @exports ModalConfirm
+ * @exports ToastProvider
+ * @exports Tooltip
+ * @exports InlineAlert
+ * @exports useToast
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X, CheckCircle2, AlertTriangle, XCircle, Info, AlertCircle, Loader2 } from "lucide-react";
 import { ToastCtx } from '../context/toast-context.jsx';
+import { FS } from '../utils/tipografia.js';
+import LogoModal from './LogoModal.jsx';
 export { useToast } from '../hooks/use-toast.js';
 
 // ── Animaciones inyectadas una sola vez ──────────────────────────
@@ -86,7 +101,7 @@ function Btn({ label, onClick, disabled, variant = "ghost", color, icon: Icon, T
   const base = {
     display: "inline-flex", alignItems: "center", justifyContent: "center",
     gap: "6px", height: "32px", padding: "0 14px",
-    fontSize: "13px", fontWeight: 500,
+    fontSize: FS.enfasis, fontWeight: 500,
     borderRadius: "4px", border: "1px solid transparent",
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.5 : 1,
@@ -210,19 +225,15 @@ export function Modal({
           gap: "12px", flexShrink: 0,
         }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: danger ? "#DC2626" : ORANGE }}>
+            <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: danger ? "#DC2626" : ORANGE }}>
               {danger ? "Acción requerida" : "Aviso"}
             </p>
-            <h2 id="_fb_modal_title" style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: s.textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+            <h2 id="_fb_modal_title" style={{ margin: "3px 0 0", fontSize: FS.subtitulo, fontWeight: 700, color: s.textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
               {title}
             </h2>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
-            <img
-              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
-              alt="Precision Trucks"
-              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
-            />
+            <LogoModal />
             <button
               onClick={attemptClose}
               aria-label="Cerrar"
@@ -244,7 +255,7 @@ export function Modal({
         {/* Body */}
         <div style={{
           padding: "16px 18px", overflowY: "auto", flex: 1,
-          fontSize: "13px", lineHeight: "1.55", color: s.text,
+          fontSize: FS.enfasis, lineHeight: "1.55", color: s.text,
         }}>
           {children}
         </div>
@@ -292,12 +303,12 @@ export function Modal({
               padding: "14px 18px 12px", borderBottom: `1px solid ${s.border}`, gap: "12px",
             }}>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>Aviso</p>
-                <h3 style={{ margin: "3px 0 0", fontSize: "15px", fontWeight: 700, color: s.textMain, lineHeight: 1.2 }}>Cambios sin guardar</h3>
+                <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>Aviso</p>
+                <h3 style={{ margin: "3px 0 0", fontSize: FS.subtitulo, fontWeight: 700, color: s.textMain, lineHeight: 1.2 }}>Cambios sin guardar</h3>
               </div>
-              <img src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"} alt="" style={{ height: "24px", width: "auto", opacity: 0.6, flexShrink: 0, marginTop: "2px" }} />
+              <LogoModal />
             </div>
-            <div style={{ padding: "14px 18px", fontSize: "13px", color: s.textSub, lineHeight: 1.5 }}>
+            <div style={{ padding: "14px 18px", fontSize: FS.enfasis, color: s.textSub, lineHeight: 1.5 }}>
               Si cierras ahora se perderán los cambios realizados.
             </div>
             <div style={{
@@ -328,7 +339,7 @@ export function ModalConfirm({ T, open, onClose, onConfirm, title, message, load
     >
       <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
         <AlertTriangle size={16} style={{ color: "#DC2626", flexShrink: 0, marginTop: "2px" }} />
-        <p style={{ margin: 0, fontSize: "14px", color: s.textSub, lineHeight: 1.55 }}>
+        <p style={{ margin: 0, fontSize: FS.subtitulo, color: s.textSub, lineHeight: 1.55 }}>
           {message}
         </p>
       </div>
@@ -391,12 +402,12 @@ function ToastItem({ toast, onRemove, isDark }) {
       <Icon size={15} style={{ color: cfg.accent, flexShrink: 0, marginTop: "1px" }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         {toast.title && (
-          <p style={{ margin: "0 0 2px 0", fontSize: "13px", fontWeight: 600, color: tx }}>
+          <p style={{ margin: "0 0 2px 0", fontSize: FS.enfasis, fontWeight: 600, color: tx }}>
             {toast.title}
           </p>
         )}
         <p style={{
-          margin: 0, fontSize: "13px", fontWeight: 400,
+          margin: 0, fontSize: FS.enfasis, fontWeight: 400,
           color: tx, lineHeight: 1.45,
           opacity: toast.title ? 0.85 : 1,
         }}>
@@ -498,7 +509,7 @@ export function Tooltip({ T, content, children, position = "top", delay = 350 })
             position: "absolute", ...POS[position], zIndex: 3000,
             background: isDark ? "#21283A" : "#1F2937",
             color: "#F9FAFB",
-            fontSize: "12px", fontWeight: 400, lineHeight: 1.4,
+            fontSize: FS.cuerpo, fontWeight: 400, lineHeight: 1.4,
             padding: "4px 8px", borderRadius: "4px",
             whiteSpace: "nowrap", maxWidth: "200px",
             pointerEvents: "none",
@@ -532,7 +543,7 @@ export function InlineAlert({ T, type = "info", message, title, onClose }) {
         border: `1px solid ${cfg.accent}22`,
         borderLeft: `3px solid ${cfg.accent}`,
         borderRadius: "4px",
-        fontSize: "13px",
+        fontSize: FS.enfasis,
       }}
     >
       <Icon size={15} style={{ color: cfg.accent, flexShrink: 0, marginTop: "1px" }} />

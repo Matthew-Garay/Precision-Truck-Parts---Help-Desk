@@ -1,5 +1,7 @@
 /**
- * api.js — Módulo central de comunicación HTTP.
+ * api-client.js
+ *
+ * Módulo central de comunicación HTTP.
  *
  * PERSISTENCIA DE SESIÓN:
  *   El sistema implementa persistencia de sesión mediante localStorage,
@@ -24,6 +26,15 @@
  *
  * clearSession() — elimina token + usuario + id_acceso y redirige a /login.
  * apiFetch()     — adjunta JWT, CSRF header y serializa body automáticamente.
+ *
+ * @module client/services/api-client
+ * @exports getToken
+ * @exports setToken
+ * @exports clearToken
+ * @exports clearSession
+ * @exports apiFetch
+ * @exports API (default)
+ * @exports API_ROUTES
  */
 // Base URL fija desde variable de entorno — nunca proviene de input del usuario
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
@@ -73,6 +84,7 @@ const API_ROUTES = {
   INSUMO_ENTRADA:     (id) => `/api/solicitudes/insumos/${Number(id)}/entrada`,
   INSUMO_MOVIMIENTOS: (id) => `/api/solicitudes/insumos/${Number(id)}/movimientos`,
   MOVIMIENTOS_INSUMOS: "/api/solicitudes/movimientos",
+  MOVIMIENTO:         (id) => `/api/solicitudes/movimientos/${Number(id)}`,
   INVENTARIO:         "/api/solicitudes/inventario",
   // Categorias / Manuales
   CATEGORIAS:         "/api/categorias",

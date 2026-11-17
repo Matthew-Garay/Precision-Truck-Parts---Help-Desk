@@ -1,5 +1,5 @@
 /**
- * useAutoRefresh.js
+ * use-auto-refresh.js
  *
  * Hook de React que ejecuta una funcion de forma periodica y se pausa
  * automaticamente cuando la pestana del navegador no esta visible.
@@ -22,6 +22,10 @@
  *
  * Uso tipico:
  *   useAutoRefresh(() => cargarTickets(), 30000);
+ *
+ * @module client/hooks/use-auto-refresh
+ * @requires react
+ * @exports useAutoRefresh
  */
 import { useEffect, useRef, useCallback } from "react";
 export function useAutoRefresh(fn, intervaloMs = 30000, deps = []) {

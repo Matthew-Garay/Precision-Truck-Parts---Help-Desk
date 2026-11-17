@@ -1,3 +1,18 @@
+/**
+ * PrintEntradasPage.tsx
+ *
+ * Página /print/entradas: lee de sessionStorage el payload preparado por
+ * Inventario.jsx y renderiza PrintEntradasView para imprimir.
+ *
+ * Export default: PrintEntradasPage
+ *
+ * @module client/pages/print/PrintEntradasPage
+ * @requires react
+ * @requires ../../components/print/PrintEntradasView.tsx
+ * @requires ../../components/PrintShared.tsx
+ * @requires ../../utils/print-utils.ts
+ * @exports PrintEntradasPage (default)
+ */
 import { useEffect, useState } from "react";
 import PrintEntradasView, { EntradasPayload } from '../../components/print/PrintEntradasView.tsx';
 import { LoadingPrint, ErrorPrint } from '../../components/PrintShared.tsx';

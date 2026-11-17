@@ -1,5 +1,5 @@
 /**
- * Manual.js
+ * manual.js
  *
  * Modelo que encapsula todas las operaciones sobre la tabla "manual".
  * Un manual es un archivo PDF tecnico que los administradores suben al sistema
@@ -36,6 +36,11 @@
  *     Elimina el registro del manual de la base de datos.
  *     No elimina el archivo del disco; eso lo hace el controlador de rutas.
  *     Retorna true si se elimino al menos un registro, false si no existe.
+ *
+ * @module server/services/manual
+ * @requires ../config/db.js
+ * @requires ../config/cache.js
+ * @exports Manual (default)
  */
 import pool from '../config/db.js';
 import { cache } from '../config/cache.js';

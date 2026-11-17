@@ -1,12 +1,23 @@
 /**
  * ModalInsumo.jsx — Crear / Editar insumo
  * Mismo sistema visual que ModalDetalleInsumo.
+ *
+ * @module client/components/Inventario/ModalInsumo
+ * @requires react
+ * @requires lucide-react
+ * @requires ../../services/api-client.js
+ * @requires ../Feedback.jsx
+ * @requires ../../utils/tipografia.js
+ * @requires ../LogoModal.jsx
+ * @exports ModalInsumo (default)
  */
 import { useState, useEffect, useRef } from "react";
 import { X, Package, Pencil, ImagePlus, XCircle } from "lucide-react";
 import { apiFetch, API_ROUTES } from '../../services/api-client.js';
 import { useToast } from '../Feedback.jsx';
 
+import { FS } from '../../utils/tipografia.js';
+import LogoModal from '../LogoModal.jsx';
 const ORANGE      = "#F47920";
 const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo", "Dañado"];
 
@@ -18,7 +29,7 @@ const INSUMO_VACIO = {
 function Field({ label, htmlFor, required, children, textFaint, style }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0, ...(style || {}) }}>
-      <label htmlFor={htmlFor} style={{ fontSize: "14px", fontWeight: 500, color: textFaint }}>
+      <label htmlFor={htmlFor} style={{ fontSize: FS.subtitulo, fontWeight: 500, color: textFaint }}>
         {label}{required && <span style={{ color: ORANGE, marginLeft: "2px" }}>*</span>}
       </label>
       {children}
@@ -102,7 +113,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
     borderRadius: "6px",
     padding: "0 10px",
     height: "34px",
-    fontSize: "13px",
+    fontSize: FS.enfasis,
     color: textMain,
     outline: "none",
     width: "100%",
@@ -219,23 +230,19 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
           gap: "12px", flexShrink: 0,
         }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>
+            <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>
               {isEdit ? "Editar insumo" : "Nuevo insumo"}
             </p>
-            <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+            <h2 style={{ margin: "3px 0 0", fontSize: FS.subtitulo, fontWeight: 700, color: textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
               {isEdit ? insumo.nombre : "Agregar al inventario"}
             </h2>
-            <p style={{ margin: "3px 0 0", fontSize: "12px", color: textMuted }}>
+            <p style={{ margin: "3px 0 0", fontSize: FS.cuerpo, color: textMuted }}>
               {isEdit ? "Modifica los campos que necesites" : "Completa los datos del nuevo insumo"}
             </p>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
-            <img
-              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
-              alt="Precision Trucks"
-              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
-            />
+            <LogoModal />
             <button
               onClick={onClose}
               aria-label="Cerrar"
@@ -315,13 +322,13 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
                     style={{
                       ...inp, height: "34px", cursor: "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      gap: "6px", fontSize: "12px", fontWeight: 500, color: textMuted,
+                      gap: "6px", fontSize: FS.cuerpo, fontWeight: 500, color: textMuted,
                     }}
                   >
                     <ImagePlus size={13} />
                     {fotoPreview ? "Cambiar foto" : "Seleccionar foto"}
                   </button>
-                  <p style={{ margin: "4px 0 0", fontSize: "10px", color: textFaint }}>
+                  <p style={{ margin: "4px 0 0", fontSize: FS.etiqueta, color: textFaint }}>
                     JPG, PNG, WEBP · máx 5 MB
                   </p>
                 </div>
@@ -386,7 +393,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
                   style={{ ...inp, ...(isEdit ? { opacity: 0.65, cursor: "not-allowed" } : {}) }}
                   onFocus={isEdit ? undefined : onFocus} onBlur={isEdit ? undefined : onBlur} />
                 {isEdit && (
-                  <span style={{ fontSize: 9.5, color: textFaint, marginTop: 1 }}>
+                  <span style={{ fontSize: FS.etiqueta, color: textFaint, marginTop: 1 }}>
                     Solo se modifica con una “Entrada de material”
                   </span>
                 )}
@@ -423,7 +430,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
             </Field>
 
             {/* Nota: campos vacíos se guardan como N/A automáticamente */}
-            <p style={{ margin: 0, fontSize: "10px", color: textFaint, textAlign: "right", gridColumn: "1 / -1" }}>
+            <p style={{ margin: 0, fontSize: FS.etiqueta, color: textFaint, textAlign: "right", gridColumn: "1 / -1" }}>
               Los campos vacíos se guardarán como <b>N/A</b>.
             </p>
 
@@ -431,7 +438,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
             {error && (
               <p role="alert" style={{ gridColumn: "1 / -1",
                 margin: 0, padding: "8px 12px", borderRadius: "6px",
-                fontSize: "12px", fontWeight: 500, color: "#dc2626",
+                fontSize: FS.cuerpo, fontWeight: 500, color: "#dc2626",
                 background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2",
                 border: `1px solid ${isDark ? "rgba(220,38,38,0.25)" : "#fecaca"}`,
               }}>
@@ -455,7 +462,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
             disabled={saving}
             style={{
               padding: "14px 24px", borderRadius: "6px",
-              fontSize: "14px", fontWeight: 600,
+              fontSize: FS.subtitulo, fontWeight: 600,
               background: "transparent", border: `1px solid ${border}`,
               color: textMuted, cursor: "pointer", transition: "all 0.12s",
               opacity: saving ? 0.5 : 1,
@@ -471,7 +478,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
             disabled={saving}
             style={{
               padding: "14px 24px", borderRadius: "6px",
-              fontSize: "14px", fontWeight: 700,
+              fontSize: FS.subtitulo, fontWeight: 700,
               background: saving ? `${ORANGE}99` : ORANGE,
               border: "none", color: "#fff",
               cursor: saving ? "not-allowed" : "pointer",

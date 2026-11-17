@@ -1,3 +1,31 @@
+/**
+ * SolicitudInsumo.jsx
+ *
+ * Solicitudes de insumos del empleado: catálogo (sin stock visible), carrito,
+ * envío con observaciones generales e historial de sus solicitudes y de las
+ * salidas internas relacionadas con su sucursal.
+ *
+ * Export default: SolicitudInsumo
+ * Props: usuario.
+ * Endpoints: GET /api/solicitudes/insumos, POST /api/solicitudes, GET
+ *    /api/solicitudes/empleado/:id, GET /api/solicitudes/movimientos/mis-
+ *    salidas.
+ *
+ * @module client/pages/Usuario/SolicitudInsumo
+ * @requires react
+ * @requires lucide-react
+ * @requires ../../services/api-client.js
+ * @requires ../../components/Card.jsx
+ * @requires ../../components/Inventario/ModalDetalleInsumo.jsx
+ * @requires ../../components/FiltrosToolbar.jsx
+ * @requires ./VistaSolicitud.jsx
+ * @requires ../../hooks/use-auto-refresh.js
+ * @requires ../../components/Paginacion.jsx
+ * @requires ../../services/salidas-historial.js
+ * @requires ../../utils/tipografia.js
+ * @requires ../../components/LogoModal.jsx
+ * @exports SolicitudInsumo (default)
+ */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Minus, Trash2, Package, AlertCircle, CheckCircle2, Search, Tag, Ticket, ChevronDown, Clock, XCircle, X, History, Inbox, Eye } from "lucide-react";
 import { apiFetch, API_ROUTES } from '../../services/api-client.js';
@@ -12,6 +40,8 @@ import {
   traerSalidasMiSucursal, traerSolicitudesEmpleado,
 } from '../../services/salidas-historial.js';
 
+import { FS } from '../../utils/tipografia.js';
+import LogoModal from '../../components/LogoModal.jsx';
 const PRIORITY_OPTIONS = [
   { value: "Urgente", label: "Urgente", color: "#dc2626", bg: "rgba(220,38,38,0.10)", border: "rgba(220,38,38,0.30)" },
   { value: "Alta",    label: "Alta",    color: "#ea580c", bg: "rgba(234,88,12,0.10)",  border: "rgba(234,88,12,0.30)"  },
@@ -42,18 +72,18 @@ function SupplyRow({ supply, isAdded, onAdd, animatingId, T, onDetail }) {
       </td>
       <td className="px-3 py-1.5">
         <div className="flex flex-col gap-0">
-          <span className="text-[10px] font-mono select-all" style={{ color: T.textFaint }}>
+          <span className="text-[9px] font-mono select-all" style={{ color: T.textFaint }}>
             #{String(supply.id_insumo).padStart(4, "0")}
           </span>
           <button
             onClick={() => onDetail(supply)}
-            className="text-[11px] font-semibold leading-tight text-left hover:underline"
+            className="text-[10px] font-semibold leading-tight text-left hover:underline"
             style={{ color: T.text, background: "none", border: "none", padding: 0, cursor: "pointer" }}
           >
             {supply.nombre}
           </button>
           {(supply.marca || supply.modelo) && (
-            <span className="text-[10px]" style={{ color: T.textFaint }}>
+            <span className="text-[9px]" style={{ color: T.textFaint }}>
               {[supply.marca, supply.modelo].filter(Boolean).join(" · ")}
             </span>
           )}
@@ -62,26 +92,26 @@ function SupplyRow({ supply, isAdded, onAdd, animatingId, T, onDetail }) {
 
       <td className="px-3 py-1.5 pr-col-categoria">
         {supply.nombre_categoria ? (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold"
             style={{ background: T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>
             <Tag size={8} />
             {supply.nombre_categoria}
           </span>
         ) : (
-          <span className="text-[10px]" style={{ color: T.textFaint }}>—</span>
+          <span className="text-[9px]" style={{ color: T.textFaint }}>—</span>
         )}
       </td>
 
       <td className="px-3 py-1.5">
         {isAdded ? (
           <button onClick={() => onAdd(supply.id_insumo)}
-            className="px-2.5 py-1 rounded text-[10px] font-bold transition-colors"
+            className="px-2.5 py-1 rounded text-[9px] font-bold transition-colors"
             style={{ background: T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.3)" }}>
             + Agregar otro
           </button>
         ) : (
           <button onClick={() => onAdd(supply.id_insumo)}
-            className={`px-2.5 py-1 rounded text-[10px] font-bold transition-all active:scale-95 ${isAnimating ? "animate-slide-out" : ""}`}
+            className={`px-2.5 py-1 rounded text-[9px] font-bold transition-all active:scale-95 ${isAnimating ? "animate-slide-out" : ""}`}
             style={{ background: "#2563eb", color: "#fff", border: "none" }}>
             <span className="flex items-center gap-1"><Plus size={11} /> Agregar</span>
           </button>
@@ -118,7 +148,7 @@ function RequestItem({ supply, quantity, onRemove, onChangeQty, esUltimo = false
           : <Package size={12} style={{ color: "#3b82f6" }} />}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-semibold truncate leading-tight" style={{ color: T.text }}>{supply.nombre}</p>
+        <p className="text-[10px] font-semibold truncate leading-tight" style={{ color: T.text }}>{supply.nombre}</p>
         <p className="text-[9px] font-mono" style={{ color: T.textFaint }}>
           #{String(supply.id_insumo).padStart(4, "0")}
         </p>
@@ -139,7 +169,7 @@ function RequestItem({ supply, quantity, onRemove, onChangeQty, esUltimo = false
           onChange={e => { editing.current = true; setLocalVal(e.target.value.replace(/[^0-9]/g, "")); }}
           onBlur={commit}
           onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
-          className="text-[11px] font-black text-center rounded outline-none"
+          className="text-[10px] font-black text-center rounded outline-none"
           style={{ width: "28px", background: T.surfaceAlt, border: `1px solid ${T.border}`, color: T.text, padding: "1px 2px" }}
         />
         <button onClick={() => onChangeQty(supply.id_insumo, quantity + 1)}
@@ -172,7 +202,7 @@ function BadgeEstatus({ estatus }) {
   const s = ESTATUS_META[estatus] || ESTATUS_META["Pendiente"];
   const Icon = s.icon;
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold"
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold"
       style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
       <Icon size={9} className={estatus === "En proceso" ? "animate-spin" : ""} />
       {estatus || "Pendiente"}
@@ -241,19 +271,15 @@ function ModalResultado({ resultModal, cartEntries, T, onClose }) {
           gap: "12px", flexShrink: 0,
         }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: resultModal.success ? "#16a34a" : "#dc2626" }}>
+            <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: resultModal.success ? "#16a34a" : "#dc2626" }}>
               {resultModal.success ? "Solicitud" : "Error"}
             </p>
-            <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: T.text, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+            <h2 style={{ margin: "3px 0 0", fontSize: FS.subtitulo, fontWeight: 700, color: T.text, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
               {resultModal.success ? "Solicitud creada" : "Error al crear"}
             </h2>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
-            <img
-              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
-              alt="Precision Trucks"
-              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
-            />
+            <LogoModal />
             <button
               onClick={onClose}
               style={{ width: "26px", height: "26px", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${border}`, borderRadius: "6px", cursor: "pointer", color: T.textFaint, transition: "all 0.12s" }}
@@ -274,15 +300,15 @@ function ModalResultado({ resultModal, cartEntries, T, onClose }) {
                 style={{ background: isDark ? "rgba(22,163,74,0.10)" : "#f0fdf4", border: "1px solid rgba(22,163,74,0.25)" }}>
                 <CheckCircle2 size={20} style={{ color: "#16a34a", flexShrink: 0 }} />
                 <div>
-                  <p style={{ margin: 0, fontSize: "11px", fontWeight: 700, color: "#16a34a" }}>Registrada correctamente</p>
-                  <p style={{ margin: "2px 0 0", fontSize: "13px", fontWeight: 800, fontFamily: "monospace", color: T.orange }}>#{resultModal.folio}</p>
+                  <p style={{ margin: 0, fontSize: FS.secundario, fontWeight: 700, color: "#16a34a" }}>Registrada correctamente</p>
+                  <p style={{ margin: "2px 0 0", fontSize: FS.enfasis, fontWeight: 800, fontFamily: "monospace", color: T.orange }}>#{resultModal.folio}</p>
                 </div>
               </div>
 
               {/* Detalle de insumos */}
               {cartEntries.length > 0 && (
                 <div>
-                  <p style={{ margin: "0 0 8px", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted }}>
+                  <p style={{ margin: "0 0 8px", fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted }}>
                     Insumos solicitados ({cartEntries.length})
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -303,18 +329,18 @@ function ModalResultado({ resultModal, cartEntries, T, onClose }) {
                         </div>
                         {/* Info */}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          <p style={{ margin: 0, fontSize: FS.cuerpo, fontWeight: 600, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                             {supply.nombre}
                           </p>
                           {(supply.marca || supply.modelo) && (
-                            <p style={{ margin: "1px 0 0", fontSize: "10px", color: T.textFaint }}>
+                            <p style={{ margin: "1px 0 0", fontSize: FS.etiqueta, color: T.textFaint }}>
                               {[supply.marca, supply.modelo].filter(Boolean).join(" · ")}
                             </p>
                           )}
                         </div>
                         {/* Cantidad */}
                         <span style={{
-                          flexShrink: 0, fontSize: "12px", fontWeight: 800,
+                          flexShrink: 0, fontSize: FS.cuerpo, fontWeight: 800,
                           padding: "2px 10px", borderRadius: "99px",
                           background: isDark ? "rgba(37,99,235,0.15)" : "#eff6ff",
                           color: "#3b82f6", border: "1px solid rgba(59,130,246,0.25)",
@@ -327,7 +353,7 @@ function ModalResultado({ resultModal, cartEntries, T, onClose }) {
                 </div>
               )}
 
-              <p style={{ margin: 0, fontSize: "11px", color: T.textFaint, lineHeight: 1.5 }}>
+              <p style={{ margin: 0, fontSize: FS.secundario, color: T.textFaint, lineHeight: 1.5 }}>
                 El equipo revisará tu solicitud y te notificará cuando sea atendida.
               </p>
             </>
@@ -335,7 +361,7 @@ function ModalResultado({ resultModal, cartEntries, T, onClose }) {
             <div className="flex items-start gap-3 p-3 rounded-xl"
               style={{ background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2", border: "1px solid rgba(220,38,38,0.25)" }}>
               <AlertCircle size={16} style={{ color: "#dc2626", flexShrink: 0, marginTop: "1px" }} />
-              <p style={{ margin: 0, fontSize: "13px", color: T.text, lineHeight: 1.5 }}>{resultModal.message}</p>
+              <p style={{ margin: 0, fontSize: FS.enfasis, color: T.text, lineHeight: 1.5 }}>{resultModal.message}</p>
             </div>
           )}
         </div>
@@ -352,7 +378,7 @@ function ModalResultado({ resultModal, cartEntries, T, onClose }) {
             onClick={onClose}
             style={{
               padding: "6px 20px", borderRadius: "6px",
-              fontSize: "12px", fontWeight: 700,
+              fontSize: FS.cuerpo, fontWeight: 700,
               background: resultModal.success ? "#2563eb" : "transparent",
               border: resultModal.success ? "none" : `1px solid ${border}`,
               color: resultModal.success ? "#fff" : T.textMuted,
@@ -679,7 +705,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
             { id: "historial", label: "Mis Solicitudes",  icon: History },
           ].map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all"
               style={{ background: tab === id ? "#2563eb" : "transparent", color: tab === id ? "#fff" : T.textMuted }}>
               <Icon size={13} />{label}
             </button>
@@ -701,7 +727,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
                       <div className="w-1 h-2.5 rounded-full" style={{ background: tasaColorSol }} />
-                      <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Tasa Aceptación</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Tasa Aceptación</p>
                     </div>
                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                       style={{ background: `${tasaColorSol}15`, color: tasaColorSol, border: `1px solid ${tasaColorSol}30` }}>
@@ -709,7 +735,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     </span>
                   </div>
                   <div className="flex items-end gap-2">
-                    <span className="text-2xl font-black leading-none" style={{ color: tasaColorSol }}>{tasaSol}%</span>
+                    <span className="text-[18px] font-black leading-none" style={{ color: tasaColorSol }}>{tasaSol}%</span>
                     <div className="flex flex-col gap-1 mb-0.5 flex-1">
                       <div className="h-1.5 rounded-full overflow-hidden" style={{ background: T.border }}>
                         <div className="h-full rounded-full transition-all duration-1000"
@@ -718,8 +744,8 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     </div>
                   </div>
                   <div className="pt-1 flex items-center justify-between" style={{ borderTop: `1px solid ${T.border}` }}>
-                    <span className="text-[10px]" style={{ color: T.textFaint }}>Piezas totales</span>
-                    <span className="text-[10px] font-black" style={{ color: tasaColorSol }}>{totalPiezas} pza.</span>
+                    <span className="text-[9px]" style={{ color: T.textFaint }}>Piezas totales</span>
+                    <span className="text-[9px] font-black" style={{ color: tasaColorSol }}>{totalPiezas} pza.</span>
                   </div>
                 </div>
               </div>
@@ -735,12 +761,12 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                   <div key={label} className="rounded-lg p-1.5 sm:p-2 flex flex-col gap-0.5 sm:gap-1 relative overflow-hidden" style={card}>
                     <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg,${color},${color}33)` }} />
                     <p className="text-[9px] font-black uppercase tracking-wider leading-tight" style={{ color: T.textMuted }}>{label}</p>
-                    <span className="text-xl font-black leading-none" style={{ color }}>{val}</span>
+                    <span className="text-[18px] font-black leading-none" style={{ color }}>{val}</span>
                     <div className="h-1 rounded-full overflow-hidden" style={{ background: T.border }}>
                       <div className="h-full rounded-full transition-all duration-700"
                         style={{ width: `${totalSol > 0 ? Math.round(val / totalSol * 100) : 0}%`, background: color, boxShadow: `0 0 4px ${color}44` }} />
                     </div>
-                    <span className="text-[10px] font-semibold" style={{ color }}>{sub}</span>
+                    <span className="text-[9px] font-semibold" style={{ color }}>{sub}</span>
                   </div>
                 ))}
               </div>
@@ -749,7 +775,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
               <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden" style={{ ...card, flexShrink: 0 }}>
                 <div className="px-3 py-2 flex items-center gap-1.5" style={hdr}>
                   <div className="w-1 h-3 rounded-full" style={{ background: T.orange }} />
-                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Por Prioridad</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Por Prioridad</p>
                 </div>
                 <div className="p-3 flex flex-col gap-2">
                   {[{ l: "Urgente", c: "#dc2626" }, { l: "Alta", c: "#ea580c" }, { l: "Media", c: "#ca8a04" }, { l: "Baja", c: "#16a34a" }].map(({ l, c }) => {
@@ -758,12 +784,12 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     return (
                       <div key={l} className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: c, boxShadow: `0 0 4px ${c}88` }} />
-                        <span className="text-[11px] font-semibold w-14 flex-shrink-0" style={{ color: T.text }}>{l}</span>
+                        <span className="text-[10px] font-semibold w-14 flex-shrink-0" style={{ color: T.text }}>{l}</span>
                         <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: T.isDark ? "rgba(255,255,255,0.06)" : `${c}15` }}>
                           <div className="h-full rounded-full transition-all duration-700"
                             style={{ width: `${pct > 0 ? Math.max(pct, 5) : 0}%`, background: c, boxShadow: `0 0 4px ${c}55` }} />
                         </div>
-                        <span className="text-[11px] font-black w-5 text-right flex-shrink-0" style={{ color: c }}>{n}</span>
+                        <span className="text-[10px] font-black w-5 text-right flex-shrink-0" style={{ color: c }}>{n}</span>
                       </div>
                     );
                   })}
@@ -774,7 +800,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
               <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-xl overflow-hidden" style={{ ...card, flexShrink: 0 }}>
                 <div className="px-3 py-2 flex items-center gap-1.5" style={hdr}>
                   <div className="w-1 h-3 rounded-full" style={{ background: T.orange }} />
-                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Insumos Frecuentes</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Insumos Frecuentes</p>
                 </div>
                 <div className="p-3 flex flex-col gap-2">
                   {topInsumos.length === 0
@@ -784,13 +810,13 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                         const maxN   = topInsumos[0][1];
                         return (
                           <div key={nombre} className="flex items-center gap-2">
-                            <span className="text-[10px] font-black w-3 flex-shrink-0 text-center" style={{ color: colors[idx] }}>#{idx + 1}</span>
-                            <span className="text-[11px] font-semibold flex-1 truncate" style={{ color: T.text }} title={nombre}>{nombre}</span>
+                            <span className="text-[9px] font-black w-3 flex-shrink-0 text-center" style={{ color: colors[idx] }}>#{idx + 1}</span>
+                            <span className="text-[10px] font-semibold flex-1 truncate" style={{ color: T.text }} title={nombre}>{nombre}</span>
                             <div className="w-12 h-2 rounded-full overflow-hidden flex-shrink-0" style={{ background: T.border }}>
                               <div className="h-full rounded-full transition-all duration-700"
                                 style={{ width: `${Math.round(n / maxN * 100)}%`, background: colors[idx], boxShadow: `0 0 4px ${colors[idx]}55` }} />
                             </div>
-                            <span className="text-[11px] font-black w-4 text-right flex-shrink-0" style={{ color: colors[idx] }}>{n}</span>
+                            <span className="text-[10px] font-black w-4 text-right flex-shrink-0" style={{ color: colors[idx] }}>{n}</span>
                           </div>
                         );
                       })
@@ -804,7 +830,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                       <div key={mes} className="flex flex-col items-center gap-0.5 flex-1">
                         <div className="w-full rounded-sm transition-all duration-700"
                           style={{ height: `${count > 0 ? Math.max(Math.round(count / maxActMes * 22), 3) : 2}px`, background: count > 0 ? T.orange : T.border }} />
-                        <span className="text-[8px]" style={{ color: T.textFaint }}>{mes}</span>
+                        <span className="text-[9px]" style={{ color: T.textFaint }}>{mes}</span>
                       </div>
                     ))}
                   </div>
@@ -829,7 +855,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
               <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={hdr}>
                 <div className="flex items-center gap-1.5">
                   <div className="w-0.5 h-3.5 rounded-full" style={{ background: T.orange }} />
-                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Mis Solicitudes</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Mis Solicitudes</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {cargandoSol && (
@@ -846,7 +872,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                 {solicitudes.length === 0
                   ? <div className="flex flex-col items-center justify-center py-8 gap-2">
                       <Inbox size={20} style={{ color: T.textFaint }} />
-                      <p className="text-xs font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "No hay solicitudes"}</p>
+                      <p className="text-[11px] font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "No hay solicitudes"}</p>
                     </div>
                   : solicitudes.map(s => (
                     <div key={s.id_solicitud ?? s.id_salida}
@@ -854,21 +880,21 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                       style={{ background: T.isDark ? "rgba(255,255,255,0.04)" : T.surfaceAlt, border: `1px solid ${T.border}` }}
                       onClick={() => (s.es_salida ? abrirHojaSalida(s) : setSolicitudVer(s))}>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-[11px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                        <span className="font-mono text-[10px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold"
                           style={{ background: ESTATUS_BG_SOL[s.estatus], color: ESTATUS_COLOR_SOL[s.estatus] }}>
                           {s.estatus}
                         </span>
                       </div>
-                      <p className="text-[11px]" style={{ color: T.textMuted }}>
+                      <p className="text-[10px]" style={{ color: T.textMuted }}>
                         {s.insumos_nombres ? s.insumos_nombres.split(",").slice(0,2).join(", ") + (s.insumos_nombres.split(",").length > 2 ? "…" : "") : "—"}
                       </p>
                       <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1 text-[11px] font-bold">
+                        <span className="flex items-center gap-1 text-[10px] font-bold">
                           <span className="w-2 h-2 rounded-full" style={{ background: PCOLOR_SOL[s.prioridad] || "#94a3b8" }} />
                           <span style={{ color: PCOLOR_SOL[s.prioridad] || T.textMuted }}>{s.prioridad}</span>
                         </span>
-                        <span className="text-[11px]" style={{ color: T.textFaint }}>{fmtSol(s.fecha)}</span>
+                        <span className="text-[10px]" style={{ color: T.textFaint }}>{fmtSol(s.fecha)}</span>
                       </div>
                     </div>
                   ))
@@ -876,7 +902,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
               </div>
 
               {/* Tabla desktop */}
-              <div className="hidden lg:flex lg:flex-col" style={{ overflowY: "auto", flex: "1 1 0", minHeight: 0 }}>
+              <div className="hidden lg:flex lg:flex-col" style={{ overflowY: "auto", overflowX: "auto", flex: "1 1 0", minHeight: 0 }}>
                 <table className="w-full border-collapse" style={{ minWidth: "640px" }}>
                   <thead className="sticky top-0 z-10">
                     <tr style={{ background: T.isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}>
@@ -893,7 +919,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                       ? <tr><td colSpan={7}>
                           <div className="flex flex-col items-center justify-center py-12 gap-2">
                             <Inbox size={22} style={{ color: T.textFaint }} />
-                            <p className="text-xs font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "No hay solicitudes registradas"}</p>
+                            <p className="text-[11px] font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "No hay solicitudes registradas"}</p>
                           </div>
                         </td></tr>
                       : solicitudes.map((s, i) => {
@@ -904,15 +930,15 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                               onMouseEnter={e => e.currentTarget.style.background = T.isDark ? "rgba(244,121,32,0.05)" : "rgba(244,121,32,0.03)"}
                               onMouseLeave={e => e.currentTarget.style.background = bgRow}
                               onClick={() => (s.es_salida ? abrirHojaSalida(s) : setSolicitudVer(s))}>
-                              <td className="px-3 py-2 font-mono text-[10px] font-bold" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</td>
-                              <td className="px-3 py-2 text-[11px]" style={{ maxWidth: 220 }}>
+                              <td className="px-3 py-2 font-mono text-[9px] font-bold" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</td>
+                              <td className="px-3 py-2 text-[10px]" style={{ maxWidth: 220 }}>
                                 <span className="block truncate" style={{ color: T.text }}>
                                   {s.insumos_nombres || "—"}
                                 </span>
                               </td>
-                              <td className="px-3 py-2 text-[11px] font-bold" style={{ color: T.textMuted }}>{s.total_piezas ?? "—"}</td>
+                              <td className="px-3 py-2 text-[10px] font-bold" style={{ color: T.textMuted }}>{s.total_piezas ?? "—"}</td>
                               <td className="px-3 py-2">
-                                <span className="flex items-center gap-1 text-[11px] font-bold">
+                                <span className="flex items-center gap-1 text-[10px] font-bold">
                                   <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: PCOLOR_SOL[s.prioridad] || "#94a3b8" }} />
                                   <span style={{ color: PCOLOR_SOL[s.prioridad] || T.textMuted }}>{s.prioridad}</span>
                                 </span>
@@ -923,10 +949,10 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                                   {s.estatus}
                                 </span>
                               </td>
-                              <td className="px-3 py-2 text-[11px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmtSol(s.fecha)}</td>
+                              <td className="px-3 py-2 text-[10px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmtSol(s.fecha)}</td>
                               <td className="px-3 py-2">
                                 <button onClick={e => { e.stopPropagation(); if (s.es_salida) abrirHojaSalida(s); else setSolicitudVer(s); }}
-                                  className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-all hover:brightness-110 active:scale-95"
+                                  className="flex items-center gap-1 text-[9px] font-bold px-2 py-1 rounded-lg transition-all hover:brightness-110 active:scale-95"
                                   style={{ color: T.orange, background: "rgba(244,121,32,0.08)", border: "1px solid rgba(244,121,32,0.2)" }}>
                                   <Eye size={10} /> {s.es_salida ? "Hoja" : "Ver"}
                                 </button>
@@ -972,7 +998,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                       placeholder="Buscar por nombre, marca o modelo…"
                       style={{ width: "100%", paddingLeft: 28, paddingRight: searchQuery ? 28 : 10, height: 32, borderRadius: 7,
-                          fontSize: 12, outline: "none", background: T.surfaceAlt, border: `1px solid ${T.border}`,
+                          fontSize: FS.cuerpo, outline: "none", background: T.surfaceAlt, border: `1px solid ${T.border}`,
                           color: T.text, boxSizing: "border-box" }}
                       onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.background = T.surface; }}
                       onBlur={e  => { e.target.style.borderColor = T.border;  e.target.style.background = T.surfaceAlt; }}
@@ -988,7 +1014,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                   {/* Limpiar */}
                   {hayFiltrosInsumos && (
                     <button onClick={limpiarFiltrosInsumos}
-                      style={{ height: 32, paddingLeft: 10, paddingRight: 10, borderRadius: 7, fontSize: 11, fontWeight: 700,
+                      style={{ height: 32, paddingLeft: 10, paddingRight: 10, borderRadius: 7, fontSize: FS.secundario, fontWeight: 700,
                           background: T.isDark ? "rgba(239,68,68,0.12)" : "#fef2f2",
                           color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)",
                           cursor: "pointer", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
@@ -996,7 +1022,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     </button>
                   )}
 
-                  <span style={{ fontSize: 11, fontFamily: "monospace", color: T.textFaint, marginLeft: "auto", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: FS.secundario, fontFamily: "monospace", color: T.textFaint, marginLeft: "auto", whiteSpace: "nowrap" }}>
                     {filteredSupplies.length} resultado{filteredSupplies.length !== 1 ? "s" : ""}
                   </span>
                 </div>
@@ -1005,7 +1031,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center" }}>
                   {categories.map(cat => (
                     <button key={cat} onClick={() => setCategoryFilter(cat)}
-                      style={{ padding: "2px 9px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      style={{ padding: "2px 9px", borderRadius: 6, fontSize: FS.secundario, fontWeight: 600,
                           background: categoryFilter === cat ? "#2563eb" : T.surfaceAlt,
                           color:      categoryFilter === cat ? "#fff"    : T.textMuted,
                           border:     categoryFilter === cat ? "1px solid #2563eb" : `1px solid ${T.border}`,
@@ -1024,7 +1050,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                       <tr style={{ background: T.surfaceAlt, position: "sticky", top: 0, zIndex: 10 }}>
                         {["Img", "Insumo", "Categoría", "Acción"].map((col, i) => (
                           <th key={i} className={col === "Categoría" ? "pr-col-categoria" : undefined}
-                            style={{ padding: "8px 10px", fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+                            style={{ padding: "8px 10px", fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase",
                               letterSpacing: "0.06em", whiteSpace: "nowrap", color: T.textMuted,
                               borderBottom: `1px solid ${T.border}` }}>
                             {col}
@@ -1037,14 +1063,14 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                         <tr><td colSpan={4} style={{ padding: "64px 0", textAlign: "center" }}>
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: T.textFaint }}>
                             <svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-                            <span style={{ fontSize: 12 }}>Cargando insumos…</span>
+                            <span style={{ fontSize: FS.cuerpo }}>Cargando insumos…</span>
                           </div>
                         </td></tr>
                       ) : filteredSupplies.length === 0 ? (
                         <tr><td colSpan={4} style={{ padding: "64px 0", textAlign: "center" }}>
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: T.textFaint }}>
                             <Package size={28} />
-                            <span style={{ fontSize: 13, fontWeight: 600 }}>Sin resultados</span>
+                            <span style={{ fontSize: FS.enfasis, fontWeight: 600 }}>Sin resultados</span>
                           </div>
                         </td></tr>
                       ) : (
@@ -1073,10 +1099,10 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                   background: T.isDark ? T.surfaceAlt : "#1e3a5f" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <Ticket size={12} style={{ color: "#60a5fa" }} />
-                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#fff" }}>Solicitud</span>
+                  <span style={{ fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#fff" }}>Solicitud</span>
                 </div>
                 {totalItemCount > 0 && (
-                  <span style={{ fontSize: 9, fontWeight: 800, padding: "1px 6px", borderRadius: 99, background: "var(--color-primary)", color: "#fff" }}>
+                  <span style={{ fontSize: FS.etiqueta, fontWeight: 800, padding: "1px 6px", borderRadius: 99, background: "var(--color-primary)", color: "#fff" }}>
                     {totalItemCount}
                   </span>
                 )}
@@ -1091,8 +1117,8 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     { label: "Sucursal", value: usuario.sucursal || "—" },
                   ].map(({ label, value }) => (
                     <div key={label} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 4 }}>
-                      <span style={{ fontSize: 9, color: T.textFaint, flexShrink: 0 }}>{label}</span>
-                      <span style={{ fontSize: 10, fontWeight: 600, color: T.text, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "60%" }}>{value}</span>
+                      <span style={{ fontSize: FS.etiqueta, color: T.textFaint, flexShrink: 0 }}>{label}</span>
+                      <span style={{ fontSize: FS.etiqueta, fontWeight: 600, color: T.text, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "60%" }}>{value}</span>
                     </div>
                   ))}
                 </div>
@@ -1103,7 +1129,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                 {cartEntries.length === 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "16px 8px", gap: 6, color: T.textFaint }}>
                     <Package size={18} />
-                    <span style={{ fontSize: 10, textAlign: "center" }}>Agrega insumos desde la tabla</span>
+                    <span style={{ fontSize: FS.etiqueta, textAlign: "center" }}>Agrega insumos desde la tabla</span>
                   </div>
                 ) : (
                   cartEntries.map(({ supply, quantity, id }) => (
@@ -1121,7 +1147,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     onChange={e => setPriority(e.target.value)}
                     style={{
                       width: "100%", height: 28, paddingLeft: 8, paddingRight: 22,
-                      borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      borderRadius: 6, fontSize: FS.secundario, fontWeight: 600,
                       border: `1px solid ${activePriority ? activePriority.border : T.border}`,
                       background: activePriority ? activePriority.bg : T.surfaceAlt,
                       color: activePriority ? activePriority.color : T.textFaint,
@@ -1139,7 +1165,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                   onChange={e => setJustification(e.target.value)}
                   placeholder="Observaciones generales…"
                   style={{
-                    width: "100%", padding: "5px 8px", borderRadius: 6, fontSize: 11,
+                    width: "100%", padding: "5px 8px", borderRadius: 6, fontSize: FS.secundario,
                     border: `1px solid ${justification.trim() ? T.border : "rgba(239,68,68,0.4)"}`,
                     background: justification.trim() ? T.surfaceAlt : (T.isDark ? "rgba(239,68,68,0.08)" : "#fff5f5"),
                     color: T.text, outline: "none", resize: "none", boxSizing: "border-box",
@@ -1152,7 +1178,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                 />
 
                 {!isTicketValid && (
-                  <p style={{ fontSize: 9, color: T.textFaint, margin: 0, lineHeight: 1.4 }}>
+                  <p style={{ fontSize: FS.etiqueta, color: T.textFaint, margin: 0, lineHeight: 1.4 }}>
                     {cartEntries.length === 0 ? "Agrega al menos un insumo" : "Escribe las observaciones generales"}
                   </p>
                 )}
@@ -1161,7 +1187,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                   onClick={handleSubmitTicket}
                   disabled={!isTicketValid || isSubmitting}
                   style={{
-                    width: "100%", height: 32, borderRadius: 6, fontSize: 11, fontWeight: 700,
+                    width: "100%", height: 32, borderRadius: 6, fontSize: FS.secundario, fontWeight: 700,
                     background: isTicketValid ? "#2563eb" : T.surfaceAlt,
                     color: isTicketValid ? "#fff" : T.textFaint,
                     border: "none", cursor: isTicketValid ? "pointer" : "not-allowed",
@@ -1202,18 +1228,18 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
               <Ticket size={16} style={{ color: "#60a5fa", flexShrink: 0 }} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>
+              <span style={{ fontSize: FS.enfasis, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>
                 {totalItemCount > 0 ? "Tu solicitud" : "Agrega insumos"}
               </span>
               {totalItemCount > 0 && (
-                <span style={{ fontSize: 11, fontWeight: 800, padding: "1px 8px", borderRadius: 99, background: "var(--color-primary)", color: "#fff", flexShrink: 0 }}>
+                <span style={{ fontSize: FS.secundario, fontWeight: 800, padding: "1px 8px", borderRadius: 99, background: "var(--color-primary)", color: "#fff", flexShrink: 0 }}>
                   {totalItemCount} pza.
                 </span>
               )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               {cartEntries.length > 0 && (
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: FS.secundario, color: "rgba(255,255,255,0.6)", whiteSpace: "nowrap" }}>
                   {cartEntries.length} insumo{cartEntries.length !== 1 ? "s" : ""}
                 </span>
               )}
@@ -1258,13 +1284,14 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Ticket size={14} style={{ color: "#60a5fa" }} />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Solicitud en Proceso</span>
+                    <span style={{ fontSize: FS.enfasis, fontWeight: 700, color: T.text }}>Solicitud en Proceso</span>
                     {totalItemCount > 0 && (
-                      <span style={{ fontSize: 10, fontWeight: 800, padding: "1px 8px", borderRadius: 99, background: "var(--color-primary)", color: "#fff" }}>
+                      <span style={{ fontSize: FS.etiqueta, fontWeight: 800, padding: "1px 8px", borderRadius: 99, background: "var(--color-primary)", color: "#fff" }}>
                         {totalItemCount}
                       </span>
                     )}
                   </div>
+                  <LogoModal style={{ marginLeft: "auto", marginRight: 8, alignSelf: "center" }} />
                   <button onClick={() => setDrawerOpen(false)}
                     style={{ width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: T.surfaceAlt, border: `1px solid ${T.border}`, cursor: "pointer", color: T.textMuted }}>
                     <X size={13} />
@@ -1275,7 +1302,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                 <div className="pr-drawer-scroll" style={{ overflowY: "auto", flex: 1, minHeight: 0, overscrollBehavior: "contain" }}>
                   {/* Solicitante */}
                   <div style={{ padding: "12px 16px", background: T.isDark ? T.surfaceAlt : "#f0f4f8", borderBottom: `1px solid ${T.border}` }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint, marginBottom: 8 }}>Solicitante</p>
+                    <p style={{ fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textFaint, marginBottom: 8 }}>Solicitante</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       {[
                         { label: "Nombre",   value: requesterName },
@@ -1283,8 +1310,8 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                         { label: "Sucursal", value: usuario.sucursal || "—" },
                       ].map(({ label, value }) => (
                         <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                          <span style={{ fontSize: 10, color: T.textFaint }}>{label}</span>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: T.text, textAlign: "right" }}>{value}</span>
+                          <span style={{ fontSize: FS.etiqueta, color: T.textFaint }}>{label}</span>
+                          <span style={{ fontSize: FS.secundario, fontWeight: 600, color: T.text, textAlign: "right" }}>{value}</span>
                         </div>
                       ))}
                     </div>
@@ -1295,7 +1322,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     {cartEntries.length === 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", gap: 8, color: T.textFaint }}>
                         <Package size={22} />
-                        <span style={{ fontSize: 12 }}>Agrega insumos desde el catálogo</span>
+                        <span style={{ fontSize: FS.cuerpo }}>Agrega insumos desde el catálogo</span>
                       </div>
                     ) : (
                       cartEntries.map(({ supply, quantity, id }) => (
@@ -1307,14 +1334,14 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                   {/* Prioridad + justificación + botón */}
                   <div style={{ padding: "12px 16px", paddingBottom: "calc(16px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 12, borderTop: `1px solid ${T.border}`, background: T.surface }}>
                     <div>
-                      <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textMuted, display: "block", marginBottom: 6 }}>Prioridad</label>
+                      <label style={{ fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textMuted, display: "block", marginBottom: 6 }}>Prioridad</label>
                       <div style={{ position: "relative" }}>
                         <select
                           value={priority}
                           onChange={e => setPriority(e.target.value)}
                           style={{
                             width: "100%", height: 40, paddingLeft: 12, paddingRight: 32,
-                            borderRadius: 8, fontSize: 13, fontWeight: 600, boxSizing: "border-box",
+                            borderRadius: 8, fontSize: FS.enfasis, fontWeight: 600, boxSizing: "border-box",
                             border: `1px solid ${activePriority ? activePriority.border : T.border}`,
                             background: activePriority ? activePriority.bg : T.surfaceAlt,
                             color: activePriority ? activePriority.color : T.textFaint,
@@ -1329,7 +1356,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     </div>
 
                     <div>
-                      <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textMuted, display: "block", marginBottom: 6 }}>
+                      <label style={{ fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: T.textMuted, display: "block", marginBottom: 6 }}>
                         Observaciones generales <span style={{ color: "#ef4444" }}>*</span>
                       </label>
                       <textarea
@@ -1338,7 +1365,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                         onChange={e => setJustification(e.target.value)}
                         placeholder="Describe el motivo de esta solicitud…"
                         style={{
-                          width: "100%", padding: "8px 12px", borderRadius: 8, fontSize: 13,
+                          width: "100%", padding: "8px 12px", borderRadius: 8, fontSize: FS.enfasis,
                           border: `1px solid ${justification.trim() ? T.border : "rgba(239,68,68,0.4)"}`,
                           background: justification.trim() ? T.surfaceAlt : (T.isDark ? "rgba(239,68,68,0.08)" : "#fff5f5"),
                           color: T.text, outline: "none", resize: "none", boxSizing: "border-box",
@@ -1349,7 +1376,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     {!isTicketValid && (
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 6, padding: "8px 10px", borderRadius: 8, background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
                         <AlertCircle size={11} style={{ color: T.textFaint, marginTop: 1, flexShrink: 0 }} />
-                        <span style={{ fontSize: 10, color: T.textFaint, lineHeight: 1.4 }}>
+                        <span style={{ fontSize: FS.etiqueta, color: T.textFaint, lineHeight: 1.4 }}>
                           {cartEntries.length === 0 ? "Agrega al menos un insumo" : "Escribe las observaciones generales"}
                         </span>
                       </div>
@@ -1359,7 +1386,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                       onClick={handleSubmitTicket}
                       disabled={!isTicketValid || isSubmitting}
                       style={{
-                        width: "100%", height: 44, borderRadius: 10, fontSize: 14, fontWeight: 700,
+                        width: "100%", height: 44, borderRadius: 10, fontSize: FS.subtitulo, fontWeight: 700,
                         background: isTicketValid ? "#2563eb" : T.surfaceAlt,
                         color: isTicketValid ? "#fff" : T.textFaint,
                         border: "none", cursor: isTicketValid ? "pointer" : "not-allowed",

@@ -34,6 +34,14 @@
  *   SMTP_USER - usuario de autenticacion SMTP
  *   SMTP_PASS - contrasena de aplicacion SMTP
  *   SMTP_FROM - nombre y direccion del remitente (ej. "HelpDesk" <correo@gmail.com>)
+ *
+ * @module server/config/mailer
+ * @requires nodemailer
+ * @requires fs
+ * @requires path
+ * @requires url
+ * @exports smtpConfigurado
+ * @exports enviarCodigoRecuperacion
  */
 import nodemailer        from "nodemailer";
 import fs                from "fs";

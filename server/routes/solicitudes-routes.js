@@ -1,5 +1,5 @@
 /**
- * solicitudesRoutes.js
+ * solicitudes-routes.js
  *
  * Define todas las rutas del prefijo /api/solicitudes.
  * Aplica csrfProtection y requireAuth a todo el router.
@@ -35,18 +35,28 @@
  *   POST /                       - crear nueva solicitud
  *                                  Rate limit: 20 por hora por IP
  *   GET  /:id                    - detalle de una solicitud especifica
+ *
+ * @module server/routes/solicitudes-routes
+ * @requires express
+ * @requires express-rate-limit
+ * @requires ../middlewares/security.js
+ * @requires ../middlewares/auth-middleware.js
+ * @requires ../middlewares/validate.js
+ * @requires ../controllers/solicitudes-controller.js
+ * @requires ../middlewares/upload-insumos.js
+ * @exports router (default)
  */
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { csrfProtection } from '../middlewares/security.js';
-import { requireAuth, requireAdmin, requireSoporteOAdmin } from '../middlewares/auth-middleware.js';
+import { requireAuth, requireAdmin, requireSoporteOAdmin, requireOwnerOrAdmin } from '../middlewares/auth-middleware.js';
 import { validate, schemaCrearSolicitud, schemaActualizarEstatusSolicitud, schemaInsumo, schemaActualizarInsumo, schemaEntradaInsumo, schemaSalidaInsumo, schemaItemsSolicitud, schemaRutaSolicitud, schemaObservacionSolicitud } from '../middlewares/validate.js';
 import {
   getInsumos, getInventario, getInsumosStockBajo, crearSolicitud, getSolicitudesByEmpleado,
   getSolicitudById, getSolicitudByFolio, getAllSolicitudes, getSolicitudesPendientes,
   actualizarEstatusSolicitud, aprobarItemsSolicitud, crearInsumo, actualizarInsumo,
   eliminarInsumo, cambiarActivoInsumo, cambiarVisiblePublico, getInsumosForUser, getReporteSolicitudes, subirFotoInsumo, getMetricasSolicitudes,
-  registrarEntradaInsumo, registrarSalidaInsumo, guardarRutaSolicitud, getMovimientosInventario, getMovimientosInsumo, getMovimientosSolicitud, getSalidasMiSucursal,
+  registrarEntradaInsumo, editarEntrada, registrarSalidaInsumo, guardarRutaSolicitud, getMovimientosInventario, getMovimientosInsumo, getMovimientosSolicitud, getSalidasMiSucursal,
   guardarObservacionSolicitud
 } from '../controllers/solicitudes-controller.js';
 import { uploadInsumo } from '../middlewares/upload-insumos.js';
@@ -65,13 +75,6 @@ const solicitudLimiter = rateLimit({
 });
 
 // Middleware: solo el propio empleado o un admin puede ver sus solicitudes
-function requireOwnerOrAdmin(req, res, next) {
-  const idParam = parseInt(req.params.id_empleado, 10);
-  const { id_empleado, id_rol } = req.usuario;
-  if (id_rol === 1 || id_empleado === idParam) return next();
-  return res.status(403).json({ error: "Acceso no autorizado" });
-}
-
 // ── Rutas exclusivas de admin ─────────────────────────────────
 // IMPORTANTE: registradas ANTES de las rutas dinámicas /:id
 // para evitar que Express intercepte "/reporte" o "/" como si fueran un id.
@@ -89,6 +92,8 @@ router.post("/salidas", requireAdmin, validate(schemaSalidaInsumo), registrarSal
 // Entrada de material al inventario — suma stock y deja el movimiento
 router.post("/insumos/:id/entrada", requireAdmin, validate(schemaEntradaInsumo), registrarEntradaInsumo);
 router.get("/movimientos",        requireAdmin, getMovimientosInventario);
+// Editar una entrada ya registrada: ajusta el kardex posterior y el stock
+router.put("/movimientos/:id",    requireAdmin, validate(schemaEntradaInsumo), editarEntrada);
 // Salidas de la sucursal del usuario autenticado (historial de insumos del rol Usuario)
 router.get("/movimientos/mis-salidas", getSalidasMiSucursal);
 router.patch("/:id/estatus",  requireAdmin, validate(schemaActualizarEstatusSolicitud), actualizarEstatusSolicitud);
@@ -111,7 +116,7 @@ router.get("/inventario",         getInventario);
 router.get("/inventario/for-user", requireSoporteOAdmin, getInsumosForUser);
 
 router.get("/pendientes",         requireAdmin, getSolicitudesPendientes);
-router.get("/empleado/:id_empleado", requireOwnerOrAdmin, getSolicitudesByEmpleado);
+router.get("/empleado/:id_empleado", requireOwnerOrAdmin(), getSolicitudesByEmpleado);
 router.post("/", solicitudLimiter, validate(schemaCrearSolicitud), crearSolicitud);
 router.get("/folio/:folio", getSolicitudByFolio);
 router.get("/:id", getSolicitudById);

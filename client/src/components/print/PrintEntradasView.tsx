@@ -1,3 +1,18 @@
+/**
+ * PrintEntradasView.tsx
+ *
+ * Vista imprimible (hoja carta) del listado de movimientos de inventario:
+ * entradas o salidas con fecha, insumo, cantidad, stock y motivo.
+ *
+ * Export default: PrintEntradasView
+ * Props: payload { tipo, rows, filtros } preparado por Inventario.jsx.
+ * Las fechas llegan en ISO desde la API y se muestran en hora local.
+ *
+ * @module client/components/print/PrintEntradasView
+ * @requires ../PrintShared.tsx
+ * @requires ./print-report.css
+ * @exports PrintEntradasView (default)
+ */
 import { PageHeader, PageFooter, PageSize, nowFechaGen } from '../PrintShared.tsx';
 import './print-report.css';
 

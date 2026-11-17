@@ -1,3 +1,16 @@
+/**
+ * PrintHistorialView.tsx
+ *
+ * Vista imprimible del historial de accesos (entradas y salidas del sistema)
+ * de un empleado.
+ *
+ * Export default: PrintHistorialView
+ * Props: data { empleado, accesos } cargado por PrintHistorialPage.
+ *
+ * @module client/components/print/PrintHistorialView
+ * @requires ../PrintShared.tsx
+ * @exports PrintHistorialView (default)
+ */
 import {
   Badge, PageHeader, PageFooter, Section, DataGrid, ReporteTable, Firma,
   PageSize, ESTATUS_META, fmt, nowFechaGen,

@@ -1,5 +1,5 @@
 /**
- * authRoutes.js
+ * auth-routes.js
  *
  * Define todas las rutas del prefijo /api/auth.
  * Aplica csrfProtection a todo el router.
@@ -45,11 +45,22 @@
  *   GET  /empleados           - listado completo de empleados
  *   PUT  /empleados/:id       - edicion de cualquier empleado
  *   POST /empleados           - creacion de nuevo empleado
+ *
+ * @module server/routes/auth-routes
+ * @requires express
+ * @requires express-rate-limit
+ * @requires ../middlewares/security.js
+ * @requires ../middlewares/auth-middleware.js
+ * @requires ../middlewares/validate.js
+ * @requires ../controllers/auth-controller.js
+ * @requires ../controllers/reset-controller.js
+ * @requires ../controllers/zoho-controller.js
+ * @exports router (default)
  */
 import { Router }    from "express";
 import rateLimit     from "express-rate-limit";
 import { csrfProtection } from '../middlewares/security.js';
-import { requireAuth, requireAdmin } from '../middlewares/auth-middleware.js';
+import { requireAuth, requireAdmin, requireOwnerOrAdmin } from '../middlewares/auth-middleware.js';
 import { validate, schemaLogin, schemaLogout, schemaActualizarPerfil, schemaCrearEmpleado, schemaUpdateEmpleadoAdmin } from '../middlewares/validate.js';
 import {
   login, logout, actualizarPerfil, getAccesos, getAllAccesos,
@@ -63,13 +74,6 @@ const router = Router();
 router.use(csrfProtection);
 
 // Solo el propio empleado o un admin puede ver sus accesos
-function requireOwnerOrAdmin(req, res, next) {
-  const idParam = parseInt(req.params.id, 10);
-  const { id_empleado, id_rol } = req.usuario;
-  if (id_rol === 1 || id_empleado === idParam) return next();
-  return res.status(403).json({ error: "Acceso no autorizado" });
-}
-
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -135,7 +139,7 @@ router.get("/zoho/callback", zohoCallback);
 // Rutas protegidas
 router.use(requireAuth);
 router.put("/perfil/:id",          validate(schemaActualizarPerfil), actualizarPerfil);
-router.get("/accesos/:id",         requireOwnerOrAdmin, getAccesos);
+router.get("/accesos/:id",         requireOwnerOrAdmin("id"), getAccesos);
 router.get("/departamentos",       getDepartamentos);
 router.get("/sucursales",          getSucursales);
 router.get("/roles",               getRoles);

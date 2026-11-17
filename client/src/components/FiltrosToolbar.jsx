@@ -1,7 +1,28 @@
-﻿import { useRef, useEffect, useState, useCallback } from "react";
+/**
+ * FiltrosToolbar.jsx
+ *
+ * Barra de filtros reutilizable de los historiales (incidencias e insumos).
+ * React + datalist nativo para sugerencias; en móvil se colapsa en un panel
+ * desplegable.
+ *
+ * Export default: FiltrosToolbar
+ * Props: campos (definición de cada filtro: tipo, etiqueta, opciones), valores
+ *    (estado actual), onChange / onLimpiar.
+ * Comportamiento: un texto que coincide exactamente con una opción filtra al
+ *    instante; un texto parcial se aplica al salir del campo.
+ *
+ * @module client/components/FiltrosToolbar
+ * @requires react
+ * @requires lucide-react
+ * @requires ../utils/design-system.js
+ * @requires ../utils/tipografia.js
+ * @exports FiltrosToolbar (default)
+ */
+import { useRef, useEffect, useState, useCallback } from "react";
 import { Search, X, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { RADIUS, SLATE } from '../utils/design-system.js';
 
+import { FS } from '../utils/tipografia.js';
 const R = RADIUS.sm;
 
 function borderColor(activo, isDark, orange) {
@@ -12,14 +33,16 @@ function inputBg(activo, isDark, orange) {
   if (activo) return isDark ? `rgba(244,121,32,0.10)` : "rgba(244,121,32,0.06)";
   return isDark ? "rgba(255,255,255,0.04)" : "#F9FAFB";
 }
+// Altura FIJA: antes la altura dependía del tamaño de letra y la barra crecía
+// en cuanto se cambiaba la tipografía. 26 px = compacto y fácil de tocar.
 const BASE_INPUT = {
-  paddingTop: "2px", paddingBottom: "2px",
-  fontSize: "0.95rem", borderRadius: R, outline: "none",
+  height: "26px", boxSizing: "border-box", paddingTop: 0, paddingBottom: 0,
+  fontSize: FS.secundario, lineHeight: "24px", borderRadius: R, outline: "none",
   transition: "border-color 0.15s, box-shadow 0.15s, background 0.15s",
 };
 const LABEL_ST = (activo, orange, textMuted) => ({
-  fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase",
-  letterSpacing: "0.07em", color: activo ? orange : textMuted,
+  fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase",
+  letterSpacing: "0.05em", lineHeight: 1.2, color: activo ? orange : textMuted,
 });
 
 function getLabel(campo, valor) {
@@ -34,10 +57,10 @@ function isActive(campo, valor) {
   return !!valor && valor !== "Todos" && valor !== "";
 }
 
-/* â”€â”€ Campo combo: input escribible + datalist de sugerencias â”€â”€
+/* ── Campo combo: input escribible + datalist de sugerencias ──
  * Se comporta como un search (texto libre con debounce) pero muestra las
- * opciones del catÃ¡logo como sugerencias nativas. Si el texto coincide
- * exactamente con una opciÃ³n actÃºa como filtro exacto; si es parcial, el
+ * opciones del catálogo como sugerencias nativas. Si el texto coincide
+ * exactamente con una opción actúa como filtro exacto; si es parcial, el
  * backend / filtro local hace match parcial. Vaciar = "Todos". */
 function ComboField({ campo, valor, onChange, disabled, T }) {
   const { isDark, orange, text, textMuted, textFaint } = T;
@@ -58,7 +81,7 @@ function ComboField({ campo, valor, onChange, disabled, T }) {
     const v = e.target.value;
     setLocalVal(v);
     clearTimeout(timerRef.current);
-    // Si eligiÃ³ una sugerencia del datalist (match exacto), aplicar al instante.
+    // Si eligió una sugerencia del datalist (match exacto), aplicar al instante.
     const esOpcion = (campo.opts || []).some(o =>
       (typeof o === "string" ? o : o.value) === norm(v));
     if (esOpcion) { onChange(campo.key, norm(v)); }
@@ -196,7 +219,7 @@ function CheckboxField({ campo, valor, onChange, disabled, T }) {
   const activo = !!valor;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2px", flexShrink: 0 }}>
-      <span style={{ fontSize: "9px", visibility: "hidden", userSelect: "none" }}>_</span>
+      <span style={{ fontSize: FS.etiqueta, visibility: "hidden", userSelect: "none" }}>_</span>
       <label style={{ display: "flex", alignItems: "center", gap: "5px", cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.5 : 1, paddingTop: "3px", paddingBottom: "3px", userSelect: "none" }}>
         <span style={{ width: "14px", height: "14px", borderRadius: "3px", flexShrink: 0,
@@ -208,7 +231,7 @@ function CheckboxField({ campo, valor, onChange, disabled, T }) {
         </span>
         <input type="checkbox" checked={!!valor} onChange={e => !disabled && onChange(campo.key, e.target.checked)}
           disabled={disabled} style={{ position: "absolute", opacity: 0, width: 0, height: 0 }} />
-        <span style={{ fontSize: "0.75rem", fontWeight: activo ? 600 : 400, color: activo ? orange : text }}>{campo.label}</span>
+        <span style={{ fontSize: FS.secundario, fontWeight: activo ? 600 : 400, color: activo ? orange : text }}>{campo.label}</span>
       </label>
     </div>
   );
@@ -221,7 +244,7 @@ function FilterTag({ campo, valor, onRemove, T }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: "4px",
       padding: "1px 6px 1px 7px", borderRadius: R,
-      fontSize: "0.9rem", fontWeight: 600, whiteSpace: "nowrap",
+      fontSize: FS.etiqueta, fontWeight: 600, whiteSpace: "nowrap",
       background: isDark ? "rgba(244,121,32,0.12)" : "rgba(244,121,32,0.08)",
       border: `1px solid ${isDark ? "rgba(244,121,32,0.3)" : "rgba(244,121,32,0.22)"}`,
       color: orange }}>
@@ -296,14 +319,14 @@ export default function FiltrosToolbar({
     opacity: disabled ? 0.7 : 1, transition: "opacity 0.15s",
   };
 
-  // â”€â”€ PC / tablet ancha: todos los campos en una fila â”€â”€
+  // ── PC / tablet ancha: todos los campos en una fila ──
   if (!esMobil) return (
     <div ref={wrapRef} style={wrapStyle}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: "6px",
         padding: "5px 8px", borderBottom: hayFiltros ? bs : "none" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0, alignSelf: "flex-end", paddingBottom: "3px" }}>
           <SlidersHorizontal size={10} style={{ color: orange }} />
-          <span style={{ fontSize: "0.75rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: textMuted }}>Filtros</span>
+          <span style={{ fontSize: FS.etiqueta, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: textMuted }}>Filtros</span>
         </div>
         <div style={{ width: "1px", height: "24px", background: isDark ? "rgba(255,255,255,0.07)" : "#E5E7EB", flexShrink: 0, alignSelf: "flex-end", marginBottom: "2px" }} />
         {campos.map(renderField)}
@@ -311,7 +334,7 @@ export default function FiltrosToolbar({
           {loading && <Spinner color={orange} />}
           {hayFiltros && !disabled && (
             <button onClick={onLimpiar}
-              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.9rem",
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: FS.etiqueta,
                 fontWeight: 600, color: textMuted, padding: "2px", textDecoration: "underline",
                 textUnderlineOffset: "2px", whiteSpace: "nowrap", transition: "color 0.15s" }}
               onMouseEnter={e => e.currentTarget.style.color = "#DC2626"}
@@ -330,7 +353,7 @@ export default function FiltrosToolbar({
     </div>
   );
 
-  // â”€â”€ MÃ³vil: cabecera compacta + panel colapsable â”€â”€
+  // ── Móvil: cabecera compacta + panel colapsable ──
   return (
     <div ref={wrapRef} style={wrapStyle}>
       {/* Cabecera siempre visible */}
@@ -340,10 +363,10 @@ export default function FiltrosToolbar({
           style={{ display: "flex", alignItems: "center", gap: "4px", background: "none",
             border: "none", cursor: "pointer", padding: "2px 0", flexShrink: 0 }}>
           <SlidersHorizontal size={10} style={{ color: orange }} />
-          <span style={{ fontSize: "0.75rem", fontWeight: 800, textTransform: "uppercase",
+          <span style={{ fontSize: FS.etiqueta, fontWeight: 800, textTransform: "uppercase",
             letterSpacing: "0.1em", color: textMuted }}>Filtros</span>
           {hayFiltros && (
-            <span style={{ fontSize: "9px", fontWeight: 900, background: orange, color: "#fff",
+            <span style={{ fontSize: FS.etiqueta, fontWeight: 900, background: orange, color: "#fff",
               borderRadius: "99px", padding: "0 5px", lineHeight: "15px" }}>
               {camposActivos.length}
             </span>
@@ -353,14 +376,14 @@ export default function FiltrosToolbar({
             transition: "transform 0.2s" }} />
         </button>
         <div style={{ width: "1px", height: "20px", background: isDark ? "rgba(255,255,255,0.07)" : "#E5E7EB", flexShrink: 0 }} />
-        {/* BÃºsqueda siempre visible */}
+        {/* Búsqueda siempre visible */}
         {campos.filter(c => c.type === "search").map(renderField)}
         <div style={{ flex: 1 }} />
         <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
           {loading && <Spinner color={orange} />}
           {hayFiltros && !disabled && (
             <button onClick={onLimpiar}
-              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.75rem",
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: FS.etiqueta,
                 fontWeight: 600, color: "#DC2626", padding: "2px", whiteSpace: "nowrap" }}>
               Limpiar
             </button>
@@ -368,7 +391,7 @@ export default function FiltrosToolbar({
           {children}
         </div>
       </div>
-      {/* Panel colapsable: selects y demÃ¡s */}
+      {/* Panel colapsable: selects y demás */}
       {expandido && (
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: "6px",
           padding: "6px 8px", borderBottom: hayFiltros ? bs : "none" }}>

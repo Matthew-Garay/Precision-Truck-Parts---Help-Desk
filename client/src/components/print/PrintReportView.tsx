@@ -1,3 +1,16 @@
+/**
+ * PrintReportView.tsx
+ *
+ * Hoja imprimible de un ticket de soporte: datos del solicitante, categoría,
+ * prioridad, estatus, descripción, técnico y comentarios.
+ *
+ * Export default: PrintReportView
+ * Props: ticket (detalle completo del ticket).
+ *
+ * @module client/components/print/PrintReportView
+ * @requires ../PrintShared.tsx
+ * @exports PrintReportView (default)
+ */
 import {
   Stars, PageHeader, PageFooter, PageSize, Section, DataGrid, Firma,
   PRIO_META, fmt, nowFechaGen,

@@ -6,7 +6,12 @@
  *   pasoActual – 0 = Recibido | 1 = Técnico asignado | 2 = En proceso | 3 = Resuelto
  *   metadata   – { fechaAlta, horaAlta, fechaResuelto, horaResuelto,
  *                  nombreEmpleado, resuelto_por, tiempoResolucion }
+ *
+ * @module client/components/ProgressTimeline
+ * @requires ../utils/tipografia.js
+ * @exports ProgressTimeline (default)
  */
+import { FS } from '../utils/tipografia.js';
 
 const PASOS = [
   {
@@ -114,7 +119,7 @@ function DotIcon({ palKey, index }) {
       </svg>
     );
   }
-  return <span style={{ fontSize: 9, fontWeight: 800, lineHeight: 1 }}>{index + 1}</span>;
+  return <span style={{ fontSize: FS.etiqueta, fontWeight: 800, lineHeight: 1 }}>{index + 1}</span>;
 }
 
 export default function ProgressTimeline({ T, pasoActual = 0, metadata = {} }) {
@@ -166,7 +171,7 @@ export default function ProgressTimeline({ T, pasoActual = 0, metadata = {} }) {
             <div style={{ flex: 1, paddingTop: 8, paddingBottom: isLast ? 0 : 24 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
                 <p style={{
-                  margin: 0, fontSize: 13,
+                  margin: 0, fontSize: FS.enfasis,
                   fontWeight: isPending ? 500 : 700,
                   color: isPending
                     ? (isDark ? "rgba(255,255,255,0.25)" : "#94a3b8")
@@ -176,7 +181,7 @@ export default function ProgressTimeline({ T, pasoActual = 0, metadata = {} }) {
                   {paso.label}
                 </p>
                 <span style={{
-                  fontSize: 9, fontWeight: 700,
+                  fontSize: FS.etiqueta, fontWeight: 700,
                   padding: "2px 8px", borderRadius: 99,
                   letterSpacing: "0.04em", textTransform: "uppercase",
                   background: tok(pal.badge.bg,    isDark),
@@ -188,7 +193,7 @@ export default function ProgressTimeline({ T, pasoActual = 0, metadata = {} }) {
               </div>
 
               <p style={{
-                margin: 0, fontSize: 11, fontWeight: 400, lineHeight: 1.5,
+                margin: 0, fontSize: FS.secundario, fontWeight: 400, lineHeight: 1.5,
                 color: isDark ? "rgba(255,255,255,0.35)" : "#94a3b8",
               }}>
                 {paso.desc}
@@ -196,7 +201,7 @@ export default function ProgressTimeline({ T, pasoActual = 0, metadata = {} }) {
 
               {meta.timestamp && (
                 <p style={{
-                  margin: "8px 0 0", fontSize: 10, fontWeight: 500, letterSpacing: "0.01em",
+                  margin: "8px 0 0", fontSize: FS.etiqueta, fontWeight: 500, letterSpacing: "0.01em",
                   color: isDark ? "rgba(255,255,255,0.28)" : "#b0bac7",
                 }}>
                   {meta.timestamp}
@@ -205,7 +210,7 @@ export default function ProgressTimeline({ T, pasoActual = 0, metadata = {} }) {
 
               {meta.extra && (
                 <p style={{
-                  margin: "4px 0 0", fontSize: 10, fontWeight: 400,
+                  margin: "4px 0 0", fontSize: FS.etiqueta, fontWeight: 400,
                   color: isDark ? "rgba(255,255,255,0.22)" : "#b0bac7",
                 }}>
                   {meta.extra}

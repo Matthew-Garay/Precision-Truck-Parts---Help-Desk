@@ -1,3 +1,27 @@
+/**
+ * Login.jsx
+ *
+ * Pantalla de inicio de sesión: login con correo y contraseña, inicio con Zoho
+ * y flujo completo de recuperación de contraseña por código enviado al correo.
+ *
+ * Export default: Login
+ * Props: onLogin(usuario).
+ * Endpoints: POST /api/auth/login, /api/auth/recuperar, /api/auth/verificar-
+ *    codigo, /api/auth/reset-password; GET /api/auth/zoho/login.
+ * Guarda en sessionStorage el fin del bloqueo por intentos fallidos
+ *    (login_bloqueo_fin).
+ *
+ * @module client/pages/Login
+ * @requires react
+ * @requires ../services/api-client.js
+ * @requires ../utils/design-system.js
+ * @requires ../components/Icons.jsx
+ * @requires ../utils/email.js
+ * @requires ../utils/password.js
+ * @requires ../utils/tipografia.js
+ * @requires ../components/LogoModal.jsx
+ * @exports Login (default)
+ */
 import { useState, useCallback, useEffect, useLayoutEffect } from "react";
 import API_BASE, { apiFetch } from '../services/api-client.js';
 import { COLORS, RADIUS, BG_IMAGE, BG_OVERLAY, DIAGONAL, INPUT_FOCUS, INPUT_BLUR } from '../utils/design-system.js';
@@ -5,6 +29,8 @@ import { EyeIcon, EyeOffIcon } from '../components/Icons.jsx';
 import { emailCorporativoValido } from '../utils/email.js';
 import { evaluarPassword, passwordSeguro } from '../utils/password.js';
 
+import { FS } from '../utils/tipografia.js';
+import LogoModal from '../components/LogoModal.jsx';
 // ── Helpers ───────────────────────────────────────────────────
 // Solo se aceptan correos corporativos de los dominios permitidos
 // (refividrio.com.mx, ptp.com.mx, megapartes.com.mx, ebatruck.com.mx).
@@ -29,7 +55,7 @@ function ModalRecuperar({ onCerrar }) {
   const inp = {
     background: COLORS.silverBg, border: `1px solid ${COLORS.silver}`,
     borderRadius: RADIUS.input, color: COLORS.dark,
-    fontSize: "14px", padding: "11px 14px", width: "100%", outline: "none",
+    fontSize: FS.subtitulo, padding: "11px 14px", width: "100%", outline: "none",
   };
 
   const handleEmail = async (e) => {
@@ -124,13 +150,12 @@ function ModalRecuperar({ onCerrar }) {
           gap: "12px", flexShrink: 0,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: "#F47920" }}>
+            <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: "#F47920" }}>
               Recuperar contraseña
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
-            <img src="/assets/img/logo negro.png" alt="Precision Trucks"
-              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: 0.70 }} />
+            <LogoModal claro={false} />
             <button
               onClick={onCerrar}
               aria-label="Cerrar"
@@ -156,7 +181,7 @@ function ModalRecuperar({ onCerrar }) {
                 <div style={{
                   width: "20px", height: "20px", borderRadius: "50%",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "9px", fontWeight: 900, flexShrink: 0,
+                  fontSize: FS.etiqueta, fontWeight: 900, flexShrink: 0,
                   background: paso >= n ? "#F47920" : "#f1f5f9",
                   color: paso >= n ? "#fff" : "#a0aec0",
                 }}>{n}</div>
@@ -175,26 +200,26 @@ function ModalRecuperar({ onCerrar }) {
                   <path d="M5 13l4 4L19 7" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
-              <p style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#1a202c", textAlign: "center" }}>¡Contraseña actualizada!</p>
-              <p style={{ margin: 0, fontSize: "0.9rem", color: "#64748b", textAlign: "center" }}>Ya puedes iniciar sesión.</p>
+              <p style={{ margin: 0, fontSize: FS.enfasis, fontWeight: 700, color: "#1a202c", textAlign: "center" }}>¡Contraseña actualizada!</p>
+              <p style={{ margin: 0, fontSize: FS.secundario, color: "#64748b", textAlign: "center" }}>Ya puedes iniciar sesión.</p>
             </div>
           ) : paso === 1 ? (
             <form onSubmit={handleEmail} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-              <p style={{ margin: "0 0 10px", fontSize: "0.9rem", color: "#64748b" }}>Ingresa tu correo y te enviaremos un código.</p>
+              <p style={{ margin: "0 0 10px", fontSize: FS.secundario, color: "#64748b" }}>Ingresa tu correo y te enviaremos un código.</p>
               <div style={{ display: "grid", gridTemplateColumns: "14px 100px 1fr", alignItems: "center", gap: "10px", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ marginTop: "1px" }}>
                   <rect x="1" y="3" width="14" height="10" rx="2" stroke="#c0c9d6" strokeWidth="1.5"/>
                   <path d="M1 5.5l7 4.5 7-4.5" stroke="#c0c9d6" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
-                <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#a0aec0" }}>Correo</span>
+                <span style={{ fontSize: FS.etiqueta, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#a0aec0" }}>Correo</span>
                 <input type="email" required value={email} onChange={e => { setEmail(e.target.value); setError(""); }}
                   placeholder="usuario@dominio.com.mx"
-                  style={{ ...inp, fontSize: "14px" }}
+                  style={{ ...inp, fontSize: FS.subtitulo }}
                   onFocus={e => e.target.style.borderColor = "#F47920"}
                   onBlur={e => e.target.style.borderColor = COLORS.silver} />
               </div>
               {error && (
-                <div role="alert" style={{ marginTop: "10px", padding: "7px 10px", borderRadius: "7px", fontSize: "11px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", background: "#fee2e2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.3)" }}>
+                <div role="alert" style={{ marginTop: "10px", padding: "7px 10px", borderRadius: "7px", fontSize: FS.secundario, fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", background: "#fee2e2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.3)" }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   {error}
                 </div>
@@ -202,14 +227,14 @@ function ModalRecuperar({ onCerrar }) {
             </form>
           ) : paso === 2 ? (
             <form onSubmit={handleCodigo} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-              <p style={{ margin: "0 0 10px", fontSize: "0.9rem", color: "#64748b" }}>
+              <p style={{ margin: "0 0 10px", fontSize: FS.secundario, color: "#64748b" }}>
                 Revisa <strong style={{ color: "#1a202c" }}>{email}</strong> e ingresa el código de 6 dígitos.
               </p>
               <div style={{ display: "grid", gridTemplateColumns: "14px 120px 1fr", alignItems: "baseline", gap: "10px", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c0c9d6" strokeWidth="2" style={{ marginTop: "1px" }}>
                   <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
-                <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#a0aec0" }}>Código</span>
+                <span style={{ fontSize: FS.etiqueta, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#a0aec0" }}>Código</span>
                 <input type="text" required inputMode="numeric" maxLength={6} value={codigo}
                   onChange={e => { setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
                   onPaste={e => { e.preventDefault(); setCodigo(e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6)); }}
@@ -220,7 +245,7 @@ function ModalRecuperar({ onCerrar }) {
                   onBlur={e => e.target.style.borderColor = COLORS.silver} />
               </div>
               {error && (
-                <div role="alert" style={{ marginTop: "10px", padding: "7px 10px", borderRadius: "7px", fontSize: "11px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", background: "#fee2e2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.3)" }}>
+                <div role="alert" style={{ marginTop: "10px", padding: "7px 10px", borderRadius: "7px", fontSize: FS.secundario, fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", background: "#fee2e2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.3)" }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   {error}
                 </div>
@@ -228,12 +253,12 @@ function ModalRecuperar({ onCerrar }) {
             </form>
           ) : (
             <form onSubmit={handleReset} style={{ display: "flex", flexDirection: "column", gap: "0" }}>
-              <p style={{ color: COLORS.textMuted, fontSize: "11px", marginBottom: "10px" }}>Elige una nueva contraseña.</p>
+              <p style={{ color: COLORS.textMuted, fontSize: FS.secundario, marginBottom: "10px" }}>Elige una nueva contraseña.</p>
 
               {/* Nueva contraseña */}
               <div style={{ display: "grid", gridTemplateColumns: "14px 110px 1fr", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c0c9d6" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                <span style={{ fontSize: "0.82rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#a0aec0" }}>Nueva</span>
+                <span style={{ fontSize: FS.etiqueta, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#a0aec0" }}>Nueva</span>
                 <div style={{ position: "relative" }}>
                   <input id="rec-p1" type={showP1 ? "text" : "password"} required value={pass1}
                     onChange={e => setPass1(e.target.value)}
@@ -257,11 +282,11 @@ function ModalRecuperar({ onCerrar }) {
                     <div style={{ flex: 1, height: "4px", borderRadius: "99px", overflow: "hidden", background: COLORS.silverLight }}>
                       <div style={{ height: "100%", borderRadius: "99px", transition: "all 0.3s", width: `${fuerza.pct}%`, background: fuerza.color }} />
                     </div>
-                    <span style={{ fontSize: "10px", fontWeight: 700, textAlign: "right", color: fuerza.color }}>{fuerza.etiqueta}</span>
+                    <span style={{ fontSize: FS.etiqueta, fontWeight: 700, textAlign: "right", color: fuerza.color }}>{fuerza.etiqueta}</span>
                   </div>
                   <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 8px" }}>
                     {fuerza.reglas.map(r => (
-                      <li key={r.id} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "10px", color: r.ok ? "#16a34a" : "#9ca3af" }}>
+                      <li key={r.id} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: FS.etiqueta, color: r.ok ? "#16a34a" : "#9ca3af" }}>
                         {r.ok
                           ? <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                           : <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>}
@@ -275,7 +300,7 @@ function ModalRecuperar({ onCerrar }) {
               {/* Confirmar contraseña */}
               <div style={{ display: "grid", gridTemplateColumns: "14px 110px 1fr", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c0c9d6" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <span style={{ fontSize: "0.82rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#a0aec0" }}>Confirmar</span>
+                <span style={{ fontSize: FS.etiqueta, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#a0aec0" }}>Confirmar</span>
                 <div style={{ position: "relative" }}>
                   <input id="rec-p2" type={showP2 ? "text" : "password"} required value={pass2}
                     onChange={e => setPass2(e.target.value)}
@@ -292,7 +317,7 @@ function ModalRecuperar({ onCerrar }) {
               </div>
 
               {error && (
-                <div role="alert" style={{ marginTop: "10px", padding: "7px 10px", borderRadius: "7px", fontSize: "11px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", background: "#fee2e2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.3)" }}>
+                <div role="alert" style={{ marginTop: "10px", padding: "7px 10px", borderRadius: "7px", fontSize: FS.secundario, fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", background: "#fee2e2", color: "#dc2626", border: "1px solid rgba(220,38,38,0.3)" }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   {error}
                 </div>
@@ -315,7 +340,7 @@ function ModalRecuperar({ onCerrar }) {
           {exito ? (
             <button
               onClick={onCerrar}
-              style={{ padding: "6px 18px", borderRadius: "6px", fontSize: "1rem", fontWeight: 600, background: `linear-gradient(135deg,${COLORS.orange},${COLORS.orangeDark})`, border: "none", color: "#fff", cursor: "pointer", boxShadow: "0 2px 10px rgba(244,121,32,0.35)" }}
+              style={{ padding: "6px 18px", borderRadius: "6px", fontSize: FS.cuerpo, fontWeight: 600, background: `linear-gradient(135deg,${COLORS.orange},${COLORS.orangeDark})`, border: "none", color: "#fff", cursor: "pointer", boxShadow: "0 2px 10px rgba(244,121,32,0.35)" }}
               onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.1)"}
               onMouseLeave={e => e.currentTarget.style.filter = ""}>
               Ir al inicio de sesión
@@ -324,7 +349,7 @@ function ModalRecuperar({ onCerrar }) {
             <>
               {paso === 2 && (
                 <button type="button" onClick={() => { setPaso(1); setError(""); setCodigo(""); }}
-                  style={{ padding: "6px 14px", borderRadius: "6px", fontSize: "0.9rem", fontWeight: 600, background: "transparent", border: "1px solid #e8ecf0", color: "#64748b", cursor: "pointer", transition: "all 0.12s" }}
+                  style={{ padding: "6px 14px", borderRadius: "6px", fontSize: FS.secundario, fontWeight: 600, background: "transparent", border: "1px solid #e8ecf0", color: "#64748b", cursor: "pointer", transition: "all 0.12s" }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = "#64748b"; e.currentTarget.style.color = "#1a202c"; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = "#e8ecf0"; e.currentTarget.style.color = "#64748b"; }}>
                   Cambiar correo
@@ -333,7 +358,7 @@ function ModalRecuperar({ onCerrar }) {
               <button
                 onClick={paso === 1 ? handleEmail : paso === 2 ? handleCodigo : handleReset}
                 disabled={loading || (paso === 2 && codigo.length !== 6)}
-                style={{ padding: "6px 18px", borderRadius: "6px", fontSize: "1rem", fontWeight: 600, background: `linear-gradient(135deg,${COLORS.orange},${COLORS.orangeDark})`, border: "none", color: "#fff", cursor: (loading || (paso === 2 && codigo.length !== 6)) ? "not-allowed" : "pointer", opacity: (loading || (paso === 2 && codigo.length !== 6)) ? 0.6 : 1, boxShadow: "0 2px 10px rgba(244,121,32,0.35)", transition: "all 0.12s" }}
+                style={{ padding: "6px 18px", borderRadius: "6px", fontSize: FS.cuerpo, fontWeight: 600, background: `linear-gradient(135deg,${COLORS.orange},${COLORS.orangeDark})`, border: "none", color: "#fff", cursor: (loading || (paso === 2 && codigo.length !== 6)) ? "not-allowed" : "pointer", opacity: (loading || (paso === 2 && codigo.length !== 6)) ? 0.6 : 1, boxShadow: "0 2px 10px rgba(244,121,32,0.35)", transition: "all 0.12s" }}
                 onMouseEnter={e => { if (!loading) e.currentTarget.style.filter = "brightness(1.1)"; }}
                 onMouseLeave={e => e.currentTarget.style.filter = ""}>
                 {loading ? "Cargando..."
@@ -372,11 +397,11 @@ function PantallaEntrada() {
         </div>
 
         <div className="text-center flex flex-col gap-1">
-          <p className="text-white text-lg font-black uppercase tracking-widest leading-none"
+          <p className="text-white text-[16px] font-black uppercase tracking-widest leading-none"
             style={{ animation: "slide-up 0.5s 0.15s ease-out both" }}>
             Precision Truck Parts, Parts and Accesories, S.A de C.V.
           </p>
-          <p className="text-[11px] font-medium uppercase tracking-widest"
+          <p className="text-[10px] font-medium uppercase tracking-widest"
             style={{ color: "rgba(255,255,255,0.35)", animation: "slide-up 0.5s 0.28s ease-out both" }}>
             Bienvenido · Cargando sistema...
           </p>
@@ -599,8 +624,8 @@ export default function Login({ onLogin }) {
                 className="login-logo object-contain flex-shrink-0"
                 style={{ height: "clamp(32px, 6vw, 44px)", maxWidth: "140px" }} />
               <div style={{ borderLeft: "1px solid #E2E8F0", paddingLeft: "12px" }}>
-                <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#475569", lineHeight: 1 }}>Sistema Interno</p>
-                <p style={{ fontSize: "9px", fontWeight: 400, color: "#94A3B8", marginTop: "3px", lineHeight: 1 }}>HelpDesk · Soporte Técnico</p>
+                <p style={{ fontSize: FS.etiqueta, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#475569", lineHeight: 1 }}>Sistema Interno</p>
+                <p style={{ fontSize: FS.etiqueta, fontWeight: 400, color: "#94A3B8", marginTop: "3px", lineHeight: 1 }}>HelpDesk · Soporte Técnico</p>
               </div>
             </div>
 
@@ -609,10 +634,10 @@ export default function Login({ onLogin }) {
 
               {/* Título */}
               <div className="login-title-gap" style={{ marginBottom: "20px" }}>
-                <h1 style={{ color: "#0F172A", fontSize: "18px", fontWeight: 700, lineHeight: 1.2, letterSpacing: "-0.02em" }}>
+                <h1 style={{ color: "#0F172A", fontSize: FS.titulo, fontWeight: 700, lineHeight: 1.2, letterSpacing: "-0.02em" }}>
                   Iniciar sesión
                 </h1>
-                <p style={{ color: "#64748B", fontSize: "12px", marginTop: "4px", fontWeight: 400, letterSpacing: "0.01em" }}>
+                <p style={{ color: "#64748B", fontSize: FS.cuerpo, marginTop: "4px", fontWeight: 400, letterSpacing: "0.01em" }}>
                   Ingresa tus credenciales corporativas
                 </p>
               </div>
@@ -623,7 +648,7 @@ export default function Login({ onLogin }) {
                 {/* Email */}
                 <div>
                   <label htmlFor="login-email" className="block"
-                    style={{ color: "#475569", fontSize: "11px", fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: "6px" }}>
+                    style={{ color: "#475569", fontSize: FS.secundario, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: "6px" }}>
                     Correo electrónico
                   </label>
                   <div className="relative">
@@ -653,7 +678,7 @@ export default function Login({ onLogin }) {
                         border: `1px solid ${inputEmailBorder}`,
                         borderRadius: "4px",
                         color: "#0F172A",
-                        fontSize: "13px",
+                        fontSize: FS.enfasis,
                         padding: "8px 12px 8px 30px",
                         transition: "border-color .2s",
                       }}
@@ -669,7 +694,7 @@ export default function Login({ onLogin }) {
                     )}
                   </div>
                   {emailTouched && !emailOk && email.length > 0 && (
-                    <p id="email-error" role="alert" style={{ color: "#ef4444", fontSize: "11px", marginTop: "4px" }}>
+                    <p id="email-error" role="alert" style={{ color: "#ef4444", fontSize: FS.secundario, marginTop: "4px" }}>
                       {emailCorporativoValido(email)}
                     </p>
                   )}
@@ -678,7 +703,7 @@ export default function Login({ onLogin }) {
                 {/* Contraseña */}
                 <div>
                   <label htmlFor="login-password" className="block"
-                    style={{ color: "#475569", fontSize: "11px", fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: "6px" }}>
+                    style={{ color: "#475569", fontSize: FS.secundario, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: "6px" }}>
                     Contraseña
                   </label>
                   <div className="relative">
@@ -705,7 +730,7 @@ export default function Login({ onLogin }) {
                         border: "1px solid #CBD5E1",
                         borderRadius: "4px",
                         color: "#0F172A",
-                        fontSize: "13px",
+                        fontSize: FS.enfasis,
                         padding: "8px 36px 8px 30px",
                       }}
                     />
@@ -720,21 +745,21 @@ export default function Login({ onLogin }) {
                       {showPwd ? <EyeIcon /> : <EyeOffIcon />}
                     </button>
                   </div>
-                  <p id="pwd-hint" style={{ color: "#9ca3af", fontSize: "11px", marginTop: "4px", textAlign: "right" }}>
+                  <p id="pwd-hint" style={{ color: "#9ca3af", fontSize: FS.secundario, marginTop: "4px", textAlign: "right" }}>
                     Mínimo 8 caracteres
                   </p>
                 </div>
 
                 {/* Olvidé contraseña */}
                 <div className="login-forgot flex justify-between items-center" style={{ marginTop: "-6px" }}>
-                  <span style={{ fontSize: "11px", color: "#94A3B8" }}>
+                  <span style={{ fontSize: FS.secundario, color: "#94A3B8" }}>
                     {MAX_INTENTOS - intentos < MAX_INTENTOS && intentos > 0 && intentos < MAX_INTENTOS && !error
                       ? `${MAX_INTENTOS - intentos} intento${MAX_INTENTOS - intentos !== 1 ? "s" : ""} restante${MAX_INTENTOS - intentos !== 1 ? "s" : ""}`
                       : ""}
                   </span>
                   <button type="button" onClick={() => setModalRec(true)}
                     className="hover:underline"
-                    style={{ color: COLORS.orange, fontSize: "12px", fontWeight: 500 }}>
+                    style={{ color: COLORS.orange, fontSize: FS.cuerpo, fontWeight: 500 }}>
                     ¿Olvidaste tu contraseña?
                   </button>
                 </div>
@@ -742,7 +767,7 @@ export default function Login({ onLogin }) {
                 {/* Error */}
                 {error && (
                   <div key={error} role="alert"
-                    className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold flex items-center gap-1.5"
+                    className="rounded-lg px-2.5 py-1.5 text-[10px] font-semibold flex items-center gap-1.5"
                     style={{ background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5" }}>
                     <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                       <circle cx="7" cy="7" r="6" stroke="#dc2626" strokeWidth="1.5"/>
@@ -762,8 +787,8 @@ export default function Login({ onLogin }) {
                 {inactivo && (
                   <div role="alert" className="rounded-lg px-2.5 py-2 flex flex-col gap-0.5"
                     style={{ background: "#fefce8", border: "1px solid #fde047" }}>
-                    <p className="text-[11px] font-black" style={{ color: "#854d0e" }}>Cuenta desactivada</p>
-                    <p className="text-[10px]" style={{ color: "#a16207" }}>
+                    <p className="text-[10px] font-black" style={{ color: "#854d0e" }}>Cuenta desactivada</p>
+                    <p className="text-[9px]" style={{ color: "#a16207" }}>
                       Contacta al administrador para reactivarla.
                     </p>
                   </div>
@@ -779,7 +804,7 @@ export default function Login({ onLogin }) {
                     background: canSubmit ? COLORS.orange : "#CBD5E1",
                     borderRadius: "4px",
                     boxShadow: canSubmit ? `0 2px 8px rgba(244,121,32,0.35)` : "none",
-                    fontSize: "13px",
+                    fontSize: FS.enfasis,
                     padding: "9px 16px",
                     letterSpacing: "0.01em",
                     cursor: canSubmit ? "pointer" : "not-allowed",
@@ -801,7 +826,7 @@ export default function Login({ onLogin }) {
               {/* Divisor "o continúa con" */}
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "16px" }}>
                 <div style={{ flex: 1, height: "1px", background: "#E2E8F0" }} />
-                <span style={{ color: "#94A3B8", fontSize: "10px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                <span style={{ color: "#94A3B8", fontSize: FS.etiqueta, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>
                   o continúa con
                 </span>
                 <div style={{ flex: 1, height: "1px", background: "#E2E8F0" }} />
@@ -821,7 +846,7 @@ export default function Login({ onLogin }) {
                   border: "1px solid #CBD5E1",
                   background: "#fff",
                   color: "#0F172A",
-                  fontSize: "13px", fontWeight: 600,
+                  fontSize: FS.enfasis, fontWeight: 600,
                   cursor: "pointer",
                   transition: "all 0.15s",
                 }}
@@ -838,7 +863,7 @@ export default function Login({ onLogin }) {
 
               {/* Divider + Footer */}
               <div style={{ borderTop: "1px solid #E2E8F0", marginTop: "16px", paddingTop: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <p className="select-none" style={{ color: "#94A3B8", fontSize: "10px", fontWeight: 400 }}>
+                <p className="select-none" style={{ color: "#94A3B8", fontSize: FS.etiqueta, fontWeight: 400 }}>
                   © 2026 Precision Truck Parts, Parts and Accesories, S.A de C.V.
                 </p>
               </div>

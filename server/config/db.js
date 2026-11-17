@@ -18,6 +18,13 @@
  *
  * Al iniciar el modulo se intenta obtener una conexion de prueba. Si falla, el proceso
  * termina con codigo 1 para evitar que el servidor arranque sin base de datos disponible.
+ *
+ * @module server/config/db
+ * @requires mysql2/promise
+ * @requires dotenv
+ * @requires path
+ * @requires url
+ * @exports pool (default)
  */
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";

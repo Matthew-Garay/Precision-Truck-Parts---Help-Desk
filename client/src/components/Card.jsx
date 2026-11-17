@@ -28,7 +28,13 @@
  *   style     - estilos adicionales para el contenedor
  *   className - clases CSS adicionales
  *   children  - contenido de la card
+ *
+ * @module client/components/Card
+ * @requires ../utils/tipografia.js
+ * @exports useCardStyles
+ * @exports Card (default)
  */
+import { FS } from '../utils/tipografia.js';
 
 // ── Tokens de sombra por variante ────────────────────────────
 const SHADOWS = {
@@ -124,7 +130,7 @@ Card.Header = function CardHeader({
         )}
         {title && (
           <p style={{
-            margin: 0, fontSize: "10px", fontWeight: 800,
+            margin: 0, fontSize: FS.etiqueta, fontWeight: 800,
             textTransform: "uppercase", letterSpacing: "0.1em",
             color: T.isDark ? "rgba(255,255,255,0.45)" : T.textMuted,
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",

@@ -630,3 +630,41 @@ Ref fk_ticket_empleado     { ticket.id_empleado > empleado.id_empleado }
 Ref fk_ticket_categoria    { ticket.id_categoria > categoria.id_categoria }
 Ref fk_ticket_tecnico      { ticket.id_tecnico > empleado.id_empleado }
 ```
+
+## Reestructura del 2026-11-15 (migraciones 001–003)
+
+Los cambios de esquema y datos viven en `database/migraciones/` y se corren en orden:
+
+| Script | Qué hace |
+|---|---|
+| `001_correccion_datos.sql` | Corrige el stock duplicado por el bug de entradas, aplica conteos físicos, limpia datos de insumos, invalida contraseñas compartidas, ajusta llaves foráneas y collations. |
+| `002_normalizacion_y_renumeracion.sql` | Crea `salida_interna`, migra las salidas que estaban dentro de `motivo`, agrega `fecha_registro` al kardex y renumera **todas** las tablas desde 1. Cierra todas las sesiones. |
+| `003_indices.sql` | Índices para catálogo de insumos, historial de solicitudes, tickets por técnico y accesos. |
+
+Para una copia completa y actual (base + archivos subidos) usa `npm run respaldar`: se guarda en `backups/respaldo_AAAAMMDD_HHMM/` (fuera de git). `database/schema.sql` es solo la estructura.
+
+### Salidas internas (`salida_interna`)
+
+Antes cada renglón de una salida guardaba en `movimiento_inventario.motivo` un texto como
+`[SAL-202610-0002] Uso interno · Ruta: … · Prioridad: … · Entrega: … · Puesto: … · NumEmp: … · Justificación: …`.
+Ahora:
+
+```
+salida_interna (1 fila por salida: folio, fecha, prioridad, ruta, solicitante, responsable, justificación)
+      ▲ id_salida
+movimiento_inventario (1 fila por insumo: cantidad, stock_anterior, stock_nuevo)
+```
+
+Puesto, sucursal y número de empleado del solicitante se obtienen por JOIN con `empleado`; ya no se copian. Los campos `*_texto` solo se llenan cuando la persona o el destino no están registrados.
+
+### Folios
+
+| Prefijo | Tabla | Formato |
+|---|---|---|
+| `ST-` | `ticket` | `ST-YYYYMM-NNNN` |
+| `SOL-` | `solicitud` | `SOL-YYYYMM-NNNN` |
+| `SAL-` | `salida_interna` | `SAL-YYYYMM-NNNN` (mes de la fecha física) |
+
+### Pendiente de normalizar
+
+`departamento` en realidad guarda **puestos** ("Vigilante", "Director General", "ABS"…). Renombrarla a `puesto` y crear un catálogo real de departamentos implica cambiar la API y el frontend; queda como mejora futura.

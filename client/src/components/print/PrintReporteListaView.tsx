@@ -1,3 +1,17 @@
+/**
+ * PrintReporteListaView.tsx
+ *
+ * Reporte imprimible en formato lista de solicitudes de insumos y salidas
+ * internas de un periodo, con ruta del material e insumos aprobados/negados.
+ *
+ * Export default: PrintReporteListaView
+ * Props: payload { titulo, periodo, filas } guardado en sessionStorage por
+ *    abrirReporteLista().
+ *
+ * @module client/components/print/PrintReporteListaView
+ * @requires ../PrintShared.tsx
+ * @exports PrintReporteListaView (default)
+ */
 import {
   PageHeader, PageFooter, PageSize, ReporteTable,
   PRIO_META, ESTATUS_META, nowFechaGen,

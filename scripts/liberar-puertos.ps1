@@ -1,4 +1,4 @@
-# liberar-puertos.ps1 — libera 3001 (backend) y 5173 (frontend) antes de `npm run all`.
+﻿# liberar-puertos.ps1 — libera 3001 (backend) y 5173 (frontend) antes de `npm run all`.
 # Sin esto, un `node` colgado de una corrida anterior deja "Port is already in use"
 # y concurrently (-k) mata al otro proceso: parece que "nada arranca".
 # NOTA: cada puerto se consulta por separado dentro de try/catch porque

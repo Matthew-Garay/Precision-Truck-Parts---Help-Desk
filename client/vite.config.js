@@ -18,6 +18,12 @@
  *     /storage   - archivos estaticos (evidencias, manuales, fotos)
  *     /fotos     - fotos de perfil con autenticacion JWT
  *     /socket.io - conexion WebSocket de Socket.io (ws: true activa el proxy WS)
+ *
+ * @module client/vite.config
+ * @requires vite
+ * @requires @vitejs/plugin-react
+ * @requires @tailwindcss/vite
+ * @exports default
  */
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -27,7 +33,6 @@ const BACKEND_URL = process.env.VITE_BACKEND_URL || `http://localhost:${process.
 const FRONTEND_PORT = parseInt(process.env.VITE_PORT || '5173', 10)
 // Vite escucha en 0.0.0.0 (todas las interfaces) para que `npm run all`
 // arranque siempre aunque Windows cambie la IP por DHCP.
-// La URL canónica del frontend (APP_URL) vive en server/.env.
 const FRONTEND_HOST = '0.0.0.0'
 
 export default defineConfig({
@@ -59,9 +64,7 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: 'all',
     proxy: {
-      // xfwd: envía X-Forwarded-Host/Proto para que el backend conozca el host
-      // real del navegador (login Zoho elige el redirect_uri correcto aunque
-      // el request pase por el proxy con changeOrigin).
+      // xfwd: envía X-Forwarded-Host/Proto para que el backend conozca el host real
       '/api':       { target: BACKEND_URL, changeOrigin: true, xfwd: true },
       '/storage':   { target: BACKEND_URL, changeOrigin: true },
       '/fotos':     { target: BACKEND_URL, changeOrigin: true },

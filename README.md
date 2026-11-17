@@ -139,7 +139,7 @@ Un ticket se crea desde Nuevo Reporte: titulo, descripcion, categoria, prioridad
 
 | Problema | Solucion |
 |----------|----------|
-| Los PDF no cargan en el visor | Verifica `storage/Manuales/` y regenera portadas con `node --import ./server/load-env.js server/scripts/generar-portadas-existentes.js`. Limpia la caché del navegador. |
+| Los PDF no cargan en el visor | Verifica que el archivo exista en `storage/Manuales/`. La portada se genera en el navegador (hook `use-pdf-cover`): limpia la caché del navegador. |
 | No conecta con la BD | Comprueba que MySQL esté corriendo y que las credenciales de `.env` coincidan. |
 | No llegan los correos | Suele ser la contraseña de Gmail normal en lugar de la de aplicación. Revisa `SMTP_*`. |
 | Va lento | Ejecuta `OPTIMIZE TABLE ticket;` y `OPTIMIZE TABLE solicitud;` en MySQL. |

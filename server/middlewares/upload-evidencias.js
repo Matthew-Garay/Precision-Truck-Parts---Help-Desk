@@ -1,5 +1,5 @@
 /**
- * uploadEvidencias.js
+ * upload-evidencias.js
  *
  * Configura el middleware de subida de imagenes de evidencia para los tickets.
  * La validacion se realiza en dos capas independientes para mayor seguridad:
@@ -28,6 +28,18 @@
  *   uploadEvidencias - objeto con metodo array(campo, maxCount) que retorna
  *                      un arreglo [middlewareMulter, middlewareMagicBytes]
  *   EVIDENCIAS_BASE  - ruta absoluta del directorio base de evidencias
+ *
+ * @module server/middlewares/upload-evidencias
+ * @requires multer
+ * @requires path
+ * @requires fs
+ * @requires crypto
+ * @requires url
+ * @requires file-type
+ * @requires ./security.js
+ * @requires sharp
+ * @exports uploadEvidencias
+ * @exports EVIDENCIAS_BASE
  */
 import multer             from "multer";
 import path               from "path";

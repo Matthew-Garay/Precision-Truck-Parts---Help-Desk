@@ -1,3 +1,19 @@
+/**
+ * use-pdf-cover.js
+ *
+ * Hook que genera con pdf.js la miniatura de la primera página de un PDF para
+ * usarla como portada de un manual cuando no hay imagen precalculada.
+ *
+ * Export: usePdfCover(url) → { cover, cargando, error }
+ * Usa utils/pdfjs.js (worker de pdfjs-dist) y libera el documento al
+ *    desmontar.
+ *
+ * @module client/hooks/use-pdf-cover
+ * @requires react
+ * @requires ../services/api-client.js
+ * @requires ../utils/pdfjs.js
+ * @exports usePdfCover
+ */
 import { useEffect, useState, useRef } from "react";
 import { getToken } from '../services/api-client.js';
 import pdfjs, { PDFJS_PARAMS } from '../utils/pdfjs.js';

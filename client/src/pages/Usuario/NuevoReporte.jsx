@@ -1,3 +1,24 @@
+/**
+ * NuevoReporte.jsx
+ *
+ * Formulario para levantar un ticket de soporte: categoría, prioridad, título,
+ * descripción y hasta 8 imágenes de evidencia.
+ *
+ * Export default: NuevoReporte
+ * Props: T, solicitante, area, usuario, onCreado.
+ * Endpoints: GET /api/categorias?tipo=ticket, POST /api/tickets
+ *    (multipart/form-data).
+ *
+ * @module client/pages/Usuario/NuevoReporte
+ * @requires react
+ * @requires react-router-dom
+ * @requires lucide-react
+ * @requires ../../services/api-client.js
+ * @requires ../../components/Modal.jsx
+ * @requires ../../utils/tipografia.js
+ * @requires ../../components/LogoModal.jsx
+ * @exports NuevoReporte (default)
+ */
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Camera, X, ChevronLeft, ChevronRight, Trash2,
@@ -6,6 +27,8 @@ import { Camera, X, ChevronLeft, ChevronRight, Trash2,
 import { apiFetch } from '../../services/api-client.js';
 import Modal from '../../components/Modal.jsx';
 
+import { FS } from '../../utils/tipografia.js';
+import LogoModal from '../../components/LogoModal.jsx';
 const PRIORIDADES = [
   { label:"Urgente", nivel:"Urgente", color:"#dc2626", bgL:"#fee2e2", bgD:"#2d0a0a" },
   { label:"Alta",    nivel:"Alta",    color:"#ea580c", bgL:"#ffedd5", bgD:"#2d1200" },
@@ -42,7 +65,7 @@ function AyudaTooltip({ texto, isDark, children }) {
       {children}
       {visible && (
         <span
-          className="absolute z-50 bottom-full left-0 mb-2 w-56 text-[11px] leading-relaxed rounded-xl px-3 py-2 shadow-xl pointer-events-none"
+          className="absolute z-50 bottom-full left-0 mb-2 w-56 text-[10px] leading-relaxed rounded-xl px-3 py-2 shadow-xl pointer-events-none"
           style={{ background: isDark ? "#1e2330" : "#1e293b", color: "#f1f5f9", border: "1px solid rgba(255,255,255,0.1)", whiteSpace: "normal" }}>
           {texto}
           <span className="absolute top-full left-4 border-4 border-transparent" style={{ borderTopColor: isDark ? "#1e2330" : "#1e293b" }} />
@@ -283,7 +306,7 @@ const card = {
     border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : T.border}`,
     color: textColor,
     borderRadius: "2px",
-    fontSize: "12px",
+    fontSize: FS.cuerpo,
     padding: "6px 10px",
     outline: "none",
     width: "100%",
@@ -296,13 +319,13 @@ const card = {
   const SectionHeader = ({ title }) => (
     <div className="flex items-center gap-2 mb-3">
       <div className="w-0.5 h-4 rounded-full flex-shrink-0" style={{ background:"#F47920" }}/>
-      <span className="text-[10px] font-black uppercase tracking-widest" style={{ color:dividerText }}>{title}</span>
+      <span className="text-[9px] font-black uppercase tracking-widest" style={{ color:dividerText }}>{title}</span>
       <div className="flex-1 h-px" style={{ background:dividerLine }}/>
     </div>
   );
 
   const Label = ({ children, required, ayuda }) => (
-    <label className="block text-xs font-semibold mb-1" style={{ color: isDark ? "rgba(255,255,255,0.75)" : T.text }}>
+    <label className="block text-[11px] font-semibold mb-1" style={{ color: isDark ? "rgba(255,255,255,0.75)" : T.text }}>
       {ayuda ? (
         <AyudaTooltip texto={ayuda} isDark={isDark}>{children}</AyudaTooltip>
       ) : children}
@@ -311,7 +334,7 @@ const card = {
   );
 
   const Err = ({ campo }) => errores[campo]
-    ? <p className="text-[11px] mt-1 font-semibold flex items-center gap-1" style={{ color:"#ef4444" }}>⚠ {errores[campo]}</p>
+    ? <p className="text-[10px] mt-1 font-semibold flex items-center gap-1" style={{ color:"#ef4444" }}>⚠ {errores[campo]}</p>
     : null;
 
   return (
@@ -336,8 +359,8 @@ const card = {
             <path d="M26 8v24M14 20l12-12 12 12" stroke="#F47920" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M6 40v3a3 3 0 003 3h34a3 3 0 003-3v-3" stroke="#F47920" strokeWidth="3" strokeLinecap="round"/>
           </svg>
-          <p className="text-base font-black" style={{ color:"#F47920" }}>Suelta las imágenes</p>
-          <p className="text-sm" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#64748b" }}>Se agregarán a Evidencias fotográficas</p>
+          <p className="text-[13px] font-black" style={{ color:"#F47920" }}>Suelta las imágenes</p>
+          <p className="text-[12px]" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#64748b" }}>Se agregarán a Evidencias fotográficas</p>
         </div>
       )}
 
@@ -347,8 +370,8 @@ const card = {
           style={{ background: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff", borderBottom:`1px solid ${isDark ? "rgba(59,130,246,0.2)" : "#bfdbfe"}` }}>
           <img src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"} alt="Logo" className="object-contain flex-shrink-0" style={{ width:"68px", height:"68px" }}/>
           <div className="min-w-0">
-            <p className="text-sm font-black tracking-tight" style={{ color: isDark ? "#93c5fd" : "#1d4ed8" }}>FORMULARIO DE INCIDENCIAS</p>
-            <p className="text-[11px] font-medium mt-0.5" style={{ color: isDark ? "rgba(147,197,253,0.6)" : "#3b82f6" }}>Completa el formulario para habilitar el envío.</p>
+            <p className="text-[12px] font-black tracking-tight" style={{ color: isDark ? "#93c5fd" : "#1d4ed8" }}>FORMULARIO DE INCIDENCIAS</p>
+            <p className="text-[10px] font-medium mt-0.5" style={{ color: isDark ? "rgba(147,197,253,0.6)" : "#3b82f6" }}>Completa el formulario para habilitar el envío.</p>
           </div>
         </div>
 
@@ -430,7 +453,7 @@ const card = {
                     boxShadow: catOpen ? "0 0 0 2px rgba(255,102,0,0.1)" : "none",
                     cursor: "pointer",
                   }}>
-                  <span className="flex items-center gap-2.5 font-medium text-sm">
+                  <span className="flex items-center gap-2.5 font-medium text-[12px]">
                     {catSel ? catSel.label : "Selecciona una categoría"}
                   </span>
                   <svg width="12" height="12" viewBox="0 0 13 13" fill="none"
@@ -450,7 +473,7 @@ const card = {
                       return (
                         <button key={c.valor} type="button"
                           onMouseDown={() => { set("categoria", c.valor); setCatOpen(false); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all text-left"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium transition-all text-left"
                           style={{
                             background: sel ? "rgba(244,121,32,0.12)" : "transparent",
                             color: sel ? "#F47920" : isDark ? "rgba(255,255,255,0.8)" : T.text,
@@ -481,7 +504,7 @@ const card = {
                     const sel = form.prioridad === p.nivel;
                     return (
                       <button key={p.nivel} type="button" onClick={() => set("prioridad", p.nivel)}
-                        className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold transition-all select-none"
+                        className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[9px] font-bold transition-all select-none"
                         style={{
                           background: sel ? (isDark ? p.bgD : p.bgL) : "transparent",
                           color: sel ? p.color : dividerText,
@@ -509,7 +532,7 @@ const card = {
                     }}>
                     {tvVisible && <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 5-5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                   </div>
-                  <span className="text-[11px] font-semibold" style={{ color: dividerText }}>
+                  <span className="text-[10px] font-semibold" style={{ color: dividerText }}>
                     ¿Necesitas asistencia remota (TeamViewer)?
                   </span>
                 </label>
@@ -585,7 +608,7 @@ const card = {
                       <Minus size={13}/>
                     </ToolBtn>
                     <ToolBtn title="Quitar formato" onClick={() => fmt("removeFormat")} isDark={isDark} T={T}>
-                      <span className="text-[10px] font-black">Aa</span>
+                      <span className="text-[9px] font-black">Aa</span>
                     </ToolBtn>
                   </div>
 
@@ -603,7 +626,7 @@ const card = {
                       e.currentTarget.parentElement.style.borderColor = errores.descripcion ? "#ef4444" : isDark ? "rgba(255,255,255,0.15)" : T.border;
                       e.currentTarget.parentElement.style.boxShadow   = "none";
                     }}
-                    className="outline-none px-3 py-2 text-xs leading-relaxed"
+                    className="outline-none px-3 py-2 text-[11px] leading-relaxed"
                     style={{ minHeight:"200px", color:textColor, background:"transparent" }}
                     data-placeholder="Describe el problema con el mayor detalle posible: cuándo ocurrió, qué estabas haciendo, mensajes de error, etc."
                     ref={el => { editorRef.current = el; }}
@@ -626,7 +649,7 @@ const card = {
                     const bgC   = enRojo ? (isDark?"rgba(220,38,38,0.15)":"#fee2e2") : enNaranja ? (isDark?"rgba(234,88,12,0.15)":"#ffedd5") : enAmarillo ? (isDark?"rgba(202,138,4,0.12)":"#fef9c3") : isDark ? "rgba(255,255,255,0.06)" : T.bg;
                     const borderC = enRojo ? "#fca5a5" : enNaranja ? "#fdba74" : enAmarillo ? "#fde047" : dividerLine;
                     return (
-                      <span className="ml-auto text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 transition-all"
+                      <span className="ml-auto text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 transition-all"
                         style={{ background: bgC, color: textC, border: `1px solid ${borderC}` }}>
                         {(enRojo || enNaranja) && (
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
@@ -646,7 +669,7 @@ const card = {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label ayuda={AYUDA.evidencias}>Fotografías adjuntas</Label>
-                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full"
                     style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.bg, color: dividerText, border:`1px solid ${dividerLine}` }}>
                     {form.evidencias.length}/{MAX_IMGS}
                   </span>
@@ -666,8 +689,8 @@ const card = {
                     <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background:"rgba(244,121,32,0.1)" }}>
                       <Camera size={22} style={{ color:"#F47920" }}/>
                     </div>
-                    <p className="text-xs font-semibold" style={{ color:"#F47920" }}>Haz clic o arrastra archivos aquí</p>
-                    <p className="text-[11px]" style={{ color:iconColor }}>PNG, JPG, MP4, WebM · Máx. {MAX_IMGS} archivos</p>
+                    <p className="text-[11px] font-semibold" style={{ color:"#F47920" }}>Haz clic o arrastra archivos aquí</p>
+                    <p className="text-[10px]" style={{ color:iconColor }}>PNG, JPG, MP4, WebM · Máx. {MAX_IMGS} archivos</p>
                   </label>
                 )}
 
@@ -707,16 +730,16 @@ const card = {
 
           {/* Botones */}
           <div className="flex flex-col gap-3 pt-3" style={{ borderTop:`1px solid ${dividerLine}` }}>
-            <p className="text-[11px] text-center leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.3)" : T.textFaint }}>
+            <p className="text-[10px] text-center leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.3)" : T.textFaint }}>
               Al enviar este reporte, el usuario autoriza al personal de soporte técnico a ejecutar los protocolos y medidas necesarias para la resolución efectiva de la incidencia.
             </p>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <p className="text-xs flex items-center gap-1" style={{ color:iconColor }}>
+              <p className="text-[11px] flex items-center gap-1" style={{ color:iconColor }}>
                 <span className="text-red-400 font-bold">*</span> Campos obligatorios
               </p>
             <div className="flex flex-col sm:flex-row gap-2 w-full">
                 <button type="button" onClick={() => setModalLimpiar(true)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 rounded-sm text-xs font-semibold transition-all hover:opacity-80 active:scale-95"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 rounded-sm text-[11px] font-semibold transition-all hover:opacity-80 active:scale-95"
                   style={{ background: "transparent", color: isDark ? "rgba(255,255,255,0.4)" : "#9ca3af", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb"}` }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                     <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -724,7 +747,7 @@ const card = {
                   Limpiar
                 </button>
                 <button type="button" onClick={handleSubir} disabled={enviando}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2 rounded-sm text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2 rounded-sm text-[12px] font-semibold text-white transition-all hover:brightness-110 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{ background: "#FF6600" }}>
                   {enviando ? (
                     <>
@@ -760,7 +783,7 @@ const card = {
           confirmLabel="Sí, limpiar"
           maxWidth="340px"
         >
-          <p className="text-xs" style={{ color: T.text }}>
+          <p className="text-[11px]" style={{ color: T.text }}>
             Se borrarán todos los campos y las imágenes adjuntas.
           </p>
         </Modal>
@@ -780,7 +803,7 @@ const card = {
               maxWidth="380px"
               danger
             >
-              <p className="text-sm" style={{ color: T.text }}>{modal.msg}</p>
+              <p className="text-[12px]" style={{ color: T.text }}>{modal.msg}</p>
             </Modal>
       )}
 
@@ -791,6 +814,7 @@ const card = {
           onClick={() => setVisor(null)}>
           <div className="relative w-full max-w-4xl mx-4 sm:mx-10 flex flex-col items-center gap-4"
             onClick={e => e.stopPropagation()}>
+            <LogoModal claro alto={18} />
             {form.evidencias[visor].isVideo ? (
               <video src={form.evidencias[visor].src} controls autoPlay
                 className="rounded-2xl w-full"
@@ -800,7 +824,7 @@ const card = {
                 className="rounded-2xl object-contain w-full"
                 style={{ maxHeight:"74vh", boxShadow:"0 12px 48px rgba(0,0,0,0.7)" }}/>
             )}
-            <p className="text-xs truncate max-w-xs" style={{ color:"rgba(255,255,255,0.45)" }}>
+            <p className="text-[11px] truncate max-w-xs" style={{ color:"rgba(255,255,255,0.45)" }}>
               {form.evidencias[visor].name}
             </p>
             <div className="flex items-center gap-3">
@@ -809,7 +833,7 @@ const card = {
                 style={{ background:"rgba(255,255,255,0.15)", color:"#fff" }}>
                 <ChevronLeft size={20}/>
               </button>
-              <span className="text-sm font-bold text-white">{visor+1} / {form.evidencias.length}</span>
+              <span className="text-[12px] font-bold text-white">{visor+1} / {form.evidencias.length}</span>
               <button onClick={() => setVisor(i => Math.min(form.evidencias.length-1, i+1))} disabled={visor === form.evidencias.length-1}
                 className="w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:opacity-25 hover:scale-110"
                 style={{ background:"rgba(255,255,255,0.15)", color:"#fff" }}>
@@ -817,7 +841,7 @@ const card = {
               </button>
             </div>
             <button onClick={() => borrarImg(visor)}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-95"
+              className="flex items-center gap-2 px-5 py-2 rounded-xl text-[12px] font-bold transition-all hover:brightness-110 active:scale-95"
               style={{ background:"rgba(220,38,38,0.85)", color:"#fff" }}>
               <Trash2 size={14}/> Eliminar foto
             </button>
@@ -911,24 +935,20 @@ function ModalReporteEnviado({ T, modal, onVerTicket, onSuccess, onClose }) {
           gap: "12px", flexShrink: 0,
         }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: 0, fontSize: "11px", fontWeight: 700, textTransform: "uppercase",
+            <p style={{ margin: 0, fontSize: FS.secundario, fontWeight: 700, textTransform: "uppercase",
               letterSpacing: "0.09em", color: "#16a34a" }}>
               Incidencias
             </p>
-            <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: textMain,
+            <h2 style={{ margin: "3px 0 0", fontSize: FS.subtitulo, fontWeight: 700, color: textMain,
               letterSpacing: "-0.02em", lineHeight: 1.2 }}>
               Reporte enviado
             </h2>
-            <p style={{ margin: "4px 0 0", fontSize: "12px", color: textMuted, fontWeight: 400 }}>
+            <p style={{ margin: "4px 0 0", fontSize: FS.cuerpo, color: textMuted, fontWeight: 400 }}>
               Tu ticket fue registrado correctamente
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
-            <img
-              src={isDark ? "/assets/img/logo blanco.png" : "/assets/img/logo negro.png"}
-              alt="Precision Trucks"
-              style={{ height: "28px", width: "auto", objectFit: "contain", opacity: isDark ? 0.80 : 0.70 }}
-            />
+            <LogoModal />
             <button
               onClick={onClose}
               aria-label="Cerrar"
@@ -969,11 +989,11 @@ function ModalReporteEnviado({ T, modal, onVerTicket, onSuccess, onClose }) {
               padding: "8px 0",
               borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}`,
             }}>
-              <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase",
+              <span style={{ fontSize: FS.secundario, fontWeight: 600, textTransform: "uppercase",
                 letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0" }}>
                 {label}
               </span>
-              <span style={{ fontSize: "13px", fontWeight: 600, color: color || textMain }}>
+              <span style={{ fontSize: FS.enfasis, fontWeight: 600, color: color || textMain }}>
                 {value}
               </span>
             </div>
@@ -992,7 +1012,7 @@ function ModalReporteEnviado({ T, modal, onVerTicket, onSuccess, onClose }) {
             onClick={onClose}
             style={{
               padding: "6px 16px", borderRadius: "6px",
-              fontSize: "12px", fontWeight: 600,
+              fontSize: FS.cuerpo, fontWeight: 600,
               background: "transparent",
               border: `1px solid ${border}`,
               color: textMuted, cursor: "pointer", transition: "all 0.12s",
@@ -1007,7 +1027,7 @@ function ModalReporteEnviado({ T, modal, onVerTicket, onSuccess, onClose }) {
               onClick={handleConfirm}
               style={{
                 padding: "6px 16px", borderRadius: "6px",
-                fontSize: "12px", fontWeight: 700,
+                fontSize: FS.cuerpo, fontWeight: 700,
                 background: "#16a34a", color: "#fff",
                 border: "none", cursor: "pointer",
                 display: "flex", alignItems: "center", gap: "6px",

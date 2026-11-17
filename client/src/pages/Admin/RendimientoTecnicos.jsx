@@ -1,3 +1,22 @@
+/**
+ * RendimientoTecnicos.jsx
+ *
+ * Tablero de rendimiento por técnico: tickets atendidos, resueltos, tiempos de
+ * respuesta y calificación promedio.
+ *
+ * Export default: RendimientoTecnicos
+ * Props: T.
+ * Endpoint: GET /api/tickets/rendimiento (API_ROUTES.TICKETS_RENDIMIENTO).
+ *
+ * @module client/pages/Admin/RendimientoTecnicos
+ * @requires react
+ * @requires lucide-react
+ * @requires ../../services/api-client.js
+ * @requires ../../components/Card.jsx
+ * @requires ../print/PrintReportePage.tsx
+ * @requires ../../components/ModalReporte.jsx
+ * @exports RendimientoTecnicos (default)
+ */
 import { useState, useEffect, useCallback } from "react";
 import { Star, Users, Clock, CheckCircle2, Inbox, FileDown, XCircle, Zap, Activity, Ban, ShieldCheck } from "lucide-react";
 import { apiFetch, API_ROUTES } from '../../services/api-client.js';
@@ -24,7 +43,7 @@ function BarraRendimiento({ val, max, color }) {
         <div className="h-full rounded-full transition-all duration-700"
           style={{ width: `${pct}%`, background: color }} />
       </div>
-      <span className="text-[10px] font-black w-6 text-right flex-shrink-0" style={{ color }}>{val}</span>
+      <span className="text-[9px] font-black w-6 text-right flex-shrink-0" style={{ color }}>{val}</span>
     </div>
   );
 }
@@ -129,9 +148,9 @@ export default function RendimientoTecnicos({ T }) {
                   style={{ background: `linear-gradient(90deg,${color},${color}33)` }} />
                 <div className="flex items-center gap-1.5">
                   <Icon size={11} style={{ color }} />
-                  <p className="text-[10px] font-black uppercase tracking-wider truncate" style={{ color: T.textMuted }}>{label}</p>
+                  <p className="text-[9px] font-black uppercase tracking-wider truncate" style={{ color: T.textMuted }}>{label}</p>
                 </div>
-                <span className="text-2xl font-black leading-none" style={{ color }}>{kpiValues[key]}</span>
+                <span className="text-[18px] font-black leading-none" style={{ color }}>{kpiValues[key]}</span>
               </div>
             );
           })}
@@ -140,7 +159,7 @@ export default function RendimientoTecnicos({ T }) {
         {/* ── Barra exportar ───────────────────────────────────── */}
         <div className="flex justify-end">
           <button onClick={() => setModalPDF(true)} disabled={!datos.length}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-40"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-40"
             style={{ background: "#F47920", color: "#fff" }}>
             <FileDown size={13} strokeWidth={2.5} /> Exportar PDF
           </button>
@@ -153,7 +172,7 @@ export default function RendimientoTecnicos({ T }) {
           <div className="flex items-center justify-between px-4 py-2.5 flex-shrink-0" style={hdr}>
             <div className="flex items-center gap-2">
               <div className="w-0.5 h-3.5 rounded-full" style={{ background: T.orange }} />
-              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Detalle por técnico</p>
+              <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Detalle por técnico</p>
             </div>
             <div className="flex items-center gap-2">
               {cargando && (
@@ -161,7 +180,7 @@ export default function RendimientoTecnicos({ T }) {
                   <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                 </svg>
               )}
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                 style={{ background: T.bg, color: T.textMuted, border: `1px solid ${T.border}` }}>
                 {datos.length} resultado{datos.length !== 1 ? "s" : ""}
               </span>
@@ -174,7 +193,7 @@ export default function RendimientoTecnicos({ T }) {
                 <tr style={{ background: isDark ? "#1c2030" : T.surfaceAlt }}>
                   {COLS.map((col, i) => (
                     <th key={i}
-                      className="px-3 py-2 text-left text-[10px] font-black uppercase tracking-widest"
+                      className="px-3 py-2 text-left text-[9px] font-black uppercase tracking-widest"
                       style={{ color: T.textMuted, borderBottom: `2px solid ${T.border}` }}>
                       {col}
                     </th>
@@ -186,8 +205,8 @@ export default function RendimientoTecnicos({ T }) {
                   <tr><td colSpan={COLS.length}>
                     <div className="flex flex-col items-center justify-center py-14 gap-2">
                       <Inbox size={24} style={{ color: T.textFaint }} />
-                      <p className="text-xs font-bold" style={{ color: T.textMuted }}>Sin datos de rendimiento</p>
-                      <p className="text-[11px]" style={{ color: T.textFaint }}>Aún no hay tickets cerrados con técnico asignado</p>
+                      <p className="text-[11px] font-bold" style={{ color: T.textMuted }}>Sin datos de rendimiento</p>
+                      <p className="text-[10px]" style={{ color: T.textFaint }}>Aún no hay tickets cerrados con técnico asignado</p>
                     </div>
                   </td></tr>
                 ) : datos.map((r, i) => {
@@ -207,7 +226,7 @@ export default function RendimientoTecnicos({ T }) {
                       onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(244,121,32,0.06)" : "rgba(244,121,32,0.04)"}
                       onMouseLeave={e => e.currentTarget.style.background = bgRow}>
 
-                      <td className="px-3 py-2 text-[10px] font-black" style={{ color: T.textFaint }}>{i + 1}</td>
+                      <td className="px-3 py-2 text-[9px] font-black" style={{ color: T.textFaint }}>{i + 1}</td>
 
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
@@ -215,7 +234,7 @@ export default function RendimientoTecnicos({ T }) {
                             style={{ background: `${T.orange}20`, color: T.orange, border: `1px solid ${T.orange}30` }}>
                             {r.nombre_tecnico.charAt(0).toUpperCase()}
                           </div>
-                          <span className="text-[11px] font-semibold truncate" style={{ color: T.text }}>{r.nombre_tecnico}</span>
+                          <span className="text-[10px] font-semibold truncate" style={{ color: T.text }}>{r.nombre_tecnico}</span>
                         </div>
                       </td>
 
@@ -224,34 +243,34 @@ export default function RendimientoTecnicos({ T }) {
                       </td>
 
                       <td className="px-3 py-2 text-center">
-                        <span className="text-[11px] font-black" style={{ color: "#16a34a" }}>{r.resueltos}</span>
+                        <span className="text-[10px] font-black" style={{ color: "#16a34a" }}>{r.resueltos}</span>
                       </td>
 
                       <td className="px-3 py-2 text-center">
-                        <span className="text-[11px] font-black"
+                        <span className="text-[10px] font-black"
                           style={{ color: Number(r.no_resueltos) > 0 ? "#dc2626" : T.textFaint }}>
                           {r.no_resueltos ?? 0}
                         </span>
                       </td>
 
                       <td className="px-3 py-2 text-center">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black"
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black"
                           style={{ background: `${tasaColor}15`, color: tasaColor, border: `1px solid ${tasaColor}30` }}>
                           {tasa}%
                         </span>
                       </td>
 
-                      <td className="px-3 py-2 text-center text-[11px] font-semibold" style={{ color: "#8b5cf6" }}>
+                      <td className="px-3 py-2 text-center text-[10px] font-semibold" style={{ color: "#8b5cf6" }}>
                         {r.promedio_horas != null ? `${r.promedio_horas}h` : "—"}
                       </td>
 
                       <td className="px-3 py-2 text-center">
                         {res > 0 ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black"
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black"
                             style={{ background: `${slaColor}15`, color: slaColor, border: `1px solid ${slaColor}30` }}>
                             {slaPct}%
                           </span>
-                        ) : <span className="text-[10px]" style={{ color: T.textFaint }}>—</span>}
+                        ) : <span className="text-[9px]" style={{ color: T.textFaint }}>—</span>}
                       </td>
 
                       <td className="px-3 py-2">
@@ -260,7 +279,7 @@ export default function RendimientoTecnicos({ T }) {
                             <Estrellas n={Math.round(calif)} isDark={isDark} />
                             <span className="text-[9px]" style={{ color: T.textFaint }}>{calif.toFixed(1)}/5</span>
                           </div>
-                        ) : <span className="text-[10px]" style={{ color: T.textFaint }}>—</span>}
+                        ) : <span className="text-[9px]" style={{ color: T.textFaint }}>—</span>}
                       </td>
 
                     </tr>

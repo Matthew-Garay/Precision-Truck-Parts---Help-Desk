@@ -3,6 +3,11 @@
  * Mismo formato B/N minimalista del resto de impresiones. El formato está
  * pensado para LLENARSE A MANO: los campos destino / quien recibe / firmas
  * se imprimen con línea punteada cuando la API no trae valor.
+ *
+ * @module client/components/print/PrintSalidaView
+ * @requires ../PrintShared.tsx
+ * @requires ./print-report.css
+ * @exports PrintSalidaView (default)
  */
 import { PageHeader, PageFooter, PageSize, Firma, nowFechaGen } from '../PrintShared.tsx';
 import './print-report.css';

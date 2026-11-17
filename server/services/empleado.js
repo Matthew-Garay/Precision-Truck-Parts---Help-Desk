@@ -1,5 +1,5 @@
 /**
- * Empleado.js
+ * empleado.js
  *
  * Modelo que encapsula todas las operaciones sobre la tabla `empleado`
  * y su historial de accesos en la tabla `historial_acceso`.
@@ -68,6 +68,11 @@
  *   getAllAccesos({ limit, offset })
  *     Retorna el historial de accesos de todos los empleados paginado.
  *     Incluye nombre completo, email y departamento de cada empleado.
+ *
+ * @module server/services/empleado
+ * @requires ../config/db.js
+ * @requires ../config/cache.js
+ * @exports Empleado (default)
  */
 import pool from '../config/db.js';
 import { cache } from '../config/cache.js';

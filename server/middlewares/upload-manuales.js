@@ -1,5 +1,5 @@
 /**
- * uploadManuales.js
+ * upload-manuales.js
  *
  * Configura el middleware de subida de archivos PDF para los manuales
  * de incidencias del sistema.
@@ -30,6 +30,18 @@
  *   uploadManual  - instancia de multer lista para usar con .single("archivo")
  *   MANUALES_DIR  - ruta absoluta del directorio de manuales
  *   nombreManual  - funcion para generar nombres de archivo seguros
+ *
+ * @module server/middlewares/upload-manuales
+ * @requires multer
+ * @requires path
+ * @requires fs
+ * @requires crypto
+ * @requires url
+ * @requires file-type
+ * @requires ./security.js
+ * @exports MANUALES_DIR
+ * @exports uploadManual
+ * @exports nombreManual
  */
 import multer            from "multer";
 import path              from "path";

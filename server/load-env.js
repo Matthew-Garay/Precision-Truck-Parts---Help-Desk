@@ -11,6 +11,12 @@
  * La ruta del .env se resuelve de forma absoluta relativa a este archivo,
  * lo que garantiza que funcione independientemente del directorio de trabajo
  * desde el que se ejecute el proceso de Node.js.
+ *
+ * @module server/load-env
+ * @requires dotenv
+ * @requires path
+ * @requires url
+ * @exports (ninguno: punto de entrada / efectos)
  */
 import { config } from "dotenv";
 import { resolve, dirname } from "path";

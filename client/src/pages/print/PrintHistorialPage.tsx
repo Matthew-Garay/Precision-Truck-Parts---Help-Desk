@@ -1,3 +1,21 @@
+/**
+ * PrintHistorialPage.tsx
+ *
+ * Página /print/historial/:id: carga el empleado y su historial de accesos y
+ * renderiza PrintHistorialView.
+ *
+ * Export default: PrintHistorialPage
+ * Endpoints: GET /api/auth/empleados/:id, GET /api/auth/accesos/:id.
+ *
+ * @module client/pages/print/PrintHistorialPage
+ * @requires react
+ * @requires react-router-dom
+ * @requires ../../services/api-client.js
+ * @requires ../../components/print/PrintHistorialView.tsx
+ * @requires ../../components/PrintShared.tsx
+ * @requires ../../utils/print-utils.ts
+ * @exports PrintHistorialPage (default)
+ */
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { getToken, setToken, apiFetch } from '../../services/api-client.js';

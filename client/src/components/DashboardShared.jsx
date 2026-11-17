@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DashboardShared.jsx
  *
  * Componentes graficos y de layout compartidos entre el dashboard
@@ -33,6 +33,21 @@
  *   Panel lateral fijo visible en pantallas lg o mayores.
  *   Contiene indicador de estado activo, reloj, estadisticas
  *   personales con barra de tasa de resolucion y calendario mensual.
+ *
+ * @module client/components/DashboardShared
+ * @requires react
+ * @requires lucide-react
+ * @requires ./RelojCalendario.jsx
+ * @requires ./Card.jsx
+ * @requires ../services/api-client.js
+ * @requires ../utils/tipografia.js
+ * @exports GraficaPastel
+ * @exports SeccionMetricas
+ * @exports SeccionMetricasUsuario
+ * @exports SeccionEstadisticas
+ * @exports SeccionInsumos
+ * @exports KanbanBoard
+ * @exports PanelDerecho
  */
 import { useState, useEffect } from "react";
 import { User, Clock, CheckCircle2, Timer, Building2, BarChart2, Package, TrendingUp, Boxes, Layers, TrendingDown, AlertTriangle } from "lucide-react";
@@ -40,6 +55,7 @@ import { RelojFecha, Calendario } from './RelojCalendario.jsx';
 import { useCardStyles } from './Card.jsx';
 import { apiFetch, API_ROUTES } from '../services/api-client.js';
 
+import { FS } from '../utils/tipografia.js';
 // -- TENDENCIA CHART (HTML puro, sin SVG, 100% responsive) ----
 function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
   const maxVal     = Math.max(...tendencia.map(t => t.total), 1);
@@ -63,17 +79,17 @@ function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
           border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`,
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
-          <span style={{ fontSize: "10px", fontWeight: 800, color: T.orange }}>
+          <span style={{ fontSize: FS.etiqueta, fontWeight: 800, color: T.orange }}>
             {(() => { const [, m] = mesActivo.mes.split("-"); return MESES_CORTOS[parseInt(m) - 1]; })()}
           </span>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <span style={{ fontSize: "10px", fontWeight: 700, color: isDark ? "rgba(255,255,255,0.6)" : T.text }}>
+            <span style={{ fontSize: FS.etiqueta, fontWeight: 700, color: isDark ? "rgba(255,255,255,0.6)" : T.text }}>
               Total: <b style={{ color: T.orange }}>{mesActivo.total}</b>
             </span>
-            <span style={{ fontSize: "10px", fontWeight: 700, color: "#16a34a" }}>
+            <span style={{ fontSize: FS.etiqueta, fontWeight: 700, color: "#16a34a" }}>
               Res: {mesActivo.resueltos}
             </span>
-            <span style={{ fontSize: "10px", fontWeight: 700,
+            <span style={{ fontSize: FS.etiqueta, fontWeight: 700,
               color: mesActivo.total > 0
                 ? (Math.round((mesActivo.resueltos / mesActivo.total) * 100) >= 75 ? "#16a34a"
                   : Math.round((mesActivo.resueltos / mesActivo.total) * 100) >= 50 ? "#ca8a04" : "#dc2626")
@@ -113,7 +129,7 @@ function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
           const esActivo = i === idxActivo;
           return (
             <div key={i} style={{ flex: 1, display: "flex", justifyContent: "center" }}>
-              <span style={{ fontSize: "8px", fontWeight: esActivo ? 800 : 500, lineHeight: 1,
+              <span style={{ fontSize: FS.etiqueta, fontWeight: esActivo ? 800 : 500, lineHeight: 1,
                 color: esActivo ? T.orange : (isDark ? "rgba(255,255,255,0.28)" : "#94a3b8") }}>
                 {label}
               </span>
@@ -128,7 +144,7 @@ function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
         border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`,
       }}>
         <div style={{
-          display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
+          display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))",
           background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt,
         }}>
           {[
@@ -141,8 +157,8 @@ function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
               borderRight: i < 2 ? `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}` : "none",
               display: "flex", flexDirection: "column", alignItems: "center", gap: "2px",
             }}>
-              <span style={{ fontSize: "13px", fontWeight: 900, color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{val}</span>
-              <span style={{ fontSize: "8px", fontWeight: 600, color: isDark ? "rgba(255,255,255,0.3)" : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
+              <span style={{ fontSize: FS.enfasis, fontWeight: 900, color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{val}</span>
+              <span style={{ fontSize: FS.etiqueta, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.3)" : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
             </div>
           ))}
         </div>
@@ -152,13 +168,13 @@ function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "5px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
           <span style={{ width: "8px", height: "8px", borderRadius: "2px", background: T.orange, flexShrink: 0 }} />
-          <span style={{ fontSize: "9px", fontWeight: 600, color: isDark ? "rgba(255,255,255,0.35)" : "#94a3b8" }}>Total</span>
+          <span style={{ fontSize: FS.etiqueta, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.35)" : "#94a3b8" }}>Total</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
           <span style={{ width: "8px", height: "8px", borderRadius: "2px", background: "#16a34a", flexShrink: 0 }} />
-          <span style={{ fontSize: "9px", fontWeight: 600, color: isDark ? "rgba(255,255,255,0.35)" : "#94a3b8" }}>Resueltos</span>
+          <span style={{ fontSize: FS.etiqueta, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.35)" : "#94a3b8" }}>Resueltos</span>
         </div>
-        <span style={{ marginLeft: "auto", fontSize: "9px", fontWeight: 700, padding: "2px 7px", borderRadius: "99px",
+        <span style={{ marginLeft: "auto", fontSize: FS.etiqueta, fontWeight: 700, padding: "2px 7px", borderRadius: "99px",
           background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9",
           color: isDark ? "rgba(255,255,255,0.3)" : "#94a3b8" }}>
           {tendencia.length}m
@@ -204,9 +220,9 @@ export function GraficaPastel({ data, size = 80, T }) {
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-        <span style={{ fontSize: "15px", fontWeight: 900, lineHeight: 1,
+        <span style={{ fontSize: FS.subtitulo, fontWeight: 900, lineHeight: 1,
           color: isDark ? "#f1f5f9" : "#1D1D1B" }}>{total}</span>
-        <span style={{ fontSize: "8px", fontWeight: 600, marginTop: "2px",
+        <span style={{ fontSize: FS.etiqueta, fontWeight: 600, marginTop: "2px",
           color: isDark ? "rgba(255,255,255,0.4)" : "#94a3b8" }}>total</span>
       </div>
     </div>
@@ -241,16 +257,16 @@ export function SeccionMetricas({ T, metricas }) {
         <div className="px-3 py-1.5 flex items-center gap-2" style={hdr}>
           <div className="w-1 h-3 rounded-full" style={{ background: "#3b82f6" }} />
           <Timer size={10} style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }} />
-          <p className="text-[10px] font-black uppercase tracking-widest"
+          <p className="text-[9px] font-black uppercase tracking-widest"
             style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Tiempo Prom. Resolucion</p>
         </div>
         <div className="px-2.5 py-1.5 flex flex-col items-center justify-center gap-0.5">
-          <span className="text-xl sm:text-2xl font-black" style={{ color: "#3b82f6" }}>{tiempoLabel}</span>
-          <span className="text-[10px] font-semibold" style={{ color: T.textMuted }}>promedio por ticket resuelto</span>
+          <span className="text-[18px] sm:text-[18px] font-black" style={{ color: "#3b82f6" }}>{tiempoLabel}</span>
+          <span className="text-[9px] font-semibold" style={{ color: T.textMuted }}>promedio por ticket resuelto</span>
           <div className="mt-1 flex items-center gap-1.5 px-2 py-0.5 rounded-full"
             style={{ background: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff", border: "1px solid rgba(59,130,246,0.2)" }}>
             <Clock size={9} style={{ color: "#3b82f6" }} />
-            <span className="text-[10px] font-bold" style={{ color: "#3b82f6" }}>SLA: 2 días</span>
+            <span className="text-[9px] font-bold" style={{ color: "#3b82f6" }}>SLA: 2 días</span>
           </div>
         </div>
       </div>
@@ -260,24 +276,24 @@ export function SeccionMetricas({ T, metricas }) {
         <div className="px-3 py-1.5 flex items-center gap-2" style={hdr}>
           <div className="w-1 h-3 rounded-full" style={{ background: "#F47920" }} />
           <Building2 size={10} style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }} />
-          <p className="text-[10px] font-black uppercase tracking-widest"
+          <p className="text-[9px] font-black uppercase tracking-widest"
             style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Tickets por Departamento</p>
         </div>
         <div className="px-2.5 py-1.5 flex flex-col gap-1">
           {deptos.length === 0 ? (
-            <p className="text-xs text-center py-3" style={{ color: T.textFaint }}>Sin datos</p>
+            <p className="text-[11px] text-center py-3" style={{ color: T.textFaint }}>Sin datos</p>
           ) : deptos.map((d, i) => {
             const pct = Math.round((d.total / maxDepto) * 100);
             const resPct = d.total > 0 ? Math.round((d.resueltos / d.total) * 100) : 0;
             return (
               <div key={i} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold truncate max-w-[65%]"
+                  <span className="text-[10px] font-semibold truncate max-w-[65%]"
                     style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>
                     {d.departamento || "Sin depto."}
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-black" style={{ color: T.orange }}>{d.total}</span>
+                    <span className="text-[10px] font-black" style={{ color: T.orange }}>{d.total}</span>
                     <span className="text-[9px]" style={{ color: "#16a34a" }}>({resPct}% res.)</span>
                   </div>
                 </div>
@@ -298,7 +314,7 @@ export function SeccionMetricas({ T, metricas }) {
           <div className="flex items-center gap-2">
             <div className="w-1 h-3 rounded-full" style={{ background: "#16a34a" }} />
             <BarChart2 size={10} style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }} />
-            <p className="text-[10px] font-black uppercase tracking-widest"
+            <p className="text-[9px] font-black uppercase tracking-widest"
               style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Tendencia Mensual</p>
           </div>
           {tendencia.length >= 2 && (() => {
@@ -319,7 +335,7 @@ export function SeccionMetricas({ T, metricas }) {
           {tendencia.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-6 gap-2">
               <BarChart2 size={20} style={{ color: T.textFaint }} />
-              <p className="text-[11px]" style={{ color: T.textFaint }}>Sin datos</p>
+              <p className="text-[10px]" style={{ color: T.textFaint }}>Sin datos</p>
             </div>
           ) : (
             <TendenciaChart tendencia={tendencia} T={T} isDark={isDark} MESES_CORTOS={MESES_CORTOS} />
@@ -362,13 +378,13 @@ export function SeccionMetricasUsuario({ T, tickets = [] }) {
         <div key={i} className="rounded-xl px-2.5 py-2 flex flex-col gap-0.5"
           style={{ background: isDark ? s.bgD : s.bgL, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : T.border}` }}>
           <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }}>{s.label}</p>
-          <p className="text-lg sm:text-xl font-black leading-none" style={{ color: s.color }}>{s.val}</p>
+          <p className="text-[16px] sm:text-[18px] font-black leading-none" style={{ color: s.color }}>{s.val}</p>
         </div>
       ))}
 
       <div className="rounded-xl px-2.5 py-2 flex flex-col gap-0.5 col-span-1" style={cardStyle}>
         <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Tasa resolucion</p>
-        <p className="text-lg sm:text-xl font-black leading-none" style={{ color: "#16a34a" }}>{tasaRes}%</p>
+        <p className="text-[16px] sm:text-[18px] font-black leading-none" style={{ color: "#16a34a" }}>{tasaRes}%</p>
         <div className="h-1 rounded-full overflow-hidden mt-1" style={{ background: isDark ? "rgba(255,255,255,0.08)" : T.border }}>
           <div className="h-full rounded-full transition-all duration-700"
             style={{ width: `${tasaRes}%`, background: "linear-gradient(90deg,#16a34a,#4ade80)" }} />
@@ -377,7 +393,7 @@ export function SeccionMetricasUsuario({ T, tickets = [] }) {
 
       <div className="rounded-xl px-2.5 py-2 flex flex-col gap-0.5 col-span-1" style={cardStyle}>
         <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: T.textMuted }}>Tiempo prom.</p>
-        <p className="text-base sm:text-lg font-black leading-none" style={{ color: "#3b82f6" }}>{fmtTiempo}</p>
+        <p className="text-[13px] sm:text-[16px] font-black leading-none" style={{ color: "#3b82f6" }}>{fmtTiempo}</p>
         <p className="text-[9px]" style={{ color: T.textFaint }}>por ticket resuelto</p>
       </div>
     </div>
@@ -423,7 +439,7 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
       <div className="rounded-xl overflow-hidden" style={cardStyle}>
         <div className="px-3 py-1.5 flex items-center gap-2" style={hdr}>
           <div className="w-1 h-3 rounded-full" style={{ background: "#F47920" }} />
-          <p className="text-[10px] font-black uppercase tracking-widest"
+          <p className="text-[9px] font-black uppercase tracking-widest"
             style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Reportes por Prioridad</p>
         </div>
         <div className="px-2.5 py-1.5 flex flex-col gap-1">
@@ -435,11 +451,11 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
-                    <span className="text-[11px] font-semibold"
+                    <span className="text-[10px] font-semibold"
                       style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{p.label}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-black" style={{ color: p.color }}>{totalFila}</span>
+                    <span className="text-[10px] font-black" style={{ color: p.color }}>{totalFila}</span>
                     {p.insumos > 0 && (
                       <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-black"
                         style={{ background: isDark ? 'rgba(59,130,246,0.2)' : '#dbeafe', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)' }}>
@@ -468,7 +484,7 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
       <div className="rounded-xl overflow-hidden flex flex-col" style={cardStyle}>
         <div className="px-3 py-1.5 flex items-center gap-2" style={hdr}>
           <div className="w-1 h-3 rounded-full" style={{ background: "#F47920" }} />
-          <p className="text-[10px] font-black uppercase tracking-widest"
+          <p className="text-[9px] font-black uppercase tracking-widest"
             style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Reportes por Estatus</p>
         </div>
         <div className="px-2.5 py-1.5 flex gap-2.5 flex-1">
@@ -481,11 +497,11 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: e.color }} />
-                      <span className="text-[11px] font-semibold"
+                      <span className="text-[10px] font-semibold"
                         style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{e.label}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-black" style={{ color: e.color }}>{e.valor}</span>
+                      <span className="text-[10px] font-black" style={{ color: e.color }}>{e.valor}</span>
                       <span className="text-[9px] font-semibold" style={{ color: T.textFaint }}>({pct}%)</span>
                     </div>
                   </div>
@@ -502,7 +518,7 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
                 <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>
                   Tasa de resolucion
                 </span>
-                <span className="text-[10px] font-black" style={{ color: "#16a34a" }}>
+                <span className="text-[9px] font-black" style={{ color: "#16a34a" }}>
                   {totalEstatus > 0 ? Math.round((estatusData[0].valor / totalEstatus) * 100) : 0}%
                 </span>
               </div>
@@ -547,7 +563,7 @@ export function SeccionInsumos({ T }) {
     return (
       <div className="mb-2 w-full">
         <div className="rounded-xl px-4 py-4 flex items-center justify-center" style={cardStyle}>
-          <span className="text-xs font-semibold" style={{ color: T.textMuted }}>Cargando inventario...</span>
+          <span className="text-[11px] font-semibold" style={{ color: T.textMuted }}>Cargando inventario...</span>
         </div>
       </div>
     );
@@ -591,8 +607,8 @@ export function SeccionInsumos({ T }) {
               <Icon size={20} style={{ color }} />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] font-black uppercase tracking-wider truncate" style={{ color: T.textFaint }}>{label}</p>
-              <p className="text-2xl font-black leading-none mt-1" style={{ color }}>{valor}</p>
+              <p className="text-[10px] font-black uppercase tracking-wider truncate" style={{ color: T.textFaint }}>{label}</p>
+              <p className="text-[18px] font-black leading-none mt-1" style={{ color }}>{valor}</p>
             </div>
           </div>
         ))}
@@ -604,18 +620,18 @@ export function SeccionInsumos({ T }) {
         <div className="rounded-xl overflow-hidden flex items-center gap-4 px-4 py-3.5" style={cardStyle}>
           <div className="flex-shrink-0"><GraficaPastel data={disponibilidadData} size={78} T={T} /></div>
           <div className="flex flex-col gap-2 flex-1 min-w-0">
-            <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>Disponibilidad</p>
+            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>Disponibilidad</p>
             {disponibilidadData.map((d, i) => {
               const pct = totalDisp > 0 ? Math.round((d.valor / totalDisp) * 100) : 0;
               return (
                 <div key={i} className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
-                    <span className="text-[13px] font-semibold truncate" style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{d.label}</span>
+                    <span className="text-[12px] font-semibold truncate" style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{d.label}</span>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="text-[13px] font-black" style={{ color: d.color }}>{d.valor}</span>
-                    <span className="text-[11px] font-semibold" style={{ color: T.textFaint }}>({pct}%)</span>
+                    <span className="text-[12px] font-black" style={{ color: d.color }}>{d.valor}</span>
+                    <span className="text-[10px] font-semibold" style={{ color: T.textFaint }}>({pct}%)</span>
                   </div>
                 </div>
               );
@@ -625,14 +641,14 @@ export function SeccionInsumos({ T }) {
 
         {/* Movimientos */}
         <div className="rounded-xl overflow-hidden flex flex-col justify-center gap-2 px-4 py-3.5" style={cardStyle}>
-          <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>Movimientos</p>
+          <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: T.textFaint }}>Movimientos</p>
           {movData.map((d, i) => {
             const pct = Math.round((d.valor / maxMov) * 100);
             return (
               <div key={i} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[13px] font-semibold" style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{d.label}</span>
-                  <span className="text-[13px] font-black" style={{ color: d.color }}>{d.valor}</span>
+                  <span className="text-[12px] font-semibold" style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{d.label}</span>
+                  <span className="text-[12px] font-black" style={{ color: d.color }}>{d.valor}</span>
                 </div>
                 <div className="h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.06)" : T.border }}>
                   <div className="h-full rounded-full transition-all duration-700"
@@ -687,9 +703,9 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
             borderBottom: `1px solid ${borderCol}` }}>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full" style={{ background: prioridad.color }} />
-            <span className="text-xs font-bold" style={{ color: prioridad.color }}>{prioridad.label}</span>
+            <span className="text-[11px] font-bold" style={{ color: prioridad.color }}>{prioridad.label}</span>
           </div>
-          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold"
             style={{ background: isDark ? prioridad.bgDark : prioridad.bg, color: prioridad.color }}>
             {total}
           </span>
@@ -698,7 +714,7 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
           style={{ minHeight: '60px' }}>
           {total === 0 ? (
             <div className="flex items-center justify-center py-6">
-              <p className="text-xs" style={{ color: T.textFaint }}>Sin elementos</p>
+              <p className="text-[11px]" style={{ color: T.textFaint }}>Sin elementos</p>
             </div>
           ) : items.map(item => {
             const esInsumo = item._tipo === 'insumo';
@@ -719,7 +735,7 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
                 <div className="flex items-center justify-between gap-1">
                   <div className="flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: prioridad.color }} />
-                    <span className="text-[10px] font-mono font-black" style={{ color: '#3b82f6' }}>
+                    <span className="text-[9px] font-mono font-black" style={{ color: '#3b82f6' }}>
                       #{item.folio_solicitud}
                     </span>
                   </div>
@@ -729,15 +745,15 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
                     <Package size={7} />INSUMO
                   </span>
                 </div>
-                <p className="text-[10px] font-semibold leading-snug line-clamp-2" style={{ color: T.text }}>
+                <p className="text-[9px] font-semibold leading-snug line-clamp-2" style={{ color: T.text }}>
                   {item.insumos_nombres || '—'}
                 </p>
                 <div className="pt-1 flex items-center justify-between"
                   style={{ borderTop: `1px solid ${cardBorder}` }}>
-                  <span className="text-[10px] truncate max-w-[60%]" style={{ color: T.textMuted }}>
+                  <span className="text-[9px] truncate max-w-[60%]" style={{ color: T.textMuted }}>
                     {item.nombre_empleado || '—'}
                   </span>
-                  <span className="text-[10px] font-semibold flex-shrink-0" style={{ color: T.textFaint }}>
+                  <span className="text-[9px] font-semibold flex-shrink-0" style={{ color: T.textFaint }}>
                     {item.fecha
                       ? new Date(item.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })
                       : '—'}
@@ -754,22 +770,22 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
                 <div className="flex items-center justify-between gap-1">
                   <div className="flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: prioridad.color }} />
-                    <span className="text-[10px] font-mono font-black" style={{ color: T.orange }}>
+                    <span className="text-[9px] font-mono font-black" style={{ color: T.orange }}>
                       #{item.folio_ticket}
                     </span>
                   </div>
                   <img src={isDark ? '/assets/img/logo%20blanco.png' : '/assets/img/logo%20negro.png'}
                     alt="logo" className="h-3 object-contain opacity-50" />
                 </div>
-                <p className="text-[10px] font-semibold leading-snug line-clamp-2" style={{ color: T.text }}>
+                <p className="text-[9px] font-semibold leading-snug line-clamp-2" style={{ color: T.text }}>
                   {item.titulo}
                 </p>
                 <div className="pt-1 flex items-center justify-between"
                   style={{ borderTop: `1px solid ${cardBorder}` }}>
-                  <span className="text-[10px] truncate max-w-[60%]" style={{ color: T.textMuted }}>
+                  <span className="text-[9px] truncate max-w-[60%]" style={{ color: T.textMuted }}>
                     {item.nombre_empleado || '—'}
                   </span>
-                  <span className="text-[10px] font-semibold flex-shrink-0" style={{ color: T.textFaint }}>
+                  <span className="text-[9px] font-semibold flex-shrink-0" style={{ color: T.textFaint }}>
                     {item.fecha_subido
                       ? new Date(item.fecha_subido).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })
                       : '—'}
@@ -829,18 +845,18 @@ export function PanelDerecho({ T, nombre, departamento, sucursal, tickets = [], 
           <div className="flex flex-col items-center text-center gap-2">
             <div className="flex-shrink-0 rounded-full overflow-hidden"
               style={{ width: "40px", height: "40px", border: `2px solid ${T.surface}`, outline: `2px solid ${T.orange}`, background: isDark ? "rgba(244,121,32,0.18)" : "rgba(244,121,32,0.10)", boxShadow: `0 0 0 3px ${isDark ? "rgba(244,121,32,0.15)" : "rgba(244,121,32,0.1)"}` }}>
-              <div className="w-full h-full flex items-center justify-center" style={{ fontSize: "13px", fontWeight: 800, color: T.orange, letterSpacing: "-0.02em" }}>
+              <div className="w-full h-full flex items-center justify-center" style={{ fontSize: FS.enfasis, fontWeight: 800, color: T.orange, letterSpacing: "-0.02em" }}>
                 {iniciales || <User size={16} style={{ color: T.textFaint }} />}
               </div>
             </div>
             <div className="w-full min-w-0">
-              <p className="text-[11.5px] font-bold leading-tight truncate" style={{ color: T.text }} title={nombre || ""}>
+              <p className="text-[10px] font-bold leading-tight truncate" style={{ color: T.text }} title={nombre || ""}>
                 {nombre || "—"}
               </p>
-              <p className="text-[10px] leading-tight mt-0.5 truncate" style={{ color: T.textMuted }} title={departamento || ""}>
+              <p className="text-[9px] leading-tight mt-0.5 truncate" style={{ color: T.textMuted }} title={departamento || ""}>
                 {departamento || "—"}
               </p>
-              <p className="text-[10px] leading-tight mt-px truncate" style={{ color: T.textFaint }} title={sucursal || ""}>
+              <p className="text-[9px] leading-tight mt-px truncate" style={{ color: T.textFaint }} title={sucursal || ""}>
                 {sucursal || "—"}
               </p>
             </div>
@@ -854,28 +870,28 @@ export function PanelDerecho({ T, nombre, departamento, sucursal, tickets = [], 
 
         {/* -- RELOJ -- */}
         <div className="flex-shrink-0 px-3.5 py-3" style={{ borderBottom: `1px solid ${T.border}` }}>
-          <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: T.textFaint }}>Fecha y hora</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest mb-1.5" style={{ color: T.textFaint }}>Fecha y hora</p>
           <RelojFecha T={T} />
         </div>
 
         {/* -- MÉTRICAS -- */}
         <div className="flex-shrink-0 px-3.5 py-3 flex flex-col gap-2.5" style={{ borderBottom: `1px solid ${T.border}` }}>
-          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: T.textFaint }}>Mis estadísticas</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: T.textFaint }}>Mis estadísticas</p>
           <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
             {stats.map((s, i) => (
               <div key={i} className="flex flex-col items-center justify-center py-2 gap-1 rounded-lg"
                 style={{ background: isDark ? s.bgD : s.bgL, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : T.border}`, minWidth: 0 }}>
                 <s.icon size={12} style={{ color: s.color, flexShrink: 0 }} />
-                <span className="font-black leading-none" style={{ color: s.color, fontSize: "17px" }}>{s.valor}</span>
-                <span className="font-medium text-center leading-tight px-0.5" style={{ color: T.textFaint, fontSize: "9px" }}>{s.label}</span>
+                <span className="font-black leading-none" style={{ color: s.color, fontSize: FS.titulo }}>{s.valor}</span>
+                <span className="font-medium text-center leading-tight px-0.5" style={{ color: T.textFaint, fontSize: FS.etiqueta }}>{s.label}</span>
               </div>
             ))}
           </div>
           <div className="px-2.5 py-2 rounded-lg"
             style={{ background: isDark ? "rgba(22,163,74,0.08)" : "#f0fdf4", border: `1px solid ${isDark ? "rgba(22,163,74,0.2)" : "#bbf7d0"}` }}>
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-semibold" style={{ color: T.textMuted }}>Tasa de resolución</span>
-              <span className="text-[13px] font-black" style={{ color: "#16a34a" }}>{tasaRes}%</span>
+              <span className="text-[9px] font-semibold" style={{ color: T.textMuted }}>Tasa de resolución</span>
+              <span className="text-[12px] font-black" style={{ color: "#16a34a" }}>{tasaRes}%</span>
             </div>
             <div className="h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.08)" : "#dcfce7" }}>
               <div className="h-full rounded-full transition-all duration-700"
@@ -886,7 +902,7 @@ export function PanelDerecho({ T, nombre, departamento, sucursal, tickets = [], 
 
         {/* -- CALENDARIO -- */}
         <div className="flex-shrink-0 px-3.5 py-3 flex flex-col gap-1.5">
-          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: T.textFaint }}>Calendario</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: T.textFaint }}>Calendario</p>
           <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${T.border}`, background: T.surface }}>
             <div className="px-2 py-2">
               <Calendario T={T} />

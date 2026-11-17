@@ -50,6 +50,30 @@
  *   PORT         - puerto de escucha (default: 3001)
  *   CORS_ORIGIN  - origen permitido para CORS (default: http://localhost:5173)
  *   NODE_ENV     - entorno de ejecucion (production activa trust proxy y oculta detalles de error)
+ *
+ * @module server/server
+ * @requires path
+ * @requires url
+ * @requires express
+ * @requires http
+ * @requires os
+ * @requires socket.io
+ * @requires cors
+ * @requires cookie-parser
+ * @requires compression
+ * @requires helmet
+ * @requires jsonwebtoken
+ * @requires ./config/db.js
+ * @requires ./middlewares/auth-middleware.js
+ * @requires ./config/socket-instance.js
+ * @requires ./config/mailer.js
+ * @requires ./workers/scheduled-jobs.js
+ * @requires ./routes/categorias-routes.js
+ * @requires ./routes/auth-routes.js
+ * @requires ./routes/tickets-routes.js
+ * @requires ./routes/solicitudes-routes.js
+ * @requires ./routes/manuales-routes.js
+ * @exports (ninguno: punto de entrada / efectos)
  */
 import { resolve, dirname } from "path";
 import { fileURLToPath }   from "url";
@@ -114,11 +138,21 @@ setIO(io);
 
 // Middleware de autenticacion de Socket.io.
 // Verifica el JWT enviado en socket.handshake.auth.token antes de aceptar la conexion.
-io.use((socket, next) => {
+// Igual que requireAuth: un token emitido antes del ultimo cierre de sesion
+// (token_version mayor en BD) se rechaza. Sin esto, un token viejo podia
+// unirse a la sala de OTRO empleado si los ids se renumeraban.
+io.use(async (socket, next) => {
   const token = socket.handshake.auth?.token;
   if (!token) return next(new Error("No autorizado"));
   try {
-    socket.data.usuario = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const [[emp]] = await pool.query(
+      "SELECT token_version FROM empleado WHERE id_empleado = ? LIMIT 1",
+      [payload.id_empleado]
+    );
+    if (!emp || (emp.token_version ?? 0) > Number(payload.ver ?? 0))
+      return next(new Error("Sesion cerrada"));
+    socket.data.usuario = payload;
     next();
   } catch {
     next(new Error("Token invalido"));
@@ -310,11 +344,13 @@ app.use((err, req, res, _next) => {
 httpServer.listen(PORT, "0.0.0.0", async () => {
   const line = "-".repeat(52);
 
-  const hora = new Date().toLocaleTimeString("es-MX", { hour12: false });
+  const ahora = new Date();
+  const fecha = ahora.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const hora  = ahora.toLocaleTimeString("es-MX", { hour12: false });
 
   console.log(`\n${line}`);
-  console.log(`  Precision Truck Parts, Parts and Accesories, S.A de C.V. - HelpDesk`);
-  console.log(`  Arrancado a las ${hora}`);
+  console.log(`  Precision Truck Parts, Parts and Accesories, S.A de C.V. - Mesa de Ayuda (HelpDesk)`);
+  console.log(`  Arrancado el ${fecha} a las ${hora}`);
   console.log(line);
 
   console.log(`  Backend  ->  ✅  http://localhost:${PORT}`);

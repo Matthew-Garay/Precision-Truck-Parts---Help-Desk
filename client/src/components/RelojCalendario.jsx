@@ -18,9 +18,16 @@
  *   Los dias de fin de semana (domingo y sabado) se muestran en naranja.
  *   El primer dia del mes se posiciona en la columna correcta de la semana
  *   calculando el desplazamiento con celdas vacias al inicio.
+ *
+ * @module client/components/RelojCalendario
+ * @requires react
+ * @requires ../utils/tipografia.js
+ * @exports RelojFecha
+ * @exports Calendario
  */
 import { useState, useEffect } from "react";
 
+import { FS } from '../utils/tipografia.js';
 // -- RELOJ Y FECHA --------------------------------------------
 export function RelojFecha({ T }) {
   const [ahora, setAhora] = useState(new Date());
@@ -62,24 +69,24 @@ export function RelojFecha({ T }) {
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: "1px" }}>
-          <span style={{ fontSize: "22px", fontWeight: 900, lineHeight: 1, color: T.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.03em" }}>{h12}</span>
-          <span style={{ fontSize: "22px", fontWeight: 900, lineHeight: 1, color: T.orange, margin: "0 2px" }}>:</span>
-          <span style={{ fontSize: "22px", fontWeight: 900, lineHeight: 1, color: T.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.03em" }}>{min}</span>
+          <span style={{ fontSize: FS.kpi, fontWeight: 900, lineHeight: 1, color: T.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.03em" }}>{h12}</span>
+          <span style={{ fontSize: FS.kpi, fontWeight: 900, lineHeight: 1, color: T.orange, margin: "0 2px" }}>:</span>
+          <span style={{ fontSize: FS.kpi, fontWeight: 900, lineHeight: 1, color: T.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.03em" }}>{min}</span>
           <div style={{ display: "flex", flexDirection: "column", marginLeft: "4px", gap: "2px", paddingBottom: "2px", alignSelf: "flex-end" }}>
-            <span style={{ fontSize: "10px", fontWeight: 800, color: T.orange, lineHeight: 1 }}>{ampm}</span>
-            <span style={{ fontSize: "10px", fontWeight: 700, color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{seg}s</span>
+            <span style={{ fontSize: FS.etiqueta, fontWeight: 800, color: T.orange, lineHeight: 1 }}>{ampm}</span>
+            <span style={{ fontSize: FS.etiqueta, fontWeight: 700, color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{seg}s</span>
           </div>
         </div>
         {/* Punto naranja pulsante */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
           <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: T.orange, boxShadow: `0 0 6px ${T.orange}`, animation: "pulse 1s ease-in-out infinite" }} />
-          <span style={{ fontSize: "11px", fontWeight: 600, color: T.textFaint }}>{diaSemana}</span>
+          <span style={{ fontSize: FS.secundario, fontWeight: 600, color: T.textFaint }}>{diaSemana}</span>
         </div>
       </div>
       {/* Fecha */}
       <div style={{ padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: "10px", fontWeight: 700, color: T.textMuted }}>{diaMes} de {mesNombre}</span>
-        <span style={{ fontSize: "10px", fontWeight: 800, color: T.text }}>{anio}</span>
+        <span style={{ fontSize: FS.etiqueta, fontWeight: 700, color: T.textMuted }}>{diaMes} de {mesNombre}</span>
+        <span style={{ fontSize: FS.etiqueta, fontWeight: 800, color: T.text }}>{anio}</span>
       </div>
     </div>
   );
@@ -124,7 +131,7 @@ export function Calendario({ T }) {
           background: `linear-gradient(180deg, ${T.orange}, ${T.orangeDark})`,
           flexShrink: 0,
         }} />
-        <p style={{ fontSize: "11px", fontWeight: 800, color: T.text, letterSpacing: "-0.01em" }}>
+        <p style={{ fontSize: FS.secundario, fontWeight: 800, color: T.text, letterSpacing: "-0.01em" }}>
           {MESES[mes]} <span style={{ color: T.textMuted, fontWeight: 500 }}>{anio}</span>
         </p>
       </div>
@@ -138,7 +145,7 @@ export function Calendario({ T }) {
       }}>
         {DIAS.map((d, i) => (
           <div key={i} style={{
-            textAlign: "center", fontSize: "9px", fontWeight: 700,
+            textAlign: "center", fontSize: FS.etiqueta, fontWeight: 700,
             color: (i === 0 || i === 6) ? T.orange : T.textMuted,
           }}>
             {d}
@@ -166,7 +173,7 @@ export function Calendario({ T }) {
                     ? `linear-gradient(135deg, ${T.orange}, ${T.orangeDark})`
                     : "transparent",
                   color: esHoy ? "#fff" : finde ? T.orange : T.textMuted,
-                  fontSize: "9px",
+                  fontSize: FS.etiqueta,
                   fontWeight: esHoy ? 800 : finde ? 600 : 400,
                   boxShadow: esHoy ? `0 2px 8px rgba(244,121,32,0.45)` : "none",
                   userSelect: "none",
@@ -183,7 +190,7 @@ export function Calendario({ T }) {
       <div style={{ marginTop: "4px", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
           <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: T.orange, boxShadow: `0 0 6px ${T.orange}` }} />
-          <span style={{ fontSize: "10px", fontWeight: 600, color: T.orange }}>Hoy</span>
+          <span style={{ fontSize: FS.etiqueta, fontWeight: 600, color: T.orange }}>Hoy</span>
         </div>
       </div>
     </div>

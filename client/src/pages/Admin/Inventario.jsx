@@ -1,3 +1,39 @@
+/**
+ * Inventario.jsx
+ *
+ * Gestión del inventario de insumos (solo administrador): alta, edición, baja
+ * lógica, visibilidad pública, fotos, entradas y salidas internas, y kardex de
+ * movimientos con impresión.
+ *
+ * Export default: Inventario
+ * Endpoints: GET /api/solicitudes/inventario, /api/categorias?tipo=insumo,
+ *    /api/solicitudes/movimientos; POST/PUT/DELETE
+ *    /api/solicitudes/insumos[/:id], PATCH …/activo y …/visible-publico, POST
+ *    /api/solicitudes/salidas.
+ * Se refresca con useAutoRefresh y con el evento Socket.io
+ *    inventario:movimiento.
+ *
+ * @module client/pages/Admin/Inventario
+ * @requires react
+ * @requires ../../hooks/use-auto-refresh.js
+ * @requires lucide-react
+ * @requires exceljs
+ * @requires file-saver
+ * @requires ../../services/api-client.js
+ * @requires ../../components/FiltrosToolbar.jsx
+ * @requires ../../components/Feedback.jsx
+ * @requires ../../components/Inventario/ModalInsumo.jsx
+ * @requires ../../components/Inventario/ModalDetalleInsumo.jsx
+ * @requires ../../components/Inventario/ModalEntradaInsumo.jsx
+ * @requires ../../components/Inventario/ModalEditarEntrada.jsx
+ * @requires ../../components/Inventario/ModalSalidaInsumo.jsx
+ * @requires ../../components/Paginacion.jsx
+ * @requires ../../utils/session.js
+ * @requires ../../context/theme-context.js
+ * @requires ../../utils/tipografia.js
+ * @requires ../../components/LogoModal.jsx
+ * @exports Inventario (default)
+ */
 import { useState, useEffect, useRef } from "react";
 import { useAutoRefresh } from '../../hooks/use-auto-refresh.js';
 import {
@@ -15,12 +51,14 @@ import { useToast }      from '../../components/Feedback.jsx';
 import ModalInsumo       from '../../components/Inventario/ModalInsumo.jsx';
 import ModalDetalleInsumo   from '../../components/Inventario/ModalDetalleInsumo.jsx';
 import ModalEntradaInsumo   from '../../components/Inventario/ModalEntradaInsumo.jsx';
+import ModalEditarEntrada   from '../../components/Inventario/ModalEditarEntrada.jsx';
 import ModalSalidaInsumo    from '../../components/Inventario/ModalSalidaInsumo.jsx';
-import ResponsiveTable    from '../../components/ResponsiveTable.jsx';
 import Paginacion           from '../../components/Paginacion.jsx';
 import { getUsuario } from '../../utils/session.js';
 import { useTheme }      from '../../context/theme-context.js';
 
+import { FS } from '../../utils/tipografia.js';
+import LogoModal from '../../components/LogoModal.jsx';
 // ── Paleta ────────────────────────────────────────────────────────
 const TEAL    = { base: "#0d9488", light: "#f0fdfa", border: "#99f6e4", muted: "rgba(13,148,136,0.12)" };
 const ORANGE  = { base: "#F97316", light: "#fff7ed", border: "#fed7aa", muted: "rgba(249,115,22,0.12)" };
@@ -56,7 +94,7 @@ const catColor = (name = "") => {
 function ChipEstado({ estado, T }) {
   const s = ESTADO_META[estado] ?? { color: "#94a3b8" };
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 600, color: s.color }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: FS.secundario, fontWeight: 600, color: s.color }}>
       <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: s.color, flexShrink: 0 }} />
       {estado || "—"}
     </span>
@@ -68,7 +106,7 @@ function ChipCategoria({ nombre, T }) {
   return (
     <span style={{
       display: "inline-block",
-      fontSize: "10px", fontWeight: 600,
+      fontSize: FS.etiqueta, fontWeight: 600,
       color: s.color,
       background: `${s.color}14`,
       border: `1px solid ${s.color}30`,
@@ -118,14 +156,14 @@ function KpiCard({ label, value, sub, icon: Icon, color, highlight = false, pct 
       <div style={{ height: "2px", background: `linear-gradient(90deg, ${color}, ${color}88)` }} />
       <div style={{ padding: "7px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textFaint }}>
+          <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textFaint }}>
             {label}
           </p>
-          <p style={{ margin: "2px 0 0", fontSize: "16px", fontWeight: 900, lineHeight: 1, color: highlight ? color : T.text, fontVariantNumeric: "tabular-nums" }}>
+          <p style={{ margin: "2px 0 0", fontSize: FS.subtitulo, fontWeight: 900, lineHeight: 1, color: highlight ? color : T.text, fontVariantNumeric: "tabular-nums" }}>
             {value}
           </p>
           {sub && (
-            <p style={{ margin: "2px 0 0", fontSize: "9px", color: T.textFaint, fontWeight: 500, lineHeight: 1.3 }}>{sub}</p>
+            <p style={{ margin: "2px 0 0", fontSize: FS.etiqueta, color: T.textFaint, fontWeight: 500, lineHeight: 1.3 }}>{sub}</p>
           )}
           {pct !== undefined && (
             <div style={{ marginTop: "4px", height: "2px", borderRadius: "99px", background: T.border, overflow: "hidden" }}>
@@ -153,7 +191,7 @@ function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHistorial,
   const { T } = useTheme();
 
   const th = {
-    padding: "6px 10px", fontSize: "10px", fontWeight: 700,
+    padding: "6px 10px", fontSize: FS.etiqueta, fontWeight: 700,
     textTransform: "uppercase", letterSpacing: "0.07em",
     color: T.textMuted, background: T.surfaceAlt,
     borderBottom: `2px solid ${T.border}`, textAlign: "left",
@@ -161,7 +199,7 @@ function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHistorial,
   };
 
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", tableLayout: "fixed", minWidth: "720px" }}>
+    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: FS.cuerpo, tableLayout: "fixed", minWidth: "720px" }}>
       <colgroup>
         <col style={{ width: "40px" }} />
         <col style={{ width: "30%" }} />
@@ -208,11 +246,11 @@ function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHistorial,
                 >
                   <div style={{ width: "2px", height: "18px", borderRadius: "2px", background: ESTADO_META[row.estado]?.color ?? SLATE[400], flexShrink: 0 }} />
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: "12px", fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: FS.cuerpo, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {row.nombre}
                     </div>
                     {(row.marca || row.modelo) && (
-                      <div style={{ fontSize: "10px", color: T.textFaint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: FS.etiqueta, color: T.textFaint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {[row.marca, row.modelo].filter(Boolean).join(" · ")}
                       </div>
                     )}
@@ -230,7 +268,7 @@ function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHistorial,
               {/* Stock */}
               <td style={{ ...td }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: stockColor, fontFamily: "monospace", minWidth: "20px" }}>
+                  <span style={{ fontSize: FS.cuerpo, fontWeight: 700, color: stockColor, fontFamily: "monospace", minWidth: "20px" }}>
                     {row.stock ?? 0}
                   </span>
                   <div style={{ flex: 1, height: "3px", borderRadius: "99px", background: T.border, overflow: "hidden" }}>
@@ -263,7 +301,7 @@ function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHistorial,
                   </IconBtn>
                 </div>
                 {Number(row.activo ?? 1) === 0 && (
-                  <div style={{ fontSize: "9px", fontWeight: 800, color: "#d97706", marginTop: 2 }}>INHABILITADO</div>
+                  <div style={{ fontSize: FS.etiqueta, fontWeight: 800, color: "#d97706", marginTop: 2 }}>INHABILITADO</div>
                 )}
               </td>
             </tr>
@@ -277,13 +315,16 @@ function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHistorial,
 // ── Entradas / Salidas de material: tabla de movimientos del inventario ──
 const COLS_ENTRADAS = ["Fecha", "Insumo", "Cantidad", "Stock", "Registró", "Motivo"];
 
-function EntradasTable({ rows, tipo = "Entrada" }) {
+function EntradasTable({ rows, tipo = "Entrada", onEditar }) {
   const [hoverRow, setHoverRow] = useState(null);
   const { T } = useTheme();
   const esSalida = tipo === "Salida";
+  // Solo las entradas se pueden editar (el backend ajusta el stock solo).
+  const editable = !esSalida && typeof onEditar === "function";
+  const columnas = editable ? [...COLS_ENTRADAS, ""] : COLS_ENTRADAS;
 
   const th = {
-    padding: "6px 10px", fontSize: "10px", fontWeight: 700,
+    padding: "6px 10px", fontSize: FS.etiqueta, fontWeight: 700,
     textTransform: "uppercase", letterSpacing: "0.07em",
     color: T.textMuted, background: T.surfaceAlt,
     borderBottom: `2px solid ${T.border}`, textAlign: "left",
@@ -318,7 +359,7 @@ function EntradasTable({ rows, tipo = "Entrada" }) {
   };
 
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", tableLayout: "fixed", minWidth: "960px" }}>
+    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: FS.cuerpo, tableLayout: "fixed", minWidth: "960px" }}>
       <colgroup>
         <col style={{ width: "130px" }} />
         <col style={{ width: "26%" }} />
@@ -326,9 +367,10 @@ function EntradasTable({ rows, tipo = "Entrada" }) {
         <col style={{ width: "104px" }} />
         <col style={{ width: "18%" }} />
         <col />
+        {editable && <col style={{ width: "56px" }} />}
       </colgroup>
       <thead>
-        <tr>{COLS_ENTRADAS.map(c => <th key={c} style={th}>{c}</th>)}</tr>
+        <tr>{columnas.map((c, i) => <th key={c || `col-${i}`} style={th}>{c}</th>)}</tr>
       </thead>
       <tbody>
         {rows.map((m, idx) => {
@@ -340,7 +382,7 @@ function EntradasTable({ rows, tipo = "Entrada" }) {
               onMouseLeave={() => setHoverRow(null)}
               style={{ background: hover ? (T.isDark ? "rgba(255,255,255,0.03)" : "#f8fafc") : "transparent", transition: "background 0.1s" }}
             >
-              <td title={fmtFecha(m.fecha).full} style={{ ...td, fontSize: "11px", color: T.textMuted, whiteSpace: "nowrap", overflow: "visible" }}>
+              <td title={fmtFecha(m.fecha).full} style={{ ...td, fontSize: FS.secundario, color: T.textMuted, whiteSpace: "nowrap", overflow: "visible" }}>
                 <div style={{ lineHeight: 1.25 }}>{fmtFecha(m.fecha).dia}</div>
                 {fmtFecha(m.fecha).hora && (
                   <div style={{ fontWeight: 800, color: T.text, fontVariantNumeric: "tabular-nums", lineHeight: 1.25 }}>
@@ -353,7 +395,7 @@ function EntradasTable({ rows, tipo = "Entrada" }) {
                   {m.nombre_insumo || "—"}
                 </div>
                 {(m.marca || m.modelo) && (
-                  <div style={{ fontSize: "10px", color: T.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <div style={{ fontSize: FS.etiqueta, color: T.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {[m.marca, m.modelo].filter(Boolean).join(" · ")}
                   </div>
                 )}
@@ -361,10 +403,10 @@ function EntradasTable({ rows, tipo = "Entrada" }) {
               <td style={{ ...td, fontWeight: 800, fontVariantNumeric: "tabular-nums", color: esSalida ? "#dc2626" : "#16a34a" }}>
                 {esSalida ? `-${m.cantidad}` : `+${m.cantidad}`}
               </td>
-              <td style={{ ...td, fontSize: "11px", color: T.textMuted, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+              <td style={{ ...td, fontSize: FS.secundario, color: T.textMuted, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
                 {m.stock_anterior ?? 0} → {m.stock_nuevo ?? 0}
               </td>
-              <td style={{ ...td, fontSize: "11px", whiteSpace: "nowrap" }}>
+              <td style={{ ...td, fontSize: FS.secundario, whiteSpace: "nowrap" }}>
                 {m.nombre_empleado || "—"}
               </td>
               <td style={td}>
@@ -373,7 +415,7 @@ function EntradasTable({ rows, tipo = "Entrada" }) {
                 </div>
                 {m.folio_solicitud && (
                   <span style={{
-                    display: "inline-block", marginTop: "2px", fontSize: "9px", fontWeight: 700,
+                    display: "inline-block", marginTop: "2px", fontSize: FS.etiqueta, fontWeight: 700,
                     color: "#0d9488", background: "rgba(13,148,136,0.10)",
                     border: "1px solid rgba(13,148,136,0.30)", borderRadius: "4px", padding: "1px 6px",
                   }}>
@@ -381,6 +423,16 @@ function EntradasTable({ rows, tipo = "Entrada" }) {
                   </span>
                 )}
               </td>
+              {editable && (
+                <td style={{ ...td, textAlign: "center", overflow: "visible" }}>
+                  <button type="button" onClick={() => onEditar(m)}
+                    title="Editar entrada (el inventario se ajusta solo)" aria-label={`Editar entrada de ${m.nombre_insumo}`}
+                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px",
+                      borderRadius: "6px", border: `1px solid ${T.border}`, background: "transparent", color: "#0d9488", cursor: "pointer" }}>
+                    <Pencil size={13} />
+                  </button>
+                </td>
+              )}
             </tr>
           );
         })}
@@ -667,7 +719,7 @@ function BtnExportar({ datos, T, vista = "insumos", filtros = [], onPdf }) {
           padding: "7px 12px", borderRadius: "6px",
           border: `1px solid ${isDark ? "rgba(13,148,136,0.4)" : "#0d9488"}`,
           background: "transparent",
-          color: "#0d9488", fontSize: "11px", fontWeight: 600, cursor: "pointer",
+          color: "#0d9488", fontSize: FS.secundario, fontWeight: 600, cursor: "pointer",
         }}
       >
         <Download size={12} /> Exportar
@@ -691,7 +743,7 @@ function BtnExportar({ datos, T, vista = "insumos", filtros = [], onPdf }) {
               style={{
                 width: "100%", display: "flex", alignItems: "center", gap: "8px",
                 padding: "8px 12px", background: "transparent", border: "none",
-                fontSize: "12px", fontWeight: 500,
+                fontSize: FS.cuerpo, fontWeight: 500,
                 color: isDark ? "#e2e8f0" : "#334155",
                 cursor: "pointer", textAlign: "left",
               }}
@@ -719,6 +771,7 @@ export default function Inventario() {
   const [modal,      setModal]      = useState(null);
   const [detalle,    setDetalle]    = useState(null);
   const [entrada,    setEntrada]    = useState(null);
+  const [editarMov,  setEditarMov]  = useState(null);  // entrada que se está corrigiendo
   const [salida,     setSalida]     = useState(null); // true = hoja de salida interna abierta
   const [confirmar,  setConfirmar]  = useState(null); // { tipo: "eliminar"|"activo"|"visible_publico", row, busy }
   const [gestionar,  setGestionar]  = useState(null); // row → panel "Inhabilitar o eliminar" (un solo botón)
@@ -838,7 +891,7 @@ export default function Inventario() {
         const d = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(d?.error || `Error ${r.status} al cambiar visibilidad`);
         setInsumos(prev => prev.map(i => i.id_insumo === row.id_insumo ? { ...i, visible_publico: nuevo ? 1 : 0 } : i));
-        toast.success(nuevo ? `Insumo "${row.nombre}" visible al pÃºblico` : `Insumo "${row.nombre}" oculto al pÃºblico`);
+        toast.success(nuevo ? `Insumo "${row.nombre}" visible al público` : `Insumo "${row.nombre}" oculto al público`);
       } else {
         const nuevo = Number(row.activo ?? 1) === 0;
         const r = await apiFetch(API_ROUTES.INSUMO_ACTIVO(row.id_insumo), {
@@ -1033,7 +1086,7 @@ export default function Inventario() {
                     style={{
                       display: "inline-flex", alignItems: "center", gap: "5px",
                       padding: "7px 14px", borderRadius: "6px", cursor: "pointer",
-                      fontSize: "11px", fontWeight: 700, transition: "all 0.15s",
+                      fontSize: FS.secundario, fontWeight: 700, transition: "all 0.15s",
                       border: activa ? "1px solid #dc2626" : "1px solid rgba(220,38,38,0.45)",
                       background: activa ? "#dc2626" : "transparent",
                       color: activa ? "#fff" : (T.isDark ? "#f87171" : "#dc2626"),
@@ -1051,7 +1104,7 @@ export default function Inventario() {
                     style={{
                       display: "inline-flex", alignItems: "center", gap: "5px",
                       padding: "7px 14px", borderRadius: "6px", cursor: "pointer",
-                      fontSize: "11px", fontWeight: 700, transition: "all 0.15s",
+                      fontSize: FS.secundario, fontWeight: 700, transition: "all 0.15s",
                       border: activa ? "1px solid #16a34a" : "1px solid rgba(22,163,74,0.45)",
                       background: activa ? "#16a34a" : "transparent",
                       color: activa ? "#fff" : (T.isDark ? "#4ade80" : "#16a34a"),
@@ -1070,7 +1123,7 @@ export default function Inventario() {
                   style={{
                     display: "inline-flex", alignItems: "center", gap: "5px",
                     padding: "7px 14px", borderRadius: "6px", cursor: "pointer",
-                    fontSize: "11px", fontWeight: 700, transition: "all 0.15s",
+                    fontSize: FS.secundario, fontWeight: 700, transition: "all 0.15s",
                     border: `1px solid ${activa ? colorActivo : T.border}`,
                     background: activa ? fondoActivo : "transparent",
                     color: activa ? colorActivo : T.textMuted,
@@ -1095,7 +1148,7 @@ export default function Inventario() {
                   display: "inline-flex", alignItems: "center", gap: "6px",
                   padding: "8px 14px", borderRadius: "6px", border: "none",
                   background: TEAL.base, color: "#fff",
-                  fontSize: "11px", fontWeight: 600, cursor: "pointer",
+                  fontSize: FS.secundario, fontWeight: 600, cursor: "pointer",
                   transition: "opacity 0.15s",
                 }}
                 onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
@@ -1167,12 +1220,12 @@ export default function Inventario() {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <Layers size={14} style={{ color: TEAL.base }} />
-              <span style={{ fontSize: "11px", fontWeight: 700, color: T.text }}>
+              <span style={{ fontSize: FS.secundario, fontWeight: 700, color: T.text }}>
                 {vista === "insumos" ? "Catálogo de Insumos" : vista === "salidas" ? "Registrar salida de material" : "Entradas de material"}
               </span>
               {vista !== "salidas" && (
                 <span style={{
-                  fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "99px",
+                  fontSize: FS.secundario, fontWeight: 600, padding: "2px 8px", borderRadius: "99px",
                   background: T.isDark ? "rgba(13,148,136,0.18)" : "#f0fdfa",
                   color: "#0d9488",
                   border: T.isDark ? "1px solid rgba(13,148,136,0.35)" : "1px solid #99f6e4",
@@ -1184,10 +1237,10 @@ export default function Inventario() {
               )}
               {vista === "entradas" && movInsumo && (
                 <button onClick={limpiarInsumo} title="Quitar filtro por insumo"
-                  style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", cursor: "pointer", background: T.isDark ? "rgba(37,99,235,0.18)" : "#eff6ff", color: "#2563eb", border: T.isDark ? "1px solid rgba(37,99,235,0.40)" : "1px solid #bfdbfe" }}>
+                  style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: FS.secundario, fontWeight: 700, padding: "2px 8px", borderRadius: "99px", cursor: "pointer", background: T.isDark ? "rgba(37,99,235,0.18)" : "#eff6ff", color: "#2563eb", border: T.isDark ? "1px solid rgba(37,99,235,0.40)" : "1px solid #bfdbfe" }}>
                   <Package size={10} />
                   {movInsumo}
-                  <span style={{ fontSize: "11px", fontWeight: 800, lineHeight: 1 }}>✕</span>
+                  <span style={{ fontSize: FS.secundario, fontWeight: 800, lineHeight: 1 }}>✕</span>
                 </button>
               )}
             </div>
@@ -1210,12 +1263,12 @@ export default function Inventario() {
                   <div style={{ width: "52px", height: "52px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
                     <Inbox size={24} style={{ color: T.textFaint }} />
                   </div>
-                  <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: T.textMuted }}>
+                  <p style={{ margin: 0, fontSize: FS.enfasis, fontWeight: 600, color: T.textMuted }}>
                     {movInsumo ? `Sin entradas de "${movInsumo}" — ajusta los filtros` : "Sin entradas registradas — ajusta los filtros"}
                   </p>
                 </div>
               ) : (
-                <EntradasTable rows={movs} tipo={tipoMovActivo} />
+                <EntradasTable rows={movs} tipo={tipoMovActivo} onEditar={setEditarMov} />
               )
             ) : loading ? (
               <div style={{ display: "flex", justifyContent: "center", padding: "64px 0" }}>
@@ -1226,7 +1279,7 @@ export default function Inventario() {
                 <div style={{ width: "52px", height: "52px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
                   <Inbox size={24} style={{ color: T.textFaint }} />
                 </div>
-                <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: T.textMuted }}>
+                <p style={{ margin: 0, fontSize: FS.enfasis, fontWeight: 600, color: T.textMuted }}>
                   {hayFiltros ? "Sin resultados — ajusta los filtros" : "No hay insumos registrados"}
                 </p>
               </div>
@@ -1260,6 +1313,11 @@ export default function Inventario() {
         <ModalInsumo insumo={modal} categorias={categorias}
           onClose={() => setModal(null)} onSave={handleSave} T={T} />
       )}
+      {editarMov && (
+        <ModalEditarEntrada movimiento={editarMov} T={T}
+          onClose={() => setEditarMov(null)}
+          onSaved={() => { cargarInventario(false); cargarMovimientos("Entrada"); }} />
+      )}
       {entrada !== null && (
         <ModalEntradaInsumo insumo={entrada}
           onClose={() => setEntrada(null)}
@@ -1280,40 +1338,41 @@ export default function Inventario() {
           onMouseDown={e => { if (e.target === e.currentTarget) setGestionar(null); }}
           style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.5)",
             display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ width: "min(450px, 100%)", background: T.surface, borderRadius: "10px",
-            border: `1px solid ${T.border}`, boxShadow: "0 20px 60px rgba(0,0,0,0.35)", overflow: "hidden" }}>
+          <div style={{ width: "min(450px, 100%)", maxHeight: "90vh", overflowY: "auto", background: T.surface, borderRadius: "10px",
+            border: `1px solid ${T.border}`, boxShadow: "0 20px 60px rgba(0,0,0,0.35)" }}>
             <div style={{ padding: "14px 18px", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 10 }}>
               <MoreVertical size={16} style={{ color: T.textMuted }} />
-              <strong style={{ fontSize: 13, color: T.text }}>Gestionar insumo</strong>
+              <strong style={{ fontSize: FS.enfasis, color: T.text }}>Gestionar insumo</strong>
+              <LogoModal style={{ marginLeft: "auto" }} />
             </div>
-            <div style={{ padding: "14px 18px", fontSize: 12, color: T.textMuted, lineHeight: 1.6 }}>
+            <div style={{ padding: "14px 18px", fontSize: FS.cuerpo, color: T.textMuted, lineHeight: 1.6 }}>
               ¿Qué quieres hacer con <strong style={{ color: T.text }}>“{gestionar.nombre}”</strong>?
               <ul style={{ margin: "8px 0 0", paddingLeft: "18px" }}>
                 <li><strong style={{ color: T.text }}>Inhabilitar/Habilitar:</strong> baja lógica — se oculta de Salidas y solicitudes conservando su historial.</li>
-                <li><strong style={{ color: T.text }}>Visible PÃºblico:</strong> controla si el insumo aparece en el catalogo pÃºblico (inventario, reportes). 0 = oculto, 1 = visible.</li>
+                <li><strong style={{ color: T.text }}>Visible Público:</strong> controla si el insumo aparece en el catalogo público (inventario, reportes). 0 = oculto, 1 = visible.</li>
               </ul>
             </div>
             <div style={{ padding: "10px 18px", borderTop: `1px solid ${T.border}`, background: T.surfaceAlt,
               display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
               <button type="button" onClick={() => setGestionar(null)}
-                style={{ padding: "6px 16px", borderRadius: 6, fontSize: 12, fontWeight: 600, background: "transparent",
+                style={{ padding: "6px 16px", borderRadius: 6, fontSize: FS.cuerpo, fontWeight: 600, background: "transparent",
                   border: `1px solid ${T.border}`, color: T.textMuted, cursor: "pointer" }}>
                 Cancelar
               </button>
               <button type="button"
                 onClick={() => { setConfirmar({ tipo: "activo", row: gestionar, busy: false }); setGestionar(null); }}
-                style={{ padding: "6px 16px", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", color: "#fff",
+                style={{ padding: "6px 16px", borderRadius: 6, fontSize: FS.cuerpo, fontWeight: 700, border: "none", color: "#fff",
                   background: Number(gestionar.activo ?? 1) === 0 ? "#16a34a" : "#d97706", cursor: "pointer" }}>
                 {Number(gestionar.activo ?? 1) === 0 ? "Habilitar" : "Inhabilitar"}
               </button>
               <button type="button"
                 onClick={() => { setConfirmar({ tipo: "visible_publico", row: gestionar, busy: false }); setGestionar(null); }}
-                style={{ padding: "6px 16px", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", color: "#fff",
+                style={{ padding: "6px 16px", borderRadius: 6, fontSize: FS.cuerpo, fontWeight: 700, border: "none", color: "#fff",
                   background: Number(gestionar.visible_publico ?? 1) === 0 ? "#0d9488" : "#0284c7", cursor: "pointer" }}>
                 {Number(gestionar.visible_publico ?? 1) === 0 ? "Hacer visible" : "Ocultar público"}</button>
 <button type="button"
                 onClick={() => { setConfirmar({ tipo: "eliminar", row: gestionar, busy: false }); setGestionar(null); }}
-                style={{ padding: "6px 16px", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", color: "#fff",
+                style={{ padding: "6px 16px", borderRadius: 6, fontSize: FS.cuerpo, fontWeight: 700, border: "none", color: "#fff",
                   background: "#dc2626", cursor: "pointer" }}>
                 Eliminar
               </button>
@@ -1328,20 +1387,21 @@ export default function Inventario() {
           onMouseDown={e => { if (e.target === e.currentTarget && !confirmar.busy) setConfirmar(null); }}
           style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.5)",
             display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ width: "min(420px, 100%)", background: T.surface, borderRadius: "10px",
-            border: `1px solid ${T.border}`, boxShadow: "0 20px 60px rgba(0,0,0,0.35)", overflow: "hidden" }}>
+          <div style={{ width: "min(420px, 100%)", maxHeight: "90vh", overflowY: "auto", background: T.surface, borderRadius: "10px",
+            border: `1px solid ${T.border}`, boxShadow: "0 20px 60px rgba(0,0,0,0.35)" }}>
             <div style={{ padding: "14px 18px", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 10 }}>
               {confirmar.tipo === "eliminar"
                 ? <Trash2 size={16} style={{ color: "#dc2626" }} />
                 : confirmar.tipo === "visible_publico"
                 ? <Eye size={16} style={{ color: "#0284c7" }} />
                 : <Ban size={16} style={{ color: "#d97706" }} />}
-              <strong style={{ fontSize: 13, color: T.text }}>
+              <strong style={{ fontSize: FS.enfasis, color: T.text }}>
                 {confirmar.tipo === "eliminar" ? "Eliminar insumo"
                   : Number(confirmar.row.activo ?? 1) === 0 ? "Habilitar insumo" : "Inhabilitar insumo"}
               </strong>
+              <LogoModal style={{ marginLeft: "auto" }} />
             </div>
-            <div style={{ padding: "14px 18px", fontSize: 12, color: T.textMuted, lineHeight: 1.6 }}>
+            <div style={{ padding: "14px 18px", fontSize: FS.cuerpo, color: T.textMuted, lineHeight: 1.6 }}>
               {confirmar.tipo === "eliminar" ? (
                 <>¿Eliminar <strong style={{ color: T.text }}>“{confirmar.row.nombre}”</strong> del catálogo?
                 Solo se puede si no tiene solicitudes activas ni movimientos. Si tiene historial, inhabilítalo en su lugar.</>
@@ -1360,12 +1420,12 @@ export default function Inventario() {
             <div style={{ padding: "10px 18px", borderTop: `1px solid ${T.border}`, background: T.surfaceAlt,
               display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button type="button" disabled={confirmar.busy} onClick={() => setConfirmar(null)}
-                style={{ padding: "6px 16px", borderRadius: 6, fontSize: 12, fontWeight: 600, background: "transparent",
+                style={{ padding: "6px 16px", borderRadius: 6, fontSize: FS.cuerpo, fontWeight: 600, background: "transparent",
                   border: `1px solid ${T.border}`, color: T.textMuted, cursor: "pointer" }}>
                 Cancelar
               </button>
               <button type="button" disabled={confirmar.busy} onClick={ejecutarConfirmado}
-                style={{ padding: "6px 18px", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", color: "#fff",
+                style={{ padding: "6px 18px", borderRadius: 6, fontSize: FS.cuerpo, fontWeight: 700, border: "none", color: "#fff",
                   background: confirmar.tipo === "eliminar" ? "#dc2626" : confirmar.tipo === "visible_publico" ? "#0284c7" : "#d97706",
                   cursor: confirmar.busy ? "not-allowed" : "pointer", opacity: confirmar.busy ? 0.6 : 1 }}>
                 {confirmar.busy ? "Procesando…" : confirmar.tipo === "eliminar" ? "Eliminar"

@@ -1,3 +1,18 @@
+/**
+ * PrintInventarioView.tsx
+ *
+ * Vista imprimible del inventario de insumos con los filtros aplicados en
+ * pantalla.
+ *
+ * Export default: PrintInventarioView
+ * Props: datos (insumos), filtros (etiquetas de los filtros activos para el
+ *    encabezado).
+ *
+ * @module client/components/print/PrintInventarioView
+ * @requires ../PrintShared.tsx
+ * @requires ./print-report.css
+ * @exports PrintInventarioView (default)
+ */
 import { PageHeader, PageFooter, PageSize, nowFechaGen } from '../PrintShared.tsx';
 import './print-report.css';
 

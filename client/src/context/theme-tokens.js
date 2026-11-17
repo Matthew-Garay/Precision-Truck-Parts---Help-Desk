@@ -1,5 +1,5 @@
 /**
- * themeTokens.js
+ * theme-tokens.js
  *
  * Define los tokens de color para los dos temas de la aplicacion: claro y oscuro.
  * Es un archivo JS puro sin JSX para no interferir con el Fast Refresh de Vite.
@@ -29,6 +29,10 @@
  *   import { useTheme } from './theme-context.js';
  *   const { T } = useTheme();
  *   <div style={{ background: T.surface, color: T.text }}>
+ *
+ * @module client/context/theme-tokens
+ * @exports LIGHT
+ * @exports DARK
  */
 // Tokens de color — archivo .js puro (sin JSX) para no romper Fast Refresh
 

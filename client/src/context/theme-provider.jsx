@@ -1,5 +1,5 @@
 /**
- * ThemeContext.jsx
+ * theme-provider.jsx
  *
  * Proveedor del sistema de temas claro/oscuro de la aplicacion.
  * Debe envolver la raiz del arbol de componentes en main.jsx.
@@ -22,6 +22,12 @@
  * Uso en componentes:
  *   import { useTheme } from './theme-context.js';
  *   const { T, dark, toggleDark } = useTheme();
+ *
+ * @module client/context/theme-provider
+ * @requires react
+ * @requires ./theme-tokens.js
+ * @requires ./theme-context.js
+ * @exports ThemeProvider
  */
 import { useState, useEffect } from "react";
 import { LIGHT, DARK } from './theme-tokens.js';

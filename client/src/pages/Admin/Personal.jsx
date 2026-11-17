@@ -1,3 +1,29 @@
+/**
+ * Personal.jsx
+ *
+ * Gestión del personal (solo administrador): alta y edición de empleados, rol,
+ * puesto, sucursal y estatus, e historial de accesos imprimible.
+ *
+ * Export default: Personal
+ * Props: T.
+ * Endpoints: GET/POST /api/auth/empleados, PUT /api/auth/empleados/:id, GET
+ *    /api/auth/accesos/:id, catálogos
+ *    /api/auth/roles|departamentos|sucursales.
+ *
+ * @module client/pages/Admin/Personal
+ * @requires react
+ * @requires ../../hooks/use-auto-refresh.js
+ * @requires ../../services/api-client.js
+ * @requires ../../utils/email.js
+ * @requires ../../utils/password.js
+ * @requires ../../components/FiltrosToolbar.jsx
+ * @requires ../../components/Paginacion.jsx
+ * @requires lucide-react
+ * @requires ../../components/Card.jsx
+ * @requires ../../utils/tipografia.js
+ * @requires ../../components/LogoModal.jsx
+ * @exports Personal (default)
+ */
 import React, { useState, useEffect, useCallback } from "react";
 import { useAutoRefresh } from '../../hooks/use-auto-refresh.js';
 import { apiFetch } from '../../services/api-client.js';
@@ -8,22 +34,28 @@ import Paginacion from '../../components/Paginacion.jsx';
 import { X, Eye, EyeOff } from "lucide-react";
 import { useCardStyles } from '../../components/Card.jsx';
 
+import { FS } from '../../utils/tipografia.js';
+import LogoModal from '../../components/LogoModal.jsx';
 const ORANGE = "#F47920";
+
 
 const ESTATUS_COLOR = { Activo: "#16a34a", Inactivo: "#94a3b8" };
 
 const fmt = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
 
-/** Formatea un nombre completo a Title Case (Ahtziri Anahi Hernandez Correa),
- *  evitando que se muestre todo en mayusculas o todo en minusculas
- *  independientemente de como venga de la base de datos. */
-const nombreFormateado = (nombre, apPaterno, apMaterno) => {
-  const partes = [nombre, apPaterno, apMaterno]
-    .filter(Boolean)
-    .map(p => String(p).trim().toLowerCase())
-    .map(p => p.charAt(0).toUpperCase() + p.slice(1));
-  return partes.join(" ");
-};
+/** Pone en mayúscula la primera letra de CADA palabra ("ana karen" → "Ana Karen",
+ *  "MIGUEL JOVANY" → "Miguel Jovany", "díaz-de león" → "Díaz-De León").
+ *  Antes solo se capitalizaba la primera letra de cada campo completo, por eso
+ *  "Ana Karen" se mostraba como "Ana karen". */
+const titulo = (s) => String(s ?? "")
+  .trim().replace(/\s+/g, " ").toLocaleLowerCase("es-MX")
+  .replace(/(^|[\s\-'])(\p{L})/gu, (_, sep, letra) => sep + letra.toLocaleUpperCase("es-MX"));
+
+const nombreFormateado = (nombre, apPaterno, apMaterno) =>
+  [nombre, apPaterno, apMaterno].filter(Boolean).map(titulo).join(" ");
+
+/** Texto sin acentos y en minúsculas, para búsquedas y orden ("Peñaloza" = "penaloza"). */
+const normalizar = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
 const LIMIT = 25;
 const FILTROS_INIT = { busqueda: "", departamento: "Todos", sucursal: "Todos", estatus: "Todos" };
@@ -66,7 +98,7 @@ function useTokens(T, isDark) {
 function Field({ label, htmlFor, required, children, textFaint }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-      <label htmlFor={htmlFor} style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: textFaint }}>
+      <label htmlFor={htmlFor} style={{ fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: textFaint }}>
         {label}{required && <span style={{ color: ORANGE, marginLeft: "2px" }}>*</span>}
       </label>
       {children}
@@ -112,7 +144,7 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
   const inp = {
     background: tk.inputBg, border: `1px solid ${tk.border}`,
     borderRadius: "6px", padding: "0 10px", height: "34px",
-    fontSize: "13px", color: tk.textMain, outline: "none",
+    fontSize: FS.cuerpo, color: tk.textMain, outline: "none",
     width: "100%", boxSizing: "border-box",
     colorScheme: isDark ? "dark" : "light",
     transition: "border-color 0.12s, box-shadow 0.12s",
@@ -169,16 +201,17 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
         <div style={{ height: "2px", flexShrink: 0, background: ORANGE, borderRadius: "10px 10px 0 0" }} />
         <div style={{ padding: "14px 18px 12px", borderBottom: `1px solid ${tk.border}`, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", flexShrink: 0 }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>
+            <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: ORANGE }}>
               {isEdit ? "Editar empleado" : "Nuevo empleado"}
             </p>
-            <h2 style={{ margin: "3px 0 0", fontSize: "16px", fontWeight: 700, color: tk.textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+            <h2 style={{ margin: "3px 0 0", fontSize: FS.subtitulo, fontWeight: 700, color: tk.textMain, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
               {isEdit ? `${empleado.nombre} ${empleado.ap_paterno}` : "Agregar al personal"}
             </h2>
-            <p style={{ margin: "3px 0 0", fontSize: "12px", color: tk.textMuted }}>
+            <p style={{ margin: "3px 0 0", fontSize: FS.secundario, color: tk.textMuted }}>
               {isEdit ? "Modifica los campos que necesites" : "Completa los datos del nuevo empleado"}
             </p>
           </div>
+          <LogoModal style={{ marginLeft: "auto", marginRight: 8, alignSelf: "center" }} />
           <button onClick={onCerrar} aria-label="Cerrar"
             style={{ width: "26px", height: "26px", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${tk.border}`, borderRadius: "6px", cursor: "pointer", color: tk.textFaint, transition: "all 0.12s" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = tk.textMuted; e.currentTarget.style.color = tk.textMain; }}
@@ -216,7 +249,7 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
               <input id="fe-email" type="email" value={form.email}
                 onChange={e => set("email", e.target.value)}
                 placeholder="usuario@dominio.com.mx" style={inp} onFocus={onFocus} onBlur={onBlur} />
-              <p style={{ fontSize: 10, color: tk.textFaint, marginTop: 4, lineHeight: 1.4 }}>
+              <p style={{ fontSize: FS.secundario, color: tk.textFaint, marginTop: 4, lineHeight: 1.4 }}>
                 Dominios permitidos: {DOMINIOS_PERMITIDOS.map(d => `@${d}`).join(", ")}
               </p>
             </Field>
@@ -234,8 +267,9 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
                   {showPass ? <EyeOff width="16" height="16" /> : <Eye width="16" height="16" />}
                 </button>
               </div>
-              {pass && passEval && (
-                <p style={{ fontSize: "11px", margin: "4px 0 0", color: passEval.valido ? "#16a34a" : "#dc2626" }}>
+              {/* `pass` solo existe dentro de handleSubmit: aquí se lee del formulario */}
+              {form.password_nueva?.trim() && passEval && (
+                <p style={{ fontSize: FS.secundario, margin: "4px 0 0", color: passEval.valido ? "#16a34a" : "#dc2626" }}>
                   {passEval.mensaje}
                 </p>
               )}
@@ -275,7 +309,7 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
               </Field>
             </div>
             {error && (
-              <p role="alert" style={{ margin: 0, padding: "8px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: 500, color: "#dc2626", background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2", border: `1px solid ${isDark ? "rgba(220,38,38,0.25)" : "#fecaca"}` }}>
+              <p role="alert" style={{ margin: 0, padding: "8px 12px", borderRadius: "6px", fontSize: FS.cuerpo, fontWeight: 500, color: "#dc2626", background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2", border: `1px solid ${isDark ? "rgba(220,38,38,0.25)" : "#fecaca"}` }}>
                 {error}
               </p>
             )}
@@ -283,14 +317,14 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
         </div>
         <div style={{ padding: "10px 18px", borderTop: `1px solid ${tk.border}`, background: tk.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
           <button type="button" onClick={onCerrar} disabled={saving}
-            style={{ padding: "6px 16px", borderRadius: "6px", fontSize: "12px", fontWeight: 600, background: "transparent", border: `1px solid ${tk.border}`, color: tk.textMuted, cursor: "pointer", transition: "all 0.12s", opacity: saving ? 0.5 : 1 }}
+            style={{ padding: "6px 16px", borderRadius: "6px", fontSize: FS.cuerpo, fontWeight: 600, background: "transparent", border: `1px solid ${tk.border}`, color: tk.textMuted, cursor: "pointer", transition: "all 0.12s", opacity: saving ? 0.5 : 1 }}
             onMouseEnter={e => { if (!saving) { e.currentTarget.style.borderColor = tk.textMuted; e.currentTarget.style.color = tk.textMain; } }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = tk.border; e.currentTarget.style.color = tk.textMuted; }}
           >
             Cancelar
           </button>
           <button type="button" onClick={guardar} disabled={saving}
-            style={{ padding: "6px 18px", borderRadius: "6px", fontSize: "12px", fontWeight: 700, background: saving ? `${ORANGE}99` : ORANGE, border: "none", color: "#fff", cursor: saving ? "not-allowed" : "pointer", transition: "opacity 0.12s" }}
+            style={{ padding: "6px 18px", borderRadius: "6px", fontSize: FS.cuerpo, fontWeight: 700, background: saving ? `${ORANGE}99` : ORANGE, border: "none", color: "#fff", cursor: saving ? "not-allowed" : "pointer", transition: "opacity 0.12s" }}
             onMouseEnter={e => { if (!saving) e.currentTarget.style.opacity = "0.88"; }}
             onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
           >
@@ -379,9 +413,10 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
       >
         <div style={{ padding: "14px 18px", borderBottom: `1px solid ${tk.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: tk.textMain }}>Historial de accesos</h3>
-            <p style={{ margin: "2px 0 0", fontSize: 12, color: tk.textMuted }}>{nombre}</p>
+            <h3 style={{ margin: 0, fontSize: FS.subtitulo, fontWeight: 700, color: tk.textMain }}>Historial de accesos</h3>
+            <p style={{ margin: "2px 0 0", fontSize: FS.secundario, color: tk.textMuted }}>{nombre}</p>
           </div>
+          <LogoModal style={{ marginLeft: "auto", marginRight: 8, alignSelf: "center" }} />
           <button onClick={onCerrar} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: tk.textMuted }}>
             <X width="20" height="20" />
           </button>
@@ -409,26 +444,26 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
           ) : filtrados.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", gap: 8 }}>
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={tk.textFaint} strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-              <p style={{ fontSize: 13, fontWeight: 600, color: tk.textMuted, margin: 0 }}>Sin registros</p>
+              <p style={{ fontSize: FS.cuerpo, fontWeight: 600, color: tk.textMuted, margin: 0 }}>Sin registros</p>
             </div>
           ) : (
-            <div style={{ borderRadius: 8, border: `1px solid ${tk.border}`, background: tk.surface, overflow: "hidden" }}>
+            <div style={{ borderRadius: 8, border: `1px solid ${tk.border}`, background: tk.surface, overflow: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: tk.surfaceAlt, borderBottom: `1px solid ${tk.border}` }}>
-                    <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textMuted, textAlign: "left" }}>Fecha entrada</th>
-                    <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textMuted, textAlign: "left" }}>Fecha salida</th>
-                    <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textMuted, textAlign: "left" }}>Duración</th>
-                    <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textMuted, textAlign: "left" }}>Estatus</th>
+                    <th style={{ padding: "10px 14px", fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textMuted, textAlign: "left" }}>Fecha entrada</th>
+                    <th style={{ padding: "10px 14px", fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textMuted, textAlign: "left" }}>Fecha salida</th>
+                    <th style={{ padding: "10px 14px", fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textMuted, textAlign: "left" }}>Duración</th>
+                    <th style={{ padding: "10px 14px", fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: tk.textMuted, textAlign: "left" }}>Estatus</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filasPagina.map((a, i) => (
                     <tr key={i} style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}`, background: i % 2 === 0 ? tk.surface : tk.surfaceAlt }}>
-                      <td style={{ padding: "10px 14px", fontSize: 11, color: tk.textMain }}>{fmt(a.fecha_entrada)}</td>
-                      <td style={{ padding: "10px 14px", fontSize: 11, color: tk.textMuted }}>{a.fecha_salida ? fmt(a.fecha_salida) : "—"}</td>
-                      <td style={{ padding: "10px 14px", fontSize: 11, color: tk.textMuted }}>{duracion(a.fecha_entrada, a.fecha_salida)}</td>
-                      <td style={{ padding: "10px 14px", fontSize: 11, fontWeight: 600, color: a.fecha_salida ? ESTATUS_COLOR.Activo : ESTATUS_COLOR.Inactivo }}>
+                      <td style={{ padding: "10px 14px", fontSize: FS.cuerpo, color: tk.textMain }}>{fmt(a.fecha_entrada)}</td>
+                      <td style={{ padding: "10px 14px", fontSize: FS.cuerpo, color: tk.textMuted }}>{a.fecha_salida ? fmt(a.fecha_salida) : "—"}</td>
+                      <td style={{ padding: "10px 14px", fontSize: FS.cuerpo, color: tk.textMuted }}>{duracion(a.fecha_entrada, a.fecha_salida)}</td>
+                      <td style={{ padding: "10px 14px", fontSize: FS.cuerpo, fontWeight: 600, color: a.fecha_salida ? ESTATUS_COLOR.Activo : ESTATUS_COLOR.Inactivo }}>
                         {a.fecha_salida ? "Completada" : "Abierta"}
                       </td>
                     </tr>
@@ -458,7 +493,7 @@ function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial, onToggleEstat
   const activo = emp.estatus === "Activo";
   const btnStyle = {
     width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "8px 14px",
-    fontSize: 12, fontWeight: 500, color: tk.textMain, background: "transparent", border: "none",
+    fontSize: FS.cuerpo, fontWeight: 500, color: tk.textMain, background: "transparent", border: "none",
     cursor: "pointer", textAlign: "left",
   };
   return (
@@ -467,7 +502,7 @@ function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial, onToggleEstat
         onClick={() => setOpen(!open)}
         style={{
           background: "transparent", border: `1px solid ${tk.border}`, color: tk.textMuted,
-          borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer",
+          borderRadius: 6, padding: "4px 10px", fontSize: FS.secundario, cursor: "pointer",
         }}
       >
         ⋮
@@ -500,22 +535,29 @@ function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial, onToggleEstat
   );
 }
 // ── Tabla de Empleados ────────────────────────────────────────────
-function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleEstatus }) {
+function TablaEmpleados({ empleados, filtrosKey, T, isDark, onEditar, onHistorial, onToggleEstatus }) {
   const [sort, setSort] = useState({ col: "nombre", dir: "asc" });
   const [pagina, setPagina] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  useEffect(() => { setPagina(1); }, [sort.col, sort.dir, empleados.length]);
+  const [pageSize, setPageSize] = useState(LIMIT);
+  // Regresa a la página 1 al cambiar orden, filtros o tamaño de página. NO se
+  // usa empleados.length: el auto-refresco de 30 s no debe mover la página.
+  useEffect(() => { setPagina(1); }, [sort.col, sort.dir, filtrosKey, pageSize]);
   const toggleSort = col => setSort(s => ({ col, dir: s.col === col && s.dir === "asc" ? "desc" : "asc" }));
   const sorted = [...empleados].sort((a, b) => {
     const map = {
-      nombre: e => `${e.nombre} ${e.ap_paterno}`,
-      id: e => e.num_empleado || "",
-      depto: e => e.nombre_departamento || "",
-      sucursal: e => e.nombre_sucursal || "",
-      rol: e => e.nombre_rol || "",
+      nombre:   e => normalizar(`${e.nombre} ${e.ap_paterno} ${e.ap_materno || ""}`),
+      id:       e => e.num_empleado || "",
+      depto:    e => normalizar(e.nombre_departamento),
+      sucursal: e => normalizar(e.nombre_sucursal),
+      rol:      e => normalizar(e.nombre_rol),
     };
     const fn = map[sort.col] || (() => "");
-    const cmp = fn(a).localeCompare(fn(b), "es");
+    const va = fn(a), vb = fn(b);
+    // Los vacíos (sin número de empleado, sin sucursal…) siempre al final.
+    if (!va && vb) return 1;
+    if (va && !vb) return -1;
+    // numeric: true ordena "990" antes que "1000" (número de empleado).
+    const cmp = va.localeCompare(vb, "es", { numeric: true, sensitivity: "base" });
     return sort.dir === "asc" ? cmp : -cmp;
   });
   const totalPaginas = Math.max(1, Math.ceil(sorted.length / pageSize));
@@ -532,7 +574,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
   ];
   const thS = {
     padding: "10px 16px",
-    fontSize: 10, fontWeight: 700, letterSpacing: "0.07em",
+    fontSize: FS.etiqueta, fontWeight: 700, letterSpacing: "0.07em",
     textTransform: "uppercase", whiteSpace: "nowrap",
     color: T.textMuted,
     background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt,
@@ -543,7 +585,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
   };
   const tdS = {
     padding: "10px 16px",
-    fontSize: 11,
+    fontSize: FS.cuerpo,
     color: T.textMain,
     borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}`,
     verticalAlign: "middle",
@@ -581,12 +623,12 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
                       <Avatar nombre={nombre} size={30} isDark={isDark} />
                       <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                         <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: activo ? "#22c55e" : "#94a3b8", boxShadow: activo ? "0 0 0 2.5px rgba(34,197,94,0.2)" : "none" }} />
-                        <span style={{ fontSize: 13, fontWeight: 600, color: T.textMain, whiteSpace: "nowrap" }}>{nombre}</span>
+                        <span style={{ fontSize: FS.cuerpo, fontWeight: 600, color: T.textMain, whiteSpace: "nowrap" }}>{nombre}</span>
                       </div>
                     </div>
                   </td>
                   <td style={tdS}>
-                    <span style={{ fontFamily: "'JetBrains Mono','Courier New',monospace", fontSize: 11, color: T.textMuted, background: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6", padding: "2px 7px", borderRadius: 4 }}>
+                    <span style={{ fontFamily: "'JetBrains Mono','Courier New',monospace", fontSize: FS.secundario, color: T.textMuted, background: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6", padding: "2px 7px", borderRadius: 4 }}>
                       {emp.num_empleado || "—"}
                     </span>
                   </td>
@@ -594,7 +636,7 @@ function TablaEmpleados({ empleados, T, isDark, onEditar, onHistorial, onToggleE
                   <td style={{ ...tdS, color: T.textMuted }}>{emp.nombre_sucursal || "—"}</td>
                   <td style={tdS}>
                     {emp.nombre_rol && (
-                      <span style={{ fontSize: 11, fontWeight: 600, background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "#e2e8f0"}`, padding: "2px 8px", borderRadius: 4 }}>
+                      <span style={{ fontSize: FS.secundario, fontWeight: 600, background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "#e2e8f0"}`, padding: "2px 8px", borderRadius: 4 }}>
                         {emp.nombre_rol}
                       </span>
                     )}
@@ -659,15 +701,19 @@ export default function Personal({ T }) {
   useEffect(() => { cargar(); }, [cargar]);
   useAutoRefresh(() => cargar(false), 30000);
   const filtrados = empleados.filter(e => {
-    const nombre = `${e.nombre} ${e.ap_paterno} ${e.ap_materno || ""}`.toLowerCase();
-    if (filtros.busqueda && !nombre.includes(filtros.busqueda.toLowerCase()) && !e.email?.toLowerCase().includes(filtros.busqueda.toLowerCase())) return false;
+    // Búsqueda sin acentos ni mayúsculas, por nombre completo, correo o número de empleado.
+    const q = normalizar(filtros.busqueda).replace(/\s+/g, " ");
+    if (q) {
+      const heno = normalizar(`${e.nombre} ${e.ap_paterno} ${e.ap_materno || ""} ${e.email || ""} ${e.num_empleado || ""}`).replace(/\s+/g, " ");
+      if (!heno.includes(q)) return false;
+    }
     if (filtros.departamento !== "Todos" && String(e.id_departamento) !== filtros.departamento) return false;
     if (filtros.sucursal !== "Todos" && String(e.id_sucursal) !== filtros.sucursal) return false;
     if (filtros.estatus !== "Todos" && e.estatus !== filtros.estatus) return false;
     return true;
   });
   const camposFiltro = [
-    { key: "busqueda", label: "Búsqueda Rápida", type: "search", placeholder: "Nombre o correo..." },
+    { key: "busqueda", label: "Búsqueda Rápida", type: "search", placeholder: "Nombre, correo o núm. de empleado..." },
     { key: "departamento", label: "Área", type: "select", opts: [{ value: "Todos", label: "Todos" }, ...departamentos.map(d => ({ value: String(d.id_departamento), label: d.nombre_departamento }))] },
     { key: "sucursal", label: "Sucursal", type: "select", minWidth: "130px", opts: [{ value: "Todos", label: "Todas" }, ...sucursales.map(s => ({ value: String(s.id_sucursal), label: s.nombre_sucursal }))] },
     { key: "estatus", label: "Estatus", type: "select", opts: ["Todos", "Activo", "Inactivo"] },
@@ -701,11 +747,11 @@ export default function Personal({ T }) {
       <div style={{ maxWidth: 1400, width: "100%", margin: "0 auto", padding: "16px 16px 0", display: "flex", flexDirection: "column", flex: 1, minHeight: 0, mb: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: T.textMain, letterSpacing: "-0.02em" }}>Personal</h2>
-            <p style={{ margin: "2px 0 0", fontSize: 12, color: T.textMuted }}>Administración de empleados y accesos</p>
+            <h2 style={{ margin: 0, fontSize: FS.titulo, fontWeight: 800, color: T.textMain, letterSpacing: "-0.02em" }}>Personal</h2>
+            <p style={{ margin: "2px 0 0", fontSize: FS.cuerpo, color: T.textMuted }}>Administración de empleados y accesos</p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, padding: "4px 10px", borderRadius: 20, border: `1px solid ${T.border}`, background: T.surfaceAlt }}>
+            <span style={{ fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, padding: "4px 10px", borderRadius: 20, border: `1px solid ${T.border}`, background: T.surfaceAlt }}>
               {empleados.length} empleados
             </span>
           </div>
@@ -717,8 +763,8 @@ export default function Personal({ T }) {
             { label: "Inactivos", val: inactivos, color: "#94a3b8", bgL: "#f8fafc", bgD: "#1a1f2e" },
           ].map(s => (
             <div key={s.label} style={{ borderRadius: 8, padding: "10px 14px", background: isDark ? s.bgD : s.bgL, border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}` }}>
-              <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: isDark ? "rgba(255,255,255,0.4)" : "#6b7280", margin: 0 }}>{s.label}</p>
-              <p style={{ fontSize: 18, fontWeight: 800, color: s.color, margin: "2px 0 0" }}>{s.val}</p>
+              <p style={{ fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: isDark ? "rgba(255,255,255,0.4)" : "#6b7280", margin: 0 }}>{s.label}</p>
+              <p style={{ fontSize: FS.kpi, fontWeight: 800, color: s.color, margin: "2px 0 0" }}>{s.val}</p>
             </div>
           ))}
         </div>
@@ -730,7 +776,7 @@ export default function Personal({ T }) {
           T={T}>
           <button
             onClick={() => setModal({ modo: "crear" })}
-            style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, background: ORANGE, color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 6, fontSize: FS.cuerpo, fontWeight: 700, background: ORANGE, color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
             onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.08)"}
             onMouseLeave={e => e.currentTarget.style.filter = "none"}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
@@ -745,12 +791,13 @@ export default function Personal({ T }) {
           ) : filtrados.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 0", gap: 8 }}>
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={T.textFaint} strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-              <p style={{ fontSize: 13, fontWeight: 600, color: T.textMuted, margin: 0 }}>Sin resultados</p>
-              <p style={{ fontSize: 12, color: T.textFaint, margin: 0 }}>Ajusta los filtros o agrega un nuevo empleado</p>
+              <p style={{ fontSize: FS.cuerpo, fontWeight: 600, color: T.textMuted, margin: 0 }}>Sin resultados</p>
+              <p style={{ fontSize: FS.secundario, color: T.textFaint, margin: 0 }}>Ajusta los filtros o agrega un nuevo empleado</p>
             </div>
           ) : (
             <TablaEmpleados
               empleados={filtrados}
+              filtrosKey={JSON.stringify(filtros)}
               T={T}
               isDark={isDark}
               onEditar={e => setModal({ modo: "editar", empleado: e })}

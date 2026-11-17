@@ -1,5 +1,5 @@
 /**
- * categoriasController.js
+ * categorias-controller.js
  *
  * Controlador encargado de exponer el catalogo de categorias del sistema.
  *
@@ -12,6 +12,10 @@
  *     Consulta el modelo Categoria y retorna la lista completa de categorias
  *     ordenada por id. En caso de error solo incluye el mensaje de detalle
  *     cuando el entorno no es produccion, para no exponer informacion interna.
+ *
+ * @module server/controllers/categorias-controller
+ * @requires ../services/categoria.js
+ * @exports getCategorias
  */
 import Categoria from '../services/categoria.js';
 

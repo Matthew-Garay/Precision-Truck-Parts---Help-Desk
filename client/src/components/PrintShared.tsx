@@ -1,8 +1,30 @@
 /**
  * PrintShared.tsx — Componentes base compartidos por todos los PDFs del sistema
  * Todos los layouts de impresión importan desde aquí para garantizar consistencia visual.
+ *
+ * @module client/components/PrintShared
+ * @requires react
+ * @requires ../utils/tipografia.js
+ * @requires ./print/print-report.css
+ * @exports PRIO_META
+ * @exports ESTATUS_META
+ * @exports fmt
+ * @exports nowFechaGen
+ * @exports PageSize
+ * @exports Badge
+ * @exports Stars
+ * @exports PageHeader
+ * @exports PageFooter
+ * @exports Section
+ * @exports DataGrid
+ * @exports KpiStrip
+ * @exports ReporteTable
+ * @exports Firma
+ * @exports LoadingPrint
+ * @exports ErrorPrint
  */
 import { useEffect } from "react";
+import { FS } from '../utils/tipografia.js';
 import './print/print-report.css';
 
 /* ── Tipos ─────────────────────────────────────────────────────── */
@@ -256,7 +278,7 @@ export function Firma({ nombre, rol, placeholder = false }: {
 /* ── LoadingPrint / ErrorPrint (estados de página) ──────────────── */
 export function LoadingPrint() {
   return (
-    <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", padding: 48, display: "flex", alignItems: "center", gap: 14, color: "#000000", fontSize: 14 }}>
+    <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", padding: 48, display: "flex", alignItems: "center", gap: 14, color: "#000000", fontSize: FS.subtitulo }}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000000" strokeWidth="2.5" strokeLinecap="round"
         style={{ flexShrink: 0, animation: "pr-spin 0.9s linear infinite" }}>
         <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
@@ -270,9 +292,9 @@ export function LoadingPrint() {
 export function ErrorPrint({ message }: { message: string }) {
   return (
     <div style={{ fontFamily: "sans-serif", padding: 40, color: "#000000", display: "flex", flexDirection: "column", gap: 8 }}>
-      <strong style={{ fontSize: 15 }}>No se pudo cargar el reporte</strong>
-      <span style={{ fontSize: 13, color: "#000000" }}>{message}</span>
-      <span style={{ fontSize: 12, color: "#000000", marginTop: 4 }}>
+      <strong style={{ fontSize: FS.subtitulo }}>No se pudo cargar el reporte</strong>
+      <span style={{ fontSize: FS.enfasis, color: "#000000" }}>{message}</span>
+      <span style={{ fontSize: FS.cuerpo, color: "#000000", marginTop: 4 }}>
         Verifica que la sesión siga activa y vuelve a intentarlo.
       </span>
     </div>

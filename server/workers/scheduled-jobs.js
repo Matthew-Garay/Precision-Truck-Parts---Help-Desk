@@ -1,5 +1,5 @@
 /**
- * scheduledJobs.js
+ * scheduled-jobs.js
  *
  * Modulo que inicia y gestiona todos los trabajos periodicos en segundo plano
  * del servidor. Se invoca una sola vez desde server.js al arrancar, recibiendo
@@ -40,6 +40,13 @@
  * Todos los intervalos usan .unref() para que no impidan el cierre
  * natural del proceso de Node.js cuando se recibe una senal de terminacion.
  * Los Sets de deduplicacion provienen de alertState.js y sobreviven reinicios.
+ *
+ * @module server/workers/scheduled-jobs
+ * @requires ../config/db.js
+ * @requires ../services/ticket.js
+ * @requires ./alert-state.js
+ * @exports getStockEnviadoHoy
+ * @exports iniciarWorkers
  */
 import pool   from '../config/db.js';
 import Ticket from '../services/ticket.js';

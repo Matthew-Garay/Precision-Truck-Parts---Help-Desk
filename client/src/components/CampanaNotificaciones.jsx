@@ -20,6 +20,12 @@
  *   onDismiss      - funcion para eliminar una notificacion por id
  *   onDismissAll   - funcion para eliminar todas las notificaciones
  *   onClickNotif   - funcion que recibe la notificacion al hacer clic en su accion
+ *
+ * @module client/components/CampanaNotificaciones
+ * @requires react
+ * @requires lucide-react
+ * @requires ../services/notification-service.js
+ * @exports CampanaNotificaciones (default)
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Bell, X, CheckCircle2, Package, Ticket, Star, Clock, AlertTriangle, Wrench, VolumeX, Volume2 } from "lucide-react";
@@ -283,7 +289,7 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
             }}>
             <div className="flex items-center gap-2">
               <Bell size={13} style={{ color: T.orange }} />
-              <span className="text-xs font-black" style={{ color: T.text }}>Notificaciones</span>
+              <span className="text-[11px] font-black" style={{ color: T.text }}>Notificaciones</span>
               {noLeidas > 0 && (
                 <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black"
                   style={{ background: T.orange, color: "#fff" }}>
@@ -302,7 +308,7 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
               {noLeidas > 0 && (
                 <button
                   onClick={onDismissAll}
-                  className="text-[10px] font-bold transition-colors hover:underline"
+                  className="text-[9px] font-bold transition-colors hover:underline"
                   style={{ color: T.textMuted }}>
                   Limpiar
                 </button>
@@ -315,8 +321,8 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
             {notificaciones.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
                 <Bell size={28} style={{ color: T.textFaint }} />
-                <p className="text-xs font-semibold" style={{ color: T.textMuted }}>Sin notificaciones</p>
-                <p className="text-[11px]" style={{ color: T.textFaint }}>Todo al día por ahora</p>
+                <p className="text-[11px] font-semibold" style={{ color: T.textMuted }}>Sin notificaciones</p>
+                <p className="text-[10px]" style={{ color: T.textFaint }}>Todo al día por ahora</p>
               </div>
             ) : notificaciones.map((n, i) => {
               const cfg    = TIPO_CONFIG[n.tipo];
@@ -379,13 +385,13 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
 
                     {/* Texto */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-black leading-tight" style={{ color }}>
+                      <p className="text-[10px] font-black leading-tight" style={{ color }}>
                         {titulo}
                       </p>
                       {sub.split("\n").map((linea, li) => (
                         <p
                           key={li}
-                          className="text-[10px] leading-snug mt-0.5"
+                          className="text-[9px] leading-snug mt-0.5"
                           style={{
                             color: li === 0 ? T.textMuted : T.textFaint,
                             fontWeight: li === 0 ? 500 : 400,
@@ -416,7 +422,7 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
                   {tieneAccion && (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleClickNotif(n); }}
-                      className="mx-3 mb-2 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[10px] font-bold transition-all hover:brightness-110 active:scale-95"
+                      className="mx-3 mb-2 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[9px] font-bold transition-all hover:brightness-110 active:scale-95"
                       style={{
                         fontFamily: "var(--font-sans, 'Inter','Segoe UI',sans-serif)",
                         ...(esCalificable

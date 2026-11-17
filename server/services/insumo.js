@@ -1,6 +1,13 @@
 /**
+ * insumo.js
+ *
  * Insumo Service - PrecisionTrucks HelpDesk
  * Gestiona las operaciones relacionadas con los insumos.
+ *
+ * @module server/services/insumo
+ * @requires ../config/db.js
+ * @requires ../config/cache.js
+ * @exports Insumo (default)
  */
 
 import pool from "../config/db.js";
@@ -73,11 +80,21 @@ const Insumo = {
     return result;
   },
 
-  crear: async (data) => {
-    const { nombre, id_categoria, descripcion, stock, activo, visible_publico, estado } = data;
-    const [result] = await pool.query(
-      "INSERT INTO insumo (nombre, id_categoria, descripcion, stock, activo, visible_publico, estado, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
-      [nombre, id_categoria, descripcion, stock, activo !== undefined ? activo : 1, visible_publico !== undefined ? visible_publico : 1, estado !== undefined ? estado : 'Excelente']
+  // `conn` (opcional) permite crear el insumo dentro de la transaccion del
+  // llamador; antes se ignoraba y el INSERT quedaba fuera del rollback.
+  // Tambien se guardan num_serie, marca, modelo e imagen, que antes se perdian.
+  crear: async (data, conn = null) => {
+    const { num_serie, nombre, id_categoria, descripcion, marca, modelo, stock,
+            imagen_url, activo, visible_publico, estado } = data;
+    const db = conn || pool;
+    const [result] = await db.query(
+      `INSERT INTO insumo (num_serie, nombre, id_categoria, descripcion, marca, modelo, stock,
+                           imagen_url, activo, visible_publico, estado, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [num_serie ?? "N/A", nombre, id_categoria, descripcion ?? "N/A", marca ?? "N/A", modelo ?? "N/A",
+       stock ?? 0, imagen_url ?? null,
+       activo !== undefined ? activo : 1, visible_publico !== undefined ? visible_publico : 1,
+       estado !== undefined ? estado : 'Excelente']
     );
     cache.delByPrefix("insumo:");
     return result.insertId;
@@ -111,6 +128,10 @@ const Insumo = {
     cache.delByPrefix("insumo:");
     return result.affectedRows > 0;
   },
+
+  /** Invalida la caché del catálogo: llamar tras cualquier cambio de stock
+   *  (entradas, salidas, edición de entradas) para no mostrar stock viejo. */
+  limpiarCache: () => cache.delByPrefix("insumo:"),
 };
 
 export default Insumo;

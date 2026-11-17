@@ -1,5 +1,5 @@
 /**
- * socketInstance.js
+ * socket-instance.js
  *
  * Implementa el patron singleton para la instancia de Socket.io.
  *
@@ -15,6 +15,10 @@
  * Funciones exportadas:
  *   setIO(ioInstance) - registra la instancia. Debe llamarse exactamente una vez desde server.js
  *   getIO()           - retorna la instancia registrada. Lanza Error si se llama antes de setIO
+ *
+ * @module server/config/socket-instance
+ * @exports setIO
+ * @exports getIO
  */
 let _io = null;
 

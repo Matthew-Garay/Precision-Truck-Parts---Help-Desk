@@ -16,6 +16,11 @@
  *   REGLAS_PASSWORD   - lista de reglas (id + texto) para pintar el checklist
  *   evaluarPassword() - { vacia, reglas, cumple, nivel, etiqueta, color, pct }
  *   passwordSeguro()  - null si cumple, o el mensaje de la primera regla que falla
+ *
+ * @module client/utils/password
+ * @exports REGLAS_PASSWORD
+ * @exports evaluarPassword
+ * @exports passwordSeguro
  */
 export const REGLAS_PASSWORD = Object.freeze([
   { id: "largo",    texto: "Mínimo 8 caracteres" },

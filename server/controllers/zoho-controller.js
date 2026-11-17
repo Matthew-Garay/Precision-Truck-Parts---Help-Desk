@@ -1,5 +1,7 @@
 /**
- * zohoController.js — Login con Zoho (Sign in using Zoho, OIDC Server-based).
+ * zoho-controller.js
+ *
+ * Login con Zoho (Sign in using Zoho, OIDC Server-based).
  *
  * Flujo:
  *   1. GET /api/auth/zoho/login    → genera `state` antifalsificación (cookie
@@ -14,6 +16,16 @@
  *
  * Env requeridas: ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_ACCOUNTS_URL,
  * ZOHO_REDIRECT_URI, ZOHO_SCOPES (opcional), APP_URL, JWT_SECRET
+ *
+ * @module server/controllers/zoho-controller
+ * @requires crypto
+ * @requires jsonwebtoken
+ * @requires ../services/empleado.js
+ * @requires ../middlewares/validate.js
+ * @requires ../utils/helpers.js
+ * @exports zohoHabilitado
+ * @exports zohoLogin
+ * @exports zohoCallback
  */
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
@@ -49,10 +61,11 @@ const zohoCfg = (req) => {
  * backend (:3001) y redirigir ahí rompe con `Cannot GET /login/zoho`.
  */
 function resolverAppUrl(_req) {
-  if (!process.env.APP_URL) {
-    throw new Error("APP_URL no está definido. Configura la variable de entorno APP_URL.");
+  if (process.env.APP_URL) {
+    return process.env.APP_URL.replace(/\/+$/, "");
   }
-  return process.env.APP_URL.replace(/\/+$/, "");
+  // Fallback a IP de LAN cuando APP_URL no está configurado (desarrollo en red local)
+  return "http://192.168.31.115:5173";
 }
 
 /**

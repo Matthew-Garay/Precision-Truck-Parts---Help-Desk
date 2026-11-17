@@ -1,4 +1,4 @@
-﻿/**
+/**
  * PerfilShared.jsx
  *
  * Utilidades compartidas entre las vistas de perfil del administrador
@@ -20,7 +20,14 @@
  *   de accesos formateado para impresion. Incluye KPIs de sesiones,
  *   duracion promedio y duracion maxima. Si el navegador bloquea la
  *   ventana emergente muestra un aviso temporal en pantalla.
+ *
+ * @module client/components/PerfilShared
+ * @requires ../utils/tipografia.js
+ * @exports EyeBtn
+ * @exports usePerfilStyles
+ * @exports generarPDFAccesos
  */
+import { FS } from '../utils/tipografia.js';
 
 // -- EyeBtn ----------------------------------------------------
 export function EyeBtn({ show, onToggle, textFaint }) {
@@ -54,7 +61,7 @@ export function usePerfilStyles(T, isDark) {
       color: T.text,
       borderRadius: "8px",
       padding: "8px 12px",
-      fontSize: "14px",
+      fontSize: FS.subtitulo,
       lineHeight: "1.35",
       fontFamily: "inherit",
       fontWeight: 500,

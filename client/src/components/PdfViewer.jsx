@@ -6,12 +6,20 @@
  * Props:
  *   url    - URL completa del PDF
  *   isDark - boolean para tema
+ *
+ * @module client/components/PdfViewer
+ * @requires react
+ * @requires lucide-react
+ * @requires ../utils/pdfjs.js
+ * @requires ../utils/tipografia.js
+ * @exports PdfViewer (default)
  */
 import { useEffect, useRef, useState, useCallback } from "react";
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw } from "lucide-react";
 
 import pdfjs, { PDFJS_PARAMS } from '../utils/pdfjs.js';
 
+import { FS } from '../utils/tipografia.js';
 export default function PdfViewer({ url, isDark }) {
   const canvasRef   = useRef(null);
   const renderTask  = useRef(null);
@@ -188,7 +196,7 @@ export default function PdfViewer({ url, isDark }) {
     border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
     background: ctrl, color: txt,
     cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: 11, fontWeight: 600,
+    fontSize: FS.secundario, fontWeight: 600,
   };
 
   if (error) return (
@@ -198,11 +206,11 @@ export default function PdfViewer({ url, isDark }) {
         <path d="M14 2v6h6" />
         <path d="M9 13h6M9 17h6" strokeLinecap="round" />
       </svg>
-      <span style={{ fontSize: 14, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.5)" : "#475569" }}>
+      <span style={{ fontSize: FS.subtitulo, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.5)" : "#475569" }}>
         No se pudo cargar el PDF
       </span>
       <a href={url} target="_blank" rel="noreferrer"
-        style={{ fontSize: 13, color: "#F47920", textDecoration: "underline", fontWeight: 500 }}>
+        style={{ fontSize: FS.enfasis, color: "#F47920", textDecoration: "underline", fontWeight: 500 }}>
         Abrir en nueva pestaña
       </a>
     </div>
@@ -222,9 +230,9 @@ export default function PdfViewer({ url, isDark }) {
           <ChevronLeft size={14} />
         </button>
         {loading ? (
-          <span style={{ fontSize: 11, fontWeight: 600, color: txt, minWidth: 70, textAlign: "center" }}>...</span>
+          <span style={{ fontSize: FS.secundario, fontWeight: 600, color: txt, minWidth: 70, textAlign: "center" }}>...</span>
         ) : (
-          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, color: txt }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: FS.secundario, fontWeight: 600, color: txt }}>
             <input
               type="number"
               min={1}
@@ -238,7 +246,7 @@ export default function PdfViewer({ url, isDark }) {
                 width: 38, height: 24, textAlign: "center", borderRadius: 5,
                 border: `1px solid ${isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)"}`,
                 background: isDark ? "rgba(255,255,255,0.07)" : "#fff",
-                color: txt, fontSize: 11, fontWeight: 600,
+                color: txt, fontSize: FS.secundario, fontWeight: 600,
                 outline: "none", padding: 0,
                 MozAppearance: "textfield",
               }}
@@ -286,13 +294,13 @@ export default function PdfViewer({ url, isDark }) {
               style={{
                 width: 44, height: 24, textAlign: "center",
                 border: "none", background: "transparent",
-                color: txt, fontSize: 11, fontWeight: 600,
+                color: txt, fontSize: FS.secundario, fontWeight: 600,
                 outline: "none", padding: 0,
                 MozAppearance: "textfield",
               }}
             />
             <span style={{
-              padding: "0 6px", fontSize: 11, fontWeight: 600,
+              padding: "0 6px", fontSize: FS.secundario, fontWeight: 600,
               color: txt, opacity: 0.55,
               borderLeft: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.10)"}`,
               background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",

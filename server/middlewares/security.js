@@ -26,6 +26,11 @@
  *     3. Resuelve la ruta final y compara con el directorio base.
  *        Si la ruta resuelta no empieza con el directorio base mas el separador,
  *        lanza un Error con el mensaje "Ruta no permitida".
+ *
+ * @module server/middlewares/security
+ * @requires path
+ * @exports csrfProtection
+ * @exports safeResolvePath
  */
 import path from "path";
 

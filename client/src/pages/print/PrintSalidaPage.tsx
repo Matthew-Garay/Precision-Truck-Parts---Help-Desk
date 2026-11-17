@@ -1,3 +1,19 @@
+/**
+ * PrintSalidaPage.tsx
+ *
+ * Página /print/salida: hoja de una salida interna (folio SAL-…) a partir del
+ * payload que dejan ModalSalidaInsumo o salidas-historial.js en sessionStorage
+ * (print_salida_datos).
+ *
+ * Export default: PrintSalidaPage
+ *
+ * @module client/pages/print/PrintSalidaPage
+ * @requires react
+ * @requires ../../components/print/PrintSalidaView.tsx
+ * @requires ../../components/PrintShared.tsx
+ * @requires ../../utils/print-utils.ts
+ * @exports PrintSalidaPage (default)
+ */
 import { useEffect, useState } from "react";
 import PrintSalidaView, { SalidaPayload } from '../../components/print/PrintSalidaView.tsx';
 import { LoadingPrint, ErrorPrint } from '../../components/PrintShared.tsx';

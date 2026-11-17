@@ -1,3 +1,17 @@
+/**
+ * PrintSolicitudView.tsx
+ *
+ * Hoja de entrega imprimible de una solicitud de insumos (folio SOL-…):
+ * solicitante, ruta del material, insumos con cantidad pedida/aceptada,
+ * observaciones y firmas.
+ *
+ * Export default: PrintSolicitudView
+ * Props: solicitud (respuesta de GET /api/solicitudes/folio/:folio).
+ *
+ * @module client/components/print/PrintSolicitudView
+ * @requires ../PrintShared.tsx
+ * @exports PrintSolicitudView (default)
+ */
 import {
   PageHeader, PageFooter, PageSize, Firma,
   PRIO_META, fmt, nowFechaGen,

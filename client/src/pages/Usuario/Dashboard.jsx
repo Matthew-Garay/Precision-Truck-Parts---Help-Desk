@@ -1,3 +1,34 @@
+/**
+ * Dashboard.jsx
+ *
+ * Contenedor principal del rol Usuario: navegación, resumen de sus tickets y
+ * solicitudes, y enrutamiento a nuevo reporte, solicitudes de insumos,
+ * historial y manuales.
+ *
+ * Export default: UsuarioDashboard
+ * Props: usuario, onLogout, onUsuarioActualizado.
+ * Endpoints: GET /api/tickets/empleado/:id, /api/solicitudes/empleado/:id.
+ *    Notificaciones en tiempo real por Socket.io.
+ *
+ * @module client/pages/Usuario/Dashboard
+ * @requires react
+ * @requires react-router-dom
+ * @requires lucide-react
+ * @requires ../../hooks/use-auto-refresh.js
+ * @requires ./NuevoReporte.jsx
+ * @requires ./HistorialIncidencias.jsx
+ * @requires ./ManualesIncidencias.jsx
+ * @requires ./SolicitudInsumo.jsx
+ * @requires ./VistaTicket.jsx
+ * @requires ./VistaSolicitud.jsx
+ * @requires ./ConfiguracionPerfil.jsx
+ * @requires ../../services/api-client.js
+ * @requires ../../context/theme-context.js
+ * @requires ../../components/DashboardShared.jsx
+ * @requires ../../components/CampanaNotificaciones.jsx
+ * @requires ../../hooks/use-ticket-notification.js
+ * @exports UsuarioDashboard (default)
+ */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -78,7 +109,7 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
               {item.label}
             </span>
             {item.pronto && (
-              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0"
+              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0"
                 style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.45)", letterSpacing: "0.05em" }}>
                 PRONTO
               </span>
@@ -288,7 +319,7 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
         <header className="flex-shrink-0 z-30 flex items-center justify-between px-3 md:px-5"
           style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, height: "var(--header-h)", boxShadow: `0 1px 4px rgba(0,0,0,0.05)` }}>
           {errorRed && (
-            <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 py-1.5 text-xs font-bold"
+            <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 py-1.5 text-[11px] font-bold"
               style={{ background:"#dc2626", color:"#fff" }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 8v4m0 4h.01" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"/><circle cx="12" cy="12" r="9" stroke="#fff" strokeWidth="2"/></svg>
               <span className="hidden sm:inline">Sin conexión con el servidor -</span> datos desactualizados
@@ -311,16 +342,16 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
             <div className="flex flex-col justify-center min-w-0">
               <div className="flex items-center gap-2">
                 <div className="w-0.5 h-5 rounded-full flex-shrink-0" style={{ background: `linear-gradient(180deg, ${T.orange}, #ffb347)` }} />
-                <h1 className="text-sm sm:text-base font-black tracking-tight truncate" style={{ color: T.text }}>{tituloHeader}</h1>
+                <h1 className="text-[12px] sm:text-[13px] font-black tracking-tight truncate" style={{ color: T.text }}>{tituloHeader}</h1>
               </div>
-              <p className="hidden sm:block text-[10px] font-medium ml-3 truncate" style={{ color: T.textMuted }}>
+              <p className="hidden sm:block text-[9px] font-medium ml-3 truncate" style={{ color: T.textMuted }}>
                 {NAV[activoIdx]?.label || 'Dashboard'}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {ultimaActualizacion && !errorRed && (
-              <span className="hidden md:flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg"
+              <span className="hidden md:flex items-center gap-1 text-[9px] px-2 py-1 rounded-lg"
                 style={{ color: T.textFaint, background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#16a34a" }}/>
                 {ultimaActualizacion.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
@@ -339,7 +370,7 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
               onClickNotif={onClickNotif}
             />
             <button onClick={() => onNavigate('/usuario/nuevo')}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white hover:brightness-110 active:scale-95 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white hover:brightness-110 active:scale-95 transition-all"
               style={{ background: `linear-gradient(135deg, ${T.orange}, #d97400)`, boxShadow: "0 4px 14px rgba(244,121,32,0.4)" }}>
               <Plus size={14} strokeWidth={2.5} />
               <span className="hidden sm:inline">Nuevo Reporte</span>

@@ -1,5 +1,5 @@
 ﻿<#
-  respaldar.ps1 â€” Copia de seguridad de PrecisionTrucks HelpDesk
+  respaldar.ps1 — Copia de seguridad de PrecisionTrucks HelpDesk
   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   Guarda DOS cosas, porque ninguna basta sola:
@@ -30,7 +30,7 @@ $raiz = $PSScriptRoot
 if (-not $raiz) { $raiz = Split-Path -Parent $MyInvocation.MyCommand.Path }
 if (-not $Destino) { $Destino = Join-Path $raiz 'backups' }
 
-# â”€â”€ Leer configuracion del .env â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Leer configuracion del .env ──────────────────────────────────────
 # Se lee desde server/.env (mismo archivo que usa el backend) para no dejar usuario ni contrasena escritos aqui.
 $archivoEnv = Join-Path $raiz 'server\.env'
 if (-not (Test-Path $archivoEnv)) {
@@ -48,7 +48,7 @@ foreach ($clave in 'DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME') {
   if (-not $cfg.ContainsKey($clave)) { throw "Falta la variable $clave en .env" }
 }
 
-# â”€â”€ Localizar mysqldump.exe â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Localizar mysqldump.exe ──────────────────────────────────────────
 $rutaDump = (Get-Command mysqldump -ErrorAction SilentlyContinue).Source
 if (-not $rutaDump) {
   $rutaDump = (Get-ChildItem 'C:\Program Files\MySQL' -Recurse -Filter 'mysqldump.exe' `
@@ -56,7 +56,7 @@ if (-not $rutaDump) {
 }
 if (-not $rutaDump) { throw 'No se encontro mysqldump.exe en el sistema' }
 
-# â”€â”€ Preparar la carpeta de esta copia â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Preparar la carpeta de esta copia ────────────────────────────────
 $sello  = Get-Date -Format 'yyyyMMdd_HHmm'
 $carpeta = Join-Path $Destino "respaldo_$sello"
 
@@ -67,9 +67,9 @@ New-Item -ItemType Directory -Path $carpeta -Force | Out-Null
 
 Write-Host ''
 Write-Host '  Respaldando PrecisionTrucks HelpDesk' -ForegroundColor Cyan
-Write-Host "  â†’ $carpeta`n"
+Write-Host "  → $carpeta`n"
 
-# â”€â”€ 1. Volcado de la base de datos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── 1. Volcado de la base de datos ───────────────────────────────────
 # La contrasena va en un archivo temporal en vez de en la linea de
 # comandos, para que no quede visible en la lista de procesos.
 $cfgTemporal = Join-Path ([IO.Path]::GetTempPath()) "my_ptp_$PID.cnf"
@@ -101,14 +101,14 @@ try {
              Measure-Object).Count
   if ($tablas -lt 1) { throw 'El volcado no contiene ninguna tabla' }
 
-  Write-Host ("        base_datos.sql  {0:N0} KB Â· {1} tablas" -f ($bytes / 1KB), $tablas) `
+  Write-Host ("        base_datos.sql  {0:N0} KB · {1} tablas" -f ($bytes / 1KB), $tablas) `
              -ForegroundColor Green
 }
 finally {
   Remove-Item $cfgTemporal -Force -ErrorAction SilentlyContinue
 }
 
-# â”€â”€ 2. Copia de los archivos subidos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── 2. Copia de los archivos subidos ────────────────────────────────
 Write-Host '  [2/2] Copiando archivos subidos...'
 $origenStorage = Join-Path $raiz 'storage'
 if (Test-Path $origenStorage) {
@@ -117,13 +117,13 @@ if (Test-Path $origenStorage) {
                Measure-Object).Count
   $tam = ((Get-ChildItem (Join-Path $carpeta 'storage') -Recurse -File |
            Measure-Object Length -Sum).Sum / 1MB)
-  Write-Host ("        storage/  {0} archivos Â· {1:N1} MB" -f $archivos, $tam) `
+  Write-Host ("        storage/  {0} archivos · {1:N1} MB" -f $archivos, $tam) `
              -ForegroundColor Green
 } else {
   Write-Host '        storage/ no existe todavia, se omite' -ForegroundColor Yellow
 }
 
-# â”€â”€ Nota de como recuperar esta copia â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Nota de como recuperar esta copia ───────────────────────────────
 @"
 COPIA DE SEGURIDAD
 Fecha : $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')
@@ -136,7 +136,7 @@ Para reemplazar la base actual por esta copia:
   powershell -ExecutionPolicy Bypass -File restaurar.ps1 -Copia "$carpeta" -Reemplazar
 "@ | Set-Content (Join-Path $carpeta 'LEEME.txt') -Encoding UTF8
 
-# â”€â”€ Limpieza de copias viejas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Limpieza de copias viejas ───────────────────────────────────────
 $cortes = Get-ChildItem $Destino -Directory -Filter 'respaldo_*' |
           Sort-Object Name -Descending
 if ($cortes.Count -gt $Conservar) {

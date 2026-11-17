@@ -1,8 +1,32 @@
-﻿import { useState, useEffect, useRef } from "react";
+/**
+ * ModalEntradaInsumo.jsx
+ *
+ * Modal para registrar una ENTRADA de material (compra, reposición o traspaso)
+ * a un insumo del inventario.
+ *
+ * Export default: ModalEntradaInsumo
+ * Props: insumo, onClose, onSaved, onStockUpdate, T.
+ * Endpoint: POST /api/solicitudes/insumos/:id/entrada
+ *    (API_ROUTES.INSUMO_ENTRADA) con { cantidad, motivo, fecha }.
+ * El backend suma el stock y deja el movimiento de tipo Entrada en el kardex
+ *    en la misma transacción.
+ *
+ * @module client/components/Inventario/ModalEntradaInsumo
+ * @requires react
+ * @requires lucide-react
+ * @requires ../../services/api-client.js
+ * @requires ../Feedback.jsx
+ * @requires ../../utils/tipografia.js
+ * @requires ../LogoModal.jsx
+ * @exports ModalEntradaInsumo (default)
+ */
+import { useState, useEffect, useRef } from "react";
 import { X, ArrowDownToLine } from "lucide-react";
 import { apiFetch, API_ROUTES } from "../../services/api-client.js";
 import { useToast } from "../Feedback.jsx";
 
+import { FS } from '../../utils/tipografia.js';
+import LogoModal from '../LogoModal.jsx';
 const TEAL = "#0d9488";
 
 function Field({ label, htmlFor, children, textFaint }) {
@@ -11,7 +35,7 @@ function Field({ label, htmlFor, children, textFaint }) {
       <label
         htmlFor={htmlFor}
         style={{
-          fontSize: "10px",
+          fontSize: FS.etiqueta,
           fontWeight: 700,
           textTransform: "uppercase",
           letterSpacing: "0.07em",
@@ -66,7 +90,7 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
     borderRadius: "6px",
     padding: "0 10px",
     height: "34px",
-    fontSize: "13px",
+    fontSize: FS.enfasis,
     color: textMain,
     outline: "none",
     width: "100%",
@@ -128,7 +152,9 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
           position: "relative",
           width: "100%",
           maxWidth: "340px",
-          margin: "1.5rem",
+          margin: "1rem",
+          maxHeight: "90vh",
+          overflowY: "auto",
           background: surface,
           border: `1px solid ${border}`,
           borderRadius: "12px",
@@ -144,9 +170,10 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
             marginBottom: "14px",
           }}
         >
-          <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 700, color: textMain }}>
+          <h3 style={{ margin: 0, fontSize: FS.subtitulo, fontWeight: 700, color: textMain }}>
             Registrar {insumo?.nombre} en stock
           </h3>
+          <LogoModal style={{ marginLeft: "auto", marginRight: 8, alignSelf: "center" }} />
           <button
             type="button"
             onClick={onClose}
@@ -156,7 +183,7 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
           </button>
         </div>
 
-        <p style={{ margin: 0, fontSize: "11px", color: textFaint, marginBottom: "12px" }}>
+        <p style={{ margin: 0, fontSize: FS.secundario, color: textFaint, marginBottom: "12px" }}>
           Stock actual: <strong style={{ color: textMain }}>{stockActual}</strong>
         </p>
 
@@ -193,7 +220,7 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
 
           </div>
 
-          <p style={{ margin: 0, fontSize: "10px", lineHeight: 1.5, color: textFaint }}>
+          <p style={{ margin: 0, fontSize: FS.etiqueta, lineHeight: 1.5, color: textFaint }}>
             La ruta del material (de qué sucursal sale y a qué llega) se define en la
             solicitud del insumo, no al capturar la entrada.
           </p>
@@ -203,7 +230,7 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
               margin: 0,
               padding: "8px 12px",
               borderRadius: "6px",
-              fontSize: "12px",
+              fontSize: FS.cuerpo,
               fontWeight: 500,
               color: "#dc2626",
               background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2",
@@ -221,7 +248,7 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
               style={{
                 padding: "6px 16px",
                 borderRadius: "6px",
-                fontSize: "12px",
+                fontSize: FS.cuerpo,
                 fontWeight: 600,
                 background: "transparent",
                 border: `1px solid ${border}`,
@@ -242,7 +269,7 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
                 gap: "6px",
                 padding: "6px 18px",
                 borderRadius: "6px",
-                fontSize: "12px",
+                fontSize: FS.cuerpo,
                 fontWeight: 700,
                 background: saving ? TEAL + "99" : TEAL,
                 border: "none",
