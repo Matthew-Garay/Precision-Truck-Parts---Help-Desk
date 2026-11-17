@@ -29,8 +29,8 @@ Middlewares en `server/middlewares/auth-middleware.js`:
 
 - `requireAuth`: exige Bearer valido; `401` si falta, es invalido o esta revocado.
 - `requireAdmin`: exige `id_rol === 1`; `403` en caso contrario.
-- `requireSoporteOAdmin`: rol 1 o departamento Soporte Tecnico (id 2); la consulta al departamento se hace por peticion para que un cambio de departamento surta efecto inmediato.
-- `requireOwnerOrAdmin` y verificaciones de propiedad en controladores: dueno del ticket/solicitud o admin. Ante error de autorizacion en base de datos se responde `false` (nunca se concede permiso por fallo).
+- `requireSoporteOAdmin`: rol 1 o departamento **"Soporte Técnico" identificado por nombre** (no por id, que cambia si la tabla se renumera); la consulta se hace por petición para que un cambio de departamento surta efecto inmediato.
+- `requireOwnerOrAdmin(param)` (fábrica única en `auth-middleware.js`) y verificaciones de propiedad en controladores: dueño del ticket/solicitud/perfil o admin. Aplica también a `GET /api/auth/empleados/:id` (antes cualquier usuario podía consultar a cualquier empleado). Ante error de autorizacion en base de datos se responde `false` (nunca se concede permiso por fallo).
 
 La matriz completa de capacidades esta en [architecture.md](architecture.md).
 
@@ -84,8 +84,49 @@ Columnas registradas: `id_acceso`, `id_empleado`, `fecha_entrada`, `fecha_salida
 
 ## Auditoria de cambios de ticket: ticket_historial
 
-Cada modificacion de campo relevante de un ticket (estatus, tecnico, comentarios, calificacion) inserta una fila con `id_ticket`, `id_empleado` (actor), `campo_cambiado`, `valor_anterior`, `valor_nuevo` y `fecha`. Se consulta desde `GET /api/tickets/:id_ticket/historial`. La tabla no declara claves foraneas en el servidor; el indice `idx_th_ticket` soporta la consulta por ticket y `idx_th_fecha` los rangos por fecha.
+Cada modificacion de campo relevante de un ticket (estatus, tecnico, comentarios, calificacion) inserta una fila con `id_ticket`, `id_empleado` (actor), `campo_cambiado`, `valor_anterior`, `valor_nuevo` y `fecha`. Se consulta desde `GET /api/tickets/:id_ticket/historial`. Tiene llaves foráneas a `ticket` (ON DELETE CASCADE) y a `empleado`; el índice `idx_th_ticket` soporta la consulta por ticket y `idx_th_fecha` los rangos por fecha.
 
 ## Inventario como evidencia
 
-`movimiento_inventario` guarda el kardex inmutable de cada entrada, salida o ajuste: cantidad, `stock_anterior`, `stock_nuevo`, origen, destino, solicitud asociada, empleado responsable, motivo y fecha. Ninguna operacion del sistema modifica `insumo.stock` sin dejar su fila de movimiento en la misma transaccion.
+`movimiento_inventario` guarda el kardex inmutable de cada entrada, salida o ajuste: cantidad, `stock_anterior`, `stock_nuevo`, origen, destino, solicitud asociada, empleado responsable, motivo y fecha. Ninguna operación del sistema modifica `insumo.stock` sin dejar su fila de movimiento en la misma transacción, y en cada insumo se cumple **stock = entradas − salidas − ajustes**.
+
+Las **entradas** se pueden corregir (`PUT /api/solicitudes/movimientos/:id`, solo admin): la diferencia se aplica al stock y a todos los movimientos posteriores del insumo en la misma transacción, y se rechaza (409) si dejaría el inventario negativo. Las salidas no se editan: se corrigen con una entrada o un ajuste.
+
+## Producción
+
+La guía completa está en [despliegue.md](despliegue.md). Medidas propias del entorno publicado:
+
+- **HTTPS obligatorio** con Caddy (certificado automático y HSTS). Node escucha solo en `127.0.0.1` (`HOST`), así que el puerto 3001 no es accesible desde internet.
+- **Usuario de MySQL con permisos mínimos** (`deploy/mysql-usuario.sql`): solo SELECT/INSERT/UPDATE/DELETE sobre `precision_helpdesk`; nunca `root`.
+- **`JWT_SECRET` de 32+ caracteres**: el servidor se niega a arrancar en producción con una clave más corta.
+- **Pool de MySQL acotado** (`DB_POOL_SIZE`, 20 por defecto) para no agotar las conexiones del servidor.
+- **Socket.io solo con el protocolo actual** (se quitó `allowEIO3`).
+- **Respaldo diario** con `deploy/respaldar.sh` (credenciales fuera de la línea de comandos, 14 días de retención, permisos solo para el dueño).
+
+### Riesgos aceptados y cómo se mitigan
+
+| Riesgo | Situación | Mitigación |
+|---|---|---|
+| Archivos de `/storage` sin sesión | Evidencias, fotos y manuales se sirven sin login (las etiquetas `<img>` y el visor de PDF no pueden enviar el token). | Los nombres de evidencias llevan 12 caracteres aleatorios: no se pueden adivinar ni listar. No subir como evidencia información confidencial (contraseñas, datos bancarios). |
+| `nodemailer` (aviso alto) | La falla está en `resolveContent()`, que el sistema no usa. | Revisar al actualizar a la versión mayor 10. |
+| `exceljs` → `uuid` (aviso moderado) | Solo afecta llamadas con *buffer* propio que el sistema no hace. | Sin arreglo compatible; revisar en cada `npm audit`. |
+
+## Incidente: credenciales y datos personales en el historial de GitHub (16/11/2026)
+
+**Qué pasó.** El repositorio de GitHub es **público** y su historial contiene:
+
+1. La **contraseña del usuario `root` de MySQL**, dentro de scripts de prueba (`check-db*.js`) guardados por *checkpoints* automáticos de Cline (4 commits publicados).
+2. **Datos personales de empleados**: `Dump20261109.sql`, `personal.csv`, `insumos.csv` y `movimientos.csv` (nombres, correos corporativos y hashes bcrypt de contraseñas).
+
+Los archivos ya no están en la versión actual, pero **siguen en el historial** y cualquiera puede verlos.
+
+**Qué hacer (en este orden):**
+
+1. **Hacer privado el repositorio**: GitHub → Settings → *Danger Zone* → *Change visibility* → Private.
+2. **Cambiar la contraseña de `root` de MySQL** y dejar de usar `root` en la aplicación (`deploy/mysql-usuario.sql`).
+3. **Pedir a los empleados que cambien su contraseña**: los hashes bcrypt son lentos de romper, pero las contraseñas débiles caen. Quien entre con Zoho no se ve afectado.
+4. **Limpiar el historial** con [`git filter-repo`](https://github.com/newren/git-filter-repo) eliminando esos archivos y forzar el `push`. Es irreversible y obliga a volver a clonar en cada equipo: hacerlo con un respaldo del repositorio.
+5. Borrar las referencias locales de Cline: `git for-each-ref --format="%(refname)" refs/cline | xargs -n1 git update-ref -d`.
+
+**Prevención:** `server/.env`, `backups/`, `*.sql` y `*.csv` de la raíz están en `.gitignore`; no guardar credenciales en scripts de prueba; revisar `git status` antes de cada commit.
+

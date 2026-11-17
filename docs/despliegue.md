@@ -1,147 +1,227 @@
-# Guía de despliegue — Precision Truck Parts HelpDesk
+# Guía de despliegue — Precision Truck Parts · Mesa de Ayuda
 
-Documento operativo para publicar el sistema en internet con costo cero,
-restringido a correos corporativos @ptp, y con endurecimiento básico de seguridad.
+Cómo publicar el sistema en internet **gratis**, con un **dominio con HTTPS**,
+de forma segura y sin perder datos. Los archivos de apoyo están en
+[`deploy/`](../deploy).
 
-## 1. Arquitectura de producción
+---
 
-El proyecto es un monolito full-stack:
+## 1. Qué necesita el sistema para funcionar
 
-- Frontend React + Vite, compilado a la carpeta dist/.
-- Backend Express + Socket.io que, en producción, sirve el frontend compilado
-  desde dist/ y expone la API bajo /api.
-- Base de datos MySQL.
-- Archivos subidos (evidencias, insumos, manuales) en la carpeta storage/.
-- Un solo dominio sirve frontend y API, por lo que no hay problemas de CORS.
+| Pieza | Por qué importa al elegir dónde publicar |
+|---|---|
+| Node.js 22 (Express + Socket.io) | Debe estar **encendido siempre**: los avisos en tiempo real y las tareas programadas (SLA, tickets vencidos, alertas de stock) no funcionan si el servidor "se duerme". |
+| MySQL 8 | La base es MySQL; los servicios gratuitos que solo ofrecen PostgreSQL no sirven sin reescribir el sistema. |
+| Disco persistente (`storage/`) | Evidencias de tickets, fotos de insumos y manuales PDF se guardan en disco. Si el disco se borra en cada reinicio, se pierden. |
+| Un solo dominio | En producción Express sirve el frontend compilado (`dist/`) y la API (`/api`) desde la misma dirección: sin problemas de CORS. |
 
-## 2. Opción recomendada: Railway (región California, US-West)
+## 2. Opción elegida: VM gratuita de Oracle Cloud + DuckDNS
 
-Motivo: el código ya incluye railway.json con build, arranque y healthcheck.
-Toda la conexión de México sale a internet por Estados Unidos, y California es
-el punto más cercano disponible en Railway (región us-west2), con latencia
-aproximada de 40 a 80 ms hacia México. Un servidor dentro de México reduciría
-unos 30 ms adicionales, diferencia imperceptible para un helpdesk.
+| Opción | ¿Gratis de verdad? | Encendido 24/7 | MySQL | Disco persistente | Veredicto |
+|---|---|---|---|---|---|
+| **Oracle Cloud "Always Free"** (VM Ubuntu) | Sí, sin fecha de vencimiento | Sí | Sí (en la VM) | Sí (hasta 200 GB) | ✅ **Recomendada** |
+| Equipo de la oficina + DuckDNS | Sí | Solo si el equipo no se apaga | Sí | Sí | Alternativa (sección 9) |
+| Railway | No: solo crédito de prueba | Sí | Sí | Con volumen | ❌ Ya no es gratis |
+| Render (plan free) | Sí | No: se duerme a los 15 min | No (solo PostgreSQL) | No: se borra | ❌ Pierde archivos y avisos |
+| Vercel / Netlify | Sí | No (funciones) | No | No | ❌ Solo sirven el frontend |
 
-Region no disponible en México: Railway no ofrece región en México. Sus regiones
-son California (us-west2), Virginia (us-east4), Amsterdam (europe-west4) y
-Singapur (asia-southeast1). Para latencia mínima desde México se elige
-California.
+**Dominio gratis:** [DuckDNS](https://www.duckdns.org) da un subdominio gratuito
+(por ejemplo `ptp-helpdesk.duckdns.org`) y **Caddy** obtiene y renueva solo el
+certificado HTTPS de Let's Encrypt. Si más adelante la empresa compra un dominio
+propio (~$200 MXN/año, p. ej. `mesadeayuda.ptp.com.mx`), solo se cambia en el
+`Caddyfile` y en el `.env`.
 
-Pasos:
+```
+Navegador ──HTTPS──▶ Caddy :443 ──▶ Node (Express + Socket.io) 127.0.0.1:3001 ──▶ MySQL :3306
+                    (certificado        ├─ /api/*      API REST
+                     automático)        ├─ /storage/*  evidencias, fotos, manuales
+                                        └─ /*          frontend compilado (dist/)
+```
 
-1. Subir el repositorio a GitHub como privado.
-2. En Railway: New Project, Deploy from GitHub, seleccionar el repositorio.
-3. Agregar el plugin MySQL en el mismo proyecto y misma región.
-4. En Settings del servicio, fijar Region en us-west2.
-5. Cargar las variables de entorno de la sección 4.
-6. Crear un Volume y montarlo en la ruta /app/storage para persistir archivos.
-7. Generar el dominio público y luego asociar el dominio propio.
+> **Oracle pide tarjeta** al crear la cuenta solo para verificar identidad; los
+> recursos "Always Free" no generan cargos. Elige la región **US West (Phoenix)**
+> o **Mexico Central (Querétaro)** si está disponible, por latencia.
 
-## 3. Dominio gratuito
+---
 
-Freenom (.tk, .ml, .ga) dejó de operar en 2023, por lo que ya no es una opción
-válida. Alternativas reales sin costo:
+## 3. Paso a paso
 
-- Usar el dominio que Railway entrega al generar el dominio público
-  (formato del tipo servicio.up.railway.app). Incluye HTTPS administrado.
-- Usar un subdominio propio si ya se controla un dominio, por ejemplo
-  helpdesk.midominio.com, apuntando un registro CNAME al host de Railway.
-- DuckDNS (algo.duckdns.org) si se requiere un nombre estable sobre IP dinámica.
+### 3.1 Crear la VM (una sola vez)
 
-Nota: un dominio .com.mx propio es de pago y se contrata con un registrador.
-No existe una vía gratuita y confiable para un .com.mx.
+1. Crea la cuenta en <https://www.oracle.com/cloud/free/>.
+2. **Compute → Instances → Create instance**
+   - Imagen: **Ubuntu 24.04**
+   - Forma: **VM.Standard.A1.Flex** (Ampere, Always Free) con 1 OCPU y 6 GB de RAM
+   - Descarga la llave SSH que te ofrece.
+3. **Networking → la red de la VM → Security List → Add Ingress Rules**:
+   puertos **80** y **443** desde `0.0.0.0/0`. **No abras el 3001 ni el 3306.**
+4. Anota la **IP pública** y resérvala (*Reserved public IP*) para que no cambie.
 
-## 4. Variables de entorno en Railway
+### 3.2 Dominio gratuito con DuckDNS
 
-Configurar en el panel, nunca en el código:
+1. Entra a <https://www.duckdns.org> con tu cuenta de Google/GitHub.
+2. Crea el subdominio (p. ej. `ptp-helpdesk`) y pon la **IP pública** de la VM.
+3. Comprueba desde tu equipo: `nslookup ptp-helpdesk.duckdns.org` debe devolver esa IP.
 
-    NODE_ENV=production
-    APP_URL=https://<dominio-publico>
-    CORS_ORIGIN=https://<dominio-publico>
-    JWT_SECRET=<cadena aleatoria largia, generada con crypto.randomBytes(64)>
+### 3.3 Instalar todo en la VM
 
-    DB_HOST=<host privado del plugin MySQL, variable interna de Railway>
-    DB_PORT=3306
-    DB_USER=root
-    DB_PASSWORD=<contraseña del plugin>
-    DB_NAME=precision_helpdesk
-    DB_SSL=false
+```bash
+ssh -i llave.key ubuntu@<IP-publica>
+git clone https://github.com/<usuario>/<repo>.git /tmp/repo
+bash /tmp/repo/deploy/instalar-servidor.sh https://github.com/<usuario>/<repo>.git
+```
 
-    SMTP_HOST=smtp.zoho.com
-    SMTP_PORT=587
-    SMTP_USER=<correo corporativo>
-    SMTP_PASS=<contraseña de aplicación de Zoho>
-    SMTP_FROM="Precision HelpDesk <no-responder@ptp.com.mx>"
+El script ([`deploy/instalar-servidor.sh`](../deploy/instalar-servidor.sh))
+instala Node 22, MySQL 8, Caddy y PM2, abre los puertos 80/443 en el firewall
+interno de Ubuntu, clona el proyecto en `/opt/precision-helpdesk`, instala
+dependencias y compila el frontend.
 
-    ZOHO_CLIENT_ID=<id de cliente del API Console de Zoho>
-    ZOHO_CLIENT_SECRET=<secret del API Console de Zoho>
-    ZOHO_ACCOUNTS_URL=https://accounts.zoho.com
-    ZOHO_REDIRECT_URI=https://<dominio-publico>/api/auth/zoho/callback
-    ZOHO_SCOPES=openid,email,profile
+> Si el repositorio es **privado** (recomendado), GitHub pedirá usuario y un
+> *Personal Access Token* (Settings → Developer settings → Tokens) en lugar de
+> la contraseña.
 
-El frontend debe usar llamadas relativas (VITE_API_URL vacio), de modo que
-consulta /api en el mismo dominio y evita CORS.
+### 3.4 Base de datos
 
-## 5. Importar la base de datos
+1. Usuario propio de la aplicación (nunca `root`):
+   ```bash
+   nano deploy/mysql-usuario.sql        # cambia CAMBIA_ESTA_CONTRASEÑA
+   sudo mysql < deploy/mysql-usuario.sql
+   ```
+   Genera la contraseña con `openssl rand -base64 24`.
+2. En tu equipo Windows genera un respaldo actual: `npm run respaldar`.
+3. Copia el respaldo a la VM e impórtalo:
+   ```bash
+   # desde tu equipo
+   scp -i llave.key backups/respaldo_AAAAMMDD_HHMM/base_datos.sql ubuntu@<IP>:/tmp/
+   scp -i llave.key -r backups/respaldo_AAAAMMDD_HHMM/storage ubuntu@<IP>:/tmp/storage
+   # en la VM
+   sudo mysql precision_helpdesk < /tmp/base_datos.sql
+   cp -r /tmp/storage/* /opt/precision-helpdesk/storage/
+   rm -rf /tmp/base_datos.sql /tmp/storage
+   ```
 
-Ejecutar una sola vez contra el MySQL de Railway:
+### 3.5 Configuración (`server/.env`)
 
-- Abrir una conexión con DBeaver o TablePlus al host del plugin.
-- Ejecutar database/schema.sql.
+```bash
+cd /opt/precision-helpdesk
+cp server/.env.example server/.env
+nano server/.env
+chmod 600 server/.env        # solo tu usuario puede leerlo
+```
 
-Después de importar, crear el primer administrador y validar el acceso.
+Valores de producción (todas las variables están explicadas en
+[`server/.env.example`](../server/.env.example)):
 
-## 6. Persistencia de archivos
+| Variable | Producción |
+|---|---|
+| `NODE_ENV` | `production` |
+| `HOST` | `127.0.0.1` (solo Caddy puede hablar con Node) |
+| `APP_URL` / `CORS_ORIGIN` | `https://ptp-helpdesk.duckdns.org` (las dos iguales) |
+| `JWT_SECRET` | **Nueva**, de 64+ caracteres (el servidor no arranca con menos de 32) |
+| `DB_USER` / `DB_PASSWORD` | `helpdesk_app` y la contraseña del paso 3.4 |
+| `SMTP_*` | Cuenta de correo que envía (la variable es `SMTP_PASS`) |
+| `ZOHO_REDIRECT_URIS` | `https://ptp-helpdesk.duckdns.org/api/auth/zoho/callback` |
 
-Montar un Volume en /app/storage. Si no se monta, los archivos subidos se
-pierden en cada despliegue porque el sistema de archivos del contenedor es
-efímero. Tamaño inicial sugerido: 10 GB con respaldos automáticos activados.
+### 3.6 HTTPS, arranque y respaldos
 
-## 7. Restricción de acceso a correos corporativos
+```bash
+nano deploy/Caddyfile                      # pon tu dominio en la primera línea
+sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+sudo systemctl reload caddy                # obtiene el certificado HTTPS solo
 
-El acceso ya está limitado a correos corporativos mediante la función
-validarEmailCorporativo en server/middlewares/validate.js. Esta barrera aplica
-tanto al login normal como al login con Zoho. Para admitir solo el dominio
-@ptp.com.mx, verificar que la lista blanca de dominios en dicha función
-contenga exclusivamente ese dominio y ningún otro.
+pm2 start deploy/ecosystem.config.cjs      # arranca el backend
+pm2 save && pm2 startup                    # y lo vuelve a levantar al reiniciar la VM
+                                           # (pm2 startup imprime un comando sudo: ejecútalo)
+crontab -e                                 # respaldo diario a las 02:30:
+# 30 2 * * * /opt/precision-helpdesk/deploy/respaldar.sh >> /var/log/helpdesk-respaldo.log 2>&1
+```
 
-## 8. Endurecimiento de seguridad
+### 3.7 Zoho
 
-Estado actual verificado:
+En <https://api-console.zoho.com>, en tu aplicación, agrega la URI de
+redirección **exactamente** igual a `ZOHO_REDIRECT_URIS`:
+`https://ptp-helpdesk.duckdns.org/api/auth/zoho/callback`.
+Puedes dejar también las de la red local para seguir probando en la oficina.
 
-- Inyección SQL: no existe. Todas las consultas usan consultas parametrizadas
-  con el placeholder ? a través del pool de mysql2. No se concatenan datos del
-  usuario dentro del SQL. Las pocas expresiones interpoladas en el código
-  corresponden a nombres de columna fijos definidos por el programa, nunca a
-  entradas del usuario.
-- Contraseñas: almacenadas con bcrypt, 12 rounds para cuentas creadas por el
-  sistema y 10 para datos semilla.
-- Sesiones: JWT con expiración de 12 horas y revocación por token_version.
-- Cabeceras: helmet con política de contenido y límites de tamaño en subidas.
+---
 
-Recomendaciones para producción:
+## 4. Verificación después de publicar
 
-- Mantener JWT_SECRET privado y rotarlo si se sospecha filtración.
-- Forzar HTTPS (Railway lo entrega por defecto en el dominio).
-- No versionar archivos .env ni la carpeta storage/.
-- Respaldos automáticos de base de datos y volume activados en Railway.
-- Revisar periódicamente el reporte de vulnerabilidades con npm audit.
+| Prueba | Resultado esperado |
+|---|---|
+| `curl https://ptp-helpdesk.duckdns.org/api/ping` | `{"status":"ok", …}` |
+| `curl -I http://ptp-helpdesk.duckdns.org` | Redirige a `https://` |
+| `curl -m 5 http://<IP>:3001/api/ping` desde fuera | **Falla** (Node no está expuesto) |
+| Abrir el sitio e iniciar sesión (correo y Zoho) | Entra y muestra el dashboard |
+| Crear un ticket con evidencia y abrirla | La imagen carga |
+| Admin y usuario en dos navegadores | El aviso del ticket nuevo llega al instante (Socket.io) |
+| "¿Olvidaste tu contraseña?" | Llega el correo con el código |
+| `pm2 logs helpdesk` | Panel de arranque con MySQL ✅ y sin errores |
+| `deploy/respaldar.sh` | Crea `backups/respaldo_…` con la base y `storage` |
 
-## 9. Verificación posterior al despliegue
+## 5. Actualizar a una versión nueva
 
-Comprobar en este orden:
+```bash
+cd /opt/precision-helpdesk
+./deploy/respaldar.sh            # respaldo antes de actualizar
+git pull --ff-only
+npm ci
+npm run build
+pm2 restart helpdesk
+pm2 logs helpdesk --lines 30     # confirma que arrancó sin errores
+```
 
-1. GET /api/ping responde 200.
-2. Inicio de sesión normal con un usuario administrador.
-3. Inicio de sesión con Zoho con una cuenta corporativa registrada.
-4. Subida de una evidencia a un ticket y verificación de que la imagen persiste.
-5. Creación de una solicitud de insumos y su impresión.
-6. Apertura del sistema en dos pestañas para validar Socket.io.
+Si un cambio necesita modificar la base de datos, aplica el script SQL **primero
+en una copia** (`CREATE DATABASE prueba` + importar el respaldo), verifica, y
+solo después en `precision_helpdesk`. El usuario `helpdesk_app` no tiene
+permisos de esquema: los cambios de estructura se hacen con `sudo mysql`.
 
-## 10. Flujo de cambios sin romper producción
+## 6. Lista de seguridad de producción
 
-- Desarrollar en local con el script de arranque de los dos servidores.
-- Enviar a la rama principal; Railway reconstruye y despliega solo.
-- El healthcheck /api/ping evita publicar una versión que no arranca.
-- Para cambios de base de datos, versionar un script de migración en
-  database/ y ejecutarlo primero en un entorno de prueba.
+- [ ] Repositorio de GitHub **privado** (ver `docs/security.md`, incidente de credenciales).
+- [ ] `JWT_SECRET`, contraseña de MySQL y secretos de Zoho/correo **nuevos**, distintos a los de desarrollo.
+- [ ] La app usa `helpdesk_app`, no `root`.
+- [ ] `HOST=127.0.0.1` y en Oracle solo están abiertos 22, 80 y 443.
+- [ ] `server/.env` con permisos `600`.
+- [ ] Respaldo diario programado y **probado** (restaurar en una base de prueba al menos una vez).
+- [ ] Acceso SSH solo con llave (Oracle lo trae así por defecto).
+- [ ] `sudo apt-get update && sudo apt-get upgrade` una vez al mes; `npm audit --omit=dev` al actualizar.
+
+## 7. Qué ya protege el sistema
+
+| Capa | Protección |
+|---|---|
+| Transporte | HTTPS con certificado automático y HSTS (Caddy). |
+| Sesiones | JWT de 12 h con `token_version`: cerrar sesión invalida el token en API y Socket.io. |
+| Contraseñas | bcrypt (12 rondas); bloqueo por intentos en login y recuperación (rate limit). |
+| Peticiones | Helmet (CSP, cabeceras), protección CSRF por cabecera, CORS limitado a `APP_URL`, límites de tamaño. |
+| Permisos | Admin / Usuario / Soporte Técnico verificados en el servidor en cada ruta; un usuario solo ve sus propios tickets, solicitudes y datos. |
+| Datos | Consultas parametrizadas (sin inyección SQL); validación de entradas con Zod. |
+| Archivos | Tipos validados por contenido, nombres aleatorios, rutas protegidas contra *path traversal*. |
+| Errores | En producción no se muestran detalles internos al usuario. |
+
+## 8. Solución de problemas
+
+| Síntoma | Causa probable | Solución |
+|---|---|---|
+| El sitio no abre | Puertos 80/443 cerrados | Revisa la *Security List* de Oracle y `sudo iptables -L INPUT -n` |
+| Caddy no obtiene el certificado | El dominio no apunta a la IP | `nslookup tu-dominio` y corrige la IP en DuckDNS |
+| `[❌ ERROR] Variables de entorno faltantes` | `.env` incompleto | Completa `APP_URL` y `CORS_ORIGIN` |
+| `JWT_SECRET debe tener al menos 32 caracteres` | Clave débil | Genera una nueva (comando en `.env.example`) |
+| `DB ❌ MySQL sin conexión` | Usuario o contraseña | Prueba `mysql -u helpdesk_app -p precision_helpdesk` |
+| Login con Zoho regresa error | URI no registrada | Agrega la URI exacta en la consola de Zoho |
+| No llegan correos | Variable mal escrita | Debe ser `SMTP_PASS` (no `SMTP_PASSWORD`) |
+| Avisos en tiempo real no llegan | Proxy sin WebSocket | Usa el `Caddyfile` incluido (los soporta sin configuración) |
+
+## 9. Alternativa: publicar desde el equipo de la oficina
+
+Si prefieres no usar la nube, el mismo equipo Windows donde corre hoy puede
+publicarse con DuckDNS, a cambio de que **no se apague nunca**:
+
+1. En el router, redirige los puertos **80 y 443** a la IP local del equipo.
+   (Algunos proveedores de internet bloquean estos puertos o usan CGNAT; en ese
+   caso esta opción no funciona y conviene Oracle.)
+2. Instala la app de DuckDNS para Windows para que actualice la IP pública.
+3. Instala Caddy para Windows con el mismo `Caddyfile` y ejecútalo como servicio.
+4. Arranca el backend en modo producción: `npm run build` y `npm run server`.
+5. Programa `respaldar.ps1` en el Programador de tareas (ver `docs/operations.md`).

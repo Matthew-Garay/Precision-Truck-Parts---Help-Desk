@@ -1,0 +1,36 @@
+# =============================================================================
+#  Caddyfile — HTTPS automático y proxy hacia el backend
+# =============================================================================
+#  Caddy obtiene y renueva solo el certificado HTTPS (Let's Encrypt, gratis)
+#  y reenvía todo al backend de Node en el puerto 3001 (incluye WebSockets
+#  de Socket.io, sin configuración extra).
+#
+#  Uso en el servidor:
+#    1. Cambia el dominio de abajo por el tuyo (el mismo de APP_URL).
+#    2. sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+#    3. sudo systemctl reload caddy
+#  Requisito: los puertos 80 y 443 abiertos y el dominio apuntando a la IP
+#  pública del servidor (ver docs/despliegue.md).
+# =============================================================================
+
+ptp-helpdesk.duckdns.org {
+	encode zstd gzip
+
+	# Node escucha solo en este equipo; Caddy es la única puerta de entrada.
+	reverse_proxy 127.0.0.1:3001
+
+	header {
+		# Fuerza HTTPS en el navegador durante un año
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# No anunciar el software del servidor
+		-Server
+		-X-Powered-By
+	}
+
+	log {
+		output file /var/log/caddy/helpdesk.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+	}
+}
