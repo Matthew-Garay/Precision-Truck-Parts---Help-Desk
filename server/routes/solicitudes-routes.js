@@ -28,7 +28,7 @@
  *
  * Rutas de usuario autenticado:
  *
- *   GET  /insumos/stock-bajo     - insumos con stock <= 5
+ *   GET  /insumos/stock-bajo     - insumos con stock <= STOCK_BAJO (utils/stock.js)
  *   GET  /insumos                - insumos disponibles (stock > 0)
  *   GET  /inventario             - todos los insumos sin filtro
  *   GET  /empleado/:id_empleado  - historial de solicitudes de un empleado
@@ -43,6 +43,8 @@
  * @requires ../middlewares/auth-middleware.js
  * @requires ../middlewares/validate.js
  * @requires ../controllers/solicitudes-controller.js
+ * @requires ../controllers/insumos-controller.js
+ * @requires ../controllers/inventario-controller.js
  * @requires ../middlewares/upload-insumos.js
  * @exports router (default)
  */
@@ -52,13 +54,19 @@ import { csrfProtection } from '../middlewares/security.js';
 import { requireAuth, requireAdmin, requireSoporteOAdmin, requireOwnerOrAdmin } from '../middlewares/auth-middleware.js';
 import { validate, schemaCrearSolicitud, schemaActualizarEstatusSolicitud, schemaInsumo, schemaActualizarInsumo, schemaEntradaInsumo, schemaSalidaInsumo, schemaItemsSolicitud, schemaRutaSolicitud, schemaObservacionSolicitud } from '../middlewares/validate.js';
 import {
-  getInsumos, getInventario, getInsumosStockBajo, crearSolicitud, getSolicitudesByEmpleado,
-  getSolicitudById, getSolicitudByFolio, getAllSolicitudes, getSolicitudesPendientes,
-  actualizarEstatusSolicitud, aprobarItemsSolicitud, crearInsumo, actualizarInsumo,
-  eliminarInsumo, cambiarActivoInsumo, cambiarVisiblePublico, getInsumosForUser, getReporteSolicitudes, subirFotoInsumo, getMetricasSolicitudes,
-  registrarEntradaInsumo, editarEntrada, registrarSalidaInsumo, guardarRutaSolicitud, getMovimientosInventario, getMovimientosInsumo, getMovimientosSolicitud, getSalidasMiSucursal,
-  guardarObservacionSolicitud
+  crearSolicitud, getSolicitudesByEmpleado, getSolicitudById, getSolicitudByFolio,
+  getAllSolicitudes, getSolicitudesPendientes, actualizarEstatusSolicitud, aprobarItemsSolicitud,
+  getReporteSolicitudes, getMetricasSolicitudes, guardarRutaSolicitud, getMovimientosSolicitud,
+  guardarObservacionSolicitud,
 } from '../controllers/solicitudes-controller.js';
+import {
+  getInsumos, getInventario, getInsumosStockBajo, crearInsumo, actualizarInsumo,
+  eliminarInsumo, cambiarActivoInsumo, cambiarVisiblePublico, getInsumosForUser, subirFotoInsumo,
+} from '../controllers/insumos-controller.js';
+import {
+  registrarEntradaInsumo, editarEntrada, registrarSalidaInsumo, anularSalida,
+  getMovimientosInventario, getMovimientosInsumo, getSalidasMiSucursal, getReporteConsumo,
+} from '../controllers/inventario-controller.js';
 import { uploadInsumo } from '../middlewares/upload-insumos.js';
 
 const router = Router();
@@ -89,6 +97,10 @@ router.patch("/insumos/:id/activo", requireAdmin, cambiarActivoInsumo);
 router.patch("/insumos/:id/visible-publico",  requireAdmin, cambiarVisiblePublico);
 // Salida interna manual — descuenta stock y deja el movimiento (uso interno)
 router.post("/salidas", requireAdmin, validate(schemaSalidaInsumo), registrarSalidaInsumo);
+// Anular una salida interna: regresa el stock y la marca como Anulada
+router.post("/salidas/:id/anular", requireAdmin, anularSalida);
+// Reporte de consumo: insumos más usados, por área y por mes
+router.get("/consumo", requireAdmin, getReporteConsumo);
 // Entrada de material al inventario — suma stock y deja el movimiento
 router.post("/insumos/:id/entrada", requireAdmin, validate(schemaEntradaInsumo), registrarEntradaInsumo);
 router.get("/movimientos",        requireAdmin, getMovimientosInventario);

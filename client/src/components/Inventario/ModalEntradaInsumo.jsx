@@ -67,6 +67,14 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
 
   const [cantidad, setCantidad] = useState("2");
   const [motivo, setMotivo] = useState("");
+  // Fecha y hora reales de la entrada (puede ser retroactiva). Por defecto,
+  // ahora mismo en hora local, con el formato de <input type="datetime-local">.
+  const ahoraLocal = () => {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  const [fecha, setFecha] = useState(ahoraLocal);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -121,9 +129,14 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
           id_insumo: insumo?.id_insumo,
           cantidad,
           motivo,
+          fecha: fecha || null,
         }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const d = await res.json().catch(() => null);
+        const det = Array.isArray(d?.errores) ? d.errores.map(x => x.message || x.mensaje).filter(Boolean).join(" · ") : "";
+        throw new Error(det || d?.error || `HTTP ${res.status}`);
+      }
       toast.success("Entrada registrada");
       onSaved?.();
       onStockUpdate?.();
@@ -198,6 +211,19 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
                 value={cantidad}
                 onChange={(e) => setCantidad(e.target.value)}
                 placeholder="Ej. 25"
+                style={inp}
+                onFocus={onFocus}
+                onBlur={onBlur}
+              />
+            </Field>
+
+            <Field htmlFor="fe-fecha" label="Fecha y hora de entrada" textFaint={textFaint}>
+              <input
+                id="fe-fecha"
+                type="datetime-local"
+                value={fecha}
+                max={ahoraLocal()}
+                onChange={(e) => setFecha(e.target.value)}
                 style={inp}
                 onFocus={onFocus}
                 onBlur={onBlur}

@@ -51,6 +51,7 @@
 import pool   from '../config/db.js';
 import Ticket from '../services/ticket.js';
 import { crearSetsPersistentes } from './alert-state.js';
+import { STOCK_BAJO } from '../utils/stock.js';
 
 // stockEnviadoHoy se inicializa al llamar iniciarWorkers()
 let _stockEnviadoHoy = null;
@@ -180,7 +181,8 @@ export function iniciarWorkers(io) {
       stockAlertados.clear(); // nuevo día → permitir re-emisión
       const [criticos] = await pool.query(
         `SELECT id_insumo, nombre, stock, imagen_url
-         FROM insumo WHERE stock <= 5 ORDER BY stock ASC, nombre ASC LIMIT 50`
+         FROM insumo WHERE stock <= ? ORDER BY stock ASC, nombre ASC LIMIT 50`,
+        [STOCK_BAJO]
       );
       if (criticos.length === 0) return;
       criticos.forEach(ins => {

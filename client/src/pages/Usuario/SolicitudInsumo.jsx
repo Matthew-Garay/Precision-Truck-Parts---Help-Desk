@@ -582,8 +582,8 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   const activePriority = PRIORITY_OPTIONS.find(p => p.value === priority);
 
   const PCOLOR_SOL        = { Urgente: "#dc2626", Alta: "#ea580c", Media: "#ca8a04", Baja: "#16a34a" };
-  const ESTATUS_COLOR_SOL = { "En proceso": "#d97706", Aceptado: "#16a34a", Rechazado: "#dc2626", Entregado: "#0d9488" };
-  const ESTATUS_BG_SOL    = { "En proceso": T.isDark ? "rgba(217,119,6,0.13)" : "#fef3c7", Aceptado: T.isDark ? "rgba(22,163,74,0.13)" : "#dcfce7", Rechazado: T.isDark ? "rgba(220,38,38,0.13)" : "#fee2e2", Entregado: T.isDark ? "rgba(13,148,136,0.13)" : "#ccfbf1" };
+  const ESTATUS_COLOR_SOL = { "En proceso": "#d97706", Aceptado: "#16a34a", Rechazado: "#dc2626", Entregado: "#0d9488", Anulada: "#64748b" };
+  const ESTATUS_BG_SOL    = { "En proceso": T.isDark ? "rgba(217,119,6,0.13)" : "#fef3c7", Aceptado: T.isDark ? "rgba(22,163,74,0.13)" : "#dcfce7", Rechazado: T.isDark ? "rgba(220,38,38,0.13)" : "#fee2e2", Entregado: T.isDark ? "rgba(13,148,136,0.13)" : "#ccfbf1", Anulada: T.isDark ? "rgba(100,116,139,0.15)" : "#f1f5f9" };
   const fmtSol = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
   const camposFiltroSol = [
     { key: "busqueda",  label: "Búsqueda Rápida", type: "search", placeholder: "Folio...", debounce: 300 },

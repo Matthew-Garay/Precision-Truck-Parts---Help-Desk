@@ -21,6 +21,7 @@ import { X, Package, Hash, Layers, Tag, AlignLeft, BarChart2, ZoomIn } from "luc
 
 import { FS } from '../../utils/tipografia.js';
 import LogoModal from '../LogoModal.jsx';
+import { colorStock } from '../../utils/stock.js';
 const ORANGE = "var(--color-primary)";
 
 const ESTADO_META = {
@@ -147,7 +148,7 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
 
   // Color del stock según nivel (mismo criterio que la tabla de inventario)
   const stockVal   = insumo.stock ?? 0;
-  const stockColor = stockVal === 0 ? "#dc2626" : stockVal <= 3 ? "#d97706" : "#16a34a";
+  const stockColor = colorStock(stockVal);
 
   return (
     <div

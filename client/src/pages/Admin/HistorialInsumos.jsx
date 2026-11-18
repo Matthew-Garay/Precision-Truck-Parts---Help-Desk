@@ -27,7 +27,7 @@
  * @exports HistorialInsumos (default)
  */
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Inbox, FileDown } from "lucide-react";
+import { Inbox, FileDown, BarChart3, Ban } from "lucide-react";
 import { apiFetch } from '../../services/api-client.js';
 import { abrirReporteLista } from '../print/PrintReportePage.tsx';
 import { useAutoRefresh } from '../../hooks/use-auto-refresh.js';
@@ -36,6 +36,9 @@ import Paginacion from '../../components/Paginacion.jsx';
 import { useCardStyles } from '../../components/Card.jsx';
 import VistaSolicitud from '../Usuario/VistaSolicitud.jsx';
 import ModalReporte from '../../components/ModalReporte.jsx';
+import Modal from '../../components/Modal.jsx';
+import ModalConsumo from '../../components/Inventario/ModalConsumo.jsx';
+import { useToast } from '../../components/Feedback.jsx';
 import {
   agruparSalidas, coincideFiltrosSalida, abrirHojaSalida,
   traerSalidasManualesAdmin, traerSolicitudesAdmin,
@@ -43,10 +46,17 @@ import {
 
 import { FS } from '../../utils/tipografia.js';
 const PCOLOR = { Urgente: "#dc2626", Alta: "#ea580c", Media: "#ca8a04", Baja: "#16a34a" };
-const ESTATUS_COLOR = { Resuelto: "#16a34a", Pendiente: "#3b82f6", "En proceso": "#d97706", Aceptado: "#16a34a", Rechazado: "#dc2626", Entregado: "#0d9488" };
-const ESTATUS_BG    = { Resuelto: "rgba(22,163,74,0.13)", Pendiente: "rgba(59,130,246,0.13)", "En proceso": "rgba(217,119,6,0.13)", Aceptado: "rgba(22,163,74,0.13)", Rechazado: "rgba(220,38,38,0.13)", Entregado: "rgba(13,148,136,0.13)" };
+const ESTATUS_COLOR = { Resuelto: "#16a34a", Pendiente: "#3b82f6", "En proceso": "#d97706", Aceptado: "#16a34a", Rechazado: "#dc2626", Entregado: "#0d9488", Anulada: "#64748b" };
+const ESTATUS_BG    = { Resuelto: "rgba(22,163,74,0.13)", Pendiente: "rgba(59,130,246,0.13)", "En proceso": "rgba(217,119,6,0.13)", Aceptado: "rgba(22,163,74,0.13)", Rechazado: "rgba(220,38,38,0.13)", Entregado: "rgba(13,148,136,0.13)", Anulada: "rgba(100,116,139,0.15)" };
 
 const fmt = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
+
+// Salidas que tomó el propio personal de Soporte Técnico para trabajar.
+const SOPORTE_COLOR = "#7c3aed";
+const BadgeSoporte = () => (
+  <span className="ml-1 px-1.5 py-px rounded-full text-[8px] font-black uppercase align-middle"
+    style={{ background: "rgba(124,58,237,0.13)", color: SOPORTE_COLOR }}>Soporte</span>
+);
 
 const LIMIT = 25;
 const FILTROS_INIT = { busqueda: "", estatus: "Todos", prioridad: "Todos", area: "Todos", usuario: "Todos", sucursal: "Todos", origen: "Todos" };
@@ -66,6 +76,13 @@ export default function HistorialInsumos({ T }) {
   const [generando,    setGenerando]    = useState(false);
   const [cargando,     setCargando]     = useState(false);
   const [solicitudVer, setSolicitudVer] = useState(null);
+  const [topAreas,     setTopAreas]     = useState([]);
+  const [verConsumo,   setVerConsumo]   = useState(false);
+  // Anulación de salida interna
+  const [salidaAnular, setSalidaAnular] = useState(null);
+  const [motivoAnul,   setMotivoAnul]   = useState("");
+  const [anulando,     setAnulando]     = useState(false);
+  const toast = useToast();
 
   const [metricas,     setMetricas]     = useState({ total: 0, pendientes: 0, resueltos: 0, rechazados: 0 });
 
@@ -108,6 +125,16 @@ export default function HistorialInsumos({ T }) {
         let combo = [...sols, ...salidas].sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
         if (f.origen === "interno") combo = combo.filter(x => x.es_salida);
         else if (f.origen === "sistema") combo = combo.filter(x => !x.es_salida);
+        else if (f.origen === "soporte") combo = combo.filter(x => x.es_soporte);
+        // Top Áreas sobre TODOS los registros filtrados (no solo la página).
+        // Las salidas internas aportan el área de su solicitante.
+        const conteo = {};
+        for (const s of combo) {
+          const a = s.nombre_departamento || (s.es_salida ? s.puesto : "");
+          if (!a || a === "Salida manual" || a.startsWith("Registró:")) continue;
+          conteo[a] = (conteo[a] || 0) + 1;
+        }
+        setTopAreas(Object.entries(conteo).sort((a, b) => b[1] - a[1]).slice(0, 3));
         const total = combo.length;
         const ini = (p - 1) * l;
         setSolicitudes(combo.slice(ini, ini + l));
@@ -179,12 +206,12 @@ export default function HistorialInsumos({ T }) {
 
   const camposFiltro = [
     { key: "busqueda",  label: "Búsqueda Rápida", type: "search",  placeholder: "Folio o empleado...", debounce: 400 },
-    { key: "estatus",   label: "Estatus",          type: "select",  opts: ["Todos", "En proceso", "Aceptado", "Rechazado"] },
+    { key: "estatus",   label: "Estatus",          type: "select",  opts: ["Todos", "En proceso", "Aceptado", "Rechazado", "Entregado", "Anulada"] },
     { key: "prioridad", label: "Prioridad",         type: "select",  opts: ["Todos", "Urgente", "Alta", "Media", "Baja"] },
     { key: "usuario",   label: "Usuario",           type: "combo",   placeholder: "Escribe el nombre...", opts: toOpts(optsCache.usuarios) },
     { key: "area",      label: "Área",              type: "select",  opts: toOpts(optsCache.areas) },
     { key: "sucursal",  label: "Sucursal",          type: "select",  opts: toOpts(optsCache.sucursales) },
-    { key: "origen",    label: "Origen",            type: "select",  opts: [{ value: "Todos", label: "Todos" }, { value: "interno", label: "Salidas internas" }, { value: "sistema", label: "Salidas de sistema" }] },
+    { key: "origen",    label: "Origen",            type: "select",  opts: [{ value: "Todos", label: "Todos" }, { value: "interno", label: "Salidas internas" }, { value: "sistema", label: "Salidas de sistema" }, { value: "soporte", label: "Uso de Soporte" }] },
   ];
 
   const generarReporte = async (params) => {
@@ -268,8 +295,11 @@ export default function HistorialInsumos({ T }) {
               </div>
               <div className="flex items-end gap-2">
                 <span className="text-[18px] font-black leading-none" style={{ color: T.orange }}>{totalKpi}</span>
-                <span className="text-[10px] font-semibold mb-0.5" style={{ color: T.textMuted }}>solicitudes totales</span>
+                <span className="text-[10px] font-semibold mb-0.5" style={{ color: T.textMuted }}>registros totales</span>
               </div>
+              <p className="text-[9px]" style={{ color: T.textFaint }}>
+                {Number(metricas.total_solicitudes ?? 0)} solicitudes · {Number(metricas.salidas_internas ?? 0)} salidas internas
+              </p>
               <div className="flex flex-col gap-0.5 pt-1">
                 {[
                   { label: "Resueltos",  val: Number(metricas.resueltos  ?? 0), color: "#16a34a" },
@@ -404,16 +434,7 @@ export default function HistorialInsumos({ T }) {
             </div>
             <div className="px-2 pb-1 flex flex-col gap-0.5">
               {(() => {
-                const conteo = {};
-                // Solo áreas REALES: las salidas manuales (SAL-) no tienen área
-                // (traen nombre_departamento vacío) y tampoco cuentan los
-                // textos heredados "Registró: …" / "Salida manual".
-                solicitudes.forEach(s => {
-                  const a = s.nombre_departamento;
-                  if (!a || a === "Salida manual" || a.startsWith("Registró:")) return;
-                  conteo[a] = (conteo[a] || 0) + 1;
-                });
-                const top = Object.entries(conteo).sort((a, b) => b[1] - a[1]).slice(0, 3);
+                const top = topAreas;
                 const maxN = top[0]?.[1] || 1;
                 const rankColors = [T.orange, "#3b82f6", "#8b5cf6"];
                 return top.length === 0
@@ -452,6 +473,13 @@ export default function HistorialInsumos({ T }) {
               onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.08)"}
               onMouseLeave={e => e.currentTarget.style.filter = "none"}>
               <FileDown size={10} strokeWidth={2.5} /> Generar Reporte
+            </button>
+            <button onClick={() => setVerConsumo(true)}
+              title="Qué insumos se usan más, por área y por mes"
+              style={{ display: "flex", alignItems: "center", gap: "4px", padding: "3px 8px", borderRadius: "4px",
+                fontSize: FS.etiqueta, fontWeight: 700, background: "transparent", color: T.orange, border: `1px solid ${T.orange}`, cursor: "pointer",
+                whiteSpace: "nowrap" }}>
+              <BarChart3 size={10} strokeWidth={2.5} /> Consumo
             </button>
           </FiltrosToolbar>
         </div>
@@ -494,7 +522,7 @@ export default function HistorialInsumos({ T }) {
                         style={{ background: isDark ? "rgba(255,255,255,0.04)" : T.surfaceAlt, border: `1px solid ${T.border}` }}
                         onClick={() => (s.es_salida ? abrirHojaSalida(s) : setSolicitudVer(s))}>
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono text-[10px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
+                          <span className="font-mono text-[10px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>{s.es_soporte && <BadgeSoporte />}
                           <span className="px-2 py-0.5 rounded-full text-[9px] font-bold" style={{ background: eBg, color: eColor }}>{s.estatus}</span>
                         </div>
                         <p className="text-[11px] font-semibold leading-snug" style={{ color: T.text }}>{s.nombre_empleado || "-"}</p>
@@ -507,6 +535,13 @@ export default function HistorialInsumos({ T }) {
                         </div>
                         <div className="flex items-center justify-between pt-1" style={{ borderTop: `1px solid ${T.border}` }}>
                           <span className="text-[9px]" style={{ color: T.textFaint }}>{fmt(s.fecha)}</span>
+                          {s.es_salida && !s.anulada && s.id_salida_num && (
+                            <button onClick={e => { e.stopPropagation(); setSalidaAnular(s); setMotivoAnul(""); }}
+                              className="px-2 py-0.5 rounded-lg text-[9px] font-bold"
+                              style={{ background: "rgba(220,38,38,0.08)", color: "#dc2626", border: "1px solid rgba(220,38,38,0.2)" }}>
+                              Anular
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -547,7 +582,7 @@ export default function HistorialInsumos({ T }) {
                         onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(244,121,32,0.05)" : "rgba(244,121,32,0.03)"}
                         onMouseLeave={e => e.currentTarget.style.background = bgRow}>
                         <td className="px-2 py-1.5">
-                          <span className="font-mono text-[9px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
+                          <span className="font-mono text-[9px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>{s.es_soporte && <BadgeSoporte />}
                         </td>
                         <td className="px-2 py-1.5" style={{ maxWidth: "160px" }}>
                           <span className="block truncate text-[10px] font-semibold" style={{ color: T.text }}>{s.nombre_empleado || "-"}</span>
@@ -564,11 +599,21 @@ export default function HistorialInsumos({ T }) {
                         </td>
                         <td className="px-2 py-1.5 text-[9px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmt(s.fecha)}</td>
                         <td className="px-2 py-1.5">
+                          <div className="flex items-center gap-1">
                           <button onClick={() => (s.es_salida ? abrirHojaSalida(s) : setSolicitudVer(s))}
                             className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold transition-all hover:brightness-110 active:scale-95"
                             style={{ background: "rgba(244,121,32,0.08)", color: T.orange, border: "1px solid rgba(244,121,32,0.2)" }}>
                             {s.es_salida ? "Hoja" : "Ver"}
                           </button>
+                          {s.es_salida && !s.anulada && s.id_salida_num && (
+                            <button onClick={() => { setSalidaAnular(s); setMotivoAnul(""); }}
+                              title="Anular salida y regresar el stock"
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold transition-all hover:brightness-110 active:scale-95"
+                              style={{ background: "rgba(220,38,38,0.08)", color: "#dc2626", border: "1px solid rgba(220,38,38,0.2)" }}>
+                              Anular
+                            </button>
+                          )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -610,7 +655,7 @@ export default function HistorialInsumos({ T }) {
                         onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(244,121,32,0.05)" : "rgba(244,121,32,0.03)"}
                         onMouseLeave={e => e.currentTarget.style.background = bgRow}>
                         <td className="px-2 py-1.5">
-                          <span className="font-mono text-[9px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>
+                          <span className="font-mono text-[9px] font-black" style={{ color: s.es_salida ? "#0d9488" : T.orange }}>{s.folio_solicitud}</span>{s.es_soporte && <BadgeSoporte />}
                         </td>
                         <td className="px-2 py-1.5">
                           <span className="block text-[10px] font-semibold" style={{ color: T.text }}>{s.nombre_empleado || "-"}</span>
@@ -653,11 +698,21 @@ export default function HistorialInsumos({ T }) {
                         </td>
                         <td className="px-2 py-1.5 text-[9px] whitespace-nowrap" style={{ color: T.textMuted }}>{fmt(s.fecha)}</td>
                         <td className="px-2 py-1.5">
+                          <div className="flex items-center gap-1">
                           <button onClick={() => (s.es_salida ? abrirHojaSalida(s) : setSolicitudVer(s))}
                             className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold transition-all hover:brightness-110 active:scale-95"
                             style={{ background: "rgba(244,121,32,0.08)", color: T.orange, border: "1px solid rgba(244,121,32,0.2)" }}>
                             {s.es_salida ? "Hoja" : "Ver"}
                           </button>
+                          {s.es_salida && !s.anulada && s.id_salida_num && (
+                            <button onClick={() => { setSalidaAnular(s); setMotivoAnul(""); }}
+                              title="Anular salida y regresar el stock"
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold transition-all hover:brightness-110 active:scale-95"
+                              style={{ background: "rgba(220,38,38,0.08)", color: "#dc2626", border: "1px solid rgba(220,38,38,0.2)" }}>
+                              Anular
+                            </button>
+                          )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -681,6 +736,50 @@ export default function HistorialInsumos({ T }) {
 
       </div>
     </div>
+
+    {verConsumo && <ModalConsumo T={T} onClose={() => setVerConsumo(false)} />}
+
+    {salidaAnular && (
+      <Modal T={T} variant="danger" title={`Anular ${salidaAnular.folio}`} subtitle="Anular salida"
+        icon={<Ban size={15} />} loading={anulando} confirmLabel="Anular salida"
+        onClose={() => !anulando && setSalidaAnular(null)}
+        onConfirm={async () => {
+          if (motivoAnul.trim().length < 5) { toast.error("Escribe el motivo (mínimo 5 caracteres)"); return; }
+          setAnulando(true);
+          try {
+            const r = await apiFetch(`/api/solicitudes/salidas/${salidaAnular.id_salida_num}/anular`, {
+              method: "POST", body: { motivo: motivoAnul.trim() },
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(d?.error || `HTTP ${r.status}`);
+            toast.success(`Salida ${d.folio} anulada: el stock se regresó al inventario`);
+            setSalidaAnular(null);
+            cargar(filtrosRef.current, page, limit); cargarMetricas();
+          } catch (e) {
+            toast.error(e.message || "No se pudo anular la salida");
+          } finally {
+            setAnulando(false);
+          }
+        }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <p style={{ margin: 0, fontSize: 13, color: T.text }}>
+            Se regresarán al inventario <b>{salidaAnular.total_piezas} pieza{salidaAnular.total_piezas !== 1 ? "s" : ""}</b> de {salidaAnular.total_insumos} insumo{salidaAnular.total_insumos !== 1 ? "s" : ""}:
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: T.textMuted, maxHeight: 140, overflowY: "auto" }}>
+            {(salidaAnular.rows || []).map(r => <li key={r.id_movimiento}>{r.nombre_insumo} × {r.cantidad}</li>)}
+          </ul>
+          <p style={{ margin: 0, fontSize: 12, color: T.textMuted }}>
+            La salida no se borra: queda marcada como <b>Anulada</b> con el motivo. Si estaba mal capturada, después regístrala de nuevo correctamente.
+          </p>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 700, color: T.textMuted }}>
+            MOTIVO DE LA ANULACIÓN
+            <textarea value={motivoAnul} onChange={e => setMotivoAnul(e.target.value)} maxLength={500} rows={3} autoFocus
+              placeholder="Ej. Se capturó la cantidad equivocada"
+              style={{ resize: "vertical", padding: 8, borderRadius: 6, fontSize: 13, border: `1px solid ${T.border}`, background: T.bg, color: T.text }} />
+          </label>
+        </div>
+      </Modal>
+    )}
 
     {modalReporte && (
       <ModalReporte

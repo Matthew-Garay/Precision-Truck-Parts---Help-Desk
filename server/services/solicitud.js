@@ -283,20 +283,35 @@ const Solicitud = {
     return { rows, total };
   },
 
+  // Métricas del Historial de Insumos: solicitudes (SOL-) + salidas internas
+  // (SAL-). Una salida interna ya se entregó al registrarse, así que cuenta
+  // como resuelta. Se devuelven también los nombres que usa la pantalla
+  // (pendientes / resueltos) además de los originales.
   getMetricas: async () => {
     const [[row]] = await pool.query(
       `SELECT
-         COUNT(*) AS total,
+         COUNT(*)                      AS total,
+         SUM(origen = 'SOL')           AS total_solicitudes,
+         SUM(origen = 'SAL')           AS salidas_internas,
          SUM(estatus = 'En proceso')   AS en_proceso,
          SUM(estatus = 'Aceptado')     AS aceptados,
+         SUM(estatus = 'Entregado')    AS entregados,
          SUM(estatus = 'Rechazado')    AS rechazados,
          SUM(prioridad = 'Urgente')    AS p_urgente,
          SUM(prioridad = 'Alta')       AS p_alta,
          SUM(prioridad = 'Media')      AS p_media,
          SUM(prioridad = 'Baja')       AS p_baja
-       FROM solicitud`
+       FROM (
+         SELECT 'SOL' AS origen, estatus, prioridad FROM solicitud
+         UNION ALL
+         SELECT 'SAL', 'Entregado', prioridad FROM salida_interna WHERE estatus = 'Activa'
+       ) t`
     );
-    return row;
+    const n = (v) => Number(v) || 0;
+    const m = Object.fromEntries(Object.entries(row || {}).map(([k, v]) => [k, n(v)]));
+    m.pendientes = m.en_proceso;
+    m.resueltos  = m.aceptados + m.entregados;
+    return m;
   },
 
   actualizarEstatus: async (id_solicitud, estatus) => {

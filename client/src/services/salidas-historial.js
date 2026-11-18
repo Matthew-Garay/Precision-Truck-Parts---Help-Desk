@@ -91,12 +91,18 @@ export function agruparSalidas(rows = []) {
         folio,
         folio_solicitud: folio,
         id_salida:       folio,
+        // id numérico de salida_interna (para anular) y su estado.
+        id_salida_num:   m.id_salida ?? null,
+        anulada:         m.estatus_salida === "Anulada",
+        motivo_anulacion: m.motivo_anulacion || "",
         fecha:           m.fecha,
         destino:         p.destino || m.nombre_sucursal_destino || "",
         recibe:          p.recibe,
         entrega:         p.entrega,
         puesto:          p.puesto,
-        sucSol:          p.sucSol,
+        // Material que tomó el propio personal de Soporte para trabajar.
+        es_soporte:      String(p.puesto || "").trim() === "Soporte Técnico",
+        sucSol:         p.sucSol,
         numEmp:          p.numEmp,
         motivoTexto:     p.texto,
         nombre_sucursal: m.nombre_sucursal_destino || p.destino || "",
@@ -109,7 +115,7 @@ export function agruparSalidas(rows = []) {
         // "—" para que la columna de prioridad muestre un guion neutro en vez
         // de un punto gris sin texto (una salida manual no tiene prioridad).
         prioridad:           p.prioridad || "—",
-        estatus:             "Entregado",
+        estatus:             m.estatus_salida === "Anulada" ? "Anulada" : "Entregado",
         total_insumos:       0,
         total_piezas:        0,
         insumos_nombres:     "",
@@ -145,7 +151,7 @@ export function coincideFiltrosSalida(g, f = {}) {
       .filter(Boolean).join(" ").toLowerCase();
     if (!heno.includes(q)) return false;
   }
-  if (f.estatus   && f.estatus   !== "Todos" && f.estatus   !== "Entregado") return false;
+  if (f.estatus   && f.estatus   !== "Todos" && f.estatus   !== g.estatus) return false;
   if (f.prioridad && f.prioridad !== "Todos" && norm(g.prioridad) !== norm(f.prioridad)) return false;
   // Área: la salida guarda el área/puesto del solicitante en "Puesto:".
   if (f.area      && f.area      !== "Todos" && norm(g.puesto) !== norm(f.area)) return false;

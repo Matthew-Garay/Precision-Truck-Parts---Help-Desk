@@ -12,6 +12,7 @@
 
 import pool from "../config/db.js";
 import { cache } from "../config/cache.js";
+import { STOCK_BAJO, SQL_DISPONIBILIDAD } from "../utils/stock.js";
 
 const TTL_INSUMOS = 5 * 60 * 1000;
 
@@ -56,7 +57,7 @@ const Insumo = {
     if (tieneVisiblePublico) whereClauses.push("i.visible_publico = 1");
     const whereSql = whereClauses.length > 0 ? "WHERE " + whereClauses.join(" AND ") : "";
     const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS nombre_categoria FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria ${whereSql} ORDER BY i.nombre ASC`
+      `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS nombre_categoria, ${SQL_DISPONIBILIDAD("i")} AS disponibilidad FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria ${whereSql} ORDER BY i.nombre ASC`
     );
     const result = rows || [];
     cache.set(cacheKey, result, TTL_INSUMOS);
@@ -73,11 +74,25 @@ const Insumo = {
     if (tieneActivo) whereClauses.push("i.activo = 1");
     if (tieneVisiblePublico) whereClauses.push("i.visible_publico = 1");
     const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS nombre_categoria FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria WHERE ${whereClauses.join(" AND ")} ORDER BY i.nombre ASC`
+      `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS nombre_categoria, ${SQL_DISPONIBILIDAD("i")} AS disponibilidad FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria WHERE ${whereClauses.join(" AND ")} ORDER BY i.nombre ASC`
     );
     const result = rows || [];
     cache.set(cacheKey, result, TTL_INSUMOS);
     return result;
+  },
+
+  // Insumos activos agotados o con stock bajo (límite único en utils/stock.js).
+  getStockBajo: async () => {
+    const tieneActivo = await Insumo._tieneActivoCheck();
+    const [rows] = await pool.query(
+      `SELECT i.id_insumo, i.nombre, i.marca, i.modelo, i.stock, i.imagen_url,
+              ${SQL_DISPONIBILIDAD("i")} AS disponibilidad
+         FROM insumo i
+        WHERE i.stock <= ? ${tieneActivo ? "AND i.activo = 1" : ""}
+        ORDER BY i.stock ASC, i.nombre ASC`,
+      [STOCK_BAJO]
+    );
+    return rows;
   },
 
   // `conn` (opcional) permite crear el insumo dentro de la transaccion del

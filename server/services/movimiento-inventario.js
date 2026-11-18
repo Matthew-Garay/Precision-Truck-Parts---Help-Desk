@@ -91,6 +91,9 @@ const SELECT_JOIN = `
          -- Datos estructurados de la salida interna
          sa.folio_salida,
          sa.prioridad      AS prioridad_salida,
+         sa.estatus        AS estatus_salida,
+         sa.motivo_anulacion,
+         sa.fecha_anulacion,
          sa.justificacion,
          sa.destino_texto,
          sa.id_solicitante,
@@ -217,6 +220,101 @@ const MovimientoInventario = {
         FROM movimiento_inventario`
     );
     return row ?? {};
+  },
+
+  /**
+   * consumo({ desde, hasta })
+   * Material que SALIÓ del inventario entre dos fechas (AAAA-MM-DD, ambas
+   * inclusive): salidas internas ACTIVAS y entregas por solicitud. El área es
+   * la del solicitante (salida interna) o la del empleado (solicitud).
+   *
+   * Devuelve:
+   *   detalle    [{ mes, area, id_insumo, nombre, piezas }]  (para Excel)
+   *   por_insumo [{ id_insumo, nombre, marca, modelo, stock, piezas,
+   *                 operaciones, promedio_mensual, meses_cobertura }]
+   *   por_area   [{ area, piezas, operaciones }]
+   *   por_mes    [{ mes, piezas }]   (todos los meses del rango, aunque sean 0)
+   *   totales    { piezas, operaciones, insumos, meses }
+   */
+  consumo: async ({ desde, hasta }) => {
+    const [rows] = await pool.query(
+      `SELECT DATE_FORMAT(m.fecha, '%Y-%m') AS mes,
+              m.id_insumo, i.nombre, i.marca, i.modelo, i.stock,
+              COALESCE(dsa.nombre_departamento, dso.nombre_departamento, 'Sin área') AS area,
+              SUM(m.cantidad) AS piezas,
+              GROUP_CONCAT(DISTINCT COALESCE(CONCAT('SAL', m.id_salida), CONCAT('SOL', m.id_solicitud), CONCAT('MOV', m.id_movimiento))) AS ops
+         FROM movimiento_inventario m
+         JOIN insumo i               ON i.id_insumo = m.id_insumo
+         LEFT JOIN salida_interna sa ON sa.id_salida = m.id_salida
+         LEFT JOIN empleado esa      ON esa.id_empleado = sa.id_solicitante
+         LEFT JOIN departamento dsa  ON dsa.id_departamento = esa.id_departamento
+         LEFT JOIN solicitud s       ON s.id_solicitud = m.id_solicitud
+         LEFT JOIN empleado eso      ON eso.id_empleado = s.id_empleado
+         LEFT JOIN departamento dso  ON dso.id_departamento = eso.id_departamento
+        WHERE m.tipo = 'Salida'
+          AND (sa.id_salida IS NULL OR sa.estatus = 'Activa')
+          AND m.fecha >= ? AND m.fecha < DATE_ADD(?, INTERVAL 1 DAY)
+        GROUP BY mes, m.id_insumo, area
+        ORDER BY mes, piezas DESC`,
+      [desde, hasta]
+    );
+
+    // Meses del rango (para que los meses sin consumo aparezcan con 0).
+    const meses = [];
+    let [y, mth] = desde.split("-").map(Number);
+    const [by, bm] = hasta.split("-").map(Number);
+    while (y < by || (y === by && mth <= bm)) {
+      meses.push(`${y}-${String(mth).padStart(2, "0")}`);
+      if (mth === 12) { y++; mth = 1; } else mth++;
+    }
+
+    const porInsumo = new Map();
+    const porArea   = new Map();
+    const porMes    = new Map(meses.map(m => [m, 0]));
+    const opsTotal  = new Set();
+    for (const r of rows) {
+      const piezas = Number(r.piezas) || 0;
+      const ops = String(r.ops || "").split(",").filter(Boolean);
+      ops.forEach(o => opsTotal.add(o));
+
+      const ins = porInsumo.get(r.id_insumo) || { id_insumo: r.id_insumo, nombre: r.nombre, marca: r.marca, modelo: r.modelo, stock: Number(r.stock) || 0, piezas: 0, _ops: new Set() };
+      ins.piezas += piezas; ops.forEach(o => ins._ops.add(o));
+      porInsumo.set(r.id_insumo, ins);
+
+      const ar = porArea.get(r.area) || { area: r.area, piezas: 0, _ops: new Set() };
+      ar.piezas += piezas; ops.forEach(o => ar._ops.add(o));
+      porArea.set(r.area, ar);
+
+      porMes.set(r.mes, (porMes.get(r.mes) || 0) + piezas);
+    }
+    // El promedio se calcula desde el PRIMER mes con consumo del rango: los
+    // meses previos a que se empezara a registrar en el sistema darían 0 y
+    // bajarían el promedio de forma engañosa.
+    const primero = meses.findIndex(m => (porMes.get(m) || 0) > 0);
+    const nMeses = Math.max(1, primero >= 0 ? meses.length - primero : meses.length);
+    const fin = (x) => { const { _ops, ...resto } = x; return { ...resto, operaciones: _ops.size }; };
+    const por_insumo = [...porInsumo.values()].map(fin).map(x => {
+      const promedio = x.piezas / nMeses;
+      return {
+        ...x,
+        promedio_mensual: Math.round(promedio * 10) / 10,
+        // Meses que alcanza el stock actual al ritmo de consumo del periodo.
+        meses_cobertura: promedio > 0 ? Math.round((x.stock / promedio) * 10) / 10 : null,
+      };
+    }).sort((a, b) => b.piezas - a.piezas || String(a.nombre).localeCompare(String(b.nombre)));
+
+    return {
+      detalle: rows.map(r => ({ mes: r.mes, area: r.area, id_insumo: r.id_insumo, nombre: r.nombre, piezas: Number(r.piezas) || 0 })),
+      por_insumo,
+      por_area: [...porArea.values()].map(fin).sort((a, b) => b.piezas - a.piezas),
+      por_mes:  [...porMes.entries()].map(([mes, piezas]) => ({ mes, piezas })),
+      totales: {
+        piezas: por_insumo.reduce((a, x) => a + x.piezas, 0),
+        operaciones: opsTotal.size,
+        insumos: por_insumo.length,
+        meses: nMeses,
+      },
+    };
   },
 };
 
