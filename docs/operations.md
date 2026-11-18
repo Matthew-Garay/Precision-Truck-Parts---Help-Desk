@@ -79,11 +79,42 @@ El script solo lee de la base; es seguro ejecutarlo con el sistema en marcha (el
 
 ### Programacion
 
-Recomendacion del propio script: diario a las 23:00 con el Programador de tareas de Windows:
+Ya está programado en el servidor como la tarea **HelpDesk-Respaldo**: diario a las 23:00 y, si la PC estaba
+apagada a esa hora, en cuanto vuelva a estar disponible. Las copias quedan en la carpeta `Backups/` del proyecto
+(se conservan las últimas 14). Para recrearla en otro equipo (ajusta la ruta):
 
 ```powershell
-schtasks /Create /TN "HelpDesk-Respaldo" /SC DAILY /ST 23:00 /TR "powershell -NoProfile -ExecutionPolicy Bypass -File \"D:\Proyecto de Residencias-Matthew Garay\PrecisionTrucks_HelpDesk\respaldar.ps1\""
+$script = "C:\ruta\al\proyecto\respaldar.ps1"
+$accion = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`""
+$ajustes = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+Register-ScheduledTask -TaskName "HelpDesk-Respaldo" -Action $accion -Trigger (New-ScheduledTaskTrigger -Daily -At "23:00") -Settings $ajustes
 ```
+
+Ver la última ejecución: `Get-ScheduledTask HelpDesk-Respaldo | Get-ScheduledTaskInfo`.
+
+> Las copias viven en el mismo disco que la base. Para protegerse de una falla del disco, copia
+> periódicamente `Backups/` a otro medio (USB, otra PC o la nube).
+
+## Registro de errores
+
+Todo `console.error` / `console.warn` del servidor se guarda además en `logs/errores-AAAA-MM-DD.log`
+(un archivo por día, en la raíz del proyecto; se borran solos los de más de 30 días). Ver `server/utils/logger.js`.
+
+## Pruebas automáticas
+
+```bash
+npm test
+```
+
+Corren contra una base **aparte** (`precision_helpdesk_test`), que se borra y recrea desde `database/schema.sql`
+en cada corrida; nunca tocan la base real (se niegan a correr si el nombre no termina en `_test`).
+Cubren folios, stock (salidas, entradas, rollback, anulación, kardex, stock bajo, consumo) y el borrado lógico
+de empleados. Están en `server/tests/`.
+
+## Migraciones
+
+Los cambios de esquema van en `database/migraciones/NNN_descripcion.sql` y se reflejan también en
+`database/schema.sql`. Aplicadas: `001_anular_salida.sql`, `002_empleado_eliminado.sql`.
 
 Verificacion periodica: revisar que la carpeta del dia tenga `base_datos.sql` con tamano creciente y `storage/` completo.
 

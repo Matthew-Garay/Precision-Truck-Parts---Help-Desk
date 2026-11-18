@@ -324,7 +324,11 @@ Internet ──HTTPS──▶ Caddy :443 ──▶ Node 127.0.0.1:3001 ──▶
 ## 11. Operación y respaldos
 
 - **Respaldo:** `npm run respaldar` (Windows) o `deploy/respaldar.sh` (Linux)
-  generan `backups/respaldo_AAAAMMDD_HHMM/` con la base de datos y `storage/`.
+  generan `Backups/respaldo_AAAAMMDD_HHMM/` con la base de datos y `storage/`.
+  En Windows corre solo cada día a las 23:00 (tarea programada `HelpDesk-Respaldo`).
+- **Errores:** se guardan en `logs/errores-AAAA-MM-DD.log` (30 días).
+- **Pruebas:** `npm test` (base aparte `precision_helpdesk_test`; ver
+  [docs/operations.md](docs/operations.md)).
 - **Restauración:** `restaurar.ps1` recupera en una base nueva sin tocar la actual
   ([docs/operations.md](docs/operations.md)).
 - **Salud:** `GET /api/ping` (público) y `GET /api/health` (autenticado: memoria,

@@ -78,6 +78,8 @@
 import { resolve, dirname } from "path";
 import { fileURLToPath }   from "url";
 
+// Primero: todo console.error/warn se guarda también en logs/errores-AAAA-MM-DD.log
+import "./utils/logger.js";
 import express           from "express";
 import { createServer }  from "http";
 import { networkInterfaces } from "os";
@@ -98,6 +100,7 @@ import authRoutes        from './routes/auth-routes.js';
 import ticketsRoutes     from './routes/tickets-routes.js';
 import solicitudesRoutes from './routes/solicitudes-routes.js';
 import manualesRoutes    from './routes/manuales-routes.js';
+import { STOCK_BAJO }    from './utils/stock.js';
 
 const REQUIRED_ENV = ["JWT_SECRET", "DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"];
 const RUNTIME_REQUIRED = process.env.NODE_ENV === "production"
@@ -181,7 +184,8 @@ io.on("connection", async (socket) => {
 
     const [criticos] = await pool.query(
       `SELECT id_insumo, nombre, stock, imagen_url
-       FROM insumo WHERE stock <= 2 ORDER BY stock ASC, nombre ASC LIMIT 50`
+       FROM insumo WHERE stock <= ? ORDER BY stock ASC, nombre ASC LIMIT 50`,
+      [STOCK_BAJO]
     );
     if (criticos.length === 0) return;
 

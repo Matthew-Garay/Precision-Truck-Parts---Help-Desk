@@ -17,7 +17,8 @@
     "preall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/liberar-puertos.ps1",
     "all": "npm run dev:all --silent",
     "probar:correo": "node --import ./server/load-env.js server/scripts/probar-correo.js",
-    "respaldar": "powershell -ExecutionPolicy Bypass -File respaldar.ps1"
+    "respaldar": "powershell -ExecutionPolicy Bypass -File respaldar.ps1",
+    "test": "npm test -w server"
   },
   "devDependencies": {
     "concurrently": "^10.0.3",

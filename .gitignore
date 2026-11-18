@@ -119,6 +119,7 @@ ngrok.exe
 # ── Respaldos locales de la base de datos ──────────────────────────────
 # NUNCA versionar: contienen datos personales reales (nombres, correos,
 backups/
+Backups/
 
 # Dump de la base de datos guardado junto a la documentacion. Es el mismo
 # caso que backups/: trae los INSERT de la tabla `empleado` con nombres,

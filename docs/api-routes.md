@@ -43,7 +43,8 @@ Niveles de acceso usados en las tablas: publico, JWT (autenticado), dueno-o-admi
 | GET | /empleados/:id | JWT | Detalle de un empleado |
 | GET | /empleados | admin | Listado completo de empleados |
 | POST | /empleados | admin | Crea un empleado |
-| PUT | /empleados/:id | admin | Edita cualquier empleado |
+| PUT | /empleados/:id | admin | Edita cualquier empleado (no aplica a eliminados) |
+| DELETE | /empleados/:id | admin | Borrado LÓGICO: lo oculta de Personal, lo deja inactivo y cierra sus sesiones; la fila y su historial se conservan. No permite eliminarse a sí mismo ni al último admin |
 | POST | /empleados/:id/foto | admin | Cambia la foto de cualquier empleado |
 
 ## /api/categorias
@@ -90,10 +91,12 @@ Niveles de acceso usados en las tablas: publico, JWT (autenticado), dueno-o-admi
 | POST | /insumos/:id/foto | admin | Sube imagen del insumo |
 | POST | /insumos/:id/entrada | admin | Registra ENTRADA (suma stock y movimiento) |
 | POST | /salidas | admin | Salida manual (descuenta stock y movimiento) |
+| POST | /salidas/:id/anular | admin | Anula una salida interna: regresa el stock con una entrada ligada y la marca `Anulada` (body: `{ motivo }`) |
+| GET | /consumo | admin | Reporte de consumo: insumos más usados, por área y por mes, con cobertura de stock (`?fecha_inicio&fecha_fin`) |
 | GET | /movimientos | admin | Kardex filtrable |
 | GET | /movimientos/mis-salidas | JWT | Salidas de la sucursal del usuario |
 | GET | /insumos/:id/movimientos | admin | Movimientos de un insumo |
-| GET | /insumos/stock-bajo | admin | Insumos con stock <= 5 |
+| GET | /insumos/stock-bajo | admin | Insumos activos con stock <= `STOCK_BAJO` (1, en `server/utils/stock.js`) |
 | GET | /insumos | JWT | Insumos con stock > 0 |
 | GET | /inventario | JWT | Todos los insumos |
 | GET | /empleado/:id_empleado | dueno-o-admin | Solicitudes de un empleado |

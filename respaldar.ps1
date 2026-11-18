@@ -6,7 +6,7 @@
     1. La base de datos  (volcado .sql con mysqldump)
     2. La carpeta storage/ (fotos de perfil, insumos, manuales, evidencias)
 
-  Nunca borra la base de datos actual: solo LEE de ella y escribe en backups/.
+  Nunca borra la base de datos actual: solo LEE de ella y escribe en Backups/.
   Por eso es seguro ejecutarlo en produccion a cualquier hora.
 
   Uso:
@@ -18,7 +18,7 @@
 #>
 [CmdletBinding()]
 param(
-  # Carpeta donde se guardan las copias. Si se omite, queda "backups" junto al script.
+  # Carpeta donde se guardan las copias. Si se omite, queda "Backups" junto al script.
   [string]$Destino = '',
 
   # Cuantas copias antiguas conservar antes de borrar las mas viejas.
@@ -28,7 +28,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $raiz = $PSScriptRoot
 if (-not $raiz) { $raiz = Split-Path -Parent $MyInvocation.MyCommand.Path }
-if (-not $Destino) { $Destino = Join-Path $raiz 'backups' }
+if (-not $Destino) { $Destino = Join-Path $raiz 'Backups' }
 
 # ── Leer configuracion del .env ──────────────────────────────────────
 # Se lee desde server/.env (mismo archivo que usa el backend) para no dejar usuario ni contrasena escritos aqui.
