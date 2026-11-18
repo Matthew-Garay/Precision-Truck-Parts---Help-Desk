@@ -47,7 +47,7 @@
  * @exports useToast
  */
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, CheckCircle2, AlertTriangle, XCircle, Info, AlertCircle, Loader2 } from "lucide-react";
+import { X, CheckCircle2, AlertTriangle, XCircle, Info, Loader2 } from "lucide-react";
 import { ToastCtx } from '../context/toast-context.jsx';
 import { FS } from '../utils/tipografia.js';
 import LogoModal from './LogoModal.jsx';

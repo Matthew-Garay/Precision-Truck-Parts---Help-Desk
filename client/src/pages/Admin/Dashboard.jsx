@@ -196,7 +196,6 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           navigate("/admin/dashboard");
           setSolicitudVer({ id_solicitud: data.id_solicitud });
         }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [navigate]),
     });
 

@@ -24,7 +24,7 @@
  */
 import { useState, useCallback, useEffect, useLayoutEffect } from "react";
 import API_BASE, { apiFetch } from '../services/api-client.js';
-import { COLORS, RADIUS, BG_IMAGE, BG_OVERLAY, DIAGONAL, INPUT_FOCUS, INPUT_BLUR } from '../utils/design-system.js';
+import { COLORS, RADIUS, BG_IMAGE, INPUT_FOCUS, INPUT_BLUR } from '../utils/design-system.js';
 import { EyeIcon, EyeOffIcon } from '../components/Icons.jsx';
 import { emailCorporativoValido } from '../utils/email.js';
 import { evaluarPassword, passwordSeguro } from '../utils/password.js';

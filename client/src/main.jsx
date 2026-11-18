@@ -50,7 +50,7 @@
  * @requires ./utils/session.js
  * @exports (ninguno: punto de entrada / efectos)
  */
-import { StrictMode, useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import './assets/login.css'
@@ -125,7 +125,6 @@ function App() {
         // Si falla (401), apiFetch ya llama clearSession() automáticamente
       })
       .catch(() => {})
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleUsuarioActualizado = (nuevoUsuario) => {

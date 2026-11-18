@@ -37,7 +37,7 @@
  */
 import { useState, useEffect } from "react";
 import { User } from "lucide-react";
-import API, { apiFetch } from '../services/api-client.js';
+import { apiFetch } from '../services/api-client.js';
 import { emailCorporativoValido, DOMINIOS_PERMITIDOS } from '../utils/email.js';
 import { evaluarPassword, passwordSeguro } from '../utils/password.js';
 import { EyeBtn, usePerfilStyles, generarPDFAccesos } from './PerfilShared.jsx';

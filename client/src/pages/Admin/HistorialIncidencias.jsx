@@ -95,7 +95,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
       })
       .catch(() => {})
       .finally(() => setCargando(false));
-  }, []); // eslint-disable-line
+  }, []);
 
   const cargarStats = useCallback((f) => {
     const qs = buildQs(f);
@@ -107,7 +107,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
         setStatsData({ lista });
       })
       .catch(() => {});
-  }, []); // eslint-disable-line
+  }, []);
 
   const filtrosStr = JSON.stringify(filtros);
   useEffect(() => {

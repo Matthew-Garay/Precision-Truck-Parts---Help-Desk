@@ -197,7 +197,6 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
     }
 
     if (EXEC_MAP[cmd]) {
-      // eslint-disable-next-line no-restricted-globals
       document.execCommand(EXEC_MAP[cmd], false, null);
       el.dispatchEvent(new Event("input", { bubbles: true }));
     }

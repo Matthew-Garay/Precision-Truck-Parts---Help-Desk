@@ -34,8 +34,7 @@ import {
 import API, { apiFetch, API_ROUTES } from '../../services/api-client.js';
 import { useAutoRefresh } from '../../hooks/use-auto-refresh.js';
 import { usePdfCover } from '../../hooks/use-pdf-cover.js';
-import FiltrosToolbar from '../../components/FiltrosToolbar.jsx';
-import { RADIUS, NEUTRAL, SLATE, SEMANTIC } from '../../utils/design-system.js';
+import { RADIUS, SLATE, SEMANTIC } from '../../utils/design-system.js';
 
 import { FS } from '../../utils/tipografia.js';
 import LogoModal from '../../components/LogoModal.jsx';

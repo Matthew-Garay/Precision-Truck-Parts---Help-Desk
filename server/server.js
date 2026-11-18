@@ -75,7 +75,7 @@
  * @requires ./routes/manuales-routes.js
  * @exports (ninguno: punto de entrada / efectos)
  */
-import { resolve, dirname } from "path";
+import { dirname } from "path";
 import { fileURLToPath }   from "url";
 
 // Primero: todo console.error/warn se guarda también en logs/errores-AAAA-MM-DD.log
@@ -340,7 +340,6 @@ if (process.env.NODE_ENV === "production") {
 
 // Middleware global de errores. Captura cualquier error no manejado en los controladores.
 // En produccion oculta el detalle del error 500 para no exponer informacion interna.
-// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, _next) => {
   console.error("[Error no manejado]", err);
   const status = err.status || err.statusCode || 500;

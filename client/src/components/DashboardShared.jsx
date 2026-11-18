@@ -232,11 +232,12 @@ export function GraficaPastel({ data, size = 80, T }) {
 // -- SECCION METRICAS AVANZADAS --
 export function SeccionMetricas({ T, metricas }) {
   const isDark = T.isDark;
+  // Los hooks van antes de cualquier return: si no, al pasar metricas de
+  // null a cargadas cambia el número de hooks y React truena el componente.
+  const { card: cardStyle, hdr } = useCardStyles(T, "elevated");
   if (!metricas) return null;
 
   const { promedio_horas = 0, porDepartamento = [], tendencia = [] } = metricas;
-
-  const { card: cardStyle, hdr } = useCardStyles(T, "elevated");
 
   // Tiempo promedio formateado
   const horas = parseFloat(promedio_horas) || 0;

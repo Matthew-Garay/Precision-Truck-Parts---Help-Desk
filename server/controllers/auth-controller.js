@@ -74,7 +74,6 @@
 import Empleado from '../services/empleado.js';
 import bcrypt   from "bcryptjs";
 import jwt      from "jsonwebtoken";
-import crypto   from "crypto";
 import pool     from '../config/db.js';
 import { validarEmailCorporativo } from '../middlewares/validate.js';
 import { isProd } from '../utils/helpers.js';

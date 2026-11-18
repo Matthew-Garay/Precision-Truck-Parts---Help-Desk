@@ -629,7 +629,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
       })
       .catch(() => {})
       .finally(() => setCargandoSol(false));
-  }, [usuario?.id_empleado]); // eslint-disable-line
+  }, [usuario?.id_empleado]);
 
   // Stats globales (sin filtro) — carga una vez al abrir el tab
   useEffect(() => {
@@ -672,7 +672,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
         });
       })
       .catch(() => {});
-  }, [tab, usuario?.id_empleado]); // eslint-disable-line
+  }, [tab, usuario?.id_empleado]);
 
   const filtrosSolStr = JSON.stringify(filtrosSol);
   useEffect(() => {

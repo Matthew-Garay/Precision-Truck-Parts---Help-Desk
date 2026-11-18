@@ -143,7 +143,7 @@ export default function HistorialInsumos({ T }) {
       })
       .catch(() => {})
       .finally(() => setCargando(false));
-  }, []); // eslint-disable-line
+  }, []);
 
   const filtrosStr = JSON.stringify(filtros);
   useEffect(() => { cargar(filtros, page, limit); cargarMetricas(); }, [filtrosStr, page, limit]); // eslint-disable-line

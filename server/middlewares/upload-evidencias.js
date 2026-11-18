@@ -47,7 +47,6 @@ import fs                 from "fs";
 import crypto             from "crypto";
 import { fileURLToPath }  from "url";
 import { fileTypeFromFile } from "file-type";
-import { safeResolvePath }  from './security.js';
 import sharp               from "sharp";
 
 // Fix #16: usar import.meta.url en lugar de path.resolve relativo al CWD

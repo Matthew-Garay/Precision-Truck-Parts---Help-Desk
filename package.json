@@ -18,11 +18,18 @@
     "all": "npm run dev:all --silent",
     "probar:correo": "node --import ./server/load-env.js server/scripts/probar-correo.js",
     "respaldar": "powershell -ExecutionPolicy Bypass -File respaldar.ps1",
-    "test": "npm test -w server"
+    "test": "npm test -w server",
+    "lint": "eslint server client/src client/vite.config.js eslint.config.js",
+    "lint:fix": "eslint --fix server client/src client/vite.config.js eslint.config.js"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "concurrently": "^10.0.3",
     "cross-env": "^7.0.3",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.14.0",
     "knip": "^6.43.0"
   },
   "allowScripts": {

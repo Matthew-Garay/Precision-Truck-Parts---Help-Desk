@@ -100,7 +100,6 @@ export function useSocket(id_empleado, onEvento) {
     socket.on("ticket:sin_atender",   d => cbRef.current?.({ tipo: "ticket:sin_atender",   data: d }));
 
     return () => { socket.disconnect(); socketRef.current = null; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id_empleado]);
 
   return socketRef;

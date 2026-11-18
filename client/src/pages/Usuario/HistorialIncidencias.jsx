@@ -85,7 +85,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
       })
       .catch(() => {})
       .finally(() => setCargando(false));
-  }, [usuario?.id_empleado]); // eslint-disable-line
+  }, [usuario?.id_empleado]);
 
   const filtrosStr = JSON.stringify(filtros);
   useEffect(() => { cargar(filtros, page, limit); }, [filtrosStr, page, limit]); // eslint-disable-line
@@ -112,7 +112,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
         });
       })
       .catch(() => {});
-  }, [usuario?.id_empleado]); // eslint-disable-line
+  }, [usuario?.id_empleado]);
 
   const total     = totalCount;
   const resueltos = statsGlobal.resueltos;

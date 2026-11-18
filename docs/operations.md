@@ -108,8 +108,20 @@ npm test
 
 Corren contra una base **aparte** (`precision_helpdesk_test`), que se borra y recrea desde `database/schema.sql`
 en cada corrida; nunca tocan la base real (se niegan a correr si el nombre no termina en `_test`).
-Cubren folios, stock (salidas, entradas, rollback, anulación, kardex, stock bajo, consumo) y el borrado lógico
-de empleados. Están en `server/tests/`.
+Cubren folios, stock (salidas, entradas, rollback, anulación, kardex, stock bajo, consumo), el borrado lógico
+de empleados y la mesa de ayuda (crear ticket, permisos, asignar técnico, resolver, no reabrir, historial,
+calificar, cancelar, editar y cierre automático de vencidos). Están en `server/tests/`.
+
+## Revisión de código (ESLint)
+
+```bash
+npm run lint        # revisa server/ y client/src/
+npm run lint:fix    # corrige solo lo que se puede corregir automáticamente
+```
+
+Configuración en `eslint.config.js`. Los **errores** (variables o componentes sin importar, hooks de React
+mal llamados) deben quedar en 0 antes de subir cambios; los **avisos** (variables sin usar, dependencias de
+`useEffect`) son limpieza pendiente y no bloquean.
 
 ## Migraciones
 

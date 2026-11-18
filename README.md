@@ -329,6 +329,7 @@ Internet ──HTTPS──▶ Caddy :443 ──▶ Node 127.0.0.1:3001 ──▶
 - **Errores:** se guardan en `logs/errores-AAAA-MM-DD.log` (30 días).
 - **Pruebas:** `npm test` (base aparte `precision_helpdesk_test`; ver
   [docs/operations.md](docs/operations.md)).
+- **Revisión de código:** `npm run lint` (ESLint; debe quedar en 0 errores).
 - **Restauración:** `restaurar.ps1` recupera en una base nueva sin tocar la actual
   ([docs/operations.md](docs/operations.md)).
 - **Salud:** `GET /api/ping` (público) y `GET /api/health` (autenticado: memoria,

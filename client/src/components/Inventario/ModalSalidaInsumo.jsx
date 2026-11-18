@@ -24,7 +24,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
   X, ArrowUpFromLine, Plus, Trash2, Printer, Search, MapPin,
-  Clock, User, Building2, CheckCircle2,
+  User, Building2, CheckCircle2,
 } from "lucide-react";
 import { apiFetch, API_ROUTES } from '../../services/api-client.js';
 import { useToast } from '../Feedback.jsx';

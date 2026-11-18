@@ -18,7 +18,7 @@
  * @exports router (default)
  */
 import { Router } from "express";
-import { requireAuth, requireAdmin } from '../middlewares/auth-middleware.js';
+import { requireAuth } from '../middlewares/auth-middleware.js';
 import { csrfProtection } from '../middlewares/security.js';
 import { getCategorias } from '../controllers/categorias-controller.js';
 

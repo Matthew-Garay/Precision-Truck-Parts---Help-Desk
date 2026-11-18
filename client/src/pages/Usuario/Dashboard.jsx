@@ -199,7 +199,6 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
           navigate("/usuario/dashboard");
           setSolicitudVer({ id_solicitud: data.id_solicitud });
         }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [navigate]),
     });
 
