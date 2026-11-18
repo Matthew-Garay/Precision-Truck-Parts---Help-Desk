@@ -86,7 +86,7 @@ const Empleado = {
     const [rows] = await pool.query(
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
               e.email, e.password, e.estatus, e.id_rol, e.id_departamento,
-              e.id_sucursal, e.token_version,
+              e.id_sucursal, e.token_version, e.eliminado,
               d.nombre_departamento, s.nombre_sucursal
        FROM empleado e
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
@@ -102,7 +102,7 @@ const Empleado = {
     const [rows] = await pool.query(
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
               e.email, e.estatus, e.id_rol, e.id_departamento,
-              e.id_sucursal, d.nombre_departamento, s.nombre_sucursal
+              e.id_sucursal, e.eliminado, d.nombre_departamento, s.nombre_sucursal
        FROM empleado e
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
        LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal
@@ -151,6 +151,38 @@ const Empleado = {
     );
   },
 
+  /**
+   * eliminar(id, idAdmin)
+   * Borrado LÓGICO: la fila se conserva (con todo su historial) pero se marca
+   * como eliminada, queda Inactiva para que no pueda iniciar sesión, se
+   * invalidan sus tokens (token_version + 1) y se cierran sus sesiones.
+   * Devuelve false si no existía o ya estaba eliminado.
+   */
+  eliminar: async (id, idAdmin) => {
+    const [r] = await pool.query(
+      `UPDATE empleado
+          SET eliminado = 1, estatus = 'Inactivo', fecha_eliminacion = NOW(),
+              id_elimino = ?, token_version = token_version + 1
+        WHERE id_empleado = ? AND eliminado = 0`,
+      [idAdmin ?? null, id]
+    );
+    if (r.affectedRows === 0) return false;
+    await pool.query(
+      "UPDATE historial_acceso SET fecha_salida = NOW() WHERE id_empleado = ? AND fecha_salida IS NULL",
+      [id]
+    );
+    cache.delMany(["empleados:all", `empleado:nombre:${id}`, "ticket:tecnicos", "ticket:admins"]);
+    return true;
+  },
+
+  /** Administradores activos y no eliminados (para no dejar el sistema sin admin). */
+  contarAdminsActivos: async () => {
+    const [[row]] = await pool.query(
+      "SELECT COUNT(*) AS n FROM empleado WHERE id_rol = 1 AND estatus = 'Activo' AND eliminado = 0"
+    );
+    return Number(row?.n) || 0;
+  },
+
   registrarEntrada: async (id_empleado) => {
     const [result] = await pool.query(
       `INSERT INTO historial_acceso (id_empleado) VALUES (?)`,
@@ -194,6 +226,7 @@ const Empleado = {
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
        LEFT JOIN rol r          ON e.id_rol          = r.id_rol
        LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal
+       WHERE e.eliminado = 0   -- borrado lógico: los eliminados no se listan
        ORDER BY e.id_empleado ASC`
     );
     cache.set("empleados:all", rows, TTL_EMPLEADOS);

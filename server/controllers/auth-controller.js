@@ -113,7 +113,8 @@ export const login = async (req, res) => {
     return res.status(401).json({ error: "Correo o contraseña incorrectos" });
   try {
     const empleado = await Empleado.findByEmail(email);
-    if (!empleado)
+    // Un empleado eliminado (borrado lógico) se trata como si no existiera.
+    if (!empleado || Number(empleado.eliminado) === 1)
       return res.status(401).json({ error: "Correo o contraseña incorrectos" });
     if (empleado.estatus?.toLowerCase() !== "activo")
       return res.status(403).json({ error: "Usuario inactivo, contacta al administrador" });
@@ -266,7 +267,8 @@ export const updateEmpleadoAdmin = async (req, res) => {
   }
   try {
     const empleado = await Empleado.findById(idNum);
-    if (!empleado) return res.status(404).json({ error: "Empleado no encontrado" });
+    // Un empleado eliminado (borrado lógico) ya no se puede editar ni reactivar.
+    if (!empleado || Number(empleado.eliminado) === 1) return res.status(404).json({ error: "Empleado no encontrado" });
     const passwordHash = (password_nueva && password_nueva.trim()) ? await bcrypt.hash(password_nueva.trim(), 12) : undefined;
     await Empleado.updateAdmin(idNum, {
       num_empleado:     Object.prototype.hasOwnProperty.call(req.body, "num_empleado") ? (num_empleado && String(num_empleado).trim() ? String(num_empleado).trim() : null) : undefined,
@@ -303,8 +305,45 @@ export const crearEmpleado = async (req, res) => {
     const nuevo = await Empleado.findById(id);
     res.status(201).json({ ok: true, empleado: nuevo });
   } catch (err) {
-    if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "El correo o número de empleado ya existe" });
+    if (err.code === "ER_DUP_ENTRY") {
+      // El empleado eliminado conserva su correo y número (borrado lógico):
+      // avisar con claridad en lugar de un "ya existe" confuso.
+      const previo = await Empleado.findByEmail(email).catch(() => null);
+      if (previo && Number(previo.eliminado) === 1)
+        return res.status(409).json({ error: "Ese correo pertenece a un empleado eliminado. Usa otro correo." });
+      return res.status(409).json({ error: "El correo o número de empleado ya existe" });
+    }
     res.status(500).json({ error: "Error del servidor" });
+  }
+};
+
+/**
+ * eliminarEmpleado
+ * DELETE /api/auth/empleados/:id   (solo admin)
+ *
+ * Borrado LÓGICO: el empleado deja de aparecer en Personal y en las listas,
+ * pero su registro y su historial se quedan en la base. Validaciones:
+ *   - no puedes eliminarte a ti mismo;
+ *   - no se puede eliminar al último administrador activo;
+ *   - un empleado ya eliminado responde 404.
+ */
+export const eliminarEmpleado = async (req, res) => {
+  const idNum = parseInt(req.params.id, 10);
+  if (isNaN(idNum) || idNum <= 0) return res.status(400).json({ error: "ID inválido" });
+  if (idNum === req.usuario?.id_empleado)
+    return res.status(409).json({ error: "No puedes eliminar tu propia cuenta" });
+  try {
+    const empleado = await Empleado.findById(idNum);
+    if (!empleado || Number(empleado.eliminado) === 1)
+      return res.status(404).json({ error: "Empleado no encontrado" });
+    if (empleado.id_rol === 1 && empleado.estatus === "Activo" && (await Empleado.contarAdminsActivos()) <= 1)
+      return res.status(409).json({ error: "No se puede eliminar al último administrador activo" });
+    const ok = await Empleado.eliminar(idNum, req.usuario?.id_empleado ?? null);
+    if (!ok) return res.status(404).json({ error: "Empleado no encontrado" });
+    res.json({ ok: true, id_empleado: idNum });
+  } catch (err) {
+    console.error("[empleados] Error al eliminar empleado:", err);
+    res.status(500).json({ error: "Error del servidor", ...errDetalle(err) });
   }
 };
 

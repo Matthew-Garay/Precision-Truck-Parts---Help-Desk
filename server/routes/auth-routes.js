@@ -64,7 +64,7 @@ import { requireAuth, requireAdmin, requireOwnerOrAdmin } from '../middlewares/a
 import { validate, schemaLogin, schemaLogout, schemaActualizarPerfil, schemaCrearEmpleado, schemaUpdateEmpleadoAdmin } from '../middlewares/validate.js';
 import {
   login, logout, actualizarPerfil, getAccesos, getAllAccesos,
-  getAllEmpleados, getEmpleadoById, getDepartamentos, getRoles, getSucursales, updateEmpleadoAdmin, crearEmpleado,
+  getAllEmpleados, getEmpleadoById, getDepartamentos, getRoles, getSucursales, updateEmpleadoAdmin, crearEmpleado, eliminarEmpleado,
   refreshToken
 } from '../controllers/auth-controller.js';
 import { solicitarRecuperacion, verificarCodigo, resetPassword } from '../controllers/reset-controller.js';
@@ -153,5 +153,7 @@ router.get("/accesos",             getAllAccesos);
 router.get("/empleados",           getAllEmpleados);
 router.put("/empleados/:id",       validate(schemaUpdateEmpleadoAdmin), updateEmpleadoAdmin);
 router.post("/empleados",          validate(schemaCrearEmpleado),       crearEmpleado);
+// Borrado lógico: no borra la fila, solo la oculta de Personal
+router.delete("/empleados/:id",    eliminarEmpleado);
 
 export default router;

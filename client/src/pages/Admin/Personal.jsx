@@ -36,6 +36,7 @@ import { useCardStyles } from '../../components/Card.jsx';
 
 import { FS } from '../../utils/tipografia.js';
 import LogoModal from '../../components/LogoModal.jsx';
+import { ModalConfirm, useToast } from '../../components/Feedback.jsx';
 const ORANGE = "#F47920";
 
 
@@ -338,6 +339,14 @@ function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles, sucurs
 // ── Modal Historial ───────────────────────────────────────────────
 function ModalHistorial({ T, isDark, empleado, onCerrar }) {
   const tk = useTokens(T, isDark);
+  // Estilo de los filtros de fecha/tipo (antes se usaba `inp` de ModalEmpleado,
+  // que no existe en este componente y hacía fallar la ventana).
+  const inp = {
+    background: tk.inputBg, border: `1px solid ${tk.border}`,
+    borderRadius: "6px", padding: "0 10px", height: "34px",
+    fontSize: FS.cuerpo, color: tk.textMain, outline: "none",
+    boxSizing: "border-box", colorScheme: isDark ? "dark" : "light",
+  };
   const hoy = new Date();
   const isoHoy = hoy.toISOString().slice(0, 10);
   const isoLunes = (() => { const d = new Date(hoy); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })();
@@ -487,7 +496,7 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
   );
 }
 // ── AccionesDropdown ──────────────────────────────────────────────
-function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial, onToggleEstatus }) {
+function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial, onToggleEstatus, onEliminar }) {
   const tk = useTokens(T, isDark);
   const [open, setOpen] = useState(false);
   const activo = emp.estatus === "Activo";
@@ -529,13 +538,17 @@ function AccionesDropdown({ emp, T, isDark, onEditar, onHistorial, onToggleEstat
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 12H4" /><line x1="20" y1="12" x2="20" y2="12" /><line x1="4" y1="12" x2="4" y2="12" /></svg>
             {activo ? "Desactivar" : "Activar"}
           </button>
+          <button onClick={() => { onEliminar(emp); setOpen(false); }} style={{ ...btnStyle, color: "#dc2626", borderTop: `1px solid ${tk.border}` }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>
+            Eliminar
+          </button>
         </div>
       )}
     </div>
   );
 }
 // ── Tabla de Empleados ────────────────────────────────────────────
-function TablaEmpleados({ empleados, filtrosKey, T, isDark, onEditar, onHistorial, onToggleEstatus }) {
+function TablaEmpleados({ empleados, filtrosKey, T, isDark, onEditar, onHistorial, onToggleEstatus, onEliminar }) {
   const [sort, setSort] = useState({ col: "nombre", dir: "asc" });
   const [pagina, setPagina] = useState(1);
   const [pageSize, setPageSize] = useState(LIMIT);
@@ -652,6 +665,7 @@ function TablaEmpleados({ empleados, filtrosKey, T, isDark, onEditar, onHistoria
                       onEditar={onEditar}
                       onHistorial={onHistorial}
                       onToggleEstatus={onToggleEstatus}
+                      onEliminar={onEliminar}
                     />
                   </td>
                 </tr>
@@ -734,6 +748,27 @@ export default function Personal({ T }) {
     cargar();
     setTimeout(() => setModal(null), 1200);
   };
+  // Eliminar = borrado lógico: el empleado se oculta de Personal pero su
+  // registro e historial se quedan en la base de datos.
+  const [aEliminar, setAEliminar] = useState(null);
+  const [eliminando, setEliminando] = useState(false);
+  const toast = useToast();
+  const eliminarEmpleado = async () => {
+    if (!aEliminar) return;
+    setEliminando(true);
+    try {
+      const res = await apiFetch(`/api/auth/empleados/${aEliminar.id_empleado}`, { method: "DELETE" });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error || `HTTP ${res.status}`);
+      toast.success("Empleado eliminado");
+      setAEliminar(null);
+      cargar();
+    } catch (err) {
+      toast.error(err.message || "No se pudo eliminar el empleado");
+    } finally {
+      setEliminando(false);
+    }
+  };
   const toggleEstatus = async (emp) => {
     const nuevoEstatus = emp.estatus === "Activo" ? "Inactivo" : "Activo";
     try {
@@ -802,11 +837,21 @@ export default function Personal({ T }) {
               isDark={isDark}
               onEditar={e => setModal({ modo: "editar", empleado: e })}
               onToggleEstatus={toggleEstatus}
+              onEliminar={e => setAEliminar(e)}
               onHistorial={e => setModalHistorial(e)}
             />
           )}
         </div>
       </div>
+      <ModalConfirm
+        T={T}
+        open={!!aEliminar}
+        loading={eliminando}
+        onClose={() => !eliminando && setAEliminar(null)}
+        onConfirm={eliminarEmpleado}
+        title="Eliminar empleado"
+        message={aEliminar ? `¿Eliminar a ${[aEliminar.nombre, aEliminar.ap_paterno, aEliminar.ap_materno].filter(Boolean).join(" ")}? Dejará de aparecer en Personal y no podrá iniciar sesión. Su historial (tickets, solicitudes, salidas y accesos) se conserva.` : ""}
+      />
       {modalHistorial && (
         <ModalHistorial T={T} isDark={isDark} empleado={modalHistorial} onCerrar={() => setModalHistorial(null)} />
       )}
