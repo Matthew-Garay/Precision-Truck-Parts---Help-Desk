@@ -7,7 +7,7 @@
  */
 import { useState, useEffect } from "react";
 import { Clock, CheckCircle2, XCircle, Star } from "lucide-react";
-import { apiFetch } from '../../services/api-client.js';
+import { apiFetch, textoError, MSG_SIN_CONEXION } from '../../services/api-client.js';
 
 
 export function CalificacionEstrellas({ T, ticket, estatusActual }) {
@@ -46,11 +46,11 @@ export function CalificacionEstrellas({ T, ticket, estatusActual }) {
       if (res.ok && data.ok) {
         setGuardado(true);
       } else {
-        setError(data.error || "No se pudo guardar");
+        setError(textoError(data, res.status, "No se pudo guardar tu calificación."));
         setCalificacion(calInicial);
       }
     } catch {
-      setError("Error de conexión");
+      setError(MSG_SIN_CONEXION);
       setCalificacion(calInicial);
     } finally {
       setGuardando(false);

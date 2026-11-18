@@ -340,12 +340,27 @@ if (process.env.NODE_ENV === "production") {
 
 // Middleware global de errores. Captura cualquier error no manejado en los controladores.
 // En produccion oculta el detalle del error 500 para no exponer informacion interna.
+// Errores de carga de archivos (multer): traen mensajes en inglés y sin status,
+// así que en producción llegaban al usuario como "Error interno". Se traducen.
+const ERRORES_ARCHIVO = {
+  LIMIT_FILE_SIZE:       "Un archivo es demasiado pesado. Usa una foto o video más ligero.",
+  LIMIT_FILE_COUNT:      "Adjuntaste demasiados archivos. Quita algunos e inténtalo de nuevo.",
+  LIMIT_UNEXPECTED_FILE: "Adjuntaste demasiados archivos. Quita algunos e inténtalo de nuevo.",
+  LIMIT_PART_COUNT:      "El formulario trae demasiados datos.",
+};
+
 app.use((err, req, res, _next) => {
+  if (err?.name === "MulterError") {
+    console.warn("[Archivo rechazado]", err.code, req.path);
+    return res.status(err.code === "LIMIT_FILE_SIZE" ? 413 : 400)
+      .json({ error: ERRORES_ARCHIVO[err.code] || "No se pudo recibir el archivo. Inténtalo de nuevo." });
+  }
   console.error("[Error no manejado]", err);
   const status = err.status || err.statusCode || 500;
   const isProd = process.env.NODE_ENV === "production";
+  const generico = "Ocurrió un problema en el sistema. Inténtalo de nuevo; si continúa, avisa a Soporte Técnico.";
   res.status(status).json({
-    error: isProd && status === 500 ? "Error interno del servidor" : (err.message || "Error interno del servidor"),
+    error: isProd && status === 500 ? generico : (err.message || generico),
   });
 });
 

@@ -32,6 +32,7 @@ import Paginacion from '../../components/Paginacion.jsx';
 import { abrirReporteLista } from '../print/PrintReportePage.tsx';
 
 import { FS } from '../../utils/tipografia.js';
+import { fechaCorta, mesAnio } from '../../utils/fechas.js';
 const PCOLOR = { Urgente:"#dc2626", Alta:"#ea580c", Media:"#ca8a04", Baja:"#16a34a" };
 
 function Estrellas({ n, isDark }) {
@@ -136,18 +137,18 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
   const hayFiltros = filtros.busqueda || filtros.estatus!=="Todos" || filtros.prioridad!=="Todos" || filtros.categoria!=="Todos";
   const handleFiltroChange = (k, v) => { setFiltros(p => ({...p,[k]:v})); setPage(1); };
 
-  const fmt = d => d ? new Date(d).toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"}) : "-";
+  const fmt = d => fechaCorta(d);
 
   const labelPeriodo = () => {
     const ahora = new Date();
     const { periodo } = paramReporte;
-    if (periodo === "diario")  return `Día ${ahora.toLocaleDateString("es-MX",{day:"2-digit",month:"long",year:"numeric"})}`;
+    if (periodo === "diario")  return `Día ${fechaCorta(ahora)}`;
     if (periodo === "semanal") {
       const lunes = new Date(ahora); lunes.setDate(ahora.getDate() - ahora.getDay() + 1);
       const domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
-      return `Semana ${lunes.toLocaleDateString("es-MX",{day:"2-digit",month:"short"})} – ${domingo.toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"})}`;
+      return `Semana ${fechaCorta(lunes)} – ${fechaCorta(domingo)}`;
     }
-    if (periodo === "mensual") return ahora.toLocaleDateString("es-MX",{month:"long",year:"numeric"});
+    if (periodo === "mensual") return `Mes ${mesAnio(ahora)}`;
     if (periodo === "anual")   return `Año ${ahora.getFullYear()}`;
     return "";
   };
@@ -171,7 +172,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
       if (periodo === "anual")   return f.getFullYear()===ahoraDate.getFullYear();
       return true;
     });
-    const fmtDate  = d => new Date(d+"T00:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"long",year:"numeric"});
+    const fmtDate  = d => fechaCorta(d);
     const periodo2 = fecha_inicio && fecha_fin ? `${fmtDate(fecha_inicio)} – ${fmtDate(fecha_fin)}` : labelPeriodo();
     const nombreEmpleado = [usuario?.nombre, usuario?.ap_paterno, usuario?.ap_materno].filter(Boolean).join(" ") || null;
     setModalReporte(false);
@@ -345,7 +346,8 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
             {tickets.length === 0
               ? <div className="flex flex-col items-center justify-center py-8 gap-2">
                   <Inbox size={20} style={{ color:T.textFaint }}/>
-                  <p className="text-[11px] font-bold" style={{ color:T.textMuted }}>{hayFiltros?"Sin resultados":"No hay incidencias"}</p>
+                  <p className="text-[11px] font-bold" style={{ color:T.textMuted }}>{hayFiltros?"Sin resultados":"Aún no tienes reportes"}</p>
+                  <p className="text-[10px] text-center px-4" style={{ color:T.textFaint }}>{hayFiltros ? "Prueba quitando o cambiando los filtros." : "Cuando tengas una falla, usa «Nuevo Reporte» y aquí podrás seguir su avance."}</p>
                 </div>
               : tickets.map(t => {
                   const calNum = t.calificacion ? parseInt(t.calificacion) : 0;
@@ -396,7 +398,8 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
                   ? <tr><td colSpan={9}>
                       <div className="flex flex-col items-center justify-center py-12 gap-2">
                         <Inbox size={22} style={{ color:T.textFaint }}/>
-                        <p className="text-[11px] font-bold" style={{ color:T.textMuted }}>{hayFiltros?"Sin resultados":"No hay incidencias registradas"}</p>
+                        <p className="text-[11px] font-bold" style={{ color:T.textMuted }}>{hayFiltros?"Sin resultados":"Aún no tienes reportes"}</p>
+                        <p className="text-[10px] text-center px-4" style={{ color:T.textFaint }}>{hayFiltros ? "Prueba quitando o cambiando los filtros." : "Cuando tengas una falla, usa «Nuevo Reporte» y aquí podrás seguir su avance."}</p>
                       </div>
                     </td></tr>
                   : tickets.map((t,i) => {

@@ -45,11 +45,12 @@ import {
 } from '../../services/salidas-historial.js';
 
 import { FS } from '../../utils/tipografia.js';
+import { fechaCorta } from '../../utils/fechas.js';
 const PCOLOR = { Urgente: "#dc2626", Alta: "#ea580c", Media: "#ca8a04", Baja: "#16a34a" };
 const ESTATUS_COLOR = { Resuelto: "#16a34a", Pendiente: "#3b82f6", "En proceso": "#d97706", Aceptado: "#16a34a", Rechazado: "#dc2626", Entregado: "#0d9488", Anulada: "#64748b" };
 const ESTATUS_BG    = { Resuelto: "rgba(22,163,74,0.13)", Pendiente: "rgba(59,130,246,0.13)", "En proceso": "rgba(217,119,6,0.13)", Aceptado: "rgba(22,163,74,0.13)", Rechazado: "rgba(220,38,38,0.13)", Entregado: "rgba(13,148,136,0.13)", Anulada: "rgba(100,116,139,0.15)" };
 
-const fmt = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
+const fmt = d => fechaCorta(d);
 
 // Salidas que tomó el propio personal de Soporte Técnico para trabajar.
 const SOPORTE_COLOR = "#7c3aed";
@@ -264,7 +265,7 @@ export default function HistorialInsumos({ T }) {
 
     setGenerando(false);
     setModalReporte(false);
-    const fmtDate = d => new Date(d + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+    const fmtDate = d => fechaCorta(d);
     abrirReporteLista({ tipo: "insumos", periodo: `${fmtDate(fecha_inicio)} – ${fmtDate(fecha_fin)}`, datos });
   };
 

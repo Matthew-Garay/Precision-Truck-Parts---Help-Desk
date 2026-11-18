@@ -378,8 +378,10 @@ export const actualizarPerfil = async (req, res) => {
       // Usar findByIdConPassword solo cuando se necesita verificar el hash
       const empConPass = await Empleado.findByIdConPassword(idNum);
       const coincide = empConPass ? await bcrypt.compare(password_actual, empConPass.password) : false;
+      // 400 y no 401: el cliente trata 401 como "sesión vencida" y cerraba la sesión
+      // del usuario solo por equivocarse al escribir su contraseña actual.
       if (!coincide)
-        return res.status(401).json({ error: "La contraseña actual es incorrecta" });
+        return res.status(400).json({ error: "La contraseña actual es incorrecta" });
     }
     const nuevoHash = password_nueva ? await bcrypt.hash(password_nueva, 12) : undefined;
     await Empleado.updatePerfil(idNum, { nombre, ap_paterno, ap_materno, email, password: nuevoHash });

@@ -7,6 +7,7 @@
  */
 import { useState, useEffect } from "react";
 import { apiFetch } from '../../services/api-client.js';
+import { fechaHora } from '../../utils/fechas.js';
 
 export function HistorialCambios({ T, id_ticket }) {
   const isDark = T.isDark;
@@ -24,10 +25,7 @@ export function HistorialCambios({ T, id_ticket }) {
       .finally(() => setCargando(false));
   }, [id_ticket, abierto]);
 
-  const fmt = (iso) => new Date(iso).toLocaleString("es-MX", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
+  const fmt = (iso) => fechaHora(iso);
 
   const CAMPO_LABEL = { estatus: "Estatus", comentarios: "Comentarios" };
 

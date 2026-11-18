@@ -25,6 +25,7 @@
  */
 import { useEffect } from "react";
 import { FS } from '../utils/tipografia.js';
+import { fechaCorta, fechaHora, hora } from '../utils/fechas.js';
 import './print/print-report.css';
 
 /* ── Tipos ─────────────────────────────────────────────────────── */
@@ -53,15 +54,11 @@ export const ESTATUS_META: Record<string, BadgeMeta> = {
 };
 
 /* ── Helpers de formato ─────────────────────────────────────────── */
+/* Mismo formato día/mes/año que el resto del sistema (utils/fechas.js). */
 export const fmt = {
-  fechaCorta: (d: string) =>
-    new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }),
-  hora: (d: string) =>
-    new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }),
-  fechaHora: (d: string) => {
-    const dt = new Date(d);
-    return `${dt.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" })} · ${dt.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`;
-  },
+  fechaCorta: (d: string) => fechaCorta(d),
+  hora:       (d: string) => hora(d),
+  fechaHora:  (d: string) => fechaHora(d, { sep: " · " }),
 };
 
 export function nowFechaGen(): string {

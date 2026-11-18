@@ -24,11 +24,12 @@ import { useLocation } from "react-router-dom";
 import { Camera, X, ChevronLeft, ChevronRight, Trash2,
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight, Minus, FileDown, CheckCircle2 } from "lucide-react";
-import { apiFetch } from '../../services/api-client.js';
+import { apiFetch, textoError, textoExcepcion } from '../../services/api-client.js';
 import Modal from '../../components/Modal.jsx';
 
 import { FS } from '../../utils/tipografia.js';
 import LogoModal from '../../components/LogoModal.jsx';
+import { fechaCorta, fechaHora } from '../../utils/fechas.js';
 const PRIORIDADES = [
   { label:"Urgente", nivel:"Urgente", color:"#dc2626", bgL:"#fee2e2", bgD:"#2d0a0a" },
   { label:"Alta",    nivel:"Alta",    color:"#ea580c", bgL:"#ffedd5", bgD:"#2d1200" },
@@ -251,13 +252,13 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
       }
 
       const res  = await apiFetch(`/api/tickets`, { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) { setModal({ ok: false, titulo: "Error al enviar", msg: data.error ?? JSON.stringify(data) }); return; }
+      const data = await res.json().catch(() => null);
+      if (!res.ok) { setModal({ ok: false, titulo: "No se pudo enviar el reporte", msg: textoError(data, res.status, "Revisa los datos del formulario e inténtalo de nuevo.") }); return; }
       setModal({ ok: true, titulo: "Reporte enviado", folio: data.folio_ticket, id_ticket: data.id_ticket, prioridad: form.prioridad, categoria: catObj.label });
       limpiar();
     } catch (err) {
       console.error("[NuevoReporte] Error al enviar:", err);
-      setModal({ ok: false, titulo: "Sin conexión", msg: err?.message || "No se pudo conectar con el servidor" });
+      setModal({ ok: false, titulo: "No se pudo enviar el reporte", msg: textoExcepcion(err) });
     } finally {
       setEnviando(false);
     }
@@ -412,7 +413,7 @@ const card = {
               </div>
               <div>
                 <Label>Fecha y hora</Label>
-                <input readOnly value={new Date().toLocaleString("es-MX", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" })}
+                <input readOnly value={fechaHora(new Date())}
                   style={{ ...inputStyle, opacity:.6, cursor:"default", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}/>
               </div>
             </div>
@@ -886,7 +887,7 @@ function ModalReporteEnviado({ T, modal, onVerTicket, onSuccess, onClose }) {
     { label: "Prioridad", value: modal.prioridad,                                     color: prioColor },
     { label: "Estado",    value: "En Proceso",                                        color: "#ca8a04" },
     { label: "Categoría", value: modal.categoria,                                     color: null },
-    { label: "Fecha",     value: new Date().toLocaleDateString("es-MX"), color: null },
+    { label: "Fecha",     value: fechaCorta(new Date()), color: null },
   ];
 
   const handleConfirm = () => {
@@ -997,6 +998,19 @@ function ModalReporteEnviado({ T, modal, onVerTicket, onSuccess, onClose }) {
               </span>
             </div>
           ))}
+
+          {/* Qué sigue: para que el usuario sepa qué esperar después de enviar */}
+          <div style={{
+            marginTop: "14px", padding: "10px 12px", borderRadius: "8px",
+            background: isDark ? "rgba(59,130,246,0.08)" : "#eff6ff",
+            border: `1px solid ${isDark ? "rgba(59,130,246,0.25)" : "#bfdbfe"}`,
+          }}>
+            <p style={{ margin: "0 0 4px", fontSize: FS.secundario, fontWeight: 700, color: isDark ? "#93c5fd" : "#1d4ed8" }}>¿Qué sigue?</p>
+            <p style={{ margin: 0, fontSize: FS.secundario, lineHeight: 1.55, color: textMuted }}>
+              Soporte Técnico ya recibió tu reporte. Te llegará una notificación cuando un técnico lo tome y cuando quede resuelto.
+              Puedes ver su avance en <b>Historial de Incidencias</b>. Guarda tu folio por si necesitas preguntar por él.
+            </p>
+          </div>
         </div>
 
         {/* Footer */}

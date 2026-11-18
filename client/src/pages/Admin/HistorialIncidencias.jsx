@@ -33,6 +33,7 @@ import { useCardStyles } from '../../components/Card.jsx';
 import Paginacion from '../../components/Paginacion.jsx';
 
 import { FS } from '../../utils/tipografia.js';
+import { fechaCorta } from '../../utils/fechas.js';
 const PCOLOR = { Urgente:"#dc2626", Alta:"#ea580c", Media:"#ca8a04", Baja:"#16a34a" };
 
 function Estrellas({ n, isDark }) {
@@ -197,7 +198,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
   const hayFiltros = filtros.busqueda || filtros.estatus!=="Todos" || filtros.prioridad!=="Todos"
     || filtros.tecnico!=="Todos" || filtros.usuario!=="Todos" || filtros.area!=="Todos" || filtros.sucursal!=="Todos";
 
-  const fmt = d => d ? new Date(d).toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"}) : "-";
+  const fmt = d => fechaCorta(d);
 
   const generarReporte = async (params) => {
     const { fecha_inicio, fecha_fin } = params;
@@ -216,7 +217,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
     }
     setGenerando(false);
     setModalReporte(false);
-    const fmtDate = d => new Date(d + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+    const fmtDate = d => fechaCorta(d);
     abrirReporteLista({ tipo: "incidencias", periodo: `${fmtDate(fecha_inicio)} – ${fmtDate(fecha_fin)}`, datos });
   };
 

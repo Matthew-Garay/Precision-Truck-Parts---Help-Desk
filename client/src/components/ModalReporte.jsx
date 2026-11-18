@@ -20,6 +20,7 @@ import { X, FileDown, Calendar, User } from "lucide-react";
 
 import { FS } from '../utils/tipografia.js';
 import LogoModal from './LogoModal.jsx';
+import { hoyISO } from '../utils/fechas.js';
 const ORANGE = "#F47920";
 
 function Field({ icon: Icon, label, children, T }) {
@@ -42,7 +43,7 @@ function Field({ icon: Icon, label, children, T }) {
 }
 
 export default function ModalReporte({ T, admins = [], onClose, onGenerar, generando = false, titulo = "Incidencias" }) {
-  const hoy          = new Date().toISOString().slice(0, 10);
+  const hoy          = hoyISO(); // hora local (toISOString es UTC: después de las 5 p.m. daba mañana)
   const primerDiaMes = hoy.slice(0, 8) + "01";
   const [params, setParams] = useState({ fecha_inicio: primerDiaMes, fecha_fin: hoy, id_tecnico: "todos" });
   const set    = (k, v) => setParams(p => ({ ...p, [k]: v }));

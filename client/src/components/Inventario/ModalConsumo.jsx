@@ -28,9 +28,9 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import Modal from "../Modal.jsx";
 import { apiFetch } from "../../services/api-client.js";
+import { fechaCorta, mesAnio } from "../../utils/fechas.js";
 
-const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-const nombreMes = (ym) => { const [y, m] = String(ym).split("-"); return `${MESES[Number(m) - 1] ?? m} ${y}`; };
+const nombreMes = (ym) => mesAnio(ym); // "2026-11" -> "11/2026"
 const pad = (n) => String(n).padStart(2, "0");
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
@@ -73,6 +73,14 @@ export default function ModalConsumo({ T, onClose }) {
       ws.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
       ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF47920" } };
     };
+    const w0 = wb.addWorksheet("Resumen");
+    w0.columns = [{ key: "a", width: 26 }, { key: "b", width: 30 }];
+    [["Reporte de consumo de insumos", ""],
+     ["Periodo", `${fechaCorta(datos.desde)} al ${fechaCorta(datos.hasta)}`],
+     ["Piezas usadas", datos.totales.piezas],
+     ["Generado", fechaCorta(new Date())]].forEach(r => w0.addRow({ a: r[0], b: r[1] }));
+    w0.getRow(1).font = { bold: true, size: 13 };
+    w0.getColumn("a").font = { bold: true };
     const w1 = wb.addWorksheet("Por insumo");
     encabezado(w1, [
       { header: "Insumo", key: "nombre", width: 45 }, { header: "Marca", key: "marca", width: 18 },
@@ -92,7 +100,7 @@ export default function ModalConsumo({ T, onClose }) {
     datos.detalle.forEach(x => w4.addRow({ ...x, mes: nombreMes(x.mes) }));
     const buf = await wb.xlsx.writeBuffer();
     saveAs(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
-      `Consumo_insumos_${datos.desde}_a_${datos.hasta}.xlsx`);
+      `Consumo_insumos_${fechaCorta(datos.desde).replaceAll("/", "-")}_al_${fechaCorta(datos.hasta).replaceAll("/", "-")}.xlsx`);
   };
 
   const inp = {
@@ -152,6 +160,7 @@ export default function ModalConsumo({ T, onClose }) {
               ))}
             </div>
             <p style={{ margin: 0, fontSize: 11, color: T.textFaint }}>
+              <b>Periodo: {fechaCorta(datos.desde)} al {fechaCorta(datos.hasta)}.</b>{" "}
               Promedio calculado sobre {datos.totales.meses} mes{datos.totales.meses !== 1 ? "es" : ""} (desde el primer mes con consumo del rango).
               Cobertura = meses que alcanza el stock actual a ese ritmo.
             </p>

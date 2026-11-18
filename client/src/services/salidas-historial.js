@@ -201,12 +201,12 @@ export function abrirHojaSalida(g) {
     };
     // Guarda el payload para reimprimir desde /print/salida.
     sessionStorage.setItem("print_salida_datos", JSON.stringify(payload));
-    // Abre la HOJA de impresión en una PESTAÑA NUEVA (con el formato
-    // solicitado) en vez de reemplazar la pestaña actual. El payload ya
-    // quedó en sessionStorage, que el navegador copia a la pestaña nueva.
+    // Abre la HOJA de impresión en una VENTANA PEQUEÑA (mismo tamaño que los
+    // reportes) en vez de reemplazar la pestaña actual. El payload ya quedó
+    // en sessionStorage, que el navegador copia a la ventana nueva.
     // Igual que Inventario.jsx (abrirImpresion): si el navegador bloquea la
     // ventana emergente se avisa en pantalla en vez de secuestrar la pestaña.
-    const win = window.open("/print/salida", "_blank");
+    const win = window.open("/print/salida", "_blank", "width=1200,height=800");
     if (!win) {
       const aviso = document.createElement("div");
       aviso.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#1D1D1B;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;border-left:4px solid #0d9488;box-shadow:0 4px 20px rgba(0,0,0,0.4);";

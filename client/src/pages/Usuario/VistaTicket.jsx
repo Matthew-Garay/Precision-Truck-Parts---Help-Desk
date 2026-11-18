@@ -27,12 +27,13 @@ import DOMPurify from "dompurify";
 import { ArrowLeft, Tag, Calendar, User, CheckCircle2, XCircle, ImageOff, ZoomIn, X, MessageSquare, ChevronLeft, ChevronRight, Star, Pencil } from "lucide-react";
 import ProgressTimeline from '../../components/ProgressTimeline.jsx';
 import Modal from '../../components/Modal.jsx';
-import API, { apiFetch, getToken } from '../../services/api-client.js';
+import API, { apiFetch, getToken, textoError, textoExcepcion } from '../../services/api-client.js';
 import { useSocket } from '../../hooks/use-socket.js';
 import { FS } from '../../utils/tipografia.js';
 import LogoModal from '../../components/LogoModal.jsx';
 import { CalificacionEstrellas } from '../../components/Ticket/CalificacionEstrellas.jsx';
 import { ModalEditarTicket } from '../../components/Ticket/ModalEditarTicket.jsx';
+import { fechaCorta } from '../../utils/fechas.js';
 const PRIO = {
   Urgente: { color: "#dc2626", bgL: "#fee2e2", bgD: "rgba(220,38,38,0.15)", borderL: "#fca5a5", borderD: "rgba(220,38,38,0.3)" },
   Alta:    { color: "#ea580c", bgL: "#ffedd5", bgD: "rgba(234,88,12,0.15)",  borderL: "#fdba74", borderD: "rgba(234,88,12,0.3)"  },
@@ -93,7 +94,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
     setResueltoporState(ticket.resuelto_por || null);
   }, [ticket.id_ticket, ticket.calificacion, ticket.estatus, ticket.comentarios, ticket.resuelto_por]);
 
-  const fmtFecha = (d) => new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const fmtFecha = (d) => fechaCorta(d);
   const fmtHora  = (d) => new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
   const fechaAlta     = ticketLocal.fecha_subido    ? fmtFecha(ticketLocal.fecha_subido)   : "-";
   const horaAlta      = ticketLocal.fecha_subido    ? fmtHora(ticketLocal.fecha_subido)    : "-";
@@ -121,11 +122,11 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
     setErrorCancel("");
     try {
       const res = await apiFetch(`/api/tickets/${ticket.id_ticket}/cancelar`, { method: "PATCH" });
-      const data = await res.json();
-      if (!res.ok) { setErrorCancel(data.error || "No se pudo cancelar"); return; }
+      const data = await res.json().catch(() => null);
+      if (!res.ok) { setErrorCancel(textoError(data, res.status, "No se pudo cancelar el reporte.")); return; }
       setEstatus("Cancelado");
       setConfirmCancel(false);
-    } catch { setErrorCancel("Error de conexión"); }
+    } catch (err) { setErrorCancel(textoExcepcion(err)); }
     finally { setCancelando(false); }
   };
 
@@ -134,10 +135,30 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
   // 0=Recibido | 1=Técnico asignado | 2=En proceso | 3=Resuelto
   // Un técnico está asignado si resueltoporState tiene valor O si el ticket tiene id_tecnico/nombre_tecnico
   const tieneTecnico = !!(resueltoporState || ticketLocal.nombre_tecnico || ticketLocal.id_tecnico);
-  const pasoActual = estatus === "Resuelto" || estatus === "No Resuelto" ? 3
+  const pasoActual = estatus === "Resuelto" || estatus === "No Resuelto" || estatus === "Cancelado" ? 3
     : estatus === "En proceso" && tieneTecnico ? 2
     : estatus === "En proceso" ? 1
     : 0;
+  // Color y nombre del último paso según cómo terminó el ticket.
+  const FIN = estatus === "No Resuelto" ? { fuerte: "#dc2626", suave: "#f87171", brillo: "rgba(220,38,38,0.55)", etiqueta: "No resuelto" }
+            : estatus === "Cancelado"   ? { fuerte: "#64748b", suave: "#94a3b8", brillo: "rgba(100,116,139,0.45)", etiqueta: "Cancelado" }
+            :                             { fuerte: "#16a34a", suave: "#4ade80", brillo: "rgba(22,163,74,0.55)", etiqueta: "Resuelto" };
+
+  // "¿Qué significa?": explica en palabras simples en qué va el ticket y qué puede hacer el usuario.
+  const nombreTecnicoActual = resueltoporState || ticketLocal.nombre_tecnico || null;
+  const folioTxt = ticketLocal.folio_ticket ? ` (folio ${ticketLocal.folio_ticket})` : "";
+  const explicacion = esAdmin ? null
+    : estatus === "En proceso" && !tieneTecnico
+      ? "Tu reporte ya llegó a Soporte Técnico y está en espera de que un técnico lo tome. Te llegará una notificación cuando eso pase. Mientras tanto puedes editarlo o agregar más fotos. Si en 2 días nadie lo atiende, el sistema lo cierra como «No resuelto»."
+    : estatus === "En proceso"
+      ? `${nombreTecnicoActual || "Un técnico"} está atendiendo tu reporte. Si necesita algo de ti te contactará; mantente al pendiente de tus notificaciones.`
+    : estatus === "Resuelto"
+      ? `Soporte Técnico marcó tu reporte como resuelto. Si el problema sigue, crea un reporte nuevo y menciona este${folioTxt}. No olvides calificar la atención: nos ayuda a mejorar.`
+    : estatus === "No Resuelto"
+      ? `Este reporte se cerró sin solución (por ejemplo, porque no se atendió a tiempo). Si el problema sigue, crea un reporte nuevo y menciona este${folioTxt}.`
+    : estatus === "Cancelado"
+      ? "Cancelaste este reporte, así que Soporte Técnico ya no lo atenderá. Si lo necesitas de nuevo, crea un reporte nuevo."
+    : null;
 
   // Estado previo para detectar cuando el técnico cierra el ticket
   const estatusPrevRef = useRef(estatus);
@@ -177,8 +198,8 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
       const text = await res.text();
       let data;
       try { data = JSON.parse(text); }
-      catch { throw new Error(`Respuesta inesperada del servidor: ${text.slice(0, 80)}`); }
-      if (!res.ok) throw new Error(data.error || "Error del servidor");
+      catch { throw new Error(textoError(null, res.status)); }
+      if (!res.ok) throw new Error(textoError(data, res.status, "No se pudo guardar. Inténtalo de nuevo."));
       if (data.estatus) setEstatus(data.estatus);
       if (data.fecha_resuelto) setFechaResueltoState(data.fecha_resuelto);
       if (data.resuelto_por)   setResueltoporState(data.resuelto_por);
@@ -187,7 +208,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
       setGuardado(true);
       setTimeout(() => setGuardado(false), 2500);
     } catch (err) {
-      setErrorGuard(err.message || "No se pudo guardar. Intenta de nuevo.");
+      setErrorGuard(textoExcepcion(err, "No se pudo guardar. Inténtalo de nuevo."));
     } finally {
       setGuardando(false);
       setConfirmCierre(false);
@@ -713,11 +734,11 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                     style={{
                       width: ["8%", "40%", "73%", "100%"][pasoActual],
                       background: pasoActual === 3
-                        ? "linear-gradient(90deg,#16a34a,#4ade80)"
+                        ? `linear-gradient(90deg,${FIN.fuerte},${FIN.suave})`
                         : "linear-gradient(90deg,#ea6000,#F47920,#ffb347)",
                       boxShadow: pasoActual < 3
                         ? "0 0 10px rgba(244,121,32,0.55)"
-                        : "0 0 10px rgba(22,163,74,0.55)",
+                        : `0 0 10px ${FIN.brillo}`,
                     }}
                   />
                   {[0, 1, 2, 3].map((i) => {
@@ -727,9 +748,9 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                         className="absolute top-1/2 w-3 h-3 rounded-full border-2 transition-all duration-500"
                         style={{
                           left: pct, transform: "translate(-50%,-50%)",
-                          background: i <= pasoActual ? (pasoActual===3?"#4ade80":"#ffb347") : isDark?"#2a2f3e":"#d1d8e3",
-                          borderColor: i <= pasoActual ? (pasoActual===3?"#16a34a":T.orange) : isDark?"rgba(255,255,255,0.1)":"#c5cdd8",
-                          boxShadow: i === pasoActual ? (pasoActual===3?"0 0 8px rgba(22,163,74,0.7)":"0 0 8px rgba(244,121,32,0.7)") : "none",
+                          background: i <= pasoActual ? (pasoActual===3?FIN.suave:"#ffb347") : isDark?"#2a2f3e":"#d1d8e3",
+                          borderColor: i <= pasoActual ? (pasoActual===3?FIN.fuerte:T.orange) : isDark?"rgba(255,255,255,0.1)":"#c5cdd8",
+                          boxShadow: i === pasoActual ? (pasoActual===3?`0 0 8px ${FIN.brillo}`:"0 0 8px rgba(244,121,32,0.7)") : "none",
                           zIndex: 2,
                         }}
                       />
@@ -737,9 +758,9 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                   })}
                 </div>
                 <div className="flex justify-between mt-2">
-                  {["Recibido", "Asignado", "En proceso", "Resuelto"].map((l, i) => (
+                  {["Recibido", "Asignado", "En proceso", FIN.etiqueta].map((l, i) => (
                     <span key={l} className="text-[9px] font-bold"
-                      style={{ color: i <= pasoActual ? (pasoActual===3?"#16a34a":T.orange) : "#94a3b8", letterSpacing:"0.04em" }}>
+                      style={{ color: i <= pasoActual ? (pasoActual===3?FIN.fuerte:T.orange) : "#94a3b8", letterSpacing:"0.04em" }}>
                       {l}
                     </span>
                   ))}
@@ -750,6 +771,7 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                 <ProgressTimeline
                   T={T}
                   pasoActual={pasoActual}
+                  estatus={estatus}
                   metadata={{
                     fechaAlta,
                     horaAlta,
@@ -761,6 +783,13 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                     tiempoResolucion,
                   }}
                 />
+                {explicacion && (
+                  <div className="mt-5 rounded-xl px-4 py-3"
+                    style={{ background: isDark ? "rgba(59,130,246,0.08)" : "#eff6ff", border: `1px solid ${isDark ? "rgba(59,130,246,0.25)" : "#bfdbfe"}` }}>
+                    <p className="font-bold mb-1" style={{ fontSize: FS.secundario, color: isDark ? "#93c5fd" : "#1d4ed8" }}>¿Qué significa esto?</p>
+                    <p style={{ fontSize: FS.secundario, lineHeight: 1.55, color: T.textMuted, margin: 0 }}>{explicacion}</p>
+                  </div>
+                )}
               </div>
             </div>
 

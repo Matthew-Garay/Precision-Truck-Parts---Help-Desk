@@ -38,6 +38,7 @@ import { RADIUS, SLATE, SEMANTIC } from '../../utils/design-system.js';
 
 import { FS } from '../../utils/tipografia.js';
 import LogoModal from '../../components/LogoModal.jsx';
+import { fechaCorta } from '../../utils/fechas.js';
 const ORANGE = "#F47920";
 const OL     = "rgba(244,121,32,0.10)";
 const OB     = "rgba(244,121,32,0.22)";
@@ -321,7 +322,7 @@ function CardManualFila({ m, T, onVer, onEditar, onEliminar }) {
   const isDark = T.isDark;
   const pdfUrl = `${API}${m.url}`;
   const fecha = m.fecha_cambio
-    ? new Date(m.fecha_cambio).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
+    ? fechaCorta(m.fecha_cambio)
     : null;
   const [hov, setHov] = useState(false);
 
@@ -388,7 +389,7 @@ function CardManual({ m, T, onVer, onEditar, onEliminar }) {
   const isDark = T.isDark;
   const pdfUrl = `${API}${m.url}`;
   const fecha  = m.fecha_cambio
-    ? new Date(m.fecha_cambio).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
+    ? fechaCorta(m.fecha_cambio)
     : null;
   const [hov, setHov] = useState(false);
 

@@ -12,6 +12,7 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { FS } from '../../utils/tipografia.js';
 import { STOCK_BAJO } from '../../utils/stock.js';
+import { fechaCorta } from '../../utils/fechas.js';
 
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -91,7 +92,7 @@ export async function exportarExcel(datos) {
   const borderAll  = { top: bThin, bottom: bThin, left: bThin, right: bThin };
   const borderTop  = { top: bMed,  bottom: bThin, left: bThin, right: bThin };
 
-  const fecha = new Date().toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
+  const fecha = fechaCorta(new Date());
   const ahora = new Date();
   const ts    = `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,"0")}-${String(ahora.getDate()).padStart(2,"0")}_${String(ahora.getHours()).padStart(2,"0")}-${String(ahora.getMinutes()).padStart(2,"0")}`;
 

@@ -12,6 +12,7 @@ import { useTheme } from '../../context/theme-context.js';
 import { FS } from '../../utils/tipografia.js';
 import { colorStock } from '../../utils/stock.js';
 import { ORANGE, TEAL } from './inventario-ui.js';
+import { fechaCorta, fechaHora } from '../../utils/fechas.js';
 
 export const SLATE   = { 50: "#f8fafc", 100: "#f1f5f9", 200: "#e2e8f0", 300: "#cbd5e1", 400: "#94a3b8", 600: "#475569", 700: "#334155", 900: "#0f172a" };
 
@@ -312,9 +313,9 @@ export function EntradasTable({ rows, tipo = "Entrada", onEditar }) {
     const d = toDate(f);
     if (!d) return { dia: f ? String(f) : "—", hora: "", full: "" };
     return {
-      dia:  d.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }),
+      dia:  fechaCorta(d),
       hora: d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false }),
-      full: d.toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }),
+      full: fechaHora(d),
     };
   };
 

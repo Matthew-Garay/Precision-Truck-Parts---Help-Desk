@@ -544,7 +544,6 @@ export default function Login({ onLogin }) {
       }
       setEntrando(true);
       setIntentos(0);
-      sessionStorage.setItem("_pwd", password);
       if (navigator.vibrate) navigator.vibrate(50);
       setTimeout(() => { setEntrando(false); onLogin(data.usuario, data.id_acceso, data.token); }, 1500);
     } catch {

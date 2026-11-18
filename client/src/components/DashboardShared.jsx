@@ -56,6 +56,7 @@ import { useCardStyles } from './Card.jsx';
 import { apiFetch, API_ROUTES } from '../services/api-client.js';
 
 import { FS } from '../utils/tipografia.js';
+import { diaMes } from '../utils/fechas.js';
 // -- TENDENCIA CHART (HTML puro, sin SVG, 100% responsive) ----
 function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
   const maxVal     = Math.max(...tendencia.map(t => t.total), 1);
@@ -259,7 +260,7 @@ export function SeccionMetricas({ T, metricas }) {
           <div className="w-1 h-3 rounded-full" style={{ background: "#3b82f6" }} />
           <Timer size={10} style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }} />
           <p className="text-[9px] font-black uppercase tracking-widest"
-            style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Tiempo Prom. Resolucion</p>
+            style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Tiempo prom. de resolución</p>
         </div>
         <div className="px-2.5 py-1.5 flex flex-col items-center justify-center gap-0.5">
           <span className="text-[18px] sm:text-[18px] font-black" style={{ color: "#3b82f6" }}>{tiempoLabel}</span>
@@ -267,7 +268,7 @@ export function SeccionMetricas({ T, metricas }) {
           <div className="mt-1 flex items-center gap-1.5 px-2 py-0.5 rounded-full"
             style={{ background: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff", border: "1px solid rgba(59,130,246,0.2)" }}>
             <Clock size={9} style={{ color: "#3b82f6" }} />
-            <span className="text-[9px] font-bold" style={{ color: "#3b82f6" }}>SLA: 2 días</span>
+            <span className="text-[9px] font-bold" style={{ color: "#3b82f6" }} title="Tiempo máximo esperado para atender un ticket">Meta: 2 días</span>
           </div>
         </div>
       </div>
@@ -756,7 +757,7 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
                   </span>
                   <span className="text-[9px] font-semibold flex-shrink-0" style={{ color: T.textFaint }}>
                     {item.fecha
-                      ? new Date(item.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })
+                      ? diaMes(item.fecha)
                       : '—'}
                   </span>
                 </div>
@@ -788,7 +789,7 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
                   </span>
                   <span className="text-[9px] font-semibold flex-shrink-0" style={{ color: T.textFaint }}>
                     {item.fecha_subido
-                      ? new Date(item.fecha_subido).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })
+                      ? diaMes(item.fecha_subido)
                       : '—'}
                   </span>
                 </div>

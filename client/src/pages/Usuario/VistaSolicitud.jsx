@@ -28,12 +28,13 @@ import {
   CheckCircle2, XCircle, Check, X as XIcon,
   FileText, MapPin, ArrowRight, Save
 } from "lucide-react";
-import { apiFetch, API_ROUTES, getToken } from '../../services/api-client.js';
+import { apiFetch, API_ROUTES, getToken, textoError, MSG_SIN_CONEXION } from '../../services/api-client.js';
 import { getUsuario } from '../../utils/session.js';
 import Modal from '../../components/Modal.jsx';
 import ModalDetalleInsumo from '../../components/Inventario/ModalDetalleInsumo.jsx';
 
 import { FS } from '../../utils/tipografia.js';
+import { fechaCorta, fechaHora } from '../../utils/fechas.js';
 const ESTATUS_META = {
   "En proceso": { color: "#d97706", bgL: "#fef3c7", bgD: "rgba(217,119,6,0.15)",  borderL: "#fde68a", borderD: "rgba(217,119,6,0.3)",   icon: AlertTriangle },
   "Aceptado":   { color: "#16a34a", bgL: "#dcfce7", bgD: "rgba(22,163,74,0.15)",  borderL: "#86efac", borderD: "rgba(22,163,74,0.3)",   icon: CheckCircle2  },
@@ -176,7 +177,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
       setObsMensaje({ ok: true, texto: texto ? "Guardada" : "Eliminada" });
       setTimeout(() => setObsMensaje(null), 2500);
     } catch {
-      setObsMensaje({ ok: false, texto: "Error de conexión" });
+      setObsMensaje({ ok: false, texto: MSG_SIN_CONEXION });
     } finally {
       setObsGuardando(false);
     }
@@ -186,7 +187,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
     if (!id_solicitud) return;
     setLoading(true);
     apiFetch(API_ROUTES.SOLICITUD(id_solicitud))
-      .then(r => r.json().catch(() => ({ error: `Error del servidor (${r.status})` })))
+      .then(r => r.json().catch(() => null).then(d => (r.ok ? d : { error: textoError(d, r.status, "No se pudo abrir la solicitud.") })))
       .then(d => {
         if (d?.error) { setError(d.error); return; }
         if (!d?.id_solicitud) { setError("Solicitud no encontrada"); return; }
@@ -352,7 +353,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
         },
       });
       const data = await r.json().catch(() => ({}));
-      if (!r.ok) { setErrorAccion(data.error || "No se pudo guardar la ruta"); return; }
+      if (!r.ok) { setErrorAccion(textoError(data, r.status, "No se pudo guardar la ruta.")); return; }
       setSolicitud(prev => prev ? {
         ...prev,
         nombre_sucursal_origen:  data.nombre_sucursal_origen  ?? prev.nombre_sucursal_origen,
@@ -361,7 +362,7 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
       setRutaGuardada(true);
       setTimeout(() => setRutaGuardada(false), 2500);
     } catch {
-      setErrorAccion("Error de conexión al guardar la ruta");
+      setErrorAccion(MSG_SIN_CONEXION);
     } finally {
       setGuardandoRuta(false);
     }
@@ -428,8 +429,8 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
   const sucursalSolicitante = solicitud.nombre_sucursal || null;
 
   const EstatusIcon = estatusMeta.icon;
-  const fmtFecha = (d) => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
-  const fmtFechaHora = (d) => d ? new Date(d).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }) : "—";
+  const fmtFecha = (d) => fechaCorta(d, "—");
+  const fmtFechaHora = (d) => fechaHora(d, { vacio: "—" });
 
 
 
@@ -979,7 +980,9 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                     </div>
                     <div>
                       <p className="text-[11px] font-black" style={{ color: orange }}>Pendiente de resolución</p>
-                      <p className="text-[9px] mt-0.5" style={{ color: T?.textFaint }}>En espera de acción del administrador</p>
+                      <p className="text-[9px] mt-0.5" style={{ color: T?.textFaint }}>
+                        {esAdmin ? "En espera de acción del administrador" : "Soporte Técnico revisará tu solicitud y te llegará una notificación cuando la resuelva."}
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -1012,14 +1015,16 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
                         return (
                           <p className="text-[9px] mt-0.5" style={{ color: T?.textFaint }}>
                             {entregados > 0 && noEntregados > 0
-                              ? `${entregados} insumo${entregados !== 1 ? "s" : ""} se entregará${entregados !== 1 ? "n" : ""} · ${noEntregados} no`
+                              ? `${entregados} insumo${entregados !== 1 ? "s" : ""} se entregará${entregados !== 1 ? "n" : ""} · ${noEntregados} no (abajo ves cuáles)`
                               : entregados > 0
-                              ? "Todos los insumos aprobados y stock descontado"
+                              ? (esAdmin ? "Todos los insumos aprobados y stock descontado" : "Se aprobaron todos los insumos que pediste.")
                               : "Ningún insumo fue aprobado"}
                           </p>
                         );
                       })() : (
-                        <p className="text-[9px] mt-0.5" style={{ color: T?.textFaint }}>La solicitud fue denegada por el administrador</p>
+                        <p className="text-[9px] mt-0.5" style={{ color: T?.textFaint }}>
+                          {esAdmin ? "La solicitud fue denegada por el administrador" : "Soporte Técnico no aprobó esta solicitud. Si dejó una observación, ahí verás el motivo."}
+                        </p>
                       )}
                     </div>
                   </div>

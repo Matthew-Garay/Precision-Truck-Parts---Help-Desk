@@ -37,12 +37,13 @@ import { useCardStyles } from '../../components/Card.jsx';
 import { FS } from '../../utils/tipografia.js';
 import LogoModal from '../../components/LogoModal.jsx';
 import { ModalConfirm, useToast } from '../../components/Feedback.jsx';
+import { fechaCorta, fechaHora } from '../../utils/fechas.js';
 const ORANGE = "#F47920";
 
 
 const ESTATUS_COLOR = { Activo: "#16a34a", Inactivo: "#94a3b8" };
 
-const fmt = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
+const fmt = d => fechaCorta(d);
 
 /** Pone en mayúscula la primera letra de CADA palabra ("ana karen" → "Ana Karen",
  *  "MIGUEL JOVANY" → "Miguel Jovany", "díaz-de león" → "Díaz-De León").
@@ -377,7 +378,7 @@ function ModalHistorial({ T, isDark, empleado, onCerrar }) {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, []);
-  const fmt = iso => !iso ? "-" : new Date(iso).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
+  const fmt = iso => fechaHora(iso);
   const duracion = (entrada, salida) => {
     if (!entrada) return "-";
     const fin = salida ? new Date(salida) : new Date();

@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import Modal from '../Modal.jsx';
-import { apiFetch } from '../../services/api-client.js';
+import { apiFetch, textoError, textoExcepcion } from '../../services/api-client.js';
 import { FS } from '../../utils/tipografia.js';
 
 
@@ -130,7 +130,7 @@ export function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuar
         },
       });
       const dataEditar = await resEditar.json();
-      if (!resEditar.ok) { setError(dataEditar.error||"Error al guardar"); return; }
+      if (!resEditar.ok) { setError(textoError(dataEditar, resEditar.status, "No se pudieron guardar los cambios.")); return; }
 
       // 2. Si es cierre, usar el endpoint correcto que guarda fecha_resuelto e id_tecnico
       if (esCierre) {
@@ -148,7 +148,7 @@ export function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuar
           },
         });
         const dataCierre = await resCierre.json();
-        if (!resCierre.ok) { setError(dataCierre.error||"Error al cerrar ticket"); return; }
+        if (!resCierre.ok) { setError(textoError(dataCierre, resCierre.status, "No se pudo cerrar el ticket.")); return; }
       }
 
       const data = dataEditar;
@@ -174,7 +174,7 @@ export function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuar
         comentarios:    form.comentarios || null,
         ...(esCierre && { fecha_resuelto: new Date().toISOString() }),
       });
-    } catch { setError("No se pudo conectar con el servidor"); }
+    } catch (err) { setError(textoExcepcion(err)); }
     finally { setGuardando(false); }
   };
 

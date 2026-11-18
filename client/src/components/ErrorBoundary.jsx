@@ -49,7 +49,7 @@ export default class ErrorBoundary extends Component {
         <img src="/assets/img/logo.png" alt="PTP" style={{ height: "56px", objectFit: "contain" }} />
         <div className="text-center">
           <p className="text-white font-black text-[16px]">Algo salió mal</p>
-          <p className="text-white/40 text-[12px] mt-1">Ocurrió un error inesperado en la aplicación.</p>
+          <p className="text-white/40 text-[12px] mt-1">Ocurrió un error inesperado en esta pantalla. Tus datos guardados no se perdieron: vuelve al inicio e inténtalo de nuevo. Si se repite, avisa a Soporte Técnico.</p>
         </div>
         <button
           onClick={() => { this.setState({ error: null }); window.location.href = "/login"; }}

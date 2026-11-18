@@ -28,7 +28,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Minus, Trash2, Package, AlertCircle, CheckCircle2, Search, Tag, Ticket, ChevronDown, Clock, XCircle, X, History, Inbox, Eye } from "lucide-react";
-import { apiFetch, API_ROUTES } from '../../services/api-client.js';
+import { apiFetch, API_ROUTES, textoError, textoExcepcion } from '../../services/api-client.js';
 import { useCardStyles } from '../../components/Card.jsx';
 import ModalDetalleInsumo from '../../components/Inventario/ModalDetalleInsumo.jsx';
 import FiltrosToolbar from '../../components/FiltrosToolbar.jsx';
@@ -42,6 +42,7 @@ import {
 
 import { FS } from '../../utils/tipografia.js';
 import LogoModal from '../../components/LogoModal.jsx';
+import { fechaCorta } from '../../utils/fechas.js';
 const PRIORITY_OPTIONS = [
   { value: "Urgente", label: "Urgente", color: "#dc2626", bg: "rgba(220,38,38,0.10)", border: "rgba(220,38,38,0.30)" },
   { value: "Alta",    label: "Alta",    color: "#ea580c", bg: "rgba(234,88,12,0.10)",  border: "rgba(234,88,12,0.30)"  },
@@ -272,10 +273,10 @@ function ModalResultado({ resultModal, cartEntries, T, onClose }) {
         }}>
           <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: resultModal.success ? "#16a34a" : "#dc2626" }}>
-              {resultModal.success ? "Solicitud" : "Error"}
+              {resultModal.success ? "Solicitud" : "No se envió"}
             </p>
             <h2 style={{ margin: "3px 0 0", fontSize: FS.subtitulo, fontWeight: 700, color: T.text, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
-              {resultModal.success ? "Solicitud creada" : "Error al crear"}
+              {resultModal.success ? "Solicitud creada" : "Tu solicitud no se pudo crear"}
             </h2>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
@@ -541,9 +542,9 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
     setIsSubmitting(true);
     try {
       const res  = await apiFetch(API_ROUTES.SOLICITUDES, { method: "POST", body: payload });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        const errorMsg = data.errores ? data.errores.map(e => e.mensaje).join(", ") : (data.error || "Error al crear el ticket");
+        const errorMsg = textoError(data, res.status, "No se pudo crear la solicitud. Revisa los datos e inténtalo de nuevo.");
         // Si es error de stock, refrescar catálogo y quitar del carrito los
         // insumos que ya no aparecen (agotados). El cliente ya no conoce el
         // stock: la cantidad exacta la revalida el backend al enviar.
@@ -572,8 +573,8 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
       setRequestCart({});
       setPriority("");
       setJustification("");
-    } catch {
-      setResultModal({ success: false, message: "No se pudo conectar con el servidor" });
+    } catch (err) {
+      setResultModal({ success: false, message: textoExcepcion(err) });
     } finally {
       setIsSubmitting(false);
     }
@@ -584,12 +585,12 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   const PCOLOR_SOL        = { Urgente: "#dc2626", Alta: "#ea580c", Media: "#ca8a04", Baja: "#16a34a" };
   const ESTATUS_COLOR_SOL = { "En proceso": "#d97706", Aceptado: "#16a34a", Rechazado: "#dc2626", Entregado: "#0d9488", Anulada: "#64748b" };
   const ESTATUS_BG_SOL    = { "En proceso": T.isDark ? "rgba(217,119,6,0.13)" : "#fef3c7", Aceptado: T.isDark ? "rgba(22,163,74,0.13)" : "#dcfce7", Rechazado: T.isDark ? "rgba(220,38,38,0.13)" : "#fee2e2", Entregado: T.isDark ? "rgba(13,148,136,0.13)" : "#ccfbf1", Anulada: T.isDark ? "rgba(100,116,139,0.15)" : "#f1f5f9" };
-  const fmtSol = d => d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
+  const fmtSol = d => fechaCorta(d);
   const camposFiltroSol = [
     { key: "busqueda",  label: "Búsqueda Rápida", type: "search", placeholder: "Folio...", debounce: 300 },
     { key: "estatus",   label: "Estatus",         type: "select", opts: ["Todos", "En proceso", "Aceptado", "Rechazado"] },
     { key: "prioridad", label: "Prioridad",        type: "select", opts: ["Todos", "Urgente", "Alta", "Media", "Baja"] },
-    { key: "origen",    label: "Origen",           type: "select", opts: [{ value: "Todos", label: "Todos" }, { value: "interno", label: "Salidas internas" }, { value: "sistema", label: "Salidas de sistema" }] },
+    { key: "origen",    label: "Origen",           type: "select", opts: [{ value: "Todos", label: "Todos" }, { value: "interno", label: "Entregas directas de Soporte" }, { value: "sistema", label: "Solicitudes hechas en el sistema" }] },
   ];
 
   // La lista mezcla mis solicitudes (SOL-) y las salidas manuales hechas a
@@ -727,7 +728,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
                       <div className="w-1 h-2.5 rounded-full" style={{ background: tasaColorSol }} />
-                      <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Tasa Aceptación</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: T.textMuted }}>Solicitudes aceptadas</p>
                     </div>
                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                       style={{ background: `${tasaColorSol}15`, color: tasaColorSol, border: `1px solid ${tasaColorSol}30` }}>
@@ -872,7 +873,8 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                 {solicitudes.length === 0
                   ? <div className="flex flex-col items-center justify-center py-8 gap-2">
                       <Inbox size={20} style={{ color: T.textFaint }} />
-                      <p className="text-[11px] font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "No hay solicitudes"}</p>
+                      <p className="text-[11px] font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "Aún no tienes solicitudes"}</p>
+                      <p className="text-[10px] text-center px-4" style={{ color: T.textFaint }}>{hayFiltrosSol ? "Prueba quitando o cambiando los filtros." : "Para pedir material usa «Nueva Solicitud»; aquí verás si fue aceptada."}</p>
                     </div>
                   : solicitudes.map(s => (
                     <div key={s.id_solicitud ?? s.id_salida}
@@ -919,7 +921,8 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                       ? <tr><td colSpan={7}>
                           <div className="flex flex-col items-center justify-center py-12 gap-2">
                             <Inbox size={22} style={{ color: T.textFaint }} />
-                            <p className="text-[11px] font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "No hay solicitudes registradas"}</p>
+                            <p className="text-[11px] font-bold" style={{ color: T.textMuted }}>{hayFiltrosSol ? "Sin resultados" : "Aún no tienes solicitudes"}</p>
+                            <p className="text-[10px] text-center px-4" style={{ color: T.textFaint }}>{hayFiltrosSol ? "Prueba quitando o cambiando los filtros." : "Para pedir material usa «Nueva Solicitud»; aquí verás si fue aceptada."}</p>
                           </div>
                         </td></tr>
                       : solicitudes.map((s, i) => {

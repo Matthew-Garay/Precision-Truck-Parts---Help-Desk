@@ -85,7 +85,7 @@ const uploadEvidenciasRaw = multer({
   storage,
   fileFilter: (_req, file, cb) => {
     if (MIMETYPES_PERMITIDOS.has(file.mimetype)) cb(null, true);
-    else cb(new Error("Solo se permiten imágenes (JPEG/PNG/WebP/GIF) o videos (MP4/WebM/MOV/AVI)"));
+    else cb(Object.assign(new Error(`"${file.originalname}" no se puede adjuntar: solo se permiten fotos (JPG, PNG, WebP, GIF) o videos (MP4, WebM, MOV, AVI).`), { status: 400 }));
   },
   limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB para videos
 });

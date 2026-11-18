@@ -37,13 +37,14 @@
  */
 import { useState, useEffect } from "react";
 import { User } from "lucide-react";
-import { apiFetch } from '../services/api-client.js';
+import { apiFetch, textoExcepcion } from '../services/api-client.js';
 import { emailCorporativoValido, DOMINIOS_PERMITIDOS } from '../utils/email.js';
 import { evaluarPassword, passwordSeguro } from '../utils/password.js';
 import { EyeBtn, usePerfilStyles, generarPDFAccesos } from './PerfilShared.jsx';
 
 import { FS } from '../utils/tipografia.js';
 import LogoModal from './LogoModal.jsx';
+import { fechaHora } from '../utils/fechas.js';
 export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActualizado, rol = "Usuario" }) {
   const isDark = T.isDark;
   const { card, hdr, inp } = usePerfilStyles(T, isDark);
@@ -52,9 +53,8 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
   const [apPaterno,  setApPaterno]  = useState(usuario.ap_paterno || "");
   const [apMaterno,  setApMaterno]  = useState(usuario.ap_materno || "");
   const [email,      setEmail]      = useState(usuario.email      || "");
-  const [passActual, setPassActual] = useState(() => {
-    try { return sessionStorage.getItem("_pwd") || ""; } catch { return ""; }
-  });
+  // La contraseña actual la escribe el usuario; nunca se guarda en el navegador.
+  const [passActual, setPassActual] = useState("");
   const [passNueva,  setPassNueva]  = useState("");
   const [passConf,   setPassConf]   = useState("");
   const [showNueva, setShowNueva] = useState(false);
@@ -110,9 +110,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
   const durPromedio = duraciones.length > 0 ? Math.round(duraciones.reduce((s, d) => s + d, 0) / duraciones.length) : 0;
   const durMax      = duraciones.length > 0 ? Math.max(...duraciones) : 0;
   const fmtMin      = m => m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${m % 60}m`;
-  const fmtDT       = d => d
-    ? `${new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" })} ${new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`
-    : "-";
+  const fmtDT       = d => fechaHora(d);
 
   useEffect(() => {
     if (!usuario?.id_empleado) return;
@@ -144,6 +142,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
   }, [usuario?.id_empleado]);
 
   const guardar = async () => {
+    if (passNueva && !passActual) return setMsg({ tipo: "err", texto: "Escribe tu contraseña actual para poder cambiarla" });
     if (passNueva && passNueva !== passConf) return setMsg({ tipo: "err", texto: "Las contraseñas no coinciden" });
     // Misma política que valida el backend (8 caracteres, mayúscula, número y símbolo)
     const passErr = passwordSeguro(passNueva);
@@ -160,17 +159,13 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
       if (!res.ok) { setMsg({ tipo: "err", texto: data.error || "Error al guardar" }); return; }
       setMsg({ tipo: "ok", texto: "Datos actualizados correctamente" });
       setEmailEditado(false);
-      if (passNueva) {
-        sessionStorage.setItem("_pwd", passNueva);
-        setPassActual(passNueva);
-      }
-      setPassNueva(""); setPassConf("");
+      setPassActual(""); setPassNueva(""); setPassConf("");
       setTimeout(() => setMsg(null), 4000);
       const u = JSON.parse(sessionStorage.getItem("usuario") || "{}");
       const actualizado = { ...u, ...data.usuario };
       sessionStorage.setItem("usuario", JSON.stringify(actualizado));
       onUsuarioActualizado?.(actualizado);
-    } catch { setMsg({ tipo: "err", texto: "Error de conexión" }); }
+    } catch (err) { setMsg({ tipo: "err", texto: textoExcepcion(err) }); }
     finally { setLoading(false); }
   };
 
@@ -262,6 +257,22 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
 
           {/* Body */}
           <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: "14px" }}>
+
+            {/* Contraseña actual: se pide para confirmar que es el dueño de la cuenta */}
+            <div style={{ display: "grid", gridTemplateColumns: "14px 140px 1fr", alignItems: "baseline", gap: "10px", padding: "8px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}` }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isDark ? "rgba(255,255,255,0.22)" : "#c0c9d6"} strokeWidth="2" style={{ marginTop: "1px" }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span style={{ fontSize: FS.etiqueta, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0" }}>Contraseña actual</span>
+              <div style={{ position: "relative" }}>
+                <input
+                  style={{ ...inp, paddingRight: "36px", fontSize: FS.subtitulo, color: T.text, WebkitTextFillColor: T.text, caretColor: T.text }}
+                  type={showActual ? "text" : "password"} value={passActual} onChange={e => setPassActual(e.target.value)}
+                  autoComplete="current-password" placeholder="Solo si vas a cambiarla"
+                  onFocus={e => e.target.style.borderColor = "#F47920"}
+                  onBlur={e => e.target.style.borderColor = T.border}
+                />
+                <EyeBtn show={showActual} onToggle={() => setShowActual(s => !s)} textFaint={T.textFaint} />
+              </div>
+            </div>
 
             {/* Nueva Contraseña */}
             <div style={{ display: "grid", gridTemplateColumns: "14px 140px 1fr", alignItems: "baseline", gap: "10px", padding: "8px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}` }}>

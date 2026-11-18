@@ -36,6 +36,7 @@ import { useAutoRefresh } from '../../hooks/use-auto-refresh.js';
 
 import { FS } from '../../utils/tipografia.js';
 import LogoModal from '../../components/LogoModal.jsx';
+import { fechaCorta } from '../../utils/fechas.js';
 const BRAND = "#F47920";
 
 // ── Categorías ────────────────────────────────────────────────────
@@ -136,7 +137,7 @@ function CardManual({ m, T, onVer }) {
   const isDark = T.isDark;
   const pdfUrl = `${API}${m.url}`;
   const fecha  = m.fecha_cambio
-    ? new Date(m.fecha_cambio).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
+    ? fechaCorta(m.fecha_cambio)
     : null;
   const ck  = getCatKey(m.nombre_categoria);
   const def = CAT_MAP[ck];

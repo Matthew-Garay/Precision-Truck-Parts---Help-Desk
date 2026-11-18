@@ -23,6 +23,7 @@ import { apiFetch, API_ROUTES } from '../../services/api-client.js';
 import { useCardStyles } from '../../components/Card.jsx';
 import { abrirReporteLista } from '../print/PrintReportePage.tsx';
 import ModalReporte from '../../components/ModalReporte.jsx';
+import { fechaCorta } from '../../utils/fechas.js';
 
 function Estrellas({ n, isDark }) {
   return (
@@ -124,7 +125,7 @@ export default function RendimientoTecnicos({ T }) {
     if (!datos.length) return;
     setGenerando(true);
     setModalPDF(false);
-    const fmtDate = d => new Date(d + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+    const fmtDate = d => fechaCorta(d);
     const periodo = fecha_inicio && fecha_fin
       ? `${fmtDate(fecha_inicio)} – ${fmtDate(fecha_fin)}`
       : "Todo el historial";

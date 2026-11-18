@@ -76,9 +76,8 @@ function getAhoraHermosillo() {
   const opts = { timeZone: "America/Hermosillo" };
 
   const weekday = new Intl.DateTimeFormat("es-MX", { ...opts, weekday: "long" }).format(now);
-  const day     = new Intl.DateTimeFormat("es-MX", { ...opts, day: "numeric" }).format(now);
-  const month   = new Intl.DateTimeFormat("es-MX", { ...opts, month: "long" }).format(now);
-  const year    = new Intl.DateTimeFormat("es-MX", { ...opts, year: "numeric" }).format(now);
+  // Fecha como día/mes/año (formato único del sistema): "17/11/2026".
+  const fecha   = new Intl.DateTimeFormat("es-MX", { ...opts, day: "2-digit", month: "2-digit", year: "numeric" }).format(now);
 
   const h24  = parseInt(new Intl.DateTimeFormat("es-MX", { ...opts, hour: "numeric", hour12: false }).format(now), 10);
   const min  = new Intl.DateTimeFormat("es-MX", { ...opts, minute: "2-digit" }).format(now).padStart(2, "0");
@@ -86,7 +85,7 @@ function getAhoraHermosillo() {
   const ampm = h24 < 12 ? "a.m." : "p.m.";
 
   const diaCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-  return `${diaCap}, ${day} de ${month} de ${year} a las ${h12}:${min} ${ampm}`;
+  return `${diaCap} ${fecha} a las ${h12}:${min} ${ampm}`;
 }
 
 // ── Configuración del transporte ──────────────────────────────────────

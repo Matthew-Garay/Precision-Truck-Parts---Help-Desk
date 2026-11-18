@@ -109,6 +109,10 @@ export const setToken   = (t) => { _token = t; if (t) localStorage.setItem("_tk"
 export const clearToken = () => { _token = null; localStorage.removeItem("_tk"); };
 
 // Limpia toda la sesión y redirige al login
+// Versiones anteriores guardaban la contraseña en texto plano en "_pwd".
+// Se borra en cuanto carga la app para no dejarla en el navegador.
+try { sessionStorage.removeItem("_pwd"); } catch { /* sin acceso a storage */ }
+
 export function clearSession() {
   _token = null;
   localStorage.removeItem("_tk");
@@ -117,6 +121,50 @@ export function clearSession() {
   sessionStorage.removeItem("pwd_actual");
   window.location.replace("/login");
 }
+
+// ── Mensajes de error entendibles para el usuario ─────────────────────────
+export const MSG_SIN_CONEXION =
+  "No hay conexión con el sistema. Revisa que tu equipo tenga red e inténtalo de nuevo.";
+
+const MSG_POR_ESTATUS = {
+  401: "Tu sesión terminó. Vuelve a iniciar sesión.",
+  403: "No tienes permiso para hacer esta acción.",
+  404: "No se encontró lo que buscas; puede que ya no exista.",
+  413: "Los archivos son demasiado pesados. Quita algunos o usa archivos más ligeros.",
+  429: "Hiciste demasiados intentos seguidos. Espera unos minutos e inténtalo de nuevo.",
+};
+const MSG_FALLA_SISTEMA =
+  "Ocurrió un problema en el sistema. Inténtalo de nuevo; si continúa, avisa a Soporte Técnico.";
+
+/** Mensajes técnicos del servidor que no le dicen nada al usuario. */
+const esTecnico = (m) => /^(error (del servidor|interno)|error interno del servidor|internal server error|ruta no encontrada)/i.test(String(m || "").trim());
+
+/**
+ * Convierte la respuesta de error de la API en un texto claro para el usuario.
+ *   - Usa los mensajes de validación del servidor (errores[].mensaje) o `error`
+ *     cuando son entendibles.
+ *   - Si no hay mensaje útil, explica según el código HTTP.
+ * @param {object|null} data      cuerpo JSON de la respuesta (o null)
+ * @param {number}      [status]  código HTTP
+ * @param {string}      [respaldo] texto si no se sabe qué pasó
+ */
+export function textoError(data, status, respaldo = MSG_FALLA_SISTEMA) {
+  const validacion = Array.isArray(data?.errores) && data.errores.length
+    ? data.errores.map(e => e?.mensaje).filter(Boolean).join(". ")
+    : "";
+  if (validacion) return validacion;
+  const msg = typeof data?.error === "string" ? data.error : typeof data?.mensaje === "string" ? data.mensaje : "";
+  if (msg && !esTecnico(msg)) return msg;
+  if (MSG_POR_ESTATUS[status]) return MSG_POR_ESTATUS[status];
+  if (status >= 500) return MSG_FALLA_SISTEMA;
+  return respaldo;
+}
+
+/** Texto para un error atrapado en catch (sin conexión, etc.). */
+export const textoExcepcion = (err, respaldo = MSG_FALLA_SISTEMA) =>
+  err?.message && !esTecnico(err.message) && !/failed to fetch|networkerror|load failed/i.test(err.message)
+    ? err.message
+    : (/failed to fetch|networkerror|load failed/i.test(err?.message || "") ? MSG_SIN_CONEXION : respaldo);
 
 export async function apiFetch(endpoint, options = {}) {
   // endpoint debe ser un string que empiece con /api/ — validacion defensiva
@@ -140,13 +188,20 @@ export async function apiFetch(endpoint, options = {}) {
 
   // La URL final se construye concatenando la base fija con el endpoint validado
   const url = API_BASE + endpoint;
-  const res = await fetch(url, {
-    ...options,
-    headers,
-    body: options.body && typeof options.body === "object" && !(options.body instanceof FormData)
-      ? JSON.stringify(options.body)
-      : options.body,
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers,
+      body: options.body && typeof options.body === "object" && !(options.body instanceof FormData)
+        ? JSON.stringify(options.body)
+        : options.body,
+    });
+  } catch (err) {
+    if (err?.name === "AbortError") throw err;
+    // El navegador solo dice "Failed to fetch" (en inglés): se traduce a algo útil.
+    throw new Error(MSG_SIN_CONEXION);
+  }
 
   if (res.status === 401) {
     clearSession();

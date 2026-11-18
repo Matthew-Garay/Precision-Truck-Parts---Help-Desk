@@ -83,6 +83,17 @@ const PALETTE = {
     badge: { bg: { light: "#f0fdf4", dark: "rgba(22,163,74,0.12)" }, text: "#16a34a", border: "rgba(22,163,74,0.28)", label: "Resuelto" },
     line:  { light: "#e2e8f0", dark: "rgba(255,255,255,0.07)" },
   },
+  // Cerrado SIN solución (No Resuelto): rojo, para no confundirlo con "Resuelto".
+  "final-fallido": {
+    dot:   { bg: { light: "#fee2e2", dark: "rgba(220,38,38,0.14)" }, border: "#dc2626", color: "#dc2626" },
+    badge: { bg: { light: "#fef2f2", dark: "rgba(220,38,38,0.12)" }, text: "#dc2626", border: "rgba(220,38,38,0.28)", label: "No resuelto" },
+    line:  { light: "#e2e8f0", dark: "rgba(255,255,255,0.07)" },
+  },
+  "final-cancelado": {
+    dot:   { bg: { light: "#f1f5f9", dark: "rgba(148,163,184,0.14)" }, border: "#64748b", color: "#64748b" },
+    badge: { bg: { light: "#f1f5f9", dark: "rgba(148,163,184,0.12)" }, text: "#64748b", border: "rgba(100,116,139,0.28)", label: "Cancelado" },
+    line:  { light: "#e2e8f0", dark: "rgba(255,255,255,0.07)" },
+  },
   pending: {
     dot:   { bg: { light: "#f8fafc", dark: "rgba(255,255,255,0.04)" }, border: { light: "#e2e8f0", dark: "rgba(255,255,255,0.10)" }, color: { light: "#cbd5e1", dark: "rgba(255,255,255,0.20)" } },
     badge: { bg: { light: "#f8fafc", dark: "rgba(255,255,255,0.05)" }, text: { light: "#94a3b8", dark: "rgba(255,255,255,0.30)" }, border: { light: "#e2e8f0", dark: "rgba(255,255,255,0.08)" }, label: "Pendiente" },
@@ -103,6 +114,14 @@ function getPalKey(state, isLast) {
 }
 
 function DotIcon({ palKey, index }) {
+  if (palKey === "final-fallido" || palKey === "final-cancelado") {
+    return (
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+      </svg>
+    );
+  }
   if (palKey === "done" || palKey === "done-final" || palKey === "active-final") {
     return (
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
@@ -122,15 +141,33 @@ function DotIcon({ palKey, index }) {
   return <span style={{ fontSize: FS.etiqueta, fontWeight: 800, lineHeight: 1 }}>{index + 1}</span>;
 }
 
-export default function ProgressTimeline({ T, pasoActual = 0, metadata = {} }) {
+/**
+ * Textos según el estatus real, para que el usuario no lea algo que no pasó:
+ *  - mientras nadie toma el ticket, el paso 2 dice "Esperando técnico";
+ *  - "No Resuelto" y "Cancelado" terminan en rojo / gris, no en "Resuelto".
+ */
+function ajustarPaso(paso, i, pasoActual, estatus) {
+  if (paso.id === "tecnico_asignado" && pasoActual === 1 && estatus === "En proceso")
+    return { ...paso, label: "Esperando técnico", desc: "Tu reporte está en la fila de Soporte Técnico; en cuanto un técnico lo tome verás su nombre aquí" };
+  if (paso.id === "resuelto" && estatus === "No Resuelto")
+    return { ...paso, label: "Cerrado sin solución", desc: "El reporte se cerró sin resolverse" };
+  if (paso.id === "resuelto" && estatus === "Cancelado")
+    return { ...paso, label: "Cancelado", desc: "El reporte se canceló y ya no se atenderá" };
+  return paso;
+}
+
+export default function ProgressTimeline({ T, pasoActual = 0, metadata = {}, estatus = null }) {
   const { isDark } = T;
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      {PASOS.map((paso, i) => {
+      {PASOS.map((pasoBase, i) => {
+        const paso    = ajustarPaso(pasoBase, i, pasoActual, estatus);
         const isLast  = i === PASOS.length - 1;
         const state   = i < pasoActual ? "done" : i === pasoActual ? "active" : "pending";
-        const palKey  = getPalKey(state, isLast);
+        const palKey  = isLast && state === "active" && estatus === "No Resuelto" ? "final-fallido"
+                      : isLast && state === "active" && estatus === "Cancelado"   ? "final-cancelado"
+                      : getPalKey(state, isLast);
         const pal     = PALETTE[palKey];
         const meta    = paso.getMeta(metadata, pasoActual);
         const isPending = state === "pending";
