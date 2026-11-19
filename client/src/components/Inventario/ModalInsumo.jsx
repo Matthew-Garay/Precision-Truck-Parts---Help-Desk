@@ -22,7 +22,7 @@ const ORANGE      = "#F47920";
 const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo", "Dañado"];
 
 const INSUMO_VACIO = {
-  num_serie: "", nombre: "", descripcion: "", marca: "",
+  num_serie: "", etiqueta: "", nombre: "", descripcion: "", marca: "",
   modelo: "", stock: 0, estado: "Bueno", id_categoria: "", imagen_url: "", visible_publico: 1,
 };
 
@@ -95,7 +95,6 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   /* Modal width: ancho responsivo para mejor visualización de datos */
-  const modalWidth = isDark ? "min(90vw, 800px)" : "min(90vw, 700px)";
 
   /* Tokens */
   const surface    = isDark ? "#161B22" : "#ffffff";
@@ -152,6 +151,7 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
 
       const payload = {
         num_serie:    form.num_serie   || "",
+        etiqueta:     (form.etiqueta || "").trim() || null,
         nombre:       form.nombre.trim(),
         descripcion:  form.descripcion || null,
         marca:        form.marca       || "",
@@ -376,12 +376,19 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
               </Field>
             </div>
 
-            {/* N.º de serie */}
-            <Field style={{ gridColumn: "1 / -1" }} htmlFor="fi-serie" label="N.º de serie" textFaint={textFaint}>
-              <input id="fi-serie" type="text" value={form.num_serie}
-                onChange={e => set("num_serie", e.target.value)}
-                placeholder="Ej. SN-00421" style={inp} onFocus={onFocus} onBlur={onBlur} />
-            </Field>
+            {/* N.º de serie + Etiqueta */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", gridColumn: "1 / -1" }}>
+              <Field htmlFor="fi-serie" label="N.º de serie" textFaint={textFaint}>
+                <input id="fi-serie" type="text" value={form.num_serie}
+                  onChange={e => set("num_serie", e.target.value)}
+                  placeholder="Ej. SN-00421" style={inp} onFocus={onFocus} onBlur={onBlur} />
+              </Field>
+              <Field htmlFor="fi-etiqueta" label="Etiqueta" textFaint={textFaint}>
+                <input id="fi-etiqueta" type="text" value={form.etiqueta ?? ""} maxLength={50}
+                  onChange={e => set("etiqueta", e.target.value)}
+                  placeholder="Ej. INV-0042" style={inp} onFocus={onFocus} onBlur={onBlur} />
+              </Field>
+            </div>
 
             {/* Stock + Categoría */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>

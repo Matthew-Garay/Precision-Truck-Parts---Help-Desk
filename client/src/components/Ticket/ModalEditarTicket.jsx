@@ -63,7 +63,6 @@ export function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuar
   const onFI = e => { e.target.style.borderColor=T.orange; e.target.style.boxShadow="0 0 0 3px rgba(244,121,32,0.1)"; };
   const onBI = e => { e.target.style.borderColor=isDark?"rgba(255,255,255,0.12)":T.border; e.target.style.boxShadow="none"; };
   const dividerLine = isDark?"rgba(255,255,255,0.08)":T.border;
-  const iconColor   = isDark?"rgba(255,255,255,0.22)":"#94a3b8";
 
   const fmt = (cmd) => {
     const el = editorRef.current; if (!el) return;
@@ -150,8 +149,6 @@ export function ModalEditarTicket({ T, ticket, esAdmin = false, onCerrar, onGuar
         const dataCierre = await resCierre.json();
         if (!resCierre.ok) { setError(textoError(dataCierre, resCierre.status, "No se pudo cerrar el ticket.")); return; }
       }
-
-      const data = dataEditar;
 
       // 2. Eliminar evidencias marcadas
       for (const nombre of eliminarEv) {

@@ -108,11 +108,12 @@ export async function exportarExcel(datos) {
     { width: 16 }, // H: Disponibilidad
     { width: 10 }, // I: Stock
     { width: 42 }, // J: Descripción
+    { width: 16 }, // K: Etiqueta
   ];
 
   // ── Fila 1: barra de color corporativo ───────────────────────
   ws.getRow(1).height = 6;
-  ws.mergeCells("A1:J1");
+  ws.mergeCells("A1:K1");
   ws.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL_X } };
 
   // ── Fila 2: logo + título ─────────────────────────────────────
@@ -124,7 +125,7 @@ export async function exportarExcel(datos) {
   titleCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
   titleCell.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: WHITE } };
 
-  ws.mergeCells("G2:J2");
+  ws.mergeCells("G2:K2");
   ws.getCell("G2").fill = { type: "pattern", pattern: "solid", fgColor: { argb: WHITE } };
   try {
     const logoRaw = await urlToBase64("/assets/img/log.png");
@@ -148,7 +149,7 @@ export async function exportarExcel(datos) {
 
   // Folio en G3
   const folioDoc = `INV-${ahora.getFullYear()}${String(ahora.getMonth()+1).padStart(2,"0")}-${String(ahora.getDate()).padStart(2,"0")}`;
-  ws.mergeCells("G3:J3");
+  ws.mergeCells("G3:K3");
   const fechaCell = ws.getCell("G3");
   fechaCell.value = `Folio: ${folioDoc}   ·   Generado: ${fecha}`;
   fechaCell.font  = { name: "Calibri", size: 8, color: { argb: GRAY600 } };
@@ -157,11 +158,11 @@ export async function exportarExcel(datos) {
 
   // ── Fila 4: línea divisoria navy ──────────────────────────────
   ws.getRow(4).height = 4;
-  ws.mergeCells("A4:J4");
+  ws.mergeCells("A4:K4");
   ws.getCell("A4").fill = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL_X } };
 
   // ── Fila 5: encabezados ───────────────────────────────────────
-  const headers = ["Imagen", "Nombre", "Marca", "Modelo", "N° Serie", "Categoría", "Estado", "Disponibilidad", "Stock", "Descripción"];
+  const headers = ["Imagen", "Nombre", "Marca", "Modelo", "N° Serie", "Categoría", "Estado", "Disponibilidad", "Stock", "Descripción", "Etiqueta"];
   const headerRow = ws.addRow(headers); // fila 5
   headerRow.height = 22;
   headerRow.eachCell((cell, colNum) => {
@@ -194,6 +195,7 @@ export async function exportarExcel(datos) {
       i.disponibilidad || "",      // H
       i.stock ?? 0,                // I
       i.descripcion || "",         // J
+      i.etiqueta || "",            // K
     ]);
     row.height = IMG_ROW_H;
 
@@ -237,7 +239,7 @@ export async function exportarExcel(datos) {
   // ── Fila de totales ───────────────────────────────────────────
   const totalStock = datos.reduce((s, i) => s + (i.stock ?? 0), 0);
   const totalRow = ws.addRow([
-    "", `Total: ${datos.length} registros`, "", "", "", "", "", "", totalStock, "",
+    "", `Total: ${datos.length} registros`, "", "", "", "", "", "", totalStock, "", "",
   ]);
   totalRow.height = 20;
   totalRow.eachCell({ includeEmpty: true }, (cell, colNum) => {

@@ -71,5 +71,7 @@ export function useAutoRefresh(fn, intervaloMs = 30000, deps = []) {
       detener();
       document.removeEventListener("visibilitychange", handleVisibility);
     };
+  // `deps` son las dependencias que pasa quien usa el hook (lista variable a propósito).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ejecutar, iniciar, detener, intervaloMs, ...deps]);
 }

@@ -100,6 +100,8 @@ Ver la última ejecución: `Get-ScheduledTask HelpDesk-Respaldo | Get-ScheduledT
 Todo `console.error` / `console.warn` del servidor se guarda además en `logs/errores-AAAA-MM-DD.log`
 (un archivo por día, en la raíz del proyecto; se borran solos los de más de 30 días). Ver `server/utils/logger.js`.
 
+Manual para la persona que opera el sistema sin ser programador: [manual-operacion.md](manual-operacion.md).
+
 ## Pruebas automáticas
 
 ```bash
@@ -110,12 +112,17 @@ Corren contra una base **aparte** (`precision_helpdesk_test`), que se borra y re
 en cada corrida; nunca tocan la base real (se niegan a correr si el nombre no termina en `_test`).
 Cubren folios, stock (salidas, entradas, rollback, anulación, kardex, stock bajo, consumo), el borrado lógico
 de empleados y la mesa de ayuda (crear ticket, permisos, asignar técnico, resolver, no reabrir, historial,
-calificar, cancelar, editar y cierre automático de vencidos). Están en `server/tests/`.
+calificar, cancelar, editar y cierre automático de vencidos), solicitudes de insumos, corrección de fecha de salidas,
+indicadores mensuales y el cambio de contraseña/correo del perfil. Están en `server/tests/`.
+
+Las del cliente (`client/tests/`, con Vitest y Testing Library) revisan formato de fechas, mensajes de error,
+cierre de sesión por inactividad, la línea de avance del ticket y los componentes separados de las pantallas.
+`npm test` corre ambas; por separado: `npm run test:server` y `npm run test:client`.
 
 ## Revisión de código (ESLint)
 
 ```bash
-npm run lint        # revisa server/ y client/src/
+npm run lint        # revisa server/, client/src/ y client/tests/
 npm run lint:fix    # corrige solo lo que se puede corregir automáticamente
 ```
 
@@ -126,7 +133,10 @@ mal llamados) deben quedar en 0 antes de subir cambios; los **avisos** (variable
 ## Migraciones
 
 Los cambios de esquema van en `database/migraciones/NNN_descripcion.sql` y se reflejan también en
-`database/schema.sql`. Aplicadas: `001_anular_salida.sql`, `002_empleado_eliminado.sql`.
+`database/schema.sql`. Aplicadas: `001_anular_salida.sql`, `002_empleado_eliminado.sql`, `003_salida_cambios.sql` (historial de correcciones de fecha de salidas), `004_insumo_etiqueta.sql` (columna etiqueta del insumo), `005_integridad_fase1.sql` (reglas CHECK/UNIQUE, índices y disparador del kardex).
+
+Para aplicar una migración sin el cliente `mysql`: `npm run migrar -- database/migraciones/NNN_….sql` (entiende `DELIMITER`;
+añade `--base otra_base` para ensayar antes en una copia). Haz `npm run respaldar` antes. Propuesta de normalización: [normalizacion-bd.md](normalizacion-bd.md).
 
 Verificacion periodica: revisar que la carpeta del dia tenga `base_datos.sql` con tamano creciente y `storage/` completo.
 

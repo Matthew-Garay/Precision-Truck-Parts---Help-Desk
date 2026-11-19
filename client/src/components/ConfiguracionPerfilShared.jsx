@@ -44,7 +44,7 @@ import { EyeBtn, usePerfilStyles, generarPDFAccesos } from './PerfilShared.jsx';
 
 import { FS } from '../utils/tipografia.js';
 import LogoModal from './LogoModal.jsx';
-import { fechaHora } from '../utils/fechas.js';
+import { fechaHora, isoLocal } from '../utils/fechas.js';
 export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActualizado, rol = "Usuario" }) {
   const isDark = T.isDark;
   const { card, hdr, inp } = usePerfilStyles(T, isDark);
@@ -82,6 +82,8 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
     setApMaterno(usuario.ap_materno || "");
     setEmail(usuario.email         || "");
     setEmailEditado(false);
+  // Solo al cambiar de usuario: no pisar lo que se está editando.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario.id_empleado]);
 
   const esAdmin = rol === "Administrador";
@@ -139,10 +141,17 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
     cargar();
     const id = setInterval(cargar, 30000);
     return () => clearInterval(id);
+  // emailEditado se lee en cada recarga; no debe reiniciar el intervalo.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario?.id_empleado]);
+
+  // El servidor pide la contraseña actual si el correo cambia.
+  const correoGuardado = (perfil?.email || usuario.email || "").trim().toLowerCase();
+  const cambiaCorreo   = email.trim().toLowerCase() !== correoGuardado;
 
   const guardar = async () => {
     if (passNueva && !passActual) return setMsg({ tipo: "err", texto: "Escribe tu contraseña actual para poder cambiarla" });
+    if (cambiaCorreo && !passActual) return setMsg({ tipo: "err", texto: "Para cambiar tu correo escribe tu contraseña actual (abajo, en \"Contraseña actual\")" });
     if (passNueva && passNueva !== passConf) return setMsg({ tipo: "err", texto: "Las contraseñas no coinciden" });
     // Misma política que valida el backend (8 caracteres, mayúscula, número y símbolo)
     const passErr = passwordSeguro(passNueva);
@@ -228,6 +237,11 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
               <span className="text-[10px] leading-tight" style={{ color: T.textFaint }}>
                 Dominios permitidos: {DOMINIOS_PERMITIDOS.map(d => `@${d}`).join(", ")}
               </span>
+              {cambiaCorreo && (
+                <span className="text-[11px] leading-tight font-semibold" style={{ color: "#F47920" }}>
+                  Para guardar el nuevo correo escribe tu contraseña actual abajo.
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -266,7 +280,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
                 <input
                   style={{ ...inp, paddingRight: "36px", fontSize: FS.subtitulo, color: T.text, WebkitTextFillColor: T.text, caretColor: T.text }}
                   type={showActual ? "text" : "password"} value={passActual} onChange={e => setPassActual(e.target.value)}
-                  autoComplete="current-password" placeholder="Solo si vas a cambiarla"
+                  autoComplete="current-password" placeholder="Solo si cambias tu correo o contraseña"
                   onFocus={e => e.target.style.borderColor = "#F47920"}
                   onBlur={e => e.target.style.borderColor = T.border}
                 />
@@ -598,14 +612,16 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
             </button>
             <button
               onClick={() => {
-                const accesosFiltrados = accesos.filter(a => {
-                  if (!a.fecha_entrada) return true;
-                  const d = new Date(a.fecha_entrada);
-                  if (anioFiltro !== "Todos" && d.getFullYear().toString() !== anioFiltro) return false;
-                  if (mesFiltro  !== "Todos" && MESES_NOMBRE[d.getMonth()] !== mesFiltro)  return false;
-                  return true;
-                });
-                generarPDFAccesos({ usuario, fechaInicio: rptDesde || undefined, fechaFin: rptHasta || undefined });
+                // Sin rango Desde/Hasta se usa el Año/Mes elegido (antes se ignoraba
+                // y el PDF salía con todo el historial).
+                let desde = rptDesde, hasta = rptHasta;
+                if (!desde && !hasta && anioFiltro !== "Todos") {
+                  const a = Number(anioFiltro);
+                  const m = MESES_NOMBRE.indexOf(mesFiltro);
+                  desde = isoLocal(new Date(a, m >= 0 ? m : 0, 1));
+                  hasta = isoLocal(m >= 0 ? new Date(a, m + 1, 0) : new Date(a, 11, 31));
+                }
+                generarPDFAccesos({ usuario, fechaInicio: desde || undefined, fechaFin: hasta || undefined });
                 setModalReporte(false); setRptDesde(""); setRptHasta(""); setMesFiltro("Todos"); setAnioFiltro("Todos");
               }}
               style={{

@@ -27,7 +27,7 @@
  * @exports SolicitudInsumo (default)
  */
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, Minus, Trash2, Package, AlertCircle, CheckCircle2, Search, Tag, Ticket, ChevronDown, Clock, XCircle, X, History, Inbox, Eye } from "lucide-react";
+import { Plus, Package, AlertCircle, Search, Ticket, ChevronDown, X, History, Inbox, Eye } from "lucide-react";
 import { apiFetch, API_ROUTES, textoError, textoExcepcion } from '../../services/api-client.js';
 import { useCardStyles } from '../../components/Card.jsx';
 import ModalDetalleInsumo from '../../components/Inventario/ModalDetalleInsumo.jsx';
@@ -39,362 +39,18 @@ import {
   agruparSalidas, coincideFiltrosSalida, abrirHojaSalida,
   traerSalidasMiSucursal, traerSolicitudesEmpleado,
 } from '../../services/salidas-historial.js';
-
 import { FS } from '../../utils/tipografia.js';
 import LogoModal from '../../components/LogoModal.jsx';
 import { fechaCorta } from '../../utils/fechas.js';
+import { RequestItem, SupplyRow } from '../../components/Insumos/CarritoInsumos.jsx';
+import { ModalResultado } from '../../components/Insumos/ModalResultadoSolicitud.jsx';
+
 const PRIORITY_OPTIONS = [
   { value: "Urgente", label: "Urgente", color: "#dc2626", bg: "rgba(220,38,38,0.10)", border: "rgba(220,38,38,0.30)" },
   { value: "Alta",    label: "Alta",    color: "#ea580c", bg: "rgba(234,88,12,0.10)",  border: "rgba(234,88,12,0.30)"  },
   { value: "Media",   label: "Media",   color: "#d97706", bg: "rgba(217,119,6,0.10)",  border: "rgba(217,119,6,0.30)"  },
   { value: "Baja",    label: "Baja",    color: "#6b7280", bg: "rgba(107,114,128,0.08)",border: "rgba(107,114,128,0.25)"},
 ];
-
-function SupplyRow({ supply, isAdded, onAdd, animatingId, T, onDetail }) {
-  const isAnimating = animatingId === supply.id_insumo;
-
-  return (
-    <tr style={{
-      borderBottom: `1px solid ${T.border}`,
-      background: isAdded ? (T.isDark ? "rgba(37,99,235,0.08)" : "rgba(37,99,235,0.04)") : "transparent",
-      transition: "background 0.15s",
-    }}
-      onMouseEnter={e => { if (!isAdded) e.currentTarget.style.background = T.surfaceHover; }}
-      onMouseLeave={e => { e.currentTarget.style.background = isAdded ? (T.isDark ? "rgba(37,99,235,0.08)" : "rgba(37,99,235,0.04)") : "transparent"; }}
-    >
-      <td className="px-2 py-1.5">
-        <div style={{ width: 32, height: 32, borderRadius: 6, overflow: "hidden",
-            background: T.isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9",
-            border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          {supply.imagen_url
-            ? <img src={supply.imagen_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            : <Package size={12} style={{ color: T.textFaint }} />}
-        </div>
-      </td>
-      <td className="px-3 py-1.5">
-        <div className="flex flex-col gap-0">
-          <span className="text-[9px] font-mono select-all" style={{ color: T.textFaint }}>
-            #{String(supply.id_insumo).padStart(4, "0")}
-          </span>
-          <button
-            onClick={() => onDetail(supply)}
-            className="text-[10px] font-semibold leading-tight text-left hover:underline"
-            style={{ color: T.text, background: "none", border: "none", padding: 0, cursor: "pointer" }}
-          >
-            {supply.nombre}
-          </button>
-          {(supply.marca || supply.modelo) && (
-            <span className="text-[9px]" style={{ color: T.textFaint }}>
-              {[supply.marca, supply.modelo].filter(Boolean).join(" · ")}
-            </span>
-          )}
-        </div>
-      </td>
-
-      <td className="px-3 py-1.5 pr-col-categoria">
-        {supply.nombre_categoria ? (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold"
-            style={{ background: T.surfaceAlt, color: T.textMuted, border: `1px solid ${T.border}` }}>
-            <Tag size={8} />
-            {supply.nombre_categoria}
-          </span>
-        ) : (
-          <span className="text-[9px]" style={{ color: T.textFaint }}>—</span>
-        )}
-      </td>
-
-      <td className="px-3 py-1.5">
-        {isAdded ? (
-          <button onClick={() => onAdd(supply.id_insumo)}
-            className="px-2.5 py-1 rounded text-[9px] font-bold transition-colors"
-            style={{ background: T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.3)" }}>
-            + Agregar otro
-          </button>
-        ) : (
-          <button onClick={() => onAdd(supply.id_insumo)}
-            className={`px-2.5 py-1 rounded text-[9px] font-bold transition-all active:scale-95 ${isAnimating ? "animate-slide-out" : ""}`}
-            style={{ background: "#2563eb", color: "#fff", border: "none" }}>
-            <span className="flex items-center gap-1"><Plus size={11} /> Agregar</span>
-          </button>
-        )}
-      </td>
-    </tr>
-  );
-}
-
-function RequestItem({ supply, quantity, onRemove, onChangeQty, esUltimo = false, T }) {
-  const [localVal, setLocalVal] = useState(String(quantity));
-  const editing = useRef(false);
-
-  // Solo sincronizar desde afuera cuando el usuario NO está escribiendo (botones +/-)
-  useEffect(() => {
-    if (!editing.current) setLocalVal(String(quantity));
-  }, [quantity]);
-
-  const commit = () => {
-    editing.current = false;
-    // Mínimo 1 pieza: si se escribe 0 o algo inválido, vuelve a la cantidad actual.
-    const n = parseInt(localVal, 10);
-    if (!isNaN(n) && n >= 1) onChangeQty(supply.id_insumo, n);
-    else setLocalVal(String(quantity));
-  };
-
-  return (
-    <div className="flex items-center gap-2 py-2 px-3 last:border-0 animate-slide-in"
-      style={{ borderBottom: `1px solid ${T.border}` }}>
-      <div className="w-7 h-7 rounded flex items-center justify-center flex-shrink-0"
-        style={{ background: T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff", border: "1px solid rgba(59,130,246,0.2)", overflow: "hidden" }}>
-        {supply.imagen_url
-          ? <img src={supply.imagen_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          : <Package size={12} style={{ color: "#3b82f6" }} />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-semibold truncate leading-tight" style={{ color: T.text }}>{supply.nombre}</p>
-        <p className="text-[9px] font-mono" style={{ color: T.textFaint }}>
-          #{String(supply.id_insumo).padStart(4, "0")}
-        </p>
-      </div>
-      {/* Controles de cantidad — siempre entre 1 y el máximo (el stock lo valida el backend) */}
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <button onClick={() => onChangeQty(supply.id_insumo, quantity - 1)}
-          disabled={quantity <= 1}
-          title={quantity <= 1 ? "Debe quedar al menos 1 pieza" : "Quitar una pieza"}
-          className="w-5 h-5 rounded flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          style={{ background: T.isDark ? "rgba(255,255,255,0.06)" : T.surfaceAlt, border: `1px solid ${T.border}`, color: T.textMuted }}>
-          <Minus size={9} />
-        </button>
-        <input
-          type="text"
-          inputMode="numeric"
-          value={localVal}
-          onChange={e => { editing.current = true; setLocalVal(e.target.value.replace(/[^0-9]/g, "")); }}
-          onBlur={commit}
-          onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
-          className="text-[10px] font-black text-center rounded outline-none"
-          style={{ width: "28px", background: T.surfaceAlt, border: `1px solid ${T.border}`, color: T.text, padding: "1px 2px" }}
-        />
-        <button onClick={() => onChangeQty(supply.id_insumo, quantity + 1)}
-          title="Agregar una pieza"
-          className="w-5 h-5 rounded flex items-center justify-center transition-colors"
-          style={{ background: T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff", border: "1px solid rgba(59,130,246,0.3)", color: "#3b82f6" }}>
-          <Plus size={9} />
-        </button>
-      </div>
-      <button onClick={() => onRemove(supply.id_insumo)}
-        disabled={esUltimo}
-        title={esUltimo ? "Debe quedar al menos un insumo en la solicitud" : "Quitar de la solicitud"}
-        className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-        style={{ background: T.isDark ? "rgba(239,68,68,0.12)" : "#fef2f2", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}
-        onMouseEnter={e => { if (esUltimo) return; e.currentTarget.style.background = T.isDark ? "rgba(239,68,68,0.25)" : "#fee2e2"; e.currentTarget.style.color = "#dc2626"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = T.isDark ? "rgba(239,68,68,0.12)" : "#fef2f2"; e.currentTarget.style.color = "#f87171"; }}>
-        <Trash2 size={10} />
-      </button>
-    </div>
-  );
-}
-
-const ESTATUS_META = {
-  "En proceso":  { color: "#d97706", bg: "rgba(217,119,6,0.12)",  border: "rgba(217,119,6,0.3)",  icon: Clock        },
-  "Aceptado":    { color: "#16a34a", bg: "rgba(22,163,74,0.12)",  border: "rgba(22,163,74,0.3)",  icon: CheckCircle2 },
-  "Rechazado":   { color: "#dc2626", bg: "rgba(220,38,38,0.12)",  border: "rgba(220,38,38,0.3)",  icon: XCircle      },
-};
-
-function BadgeEstatus({ estatus }) {
-  const s = ESTATUS_META[estatus] || ESTATUS_META["Pendiente"];
-  const Icon = s.icon;
-  return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold"
-      style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
-      <Icon size={9} className={estatus === "En proceso" ? "animate-spin" : ""} />
-      {estatus || "Pendiente"}
-    </span>
-  );
-}
-
-function ModalResultado({ resultModal, cartEntries, T, onClose }) {
-  const isDark = T?.isDark ?? false;
-  const surface    = isDark ? "#161B22" : "#ffffff";
-  const surfaceAlt = isDark ? "#1a2030" : "#f8fafc";
-  const border     = isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0";
-
-  useEffect(() => {
-    const fn = (e) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", fn);
-    return () => document.removeEventListener("keydown", fn);
-  }, [onClose]);
-
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, []);
-
-  return (
-    <div
-      role="presentation"
-      style={{
-        position: "fixed", inset: 0, zIndex: 1000,
-        background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.40)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "16px",
-        animation: "dmFade 0.15s ease",
-      }}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <style>{`
-        @keyframes dmFade  { from{opacity:0} to{opacity:1} }
-        @keyframes dmSlide { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
-      `}</style>
-      <div
-        role="dialog"
-        aria-modal="true"
-        style={{
-          width: "95%", maxWidth: "440px",
-          background: surface,
-          border: `1px solid ${border}`,
-          borderRadius: "10px",
-          display: "flex", flexDirection: "column",
-          maxHeight: "90vh", overflow: "hidden",
-          boxShadow: isDark
-            ? "0 16px 40px rgba(0,0,0,0.50), 0 1px 0 rgba(255,255,255,0.04) inset"
-            : "0 16px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
-          animation: "dmSlide 0.18s ease",
-        }}
-      >
-        {/* Banda acento */}
-        <div style={{ height: "2px", flexShrink: 0, background: resultModal.success ? "#16a34a" : "#dc2626", borderRadius: "10px 10px 0 0" }} />
-
-        {/* Header */}
-        <div style={{
-          padding: "14px 18px 12px",
-          borderBottom: `1px solid ${border}`,
-          display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-          gap: "12px", flexShrink: 0,
-        }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: 0, fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: resultModal.success ? "#16a34a" : "#dc2626" }}>
-              {resultModal.success ? "Solicitud" : "No se envió"}
-            </p>
-            <h2 style={{ margin: "3px 0 0", fontSize: FS.subtitulo, fontWeight: 700, color: T.text, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
-              {resultModal.success ? "Solicitud creada" : "Tu solicitud no se pudo crear"}
-            </h2>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, paddingTop: "2px" }}>
-            <LogoModal />
-            <button
-              onClick={onClose}
-              style={{ width: "26px", height: "26px", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${border}`, borderRadius: "6px", cursor: "pointer", color: T.textFaint, transition: "all 0.12s" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = T.textMuted; e.currentTarget.style.color = T.text; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = T.textFaint; }}
-            >
-              <X size={12} strokeWidth={2} />
-            </button>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px", display: "flex", flexDirection: "column", gap: "14px" }}>
-          {resultModal.success ? (
-            <>
-              {/* Folio + mensaje */}
-              <div className="flex items-center gap-3 p-3 rounded-xl"
-                style={{ background: isDark ? "rgba(22,163,74,0.10)" : "#f0fdf4", border: "1px solid rgba(22,163,74,0.25)" }}>
-                <CheckCircle2 size={20} style={{ color: "#16a34a", flexShrink: 0 }} />
-                <div>
-                  <p style={{ margin: 0, fontSize: FS.secundario, fontWeight: 700, color: "#16a34a" }}>Registrada correctamente</p>
-                  <p style={{ margin: "2px 0 0", fontSize: FS.enfasis, fontWeight: 800, fontFamily: "monospace", color: T.orange }}>#{resultModal.folio}</p>
-                </div>
-              </div>
-
-              {/* Detalle de insumos */}
-              {cartEntries.length > 0 && (
-                <div>
-                  <p style={{ margin: "0 0 8px", fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted }}>
-                    Insumos solicitados ({cartEntries.length})
-                  </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                    {cartEntries.map(({ supply, quantity, id }) => (
-                      <div key={id} className="flex items-center gap-3 px-3 py-2 rounded-lg"
-                        style={{ background: surfaceAlt, border: `1px solid ${border}` }}>
-                        {/* Imagen o icono */}
-                        <div style={{
-                          width: "36px", height: "36px", borderRadius: "8px", flexShrink: 0,
-                          background: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9",
-                          border: `1px solid ${border}`,
-                          overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
-                          {supply.imagen_url
-                            ? <img src={supply.imagen_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                            : <Package size={14} style={{ color: T.textFaint }} />
-                          }
-                        </div>
-                        {/* Info */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: FS.cuerpo, fontWeight: 600, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {supply.nombre}
-                          </p>
-                          {(supply.marca || supply.modelo) && (
-                            <p style={{ margin: "1px 0 0", fontSize: FS.etiqueta, color: T.textFaint }}>
-                              {[supply.marca, supply.modelo].filter(Boolean).join(" · ")}
-                            </p>
-                          )}
-                        </div>
-                        {/* Cantidad */}
-                        <span style={{
-                          flexShrink: 0, fontSize: FS.cuerpo, fontWeight: 800,
-                          padding: "2px 10px", borderRadius: "99px",
-                          background: isDark ? "rgba(37,99,235,0.15)" : "#eff6ff",
-                          color: "#3b82f6", border: "1px solid rgba(59,130,246,0.25)",
-                        }}>
-                          ×{quantity}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <p style={{ margin: 0, fontSize: FS.secundario, color: T.textFaint, lineHeight: 1.5 }}>
-                El equipo revisará tu solicitud y te notificará cuando sea atendida.
-              </p>
-            </>
-          ) : (
-            <div className="flex items-start gap-3 p-3 rounded-xl"
-              style={{ background: isDark ? "rgba(220,38,38,0.10)" : "#fef2f2", border: "1px solid rgba(220,38,38,0.25)" }}>
-              <AlertCircle size={16} style={{ color: "#dc2626", flexShrink: 0, marginTop: "1px" }} />
-              <p style={{ margin: 0, fontSize: FS.enfasis, color: T.text, lineHeight: 1.5 }}>{resultModal.message}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div style={{
-          padding: "10px 18px",
-          borderTop: `1px solid ${border}`,
-          background: surfaceAlt,
-          display: "flex", justifyContent: "flex-end",
-          flexShrink: 0,
-        }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding: "6px 20px", borderRadius: "6px",
-              fontSize: FS.cuerpo, fontWeight: 700,
-              background: resultModal.success ? "#2563eb" : "transparent",
-              border: resultModal.success ? "none" : `1px solid ${border}`,
-              color: resultModal.success ? "#fff" : T.textMuted,
-              cursor: "pointer", transition: "all 0.12s",
-            }}
-            onMouseEnter={e => { if (!resultModal.success) { e.currentTarget.style.borderColor = T.textMuted; e.currentTarget.style.color = T.text; } else { e.currentTarget.style.opacity = "0.88"; } }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = "1"; if (!resultModal.success) { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = T.textMuted; } }}
-          >
-            {resultModal.success ? "Ver solicitud" : "Cerrar"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   const [supplies,        setSupplies]        = useState([]);
@@ -437,7 +93,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
   const [insumoDetalle,   setInsumoDetalle]   = useState(null);
   const [solicitudes,     setSolicitudes]     = useState([]);
   const [solPage,         setSolPage]         = useState(1);
-  const [solPages,        setSolPages]        = useState(1);
+  const [,                setSolPages]        = useState(1);
   const [solLimit,        setSolLimit]        = useState(25);
   const [solTotal,        setSolTotal]        = useState(0);
   const [filtrosSol,      setFiltrosSol]      = useState({ busqueda: "", estatus: "Todos", prioridad: "Todos", origen: "Todos" });
@@ -516,7 +172,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
     // se quedaba sin nada que enviar.
     const n = Math.max(1, parseInt(newQty, 10) || 1);
     setRequestCart(prev => ({ ...prev, [supplyId]: n }));
-  }, [supplies]);
+  }, []);
 
   const cartEntries = Object.entries(requestCart)
     .map(([id, qty]) => ({ supply: supplies.find(s => s.id_insumo === parseInt(id)), quantity: qty, id }))

@@ -118,6 +118,7 @@ export function clearSession() {
   localStorage.removeItem("_tk");
   localStorage.removeItem("usuario");
   localStorage.removeItem("id_acceso");
+  localStorage.removeItem("_ultima_actividad");
   sessionStorage.removeItem("pwd_actual");
   window.location.replace("/login");
 }

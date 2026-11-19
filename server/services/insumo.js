@@ -57,7 +57,7 @@ const Insumo = {
     if (tieneVisiblePublico) whereClauses.push("i.visible_publico = 1");
     const whereSql = whereClauses.length > 0 ? "WHERE " + whereClauses.join(" AND ") : "";
     const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS nombre_categoria, ${SQL_DISPONIBILIDAD("i")} AS disponibilidad FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria ${whereSql} ORDER BY i.nombre ASC`
+      `SELECT i.id_insumo, i.num_serie, i.etiqueta, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS nombre_categoria, ${SQL_DISPONIBILIDAD("i")} AS disponibilidad FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria ${whereSql} ORDER BY i.nombre ASC`
     );
     const result = rows || [];
     cache.set(cacheKey, result, TTL_INSUMOS);
@@ -74,7 +74,7 @@ const Insumo = {
     if (tieneActivo) whereClauses.push("i.activo = 1");
     if (tieneVisiblePublico) whereClauses.push("i.visible_publico = 1");
     const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS nombre_categoria, ${SQL_DISPONIBILIDAD("i")} AS disponibilidad FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria WHERE ${whereClauses.join(" AND ")} ORDER BY i.nombre ASC`
+      `SELECT i.id_insumo, i.num_serie, i.etiqueta, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS nombre_categoria, ${SQL_DISPONIBILIDAD("i")} AS disponibilidad FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria WHERE ${whereClauses.join(" AND ")} ORDER BY i.nombre ASC`
     );
     const result = rows || [];
     cache.set(cacheKey, result, TTL_INSUMOS);
@@ -85,7 +85,7 @@ const Insumo = {
   getStockBajo: async () => {
     const tieneActivo = await Insumo._tieneActivoCheck();
     const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.nombre, i.marca, i.modelo, i.stock, i.imagen_url,
+      `SELECT i.id_insumo, i.nombre, i.etiqueta, i.marca, i.modelo, i.stock, i.imagen_url,
               ${SQL_DISPONIBILIDAD("i")} AS disponibilidad
          FROM insumo i
         WHERE i.stock <= ? ${tieneActivo ? "AND i.activo = 1" : ""}
@@ -100,13 +100,13 @@ const Insumo = {
   // Tambien se guardan num_serie, marca, modelo e imagen, que antes se perdian.
   crear: async (data, conn = null) => {
     const { num_serie, nombre, id_categoria, descripcion, marca, modelo, stock,
-            imagen_url, activo, visible_publico, estado } = data;
+            imagen_url, activo, visible_publico, estado, etiqueta } = data;
     const db = conn || pool;
     const [result] = await db.query(
-      `INSERT INTO insumo (num_serie, nombre, id_categoria, descripcion, marca, modelo, stock,
+      `INSERT INTO insumo (num_serie, etiqueta, nombre, id_categoria, descripcion, marca, modelo, stock,
                            imagen_url, activo, visible_publico, estado, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-      [num_serie ?? "N/A", nombre, id_categoria, descripcion ?? "N/A", marca ?? "N/A", modelo ?? "N/A",
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [num_serie ?? "N/A", etiqueta || null, nombre, id_categoria, descripcion ?? "N/A", marca ?? "N/A", modelo ?? "N/A",
        stock ?? 0, imagen_url ?? null,
        activo !== undefined ? activo : 1, visible_publico !== undefined ? visible_publico : 1,
        estado !== undefined ? estado : 'Excelente']
@@ -127,6 +127,11 @@ const Insumo = {
         sets.push(`\`${campo}\` = ?`);
         values.push(data[campo]);
       }
+    }
+    // La etiqueta se puede BORRAR (vacía → NULL); los demás campos ignoran null.
+    if (data.etiqueta !== undefined) {
+      sets.push("`etiqueta` = ?");
+      values.push(data.etiqueta ? String(data.etiqueta).trim() || null : null);
     }
     if (sets.length === 0) return false;
     sets.push("`updated_at` = NOW()");

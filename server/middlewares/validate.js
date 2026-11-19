@@ -524,8 +524,12 @@ const textoNA = (max) =>
     .transform(v => (v ? v : "N/A"))
     .default("N/A");
 
+// Etiqueta física del insumo: opcional; vacía se guarda como NULL (no "N/A").
+const textoEtiqueta = z.string().trim().max(50, "La etiqueta no puede pasar de 50 caracteres").nullable().optional();
+
 export const schemaInsumo = z.object({
   num_serie:    textoNA(100),
+  etiqueta:     textoEtiqueta,
   nombre:       z.string().trim().min(1, "Nombre requerido").max(150),
   descripcion:  textoNA(1000),
   marca:        textoNA(100),
@@ -547,6 +551,7 @@ export const schemaInsumo = z.object({
 // Todos los campos son opcionales: solo se actualizan los que se envían.
 export const schemaActualizarInsumo = z.object({
   num_serie:    textoNA(100).optional(),
+  etiqueta:     textoEtiqueta,
   nombre:       z.string().trim().min(1, "Nombre requerido").max(150).optional(),
   descripcion:  textoNA(1000).optional(),
   marca:        textoNA(100).optional(),

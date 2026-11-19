@@ -179,7 +179,8 @@ io.on("connection", async (socket) => {
   try {
     const stockEnviadoHoy = getStockEnviadoHoy();
     if (!stockEnviadoHoy) return;
-    const hoy = new Date().toISOString().slice(0, 10);
+    // Fecha LOCAL (toISOString es UTC: después de las 5 p.m. ya era "mañana" y la alerta se repetía).
+    const hoy = new Date().toLocaleDateString("en-CA");
     if (stockEnviadoHoy.get(id_empleado) === hoy) return;
 
     const [criticos] = await pool.query(

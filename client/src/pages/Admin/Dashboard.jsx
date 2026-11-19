@@ -37,8 +37,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Users, Package, FileText, BookOpen, Settings,
-  LogOut, Menu, X, Sun, Moon, ClipboardList, TrendingUp
+  LogOut, Menu, X, Sun, Moon, ClipboardList, TrendingUp, BarChart3
 } from "lucide-react";
+import { hoyISO } from '../../utils/fechas.js';
 import VistaTicket from './VistaTicket.jsx';
 import VistaSolicitud from './VistaSolicitud.jsx';
 import HistorialIncidencias from './HistorialIncidencias.jsx';
@@ -125,6 +126,16 @@ function DashboardContent({ T, usuario, tickets = [], solicitudes = [], metricas
   return (
     <div className="flex flex-col" style={{ background: T.bg, height: "100%", overflowY: "auto" }}>
       <div className="flex-shrink-0" style={{ padding: "var(--content-pt) var(--content-px) 0" }}>
+        <div className="flex justify-end mb-1.5">
+          {/* Reporte imprimible para dirección (ventana pequeña, como los demás reportes) */}
+          <button
+            onClick={() => window.open(`/print/indicadores?mes=${hoyISO().slice(0, 7)}`, "_blank", "width=1200,height=800")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 active:scale-95"
+            style={{ background: "rgba(244,121,32,0.10)", color: T.orange, border: "1px solid rgba(244,121,32,0.25)" }}
+            title="Tickets, tiempos, meta de 2 días y consumo de insumos del mes, listo para imprimir">
+            <BarChart3 size={13} /> Reporte mensual para dirección
+          </button>
+        </div>
         <SeccionMetricas T={T} metricas={metricas} />
         <SeccionEstadisticas T={T} tickets={tickets} solicitudes={solicitudes} />
       </div>

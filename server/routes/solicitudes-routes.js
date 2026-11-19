@@ -64,7 +64,7 @@ import {
   eliminarInsumo, cambiarActivoInsumo, cambiarVisiblePublico, getInsumosForUser, subirFotoInsumo,
 } from '../controllers/insumos-controller.js';
 import {
-  registrarEntradaInsumo, editarEntrada, registrarSalidaInsumo, anularSalida,
+  registrarEntradaInsumo, editarEntrada, registrarSalidaInsumo, anularSalida, corregirFechaSalida, getCambiosSalida,
   getMovimientosInventario, getMovimientosInsumo, getSalidasMiSucursal, getReporteConsumo,
 } from '../controllers/inventario-controller.js';
 import { uploadInsumo } from '../middlewares/upload-insumos.js';
@@ -99,6 +99,9 @@ router.patch("/insumos/:id/visible-publico",  requireAdmin, cambiarVisiblePublic
 router.post("/salidas", requireAdmin, validate(schemaSalidaInsumo), registrarSalidaInsumo);
 // Anular una salida interna: regresa el stock y la marca como Anulada
 router.post("/salidas/:id/anular", requireAdmin, anularSalida);
+// Corregir la fecha de una salida (queda en el historial salida_cambio)
+router.put("/salidas/:id/fecha", requireAdmin, corregirFechaSalida);
+router.get("/salidas/:id/cambios", requireAdmin, getCambiosSalida);
 // Reporte de consumo: insumos más usados, por área y por mes
 router.get("/consumo", requireAdmin, getReporteConsumo);
 // Entrada de material al inventario — suma stock y deja el movimiento

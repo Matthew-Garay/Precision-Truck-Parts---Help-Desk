@@ -30,6 +30,7 @@ if (!/_test$/.test(process.env.DB_NAME))
 
 await import("../load-env.js");
 const mysql = (await import("mysql2/promise")).default;
+const { sentencias } = await import("../scripts/aplicar-migracion.js");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA = path.resolve(__dirname, "../../database/schema.sql");
@@ -62,8 +63,12 @@ export async function prepararBD() {
       .replace(/CREATE DATABASE IF NOT EXISTS `precision_helpdesk`/g, `CREATE DATABASE IF NOT EXISTS \`${DB}\``)
       .replace(/USE `precision_helpdesk`;/g, `USE \`${DB}\`;`);
     await conn.query(`DROP DATABASE IF EXISTS \`${DB}\``);
-    await conn.query(sql);
+    // El disparador viene en un bloque DELIMITER (sintaxis del cliente mysql):
+    // las tablas van de un jalón y el disparador como sentencia aparte.
+    const corte = sql.search(/^DELIMITER /m);
+    await conn.query(corte >= 0 ? sql.slice(0, corte) : sql);
     await conn.query(`USE \`${DB}\``);
+    if (corte >= 0) for (const s of sentencias(sql.slice(corte))) await conn.query(s);
 
     await conn.query(`
       INSERT INTO rol (id_rol, nombre_rol) VALUES (1, 'Administrador'), (2, 'Usuario');

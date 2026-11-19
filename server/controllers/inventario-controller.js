@@ -35,7 +35,7 @@ export const registrarEntradaInsumo = async (req, res) => {
   if (!Number.isFinite(id_insumo) || id_insumo <= 0)
     return res.status(400).json({ error: "ID de insumo inválido" });
 
-  const { cantidad, motivo, id_solicitud, fecha } = req.body;
+  const { cantidad, motivo, fecha } = req.body;
   const idAdmin = req.usuario?.id_empleado ?? null;
 
   // Fecha manual opcional (YYYY-MM-DD o con hora). Si no se envía, la columna
@@ -607,6 +607,128 @@ export const anularSalida = async (req, res) => {
   Insumo.limpiarCache();
   try { getIO().to("admins").emit("inventario:movimiento", { tipo: "Anulacion", ...resultado }); } catch { /* sin socket */ }
   res.json({ ok: true, ...resultado });
+};
+
+/**
+ * corregirFechaSalida
+ * PUT /api/solicitudes/salidas/:id/fecha   (solo admin)
+ * Body: { fecha: "AAAA-MM-DD" | "AAAA-MM-DDTHH:MM", motivo }
+ *
+ * Corrige la fecha física de una salida interna capturada mal, sin tocar la
+ * base de datos a mano. Cambia la fecha de la cabecera y de sus renglones de
+ * inventario (para que el historial y el reporte de consumo cuadren) y deja
+ * el cambio en `salida_cambio` con valor anterior/nuevo, motivo y quién.
+ *
+ * Reglas:
+ *   - La salida no debe estar anulada (409).
+ *   - La nueva fecha no puede ser futura.
+ *   - Debe quedar en el MISMO mes del folio (SAL-AAAAMM-…): el consecutivo es
+ *     por mes. Para cambiar de mes se anula y se captura de nuevo.
+ *   - Si solo se manda el día, se conserva la hora original.
+ */
+export const corregirFechaSalida = async (req, res) => {
+  const id = toPosId(req.params.id);
+  const motivo = String(req.body?.motivo ?? "").trim();
+  const f = String(req.body?.fecha ?? "").trim();
+  if (!id) return res.status(400).json({ error: "Salida inválida" });
+  const m = f.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?$/);
+  if (!m) return res.status(400).json({ error: "Escribe una fecha válida" });
+  if (motivo.length < 5)
+    return res.status(400).json({ error: "Escribe el motivo de la corrección (mínimo 5 caracteres)" });
+  if (motivo.length > 500)
+    return res.status(400).json({ error: "El motivo no puede pasar de 500 caracteres" });
+  const [, Y, M, D, hh, mm] = m;
+  const prueba = new Date(Number(Y), Number(M) - 1, Number(D));
+  if (prueba.getMonth() !== Number(M) - 1 || prueba.getDate() !== Number(D))
+    return res.status(400).json({ error: "Escribe una fecha válida" });
+  const idAdmin = req.usuario?.id_empleado ?? null;
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const dmy = (d) => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+
+  let resultado;
+  try {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      const [[sal]] = await conn.query(
+        "SELECT id_salida, folio_salida, fecha, estatus FROM salida_interna WHERE id_salida = ? FOR UPDATE", [id]
+      );
+      if (!sal) { await conn.rollback(); return res.status(404).json({ error: "Salida no encontrada" }); }
+      if (sal.estatus === "Anulada") {
+        await conn.rollback();
+        return res.status(409).json({ error: `La salida ${sal.folio_salida} está anulada; no se puede corregir` });
+      }
+      const fol = String(sal.folio_salida).match(/^SAL-(\d{4})(\d{2})-/);
+      if (fol && (fol[1] !== Y || fol[2] !== M)) {
+        await conn.rollback();
+        return res.status(400).json({
+          error: `El folio ${sal.folio_salida} es del mes ${fol[2]}/${fol[1]}: la fecha debe quedar en ese mes. ` +
+                 "Si la salida fue en otro mes, anúlala y captúrala de nuevo.",
+        });
+      }
+      const antes = new Date(sal.fecha);
+      const nueva = new Date(Number(Y), Number(M) - 1, Number(D),
+        hh != null ? Number(hh) : antes.getHours(),
+        mm != null ? Number(mm) : antes.getMinutes(),
+        hh != null ? 0 : antes.getSeconds());
+      if (nueva.getTime() > Date.now()) {
+        await conn.rollback();
+        return res.status(400).json({ error: "La fecha no puede ser futura" });
+      }
+      if (nueva.getTime() === antes.getTime()) {
+        await conn.rollback();
+        return res.status(400).json({ error: "La fecha es la misma que ya tiene la salida" });
+      }
+      const fechaMySQL = `${nueva.getFullYear()}-${pad2(nueva.getMonth() + 1)}-${pad2(nueva.getDate())} ` +
+                         `${pad2(nueva.getHours())}:${pad2(nueva.getMinutes())}:${pad2(nueva.getSeconds())}`;
+      await conn.query("UPDATE salida_interna SET fecha = ? WHERE id_salida = ?", [fechaMySQL, id]);
+      const [mov] = await conn.query(
+        "UPDATE movimiento_inventario SET fecha = ? WHERE id_salida = ? AND tipo = 'Salida'", [fechaMySQL, id]
+      );
+      const hora = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+      await conn.query(
+        `INSERT INTO salida_cambio (id_salida, campo, valor_anterior, valor_nuevo, motivo, id_empleado)
+         VALUES (?, 'fecha', ?, ?, ?, ?)`,
+        [id, `${dmy(antes)} ${hora(antes)}`, `${dmy(nueva)} ${hora(nueva)}`, motivo, idAdmin]
+      );
+      await conn.commit();
+      resultado = { folio: sal.folio_salida, id_salida: id, fecha_anterior: dmy(antes), fecha_nueva: dmy(nueva), renglones: mov.affectedRows };
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  } catch (err) {
+    console.error("[salidas] Error al corregir fecha:", err);
+    return res.status(500).json({ error: "Error al corregir la fecha de la salida", ...errDetalle(err) });
+  }
+  try { getIO().to("admins").emit("inventario:movimiento", { tipo: "Fecha corregida", ...resultado }); } catch { /* sin socket */ }
+  res.json({ ok: true, ...resultado });
+};
+
+/**
+ * getCambiosSalida
+ * GET /api/solicitudes/salidas/:id/cambios   (solo admin)
+ * Historial de correcciones de una salida (más reciente primero).
+ */
+export const getCambiosSalida = async (req, res) => {
+  const id = toPosId(req.params.id);
+  if (!id) return res.status(400).json({ error: "Salida inválida" });
+  try {
+    const [rows] = await pool.query(
+      `SELECT c.id_cambio, c.campo, c.valor_anterior, c.valor_nuevo, c.motivo, c.fecha,
+              TRIM(CONCAT_WS(' ', e.nombre, e.ap_paterno, e.ap_materno)) AS empleado
+         FROM salida_cambio c
+         LEFT JOIN empleado e ON e.id_empleado = c.id_empleado
+        WHERE c.id_salida = ?
+        ORDER BY c.fecha DESC, c.id_cambio DESC`,
+      [id]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Error al obtener el historial de la salida", ...errDetalle(err) });
+  }
 };
 
 /**

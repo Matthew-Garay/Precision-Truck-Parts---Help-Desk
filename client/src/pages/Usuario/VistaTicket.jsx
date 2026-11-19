@@ -92,6 +92,8 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
     setEstatus(ticket.estatus);
     setFechaResueltoState(ticket.fecha_resuelto || null);
     setResueltoporState(ticket.resuelto_por || null);
+  // Solo los campos que cambian desde fuera; el objeto `ticket` es nuevo en cada render del padre.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticket.id_ticket, ticket.calificacion, ticket.estatus, ticket.comentarios, ticket.resuelto_por]);
 
   const fmtFecha = (d) => fechaCorta(d);
@@ -257,8 +259,6 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
     background: T.surfaceAlt,
     borderBottom: `1px solid ${T.border}`,
   };
-  const labelStyle = { color: T.textFaint };
-  const valStyle   = { color: T.text };
 
   return (
     <div style={{

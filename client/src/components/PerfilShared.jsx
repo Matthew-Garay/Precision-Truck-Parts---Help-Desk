@@ -74,9 +74,7 @@ export function usePerfilStyles(T, isDark) {
 
 // -- Generador de PDF de accesos -------------------------------
 export function generarPDFAccesos({ usuario, fechaInicio, fechaFin }) {
-  const token = sessionStorage.getItem("_tk");
   const params = new URLSearchParams();
-  if (token)      params.set("token", token);
   if (fechaInicio) params.set("desde", fechaInicio);
   if (fechaFin)    params.set("hasta", fechaFin);
 

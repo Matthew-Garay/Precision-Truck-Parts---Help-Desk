@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "dompurify": "^3.4.11",
@@ -22,8 +23,12 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.7",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.3.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "jsdom": "^26.1.0",
     "tailwindcss": "^4.1.7",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4"
   }
 }

@@ -75,7 +75,6 @@ import { cache } from '../config/cache.js';
 
 const CACHE_TTL_METRICAS = 2 * 60 * 1000; // 2 minutos
 const CACHE_TTL_ADMINS   = 5 * 60 * 1000; // 5 minutos
-const CACHE_TTL_LISTA    = 1 * 60 * 1000; // 1 minuto para listados paginados
 
 const Ticket = {
   crear: async ({ titulo, descripcion, prioridad, id_empleado, id_categoria }) => {

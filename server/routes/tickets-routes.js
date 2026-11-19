@@ -43,7 +43,7 @@ import rateLimit       from "express-rate-limit";
 import { requireAuth, requireAdmin, requireOwnerOrAdmin } from '../middlewares/auth-middleware.js';
 import { csrfProtection } from '../middlewares/security.js';
 import { validate, validateQuery, schemaCrearTicket, schemaActualizarTicket, schemaCalificarTicket, schemaEditarTicket, schemaFiltrosTickets } from '../middlewares/validate.js';
-import { crearTicket, getTicketsByEmpleado, getImagenesTicket, agregarImagenesTicket, eliminarImagenTicket, getAllTickets, actualizarTicket, calificarTicket, editarTicketUsuario, getMetricas, getAdmins, getReporte, getTicketById, getTicketByFolio, cancelarTicket, getRendimientoTecnicos, getHistorialTicket } from '../controllers/tickets-controller.js';
+import { crearTicket, getTicketsByEmpleado, getImagenesTicket, agregarImagenesTicket, eliminarImagenTicket, getAllTickets, actualizarTicket, calificarTicket, editarTicketUsuario, getMetricas, getAdmins, getReporte, getTicketById, getTicketByFolio, cancelarTicket, getRendimientoTecnicos, getHistorialTicket, getIndicadoresMensuales } from '../controllers/tickets-controller.js';
 import { uploadEvidencias } from '../middlewares/upload-evidencias.js';
 
 const router = Router();
@@ -67,6 +67,7 @@ router.get("/metricas",    requireAdmin, getMetricas);
 router.get("/admins",     requireAdmin, getAdmins);
 router.get("/reporte",    requireAdmin, getReporte);
 router.get("/rendimiento", requireAdmin, getRendimientoTecnicos);
+router.get("/indicadores", requireAdmin, getIndicadoresMensuales);
 router.get("/",           requireAdmin, validateQuery(schemaFiltrosTickets), getAllTickets);
 router.patch("/:id_ticket", requireAdmin, validate(schemaActualizarTicket), actualizarTicket);
 

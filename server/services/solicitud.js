@@ -183,7 +183,7 @@ const Solicitud = {
               si.aprobado,
               si.descripcion AS justificacion,
               i.id_insumo, IFNULL(i.nombre,'[Insumo eliminado]') AS nombre,
-              i.marca, i.modelo, i.num_serie, IFNULL(i.stock,0) AS stock, i.estado,
+              i.marca, i.modelo, i.num_serie, i.etiqueta, IFNULL(i.stock,0) AS stock, i.estado,
               i.imagen_url, i.descripcion, i.id_categoria,
               c.nombre_categoria
        FROM solicitud_insumo si

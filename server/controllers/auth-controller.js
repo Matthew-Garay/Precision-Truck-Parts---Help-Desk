@@ -372,9 +372,18 @@ export const actualizarPerfil = async (req, res) => {
   try {
     const empleado = await Empleado.findById(idNum);
     if (!empleado) return res.status(404).json({ error: "Usuario no encontrado" });
-    if (password_nueva) {
+    // Cambiar el correo también exige la contraseña actual: con el correo se
+    // inicia sesión, así que quien encuentre una sesión abierta podría
+    // apropiarse de la cuenta cambiándolo.
+    const cambiaCorreo = email !== undefined &&
+      String(email).trim().toLowerCase() !== String(empleado.email ?? "").trim().toLowerCase();
+    if (password_nueva || cambiaCorreo) {
       if (!password_actual)
-        return res.status(400).json({ error: "La contraseña actual es requerida" });
+        return res.status(400).json({
+          error: cambiaCorreo && !password_nueva
+            ? "Para cambiar tu correo escribe tu contraseña actual"
+            : "La contraseña actual es requerida",
+        });
       // Usar findByIdConPassword solo cuando se necesita verificar el hash
       const empConPass = await Empleado.findByIdConPassword(idNum);
       const coincide = empConPass ? await bcrypt.compare(password_actual, empConPass.password) : false;

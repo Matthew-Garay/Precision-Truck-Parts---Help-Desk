@@ -131,6 +131,15 @@ export const crearSolicitud = async (req, res) => {
     if (!item.id_insumo || !item.cantidad || item.cantidad < 1)
       return res.status(400).json({ error: "Cada insumo debe tener id y cantidad válida" });
   }
+  // Un insumo va una sola vez por solicitud (la base lo exige con UNIQUE):
+  // si viene repetido se avisa en vez de fallar con error del sistema.
+  const vistos = new Set();
+  for (const item of insumos) {
+    const k = parseInt(item.id_insumo, 10);
+    if (vistos.has(k))
+      return res.status(400).json({ error: "Un insumo está repetido en la solicitud: junta las cantidades en un solo renglón" });
+    vistos.add(k);
+  }
   // Los inhabilitados no se pueden pedir ni en solicitudes ni en salidas.
   // Si la columna `activo` aún no existe (migración 027 pendiente), se omite.
   try {

@@ -142,7 +142,7 @@ export function KpiCard({ label, value, sub, icon: Icon, color, highlight = fals
 
 
 // ── Tabla ────────────────────────────────────────────────────────
-export const COLS = ["", "Nombre", "Categoría", "Estado", "Stock", "Acciones"];
+export const COLS = ["", "Nombre", "Etiqueta", "Categoría", "Estado", "Stock", "Acciones"];
 
 
 export function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHistorial, onGestionar }) {
@@ -161,8 +161,9 @@ export function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHis
     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: FS.cuerpo, tableLayout: "fixed", minWidth: "720px" }}>
       <colgroup>
         <col style={{ width: "40px" }} />
-        <col style={{ width: "30%" }} />
-        <col style={{ width: "16%" }} />
+        <col style={{ width: "26%" }} />
+        <col style={{ width: "11%" }} />
+        <col style={{ width: "14%" }} />
         <col style={{ width: "10%" }} />
         <col style={{ width: "10%" }} />
         <col style={{ width: "244px" }} />
@@ -215,6 +216,12 @@ export function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHis
                     )}
                   </div>
                 </div>
+              </td>
+              {/* Etiqueta física del insumo */}
+              <td style={{ ...td }} title={row.etiqueta || "Sin etiqueta"}>
+                <span style={{ fontSize: FS.etiqueta, fontFamily: "monospace", fontWeight: 700, color: row.etiqueta ? T.text : T.textFaint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+                  {row.etiqueta || "—"}
+                </span>
               </td>
               {/* Categoría */}
               <td style={{ ...td, overflow: "hidden" }}>

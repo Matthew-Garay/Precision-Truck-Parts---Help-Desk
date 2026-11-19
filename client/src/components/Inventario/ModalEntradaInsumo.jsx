@@ -55,7 +55,6 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
   const firstRef = useRef(null);
 
   const surface = isDark ? "#161B22" : "#ffffff";
-  const surfaceAlt = isDark ? "#1a2030" : "#f8fafc";
   const border = isDark ? "rgba(255,255,255,0.07)" : "#e8ecf0";
   const borderFocus = "var(--color-primary)";
   const textMain = T?.text ?? (isDark ? "#e2e8f0" : "#1a202c");

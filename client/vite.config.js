@@ -42,6 +42,12 @@ export default defineConfig({
     exclude: ['pdfjs-dist/build/pdf.worker.mjs'],
   },
   assetsInclude: ['**/*.wasm'],
+  // Pruebas de pantallas y utilidades del cliente (npm test -w client).
+  test: {
+    environment: 'jsdom',
+    include: ['tests/**/*.test.{js,jsx}'],
+    setupFiles: ['tests/setup.js'],
+  },
   build: {
     outDir: '../dist',
     emptyOutDir: true,

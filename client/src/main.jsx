@@ -70,10 +70,16 @@ const PrintInventarioPage = lazy(() => import('./pages/print/PrintInventarioPage
 const PrintHistorialPage  = lazy(() => import('./pages/print/PrintHistorialPage.jsx'))
 const PrintEntradasPage   = lazy(() => import('./pages/print/PrintEntradasPage.jsx'))
 const PrintSalidaPage     = lazy(() => import('./pages/print/PrintSalidaPage.jsx'))
+const PrintIndicadoresPage = lazy(() => import('./pages/print/PrintIndicadoresPage.jsx'))
 import { ToastProvider } from './components/Feedback.jsx'
 import { ThemeProvider } from './context/theme-provider.jsx'
 import { useTheme } from './context/theme-context.js'
 import { getUsuario, setUsuario, setIdAcceso } from './utils/session.js'
+import { limpiarSesionInactiva, useCierreInactividad, marcarActividad, MINUTOS_INACTIVIDAD } from './utils/inactividad.js'
+
+// Computadoras compartidas: si la sesión guardada lleva más de 30 min sin uso,
+// se descarta antes de pintar nada (el siguiente usuario ve el login).
+limpiarSesionInactiva()
 
 
 const useThemeCtx = useTheme
@@ -148,6 +154,16 @@ function App() {
     }, 1200)
   }
 
+  // Cierre por inactividad (30 min sin mouse/teclado en ninguna pestaña).
+  const { segundosRestantes, seguir } = useCierreInactividad(Boolean(getUsuario()), () => {
+    const idAcceso = localStorage.getItem('id_acceso')
+    if (idAcceso) {
+      apiFetch('/api/auth/logout', { method: 'POST', body: { id_acceso: parseInt(idAcceso) } }).catch(() => {})
+    }
+    try { sessionStorage.setItem('motivo_salida', 'inactividad') } catch { /* sin storage */ }
+    clearSession()
+  })
+
   // Con persistencia en localStorage el cierre de pestaña NO termina la sesión.
   // El logout solo ocurre de forma explícita (handleLogout) o por JWT expirado (401).
   // El worker de sesiones huérfanas en el backend cierra historial_acceso ≥ 12h sin salida.
@@ -171,12 +187,32 @@ function App() {
   if (saliendo) return <PantallaSalida />
 
   return (
+    <>
+    {segundosRestantes != null && (
+      <div role="alertdialog" aria-live="assertive" style={{
+        position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(15,23,42,0.55)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+      }}>
+        <div style={{ background: '#fff', color: '#1D1D1B', borderRadius: 12, maxWidth: 380, width: '100%',
+          padding: '22px 22px 18px', borderTop: '4px solid #F47920', boxShadow: '0 20px 50px rgba(0,0,0,0.35)', textAlign: 'center' }}>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>¿Sigues ahí?</p>
+          <p style={{ margin: '8px 0 16px', fontSize: 13, color: '#475569', lineHeight: 1.45 }}>
+            Por seguridad, tu sesión se cerrará en <b>{segundosRestantes} s</b> por {MINUTOS_INACTIVIDAD} minutos sin actividad.
+          </p>
+          <button onClick={seguir} autoFocus style={{ background: '#F47920', color: '#fff', border: 0, borderRadius: 8,
+            padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            Seguir trabajando
+          </button>
+        </div>
+      </div>
+    )}
     <Routes>
       <Route path="/login" element={
         <Login onLogin={(u, idAcceso, token) => {
           setUsuario(u)
           if (idAcceso) setIdAcceso(idAcceso)
           if (token) setToken(token)
+          marcarActividad()
           navigate(u.rol === 'admin' ? '/admin/dashboard' : '/usuario/dashboard', { replace: true })
         }} />
       } />
@@ -187,6 +223,7 @@ function App() {
           setUsuario(u)
           if (idAcceso) setIdAcceso(idAcceso)
           if (token) setToken(token)
+          marcarActividad()
           navigate(u.rol === 'admin' ? '/admin/dashboard' : '/usuario/dashboard', { replace: true })
         }} />
       } />
@@ -205,6 +242,7 @@ function App() {
       <Route path="/print/historial/:id"       element={getUsuario() ? <Suspense fallback={null}><PrintHistorialPage /></Suspense>  : <Navigate to="/login" replace />} />
       <Route path="/print/entradas"            element={getUsuario() ? <Suspense fallback={null}><PrintEntradasPage /></Suspense> : <Navigate to="/login" replace />} />
       <Route path="/print/salida"              element={getUsuario() ? <Suspense fallback={null}><PrintSalidaPage /></Suspense>   : <Navigate to="/login" replace />} />
+      <Route path="/print/indicadores"         element={getUsuario()?.rol === 'admin' ? <Suspense fallback={null}><PrintIndicadoresPage /></Suspense> : <Navigate to="/login" replace />} />
 
       {/* Raíz → redirige según sesión */}
       <Route path="/" element={<Navigate to={(() => {
@@ -215,6 +253,7 @@ function App() {
       {/* Ruta desconocida → login */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
+    </>
   )
 }
 

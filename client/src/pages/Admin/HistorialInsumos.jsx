@@ -38,6 +38,7 @@ import VistaSolicitud from '../Usuario/VistaSolicitud.jsx';
 import ModalReporte from '../../components/ModalReporte.jsx';
 import Modal from '../../components/Modal.jsx';
 import ModalConsumo from '../../components/Inventario/ModalConsumo.jsx';
+import ModalCorregirFechaSalida from '../../components/Inventario/ModalCorregirFechaSalida.jsx';
 import { useToast } from '../../components/Feedback.jsx';
 import {
   agruparSalidas, coincideFiltrosSalida, abrirHojaSalida,
@@ -68,7 +69,7 @@ export default function HistorialInsumos({ T }) {
 
   const [solicitudes,  setSolicitudes]  = useState([]);
   const [page,         setPage]         = useState(1);
-  const [pages,        setPages]        = useState(1);
+  const [,             setPages]        = useState(1);
   const [limit,        setLimit]        = useState(LIMIT);
   const [totalCount,   setTotalCount]   = useState(0);
   const [optsCache,    setOptsCache]    = useState({ usuarios: [], areas: [], sucursales: [] });
@@ -83,6 +84,8 @@ export default function HistorialInsumos({ T }) {
   const [salidaAnular, setSalidaAnular] = useState(null);
   const [motivoAnul,   setMotivoAnul]   = useState("");
   const [anulando,     setAnulando]     = useState(false);
+  // Corrección de fecha de una salida (queda en su historial)
+  const [salidaFecha,  setSalidaFecha]  = useState(null);
   const toast = useToast();
 
   const [metricas,     setMetricas]     = useState({ total: 0, pendientes: 0, resueltos: 0, rechazados: 0 });
@@ -537,11 +540,18 @@ export default function HistorialInsumos({ T }) {
                         <div className="flex items-center justify-between pt-1" style={{ borderTop: `1px solid ${T.border}` }}>
                           <span className="text-[9px]" style={{ color: T.textFaint }}>{fmt(s.fecha)}</span>
                           {s.es_salida && !s.anulada && s.id_salida_num && (
+                            <span className="flex gap-1">
+                            <button onClick={e => { e.stopPropagation(); setSalidaFecha(s); }}
+                              className="px-2 py-0.5 rounded-lg text-[9px] font-bold"
+                              style={{ background: "rgba(13,148,136,0.08)", color: "#0d9488", border: "1px solid rgba(13,148,136,0.2)" }}>
+                              Fecha
+                            </button>
                             <button onClick={e => { e.stopPropagation(); setSalidaAnular(s); setMotivoAnul(""); }}
                               className="px-2 py-0.5 rounded-lg text-[9px] font-bold"
                               style={{ background: "rgba(220,38,38,0.08)", color: "#dc2626", border: "1px solid rgba(220,38,38,0.2)" }}>
                               Anular
                             </button>
+                            </span>
                           )}
                         </div>
                       </div>
@@ -606,14 +616,20 @@ export default function HistorialInsumos({ T }) {
                             style={{ background: "rgba(244,121,32,0.08)", color: T.orange, border: "1px solid rgba(244,121,32,0.2)" }}>
                             {s.es_salida ? "Hoja" : "Ver"}
                           </button>
-                          {s.es_salida && !s.anulada && s.id_salida_num && (
+                          {s.es_salida && !s.anulada && s.id_salida_num && (<>
+                            <button onClick={() => setSalidaFecha(s)}
+                              title="Corregir la fecha de la salida"
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold transition-all hover:brightness-110 active:scale-95"
+                              style={{ background: "rgba(13,148,136,0.08)", color: "#0d9488", border: "1px solid rgba(13,148,136,0.2)" }}>
+                              Fecha
+                            </button>
                             <button onClick={() => { setSalidaAnular(s); setMotivoAnul(""); }}
                               title="Anular salida y regresar el stock"
                               className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold transition-all hover:brightness-110 active:scale-95"
                               style={{ background: "rgba(220,38,38,0.08)", color: "#dc2626", border: "1px solid rgba(220,38,38,0.2)" }}>
                               Anular
                             </button>
-                          )}
+                          </>)}
                           </div>
                         </td>
                       </tr>
@@ -705,14 +721,20 @@ export default function HistorialInsumos({ T }) {
                             style={{ background: "rgba(244,121,32,0.08)", color: T.orange, border: "1px solid rgba(244,121,32,0.2)" }}>
                             {s.es_salida ? "Hoja" : "Ver"}
                           </button>
-                          {s.es_salida && !s.anulada && s.id_salida_num && (
+                          {s.es_salida && !s.anulada && s.id_salida_num && (<>
+                            <button onClick={() => setSalidaFecha(s)}
+                              title="Corregir la fecha de la salida"
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold transition-all hover:brightness-110 active:scale-95"
+                              style={{ background: "rgba(13,148,136,0.08)", color: "#0d9488", border: "1px solid rgba(13,148,136,0.2)" }}>
+                              Fecha
+                            </button>
                             <button onClick={() => { setSalidaAnular(s); setMotivoAnul(""); }}
                               title="Anular salida y regresar el stock"
                               className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold transition-all hover:brightness-110 active:scale-95"
                               style={{ background: "rgba(220,38,38,0.08)", color: "#dc2626", border: "1px solid rgba(220,38,38,0.2)" }}>
                               Anular
                             </button>
-                          )}
+                          </>)}
                           </div>
                         </td>
                       </tr>
@@ -739,6 +761,12 @@ export default function HistorialInsumos({ T }) {
     </div>
 
     {verConsumo && <ModalConsumo T={T} onClose={() => setVerConsumo(false)} />}
+
+    {salidaFecha && (
+      <ModalCorregirFechaSalida T={T} salida={salidaFecha}
+        onClose={() => setSalidaFecha(null)}
+        onGuardado={() => { cargar(filtrosRef.current, page, limit); cargarMetricas(); }} />
+    )}
 
     {salidaAnular && (
       <Modal T={T} variant="danger" title={`Anular ${salidaAnular.folio}`} subtitle="Anular salida"

@@ -116,6 +116,8 @@ import { safeResolvePath } from '../middlewares/security.js';
 import { EVIDENCIAS_BASE } from '../middlewares/upload-evidencias.js';
 import pool from '../config/db.js';
 import { cache } from '../config/cache.js';
+import { enviarTicketCerrado } from '../config/mailer.js';
+import Indicadores from '../services/indicadores.js';
 
 export const getHistorialTicket = async (req, res) => {
   try {
@@ -394,6 +396,13 @@ export const actualizarTicket = async (req, res) => {
           io.to("admins").emit("ticket:en_atencion", payloadAtencion);
         }
       } catch (emitErr) { console.error("[emit ticket:actualizado]", emitErr.message); }
+      // Correo al empleado al cerrarse su ticket (no bloquea la respuesta).
+      if (estatus === "Resuelto" || estatus === "No Resuelto") {
+        enviarTicketCerrado({
+          to: t.email_empleado, nombre: t.nombre_empleado, folio: t.folio_ticket, titulo: t.titulo, estatus,
+          tecnico: updated.resuelto_por || t.nombre_tecnico, comentarios: req.body?.comentarios,
+        }).catch(() => {});
+      }
     }
 
     res.json({ ok: true, estatus: updated.estatus, fecha_resuelto: updated.fecha_resuelto ?? null, resuelto_por: updated.resuelto_por ?? null });
@@ -550,9 +559,12 @@ export const cancelarTicket = async (req, res) => {
       const t = rows[0];
       if (t) {
         const actorId = req.usuario?.id_empleado;
-        getIO().to(`empleado_${t.id_empleado}`).emit("ticket:actualizado", {
-          id_ticket, folio_ticket: t.folio_ticket, titulo: t.titulo, estatus: "Cancelado",
-        });
+        // Si lo canceló el propio dueño no se le avisa a sí mismo (ya lo sabe).
+        if (Number(actorId) !== Number(t.id_empleado)) {
+          getIO().to(`empleado_${t.id_empleado}`).emit("ticket:actualizado", {
+            id_ticket, folio_ticket: t.folio_ticket, titulo: t.titulo, estatus: "Cancelado",
+          });
+        }
         getIO().to("admins").emit("ticket:actualizado", {
           id_ticket, folio_ticket: t.folio_ticket, titulo: t.titulo, estatus: "Cancelado", id_actor: actorId,
         });
@@ -624,5 +636,24 @@ export const getAllTickets = async (req, res) => {
   } catch (err) {
     console.error("[getAllTickets]", err.message);
     res.status(500).json({ error: "Error al obtener tickets" });
+  }
+};
+
+/**
+ * getIndicadoresMensuales
+ * GET /api/tickets/indicadores?mes=AAAA-MM   (solo admin)
+ * Indicadores del mes y su tendencia de 12 meses para el reporte a dirección
+ * (ver services/indicadores.js). Sin `mes` usa el mes en curso.
+ */
+export const getIndicadoresMensuales = async (req, res) => {
+  const hoy = new Date();
+  const mes = String(req.query.mes || `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`);
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes))
+    return res.status(400).json({ error: "Elige un mes válido" });
+  try {
+    res.json(await Indicadores.mensual(mes));
+  } catch (err) {
+    console.error("[indicadores]", err.message);
+    res.status(500).json({ error: "Error al calcular los indicadores" });
   }
 };

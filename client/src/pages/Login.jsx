@@ -499,6 +499,16 @@ export default function Login({ onLogin }) {
     setTimeout(() => setShakeCard(false), 600);
   }, []);
 
+  // Sesión cerrada por inactividad (ver utils/inactividad.js): se avisa una vez.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("motivo_salida") === "inactividad") {
+        sessionStorage.removeItem("motivo_salida");
+        setError("Tu sesión se cerró por inactividad. Vuelve a iniciar sesión.");
+      }
+    } catch { /* sin storage */ }
+  }, []);
+
   // Error devuelto por el backend tras un callback de Zoho fallido
   // (?zoho_error=...): se muestra y se limpia de la URL.
   useEffect(() => {

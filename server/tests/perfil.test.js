@@ -51,6 +51,34 @@ describe("cambio de contraseña en el perfil", () => {
     assert.ok(await bcrypt.compare(NUEVA, await hashDe3()));
   });
 
+  // ── Correo: también pide la contraseña actual (con él se inicia sesión) ──
+  const correoDe3 = async () => (await pool.query("SELECT email FROM empleado WHERE id_empleado = 3"))[0][0].email.toLowerCase();
+
+  test("guardar el mismo correo (cambiando solo el nombre) no pide contraseña", async () => {
+    await pool.query("UPDATE empleado SET email = 'usuario3@ptp.com.mx' WHERE id_empleado = 3");
+    const res = await cambiar({ nombre: "Usuario", ap_paterno: "Tres", email: "Usuario3@ptp.com.mx" });
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+  });
+
+  test("cambiar el correo sin contraseña actual: 400 y no cambia", async () => {
+    const res = await cambiar({ email: "otro3@ptp.com.mx" });
+    assert.equal(res.statusCode, 400);
+    assert.match(res.body.error, /correo/);
+    assert.equal(await correoDe3(), "usuario3@ptp.com.mx");
+  });
+
+  test("cambiar el correo con contraseña incorrecta: 400 y no cambia", async () => {
+    const res = await cambiar({ email: "otro3@ptp.com.mx", password_actual: "mala" });
+    assert.equal(res.statusCode, 400);
+    assert.equal(await correoDe3(), "usuario3@ptp.com.mx");
+  });
+
+  test("cambiar el correo con la contraseña correcta sí cambia", async () => {
+    const res = await cambiar({ email: "otro3@ptp.com.mx", password_actual: NUEVA });
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    assert.equal(await correoDe3(), "otro3@ptp.com.mx");
+  });
+
   test("nadie puede cambiar el perfil de otro usuario", async () => {
     const res = respuesta();
     await auth.actualizarPerfil({ usuario: { id_empleado: 2, id_rol: 2 }, params: { id: "3" }, body: { nombre: "X" }, headers: {} }, res);

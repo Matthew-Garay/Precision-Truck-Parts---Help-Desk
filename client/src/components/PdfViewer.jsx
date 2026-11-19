@@ -37,13 +37,6 @@ export default function PdfViewer({ url, isDark }) {
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState(false);
 
-  const [isMobileOrTablet, setIsMobileOrTablet] = useState(() => window.innerWidth < 768);
-  useEffect(() => {
-    const check = () => setIsMobileOrTablet(window.innerWidth < 768);
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
   // Cargar documento
   useEffect(() => {
     if (!url) return;

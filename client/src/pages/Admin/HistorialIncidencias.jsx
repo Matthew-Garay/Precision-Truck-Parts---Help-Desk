@@ -50,7 +50,7 @@ function Estrellas({ n, isDark }) {
 export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onRecargarRef }) {
   const [tickets,      setTickets]      = useState([]);
   const [page,         setPage]         = useState(1);
-  const [pages,        setPages]        = useState(1);
+  const [,             setPages]        = useState(1);
   const [limit,        setLimit]        = useState(25);
   const [totalCount,   setTotalCount]   = useState(0);
   const [optsCache,    setOptsCache]    = useState({ tecnicos:[], usuarios:[], areas:[], sucursales:[] });

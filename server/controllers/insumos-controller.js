@@ -60,7 +60,7 @@ export const getInsumosStockBajo = async (req, res) => {
 
 /** SQL compartido: devuelve un insumo con disponibilidad calculada desde stock */
 const SELECT_INSUMO_COMPLETO = `
-  SELECT i.id_insumo, i.num_serie, i.nombre, i.descripcion,
+  SELECT i.id_insumo, i.num_serie, i.etiqueta, i.nombre, i.descripcion,
          i.marca, i.modelo, i.stock, i.estado,
          i.id_categoria, i.imagen_url, i.activo, i.visible_publico,
          c.nombre_categoria,

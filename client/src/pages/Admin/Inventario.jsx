@@ -142,8 +142,6 @@ export default function Inventario() {
       .finally(() => setMovLoading(false));
   };
 
-  // Compat: los llamados viejos siguen funcionando (pestaña Entradas).
-  const cargarEntradas = () => cargarMovimientos("Entrada");
   // Tipo activo según la pestaña: "entradas" -> Entrada, "salidas" -> Salida.
   const tipoMovActivo = vista === "salidas" ? "Salida" : "Entrada";
 
@@ -216,7 +214,6 @@ export default function Inventario() {
     setVista(destino);
   };
   const verEntradasInsumo = (row) => verMovimientosInsumo(row, "entradas");
-  const verSalidasInsumo  = (row) => verMovimientosInsumo(row, "salidas");
   const limpiarInsumo = () => {
     setMovFiltros(p => ({ ...p, id_insumo: "" }));
     setMovInsumo(null);
@@ -313,7 +310,7 @@ export default function Inventario() {
 
   const catOpts      = ["Todos", ...Array.from(new Set(insumos.map(i => i.nombre_categoria).filter(Boolean)))];
   const camposFiltro = [
-    { key: "busqueda",  label: "Búsqueda Rápida", type: "search", placeholder: "Nombre, marca, modelo…" },
+    { key: "busqueda",  label: "Búsqueda Rápida", type: "search", placeholder: "Nombre, marca, modelo, etiqueta…" },
     { key: "estado",    label: "Estado",           type: "select", opts: ["Todos", ...ESTADO_OPTS] },
     { key: "categoria", label: "Categoría",        type: "select", opts: catOpts },
     { key: "stock",     label: "Stock",            type: "select", opts: ["Todos", "Con stock", "Sin stock"] },
@@ -330,7 +327,8 @@ export default function Inventario() {
   const filtrados = insumos.filter(i => {
     const q = filtros.busqueda?.toLowerCase();
     if (q && !i.nombre?.toLowerCase().includes(q) && !i.marca?.toLowerCase().includes(q) &&
-        !i.modelo?.toLowerCase().includes(q) && !i.num_serie?.toLowerCase().includes(q)) return false;
+        !i.modelo?.toLowerCase().includes(q) && !i.num_serie?.toLowerCase().includes(q) &&
+        !i.etiqueta?.toLowerCase().includes(q)) return false;
     if (filtros.estado    !== "Todos" && i.estado           !== filtros.estado)    return false;
     if (filtros.categoria !== "Todos" && i.nombre_categoria !== filtros.categoria) return false;
     if (filtros.stock === "Con stock" && !(i.stock > 0))  return false;

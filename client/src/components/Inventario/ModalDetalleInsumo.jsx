@@ -52,27 +52,6 @@ function Badge({ value, map }) {
   );
 }
 
-function DataRow({ icon: Icon, label, value, T, multiline = false, highlight }) {
-  if (!value && value !== 0) return null;
-  const isDark = T?.isDark;
-  return (
-    <div style={{
-      display: "grid", gridTemplateColumns: "14px 108px 1fr",
-      alignItems: multiline ? "flex-start" : "baseline", gap: "10px",
-      padding: "8px 0",
-      borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}`,
-    }}>
-      <Icon size={12} style={{ color: isDark ? "rgba(255,255,255,0.22)" : "#c0c9d6", marginTop: multiline ? "2px" : "1px" }} />
-      <span style={{ fontSize: FS.secundario, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: isDark ? "rgba(255,255,255,0.30)" : "#a0aec0", paddingTop: multiline ? "1px" : 0 }}>
-        {label}
-      </span>
-      <span style={{ fontSize: FS.enfasis, color: highlight ?? (T?.text ?? "#1a202c"), fontWeight: highlight ? 700 : 500, lineHeight: multiline ? "1.55" : "inherit" }}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
 function SpecCard({ icon: Icon, label, value, isDark, mono = false }) {
   if (!value && value !== 0) return null;
   return (
@@ -329,11 +308,12 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
             )}
 
             {/* Especificaciones (tarjetas) */}
-            {(insumo.marca || insumo.modelo || insumo.num_serie) && (
+            {(insumo.marca || insumo.modelo || insumo.num_serie || insumo.etiqueta) && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                 <SpecCard icon={Layers} label="Marca"        value={insumo.marca}    isDark={isDark} />
                 <SpecCard icon={Layers} label="Modelo"       value={insumo.modelo}   isDark={isDark} />
                 <SpecCard icon={Hash}   label="N.º de serie" value={insumo.num_serie} isDark={isDark} mono />
+                <SpecCard icon={Hash}   label="Etiqueta"     value={insumo.etiqueta}  isDark={isDark} mono />
               </div>
             )}
 

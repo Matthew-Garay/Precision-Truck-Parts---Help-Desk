@@ -18,8 +18,11 @@
     "all": "npm run dev:all --silent",
     "probar:correo": "node --import ./server/load-env.js server/scripts/probar-correo.js",
     "respaldar": "powershell -ExecutionPolicy Bypass -File respaldar.ps1",
-    "test": "npm test -w server",
-    "lint": "eslint server client/src client/vite.config.js eslint.config.js",
+    "migrar": "node --import ./server/load-env.js server/scripts/aplicar-migracion.js",
+    "test": "npm test -w server && npm test -w client",
+    "test:server": "npm test -w server",
+    "test:client": "npm test -w client",
+    "lint": "eslint server client/src client/tests client/vite.config.js eslint.config.js",
     "lint:fix": "eslint --fix server client/src client/vite.config.js eslint.config.js"
   },
   "devDependencies": {

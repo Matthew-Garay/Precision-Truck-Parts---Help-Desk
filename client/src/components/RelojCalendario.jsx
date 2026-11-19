@@ -37,11 +37,9 @@ export function RelojFecha({ T }) {
   }, []);
 
   const pad  = n => String(n).padStart(2, "0");
-  const pad3 = n => String(n).padStart(3, "0");
   const hrs  = ahora.getHours();
   const min  = pad(ahora.getMinutes());
   const seg  = pad(ahora.getSeconds());
-  const ms   = pad3(ahora.getMilliseconds()).slice(0, 2); // 2 dígitos
   const ampm = hrs >= 12 ? "PM" : "AM";
   const h12  = pad(hrs % 12 || 12);
 

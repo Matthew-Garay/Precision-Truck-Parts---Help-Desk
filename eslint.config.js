@@ -49,7 +49,7 @@ export default [
 
   // ── Cliente (React + Vite) ────────────────────────────────────────────────
   {
-    files: ["client/src/**/*.{js,jsx}"],
+    files: ["client/src/**/*.{js,jsx}", "client/tests/**/*.{js,jsx}"],
     plugins: { react, "react-hooks": reactHooks },
     languageOptions: {
       ecmaVersion: "latest",
