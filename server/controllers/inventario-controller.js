@@ -542,7 +542,9 @@ export const anularSalida = async (req, res) => {
     try {
       await conn.beginTransaction();
       const [[sal]] = await conn.query(
-        "SELECT id_salida, folio_salida, estatus FROM salida_interna WHERE id_salida = ? FOR UPDATE", [id]
+        `SELECT s.id_salida, s.folio_salida, s.fecha, IF(a.id_salida IS NULL, 'Activa', 'Anulada') AS estatus
+           FROM salida_interna s LEFT JOIN salida_anulacion a ON a.id_salida = s.id_salida
+          WHERE s.id_salida = ? FOR UPDATE`, [id]
       );
       if (!sal) { await conn.rollback(); return res.status(404).json({ error: "Salida no encontrada" }); }
       if (sal.estatus === "Anulada") {
@@ -585,11 +587,10 @@ export const anularSalida = async (req, res) => {
         devueltos.push({ id_insumo: r.id_insumo, nombre: ins.nombre, cantidad: r.cantidad, stock_nuevo });
       }
 
+      // La anulación vive en salida_anulacion (migración 007): existir = anulada.
       await conn.query(
-        `UPDATE salida_interna
-            SET estatus = 'Anulada', motivo_anulacion = ?, fecha_anulacion = NOW(), id_anulo = ?
-          WHERE id_salida = ?`,
-        [motivo, idAdmin, id]
+        "INSERT INTO salida_anulacion (id_salida, motivo, id_anulo) VALUES (?, ?, ?)",
+        [id, motivo, idAdmin]
       );
       await conn.commit();
       resultado = { folio: sal.folio_salida, id_salida: id, devueltos };
@@ -600,6 +601,8 @@ export const anularSalida = async (req, res) => {
       conn.release();
     }
   } catch (err) {
+    // Dos anulaciones al mismo tiempo: la segunda choca con la PK de salida_anulacion.
+    if (err?.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "La salida ya estaba anulada" });
     console.error("[salidas] Error al anular salida:", err);
     return res.status(500).json({ error: "Error al anular la salida", ...errDetalle(err) });
   }
@@ -651,7 +654,9 @@ export const corregirFechaSalida = async (req, res) => {
     try {
       await conn.beginTransaction();
       const [[sal]] = await conn.query(
-        "SELECT id_salida, folio_salida, fecha, estatus FROM salida_interna WHERE id_salida = ? FOR UPDATE", [id]
+        `SELECT s.id_salida, s.folio_salida, s.fecha, IF(a.id_salida IS NULL, 'Activa', 'Anulada') AS estatus
+           FROM salida_interna s LEFT JOIN salida_anulacion a ON a.id_salida = s.id_salida
+          WHERE s.id_salida = ? FOR UPDATE`, [id]
       );
       if (!sal) { await conn.rollback(); return res.status(404).json({ error: "Salida no encontrada" }); }
       if (sal.estatus === "Anulada") {

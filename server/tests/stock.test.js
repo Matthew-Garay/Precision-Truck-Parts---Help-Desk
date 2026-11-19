@@ -101,7 +101,7 @@ describe("stock e inventario", () => {
     const res = await llamar(ctrl.anularSalida, { params: { id: String(idSalida) }, body: { motivo: "Capturada por error" } });
     assert.equal(res.statusCode, 200, JSON.stringify(res.body));
     assert.equal(await stock(1), antes + 3);
-    const [[sal]] = await pool.query("SELECT estatus, motivo_anulacion, id_anulo FROM salida_interna WHERE id_salida = ?", [idSalida]);
+    const [[sal]] = await pool.query("SELECT estatus, motivo_anulacion, id_anulo FROM v_salida_interna WHERE id_salida = ?", [idSalida]);
     assert.equal(sal.estatus, "Anulada");
     assert.equal(sal.motivo_anulacion, "Capturada por error");
     assert.equal(sal.id_anulo, 1);

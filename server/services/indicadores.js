@@ -112,7 +112,7 @@ const Indicadores = {
     const [consumoSucursal] = await pool.query(
       `SELECT COALESCE(s.nombre_sucursal, sa.destino_texto, 'Sin sucursal') AS etiqueta, SUM(m.cantidad) AS piezas
          FROM movimiento_inventario m
-         LEFT JOIN salida_interna sa ON sa.id_salida = m.id_salida
+         LEFT JOIN v_salida_interna sa ON sa.id_salida = m.id_salida
          LEFT JOIN sucursal s        ON s.id_sucursal = m.id_sucursal_destino
         WHERE m.tipo = 'Salida'
           AND (sa.id_salida IS NULL OR sa.estatus = 'Activa')

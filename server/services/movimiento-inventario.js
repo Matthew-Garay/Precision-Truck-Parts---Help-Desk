@@ -62,7 +62,7 @@ const FROM_JOIN = `
   LEFT JOIN sucursal       so ON m.id_sucursal_origen  = so.id_sucursal
   LEFT JOIN sucursal       sd ON m.id_sucursal_destino = sd.id_sucursal
   LEFT JOIN solicitud      s  ON m.id_solicitud        = s.id_solicitud
-  LEFT JOIN salida_interna sa ON m.id_salida           = sa.id_salida
+  LEFT JOIN v_salida_interna sa ON m.id_salida         = sa.id_salida
   LEFT JOIN empleado       e  ON m.id_empleado         = e.id_empleado
   LEFT JOIN empleado       es ON sa.id_solicitante     = es.id_empleado
   LEFT JOIN departamento   ds ON es.id_departamento    = ds.id_departamento
@@ -245,7 +245,7 @@ const MovimientoInventario = {
               GROUP_CONCAT(DISTINCT COALESCE(CONCAT('SAL', m.id_salida), CONCAT('SOL', m.id_solicitud), CONCAT('MOV', m.id_movimiento))) AS ops
          FROM movimiento_inventario m
          JOIN insumo i               ON i.id_insumo = m.id_insumo
-         LEFT JOIN salida_interna sa ON sa.id_salida = m.id_salida
+         LEFT JOIN v_salida_interna sa ON sa.id_salida = m.id_salida
          LEFT JOIN empleado esa      ON esa.id_empleado = sa.id_solicitante
          LEFT JOIN departamento dsa  ON dsa.id_departamento = esa.id_departamento
          LEFT JOIN solicitud s       ON s.id_solicitud = m.id_solicitud

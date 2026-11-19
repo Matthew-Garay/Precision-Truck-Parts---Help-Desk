@@ -3,7 +3,7 @@
 **Sistema:** Mesa de ayuda de Soporte Técnico — `precision_helpdesk` (MySQL 8.0.46, InnoDB, utf8mb4)
 **Fecha:** 18/11/2026
 **Esquema propuesto:** [`database/esquema-normalizado.sql`](../database/esquema-normalizado.sql)
-**Estado:** fases 0, 1 y 2 **aplicadas** a producción el 18/11/2026 (migraciones 004, 005 y 006). Las fases 3 y 4 son propuesta.
+**Estado:** fases 0 a 3 **aplicadas** a producción (18 y 19/11/2026; migraciones 004 a 007). La fase 4 es opcional.
 
 ---
 
@@ -183,10 +183,10 @@ Cada fase lleva su propia migración en `database/migraciones/`, se prueba prime
 | **0 (aplicada)** | `insumo.etiqueta` con índice (migración 004) | Ya integrada | — |
 | **1 (aplicada 18/11/2026)** | Agregar los CHECK y UNIQUE nuevos; agregar y quitar índices; agregar el disparador (migración 005) | Ninguno: los datos ya cumplían. Solo se agregó un aviso claro si una solicitud trae el mismo insumo dos veces | Bajo |
 | **2 (aplicada 18/11/2026)** | `'N/A'` → NULL (171 valores); `solicitud_insumo.aprobado` pasa a columna **calculada** desde `cantidad_aprobada` (ya no se guarda aparte); `categoria_ambito` sustituye las 3 banderas (31 renglones); `ticket_evidencia` registra cada archivo (migración 006) | Validación (`textoOpcional`: vacío = NULL y lo no enviado no se toca), escritura de aprobación, consultas de categorías (la API conserva `en_*`), servicio `evidencia.js` | Medio |
-| **3** | `salida_anulacion` más la vista; unificar `INT UNSIGNED` y `DATETIME` | La anulación escribe en la tabla nueva; las lecturas usan la vista | Medio |
+| **3 (aplicada 19/11/2026)** | `salida_anulacion` (1:0..1, PK = salida: no se anula dos veces) y vista `v_salida_interna` con el estatus; tipos unificados con la mayoría del esquema: `manual.id_manual` e `ticket_historial.id_historial` a `int`, y las 7 fechas `timestamp` a `datetime` (misma hora: la zona de la base y del sistema es la misma). Se eligió `int` con signo, como las otras 16 tablas, en lugar de pasar todo a `unsigned`: no exige rehacer ~40 claves foráneas (migración 007) | La anulación escribe en la tabla nueva; las lecturas usan la vista | Medio |
 | **4 (opcional)** | `insumo_unidad` para equipos con número de serie | Pantallas nuevas: alta de piezas y elección de serie al sacar | Alto (es una función nueva) |
 
-Siguiente paso recomendado: **fase 3** en la siguiente ventana de cambios y decidir la **fase 4** según si se necesita controlar laptops e impresoras pieza por pieza.
+Pendiente solo la **fase 4** (opcional): decidir si se necesita controlar laptops e impresoras pieza por pieza.
 
 ---
 

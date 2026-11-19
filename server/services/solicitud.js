@@ -304,7 +304,7 @@ const Solicitud = {
        FROM (
          SELECT 'SOL' AS origen, estatus, prioridad FROM solicitud
          UNION ALL
-         SELECT 'SAL', 'Entregado', prioridad FROM salida_interna WHERE estatus = 'Activa'
+         SELECT 'SAL', 'Entregado', prioridad FROM v_salida_interna WHERE estatus = 'Activa'
        ) t`
     );
     const n = (v) => Number(v) || 0;

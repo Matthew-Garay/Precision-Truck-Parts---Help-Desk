@@ -1,7 +1,7 @@
 -- =============================================================================
 --  ESQUEMA (solo estructura, sin datos)
---  PrecisionTrucks HelpDesk — regenerado 2026-11-18 con server/scripts/regenerar-schema.js
---  desde la base con las migraciones hasta la 006 aplicadas.
+--  PrecisionTrucks HelpDesk — regenerado 2026-11-19 con server/scripts/regenerar-schema.js
+--  desde la base con las migraciones hasta la 007 aplicadas.
 --  No editar a mano: los cambios van en database/migraciones/NNN_*.sql.
 -- =============================================================================
 
@@ -26,7 +26,7 @@ CREATE TABLE `categoria` (
 DROP TABLE IF EXISTS `categoria_ambito`;
 CREATE TABLE `categoria_ambito` (
   `id_categoria` int NOT NULL COMMENT 'FK categoria',
-  `ambito` enum('ticket','insumo','manual') COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Módulo donde la categoría está disponible',
+  `ambito` enum('ticket','insumo','manual') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Módulo donde la categoría está disponible',
   PRIMARY KEY (`id_categoria`,`ambito`),
   KEY `idx_ca_ambito` (`ambito`),
   CONSTRAINT `fk_ca_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categoria` (`id_categoria`) ON DELETE CASCADE ON UPDATE CASCADE
@@ -76,8 +76,8 @@ DROP TABLE IF EXISTS `historial_acceso`;
 CREATE TABLE `historial_acceso` (
   `id_acceso` int NOT NULL AUTO_INCREMENT,
   `id_empleado` int NOT NULL,
-  `fecha_entrada` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `fecha_salida` timestamp NULL DEFAULT NULL,
+  `fecha_entrada` datetime DEFAULT CURRENT_TIMESTAMP,
+  `fecha_salida` datetime DEFAULT NULL,
   PRIMARY KEY (`id_acceso`),
   KEY `idx_acceso_empleado_fecha` (`id_empleado`,`fecha_entrada`),
   CONSTRAINT `fk_historial_empleado` FOREIGN KEY (`id_empleado`) REFERENCES `empleado` (`id_empleado`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -111,13 +111,13 @@ CREATE TABLE `insumo` (
 
 DROP TABLE IF EXISTS `manual`;
 CREATE TABLE `manual` (
-  `id_manual` int unsigned NOT NULL AUTO_INCREMENT,
+  `id_manual` int NOT NULL AUTO_INCREMENT,
   `nombre` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `descripcion` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `version` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `subido_por` int DEFAULT NULL,
-  `fecha_subida` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `fecha_cambio` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `fecha_subida` datetime DEFAULT CURRENT_TIMESTAMP,
+  `fecha_cambio` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `ruta_pdf` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `id_categoria` int NOT NULL,
   PRIMARY KEY (`id_manual`),
@@ -170,6 +170,19 @@ CREATE TABLE `rol` (
   UNIQUE KEY `uq_nombre_rol` (`nombre_rol`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+DROP TABLE IF EXISTS `salida_anulacion`;
+CREATE TABLE `salida_anulacion` (
+  `id_salida` int NOT NULL COMMENT 'PK y FK salida_interna',
+  `motivo` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Por qué se anuló',
+  `id_anulo` int DEFAULT NULL COMMENT 'FK empleado: quién anuló',
+  `fecha` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Cuándo se anuló',
+  PRIMARY KEY (`id_salida`),
+  KEY `idx_anul_empleado` (`id_anulo`),
+  CONSTRAINT `fk_anul_empleado` FOREIGN KEY (`id_anulo`) REFERENCES `empleado` (`id_empleado`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_anul_salida` FOREIGN KEY (`id_salida`) REFERENCES `salida_interna` (`id_salida`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `chk_anul_motivo` CHECK ((char_length(`motivo`) >= 5))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Anulación de una salida interna (si existe, la salida está anulada)';
+
 DROP TABLE IF EXISTS `salida_cambio`;
 CREATE TABLE `salida_cambio` (
   `id_cambio` int NOT NULL AUTO_INCREMENT,
@@ -201,10 +214,6 @@ CREATE TABLE `salida_interna` (
   `id_responsable` int DEFAULT NULL COMMENT 'Quién recibe en destino',
   `responsable_texto` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Solo si no es un empleado registrado',
   `justificacion` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `estatus` enum('Activa','Anulada') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Activa',
-  `motivo_anulacion` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `fecha_anulacion` datetime DEFAULT NULL,
-  `id_anulo` int DEFAULT NULL COMMENT 'Empleado que anuló la salida',
   `id_registro` int DEFAULT NULL COMMENT 'Empleado que capturó la salida',
   `fecha_registro` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id_salida`),
@@ -214,9 +223,7 @@ CREATE TABLE `salida_interna` (
   KEY `fk_sal_suc_origen` (`id_sucursal_origen`),
   KEY `fk_sal_responsable` (`id_responsable`),
   KEY `fk_sal_registro` (`id_registro`),
-  KEY `fk_sal_anulo` (`id_anulo`),
   KEY `idx_salida_destino_fecha` (`id_sucursal_destino`,`fecha`),
-  CONSTRAINT `fk_sal_anulo` FOREIGN KEY (`id_anulo`) REFERENCES `empleado` (`id_empleado`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_sal_registro` FOREIGN KEY (`id_registro`) REFERENCES `empleado` (`id_empleado`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_sal_responsable` FOREIGN KEY (`id_responsable`) REFERENCES `empleado` (`id_empleado`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_sal_solicitante` FOREIGN KEY (`id_solicitante`) REFERENCES `empleado` (`id_empleado`) ON DELETE RESTRICT ON UPDATE RESTRICT,
@@ -232,7 +239,7 @@ DROP TABLE IF EXISTS `solicitud`;
 CREATE TABLE `solicitud` (
   `id_solicitud` int NOT NULL AUTO_INCREMENT,
   `folio_solicitud` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `fecha` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `fecha` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `estatus` enum('En proceso','Aceptado','Rechazado') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'En proceso',
   `prioridad` enum('Baja','Media','Alta','Urgente') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Media',
   `id_empleado` int NOT NULL,
@@ -289,8 +296,8 @@ CREATE TABLE `ticket` (
   `folio_ticket` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `titulo` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `descripcion` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `fecha_subido` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `fecha_resuelto` timestamp NULL DEFAULT NULL,
+  `fecha_subido` datetime DEFAULT CURRENT_TIMESTAMP,
+  `fecha_resuelto` datetime DEFAULT NULL,
   `estatus` enum('En proceso','Resuelto','No Resuelto','Cancelado') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'En proceso',
   `prioridad` enum('Baja','Media','Alta','Urgente') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Media',
   `comentarios` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
@@ -319,8 +326,8 @@ DROP TABLE IF EXISTS `ticket_evidencia`;
 CREATE TABLE `ticket_evidencia` (
   `id_evidencia` int NOT NULL AUTO_INCREMENT COMMENT 'PK',
   `id_ticket` int NOT NULL COMMENT 'FK ticket',
-  `nombre_archivo` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Nombre dentro de storage/Evidencias_Tickets/<folio>/',
-  `tipo_mime` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'image/jpeg, video/mp4…',
+  `nombre_archivo` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Nombre dentro de storage/Evidencias_Tickets/<folio>/',
+  `tipo_mime` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'image/jpeg, video/mp4…',
   `tamano_bytes` int unsigned DEFAULT NULL COMMENT 'Tamaño del archivo',
   `id_subio` int DEFAULT NULL COMMENT 'FK empleado: quién lo subió',
   `fecha_subida` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Cuándo se subió',
@@ -333,7 +340,7 @@ CREATE TABLE `ticket_evidencia` (
 
 DROP TABLE IF EXISTS `ticket_historial`;
 CREATE TABLE `ticket_historial` (
-  `id_historial` int unsigned NOT NULL AUTO_INCREMENT,
+  `id_historial` int NOT NULL AUTO_INCREMENT,
   `id_ticket` int NOT NULL,
   `id_empleado` int NOT NULL,
   `campo_cambiado` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -347,6 +354,9 @@ CREATE TABLE `ticket_historial` (
   CONSTRAINT `fk_th_empleado` FOREIGN KEY (`id_empleado`) REFERENCES `empleado` (`id_empleado`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_th_ticket` FOREIGN KEY (`id_ticket`) REFERENCES `ticket` (`id_ticket`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP VIEW IF EXISTS `v_salida_interna`;
+CREATE VIEW `v_salida_interna` AS select `s`.`id_salida` AS `id_salida`,`s`.`folio_salida` AS `folio_salida`,`s`.`fecha` AS `fecha`,`s`.`prioridad` AS `prioridad`,`s`.`id_sucursal_origen` AS `id_sucursal_origen`,`s`.`id_sucursal_destino` AS `id_sucursal_destino`,`s`.`destino_texto` AS `destino_texto`,`s`.`id_solicitante` AS `id_solicitante`,`s`.`solicitante_texto` AS `solicitante_texto`,`s`.`id_responsable` AS `id_responsable`,`s`.`responsable_texto` AS `responsable_texto`,`s`.`justificacion` AS `justificacion`,`s`.`id_registro` AS `id_registro`,`s`.`fecha_registro` AS `fecha_registro`,(if((`a`.`id_salida` is null),'Activa','Anulada') collate utf8mb4_unicode_ci) AS `estatus`,`a`.`motivo` AS `motivo_anulacion`,`a`.`fecha` AS `fecha_anulacion`,`a`.`id_anulo` AS `id_anulo` from (`salida_interna` `s` left join `salida_anulacion` `a` on((`a`.`id_salida` = `s`.`id_salida`)));
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;

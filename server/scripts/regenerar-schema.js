@@ -18,6 +18,11 @@ const RUTA = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../d
 const hoy = new Date();
 const fecha = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
 
+const limpiarVista = (sql) => sql
+  .replace(/ALGORITHM=\w+ /, "")
+  .replace(/DEFINER=`[^`]+`@`[^`]+` /, "")
+  .replace(/SQL SECURITY DEFINER /, "");
+
 const c = await mysql.createConnection({
   host: process.env.DB_HOST, port: process.env.DB_PORT,
   user: process.env.DB_USER, password: process.env.DB_PASSWORD, database: BASE,
@@ -54,6 +59,15 @@ USE \`precision_helpdesk\`;
     const [[r]] = await c.query(`SHOW CREATE TABLE \`${t}\``);
     cuerpo += `\nDROP TABLE IF EXISTS \`${t}\`;\n${r["Create Table"].replace(/ AUTO_INCREMENT=\d+/, "")};\n`;
   }
+  // Vistas: después de las tablas (dependen de ellas), sin DEFINER (portable).
+  const [vistas] = await c.query("SELECT TABLE_NAME t FROM information_schema.VIEWS WHERE TABLE_SCHEMA=? ORDER BY 1", [BASE]);
+  for (const { t } of vistas) {
+    const [[r]] = await c.query(`SHOW CREATE VIEW \`${t}\``);
+    cuerpo += `
+DROP VIEW IF EXISTS \`${t}\`;
+${limpiarVista(r["Create View"])};
+`;
+  }
   const [trg] = await c.query("SELECT TRIGGER_NAME n FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=? ORDER BY 1", [BASE]);
   let disparadores = "";
   for (const { n } of trg) {
@@ -63,5 +77,5 @@ USE \`precision_helpdesk\`;
   }
   // Los disparadores van al FINAL (las pruebas cortan el archivo en el primer DELIMITER).
   fs.writeFileSync(RUTA, cabecera + cuerpo + pie + (disparadores ? "\n-- ── Disparadores ──" + disparadores : ""));
-  console.log(`schema.sql: ${tablas.length} tablas, ${trg.length} disparador(es).`);
+  console.log(`schema.sql: ${tablas.length} tablas, ${vistas.length} vista(s), ${trg.length} disparador(es).`);
 } finally { await c.end(); }

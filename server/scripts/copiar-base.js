@@ -16,6 +16,11 @@ if (!COPIA || !/_test$/.test(COPIA) || COPIA === ORIG) {
   console.error("Indica una base destino que termine en _test (distinta de la real).");
   process.exit(1);
 }
+const limpiarVista = (sql) => sql
+  .replace(/ALGORITHM=\w+ /, "")
+  .replace(/DEFINER=`[^`]+`@`[^`]+` /, "")
+  .replace(/SQL SECURITY DEFINER /, "");
+
 const c = await mysql.createConnection({
   host: process.env.DB_HOST, port: process.env.DB_PORT,
   user: process.env.DB_USER, password: process.env.DB_PASSWORD, multipleStatements: true,
@@ -38,11 +43,17 @@ try {
     const lista = cols.map(x => `\`${x.n}\``).join(",");
     await c.query(`INSERT INTO \`${t}\` (${lista}) SELECT ${lista} FROM \`${ORIG}\`.\`${t}\``);
   }
+  const [vistas] = await c.query("SELECT TABLE_NAME t FROM information_schema.VIEWS WHERE TABLE_SCHEMA=?", [ORIG]);
+  for (const { t } of vistas) {
+    const [[r]] = await c.query(`SHOW CREATE VIEW \`${ORIG}\`.\`${t}\``);
+    // La definición trae el nombre de la base original: se cambia por la copia.
+    await c.query(limpiarVista(r["Create View"]).split(`\`${ORIG}\`.`).join(""));
+  }
   const [trg] = await c.query("SELECT TRIGGER_NAME n FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=?", [ORIG]);
   for (const { n } of trg) {
     const [[r]] = await c.query(`SHOW CREATE TRIGGER \`${ORIG}\`.\`${n}\``);
     await c.query(r["SQL Original Statement"].replace(/CREATE DEFINER=`[^`]+`@`[^`]+` TRIGGER/, "CREATE TRIGGER"));
   }
   await c.query("SET FOREIGN_KEY_CHECKS=1");
-  console.log(`Copia ${ORIG} → ${COPIA}: ${tablas.length} tablas, ${trg.length} disparador(es).`);
+  console.log(`Copia ${ORIG} → ${COPIA}: ${tablas.length} tablas, ${vistas.length} vista(s), ${trg.length} disparador(es).`);
 } finally { await c.end(); }
