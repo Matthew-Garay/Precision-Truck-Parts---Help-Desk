@@ -106,7 +106,7 @@ const Insumo = {
       `INSERT INTO insumo (num_serie, etiqueta, nombre, id_categoria, descripcion, marca, modelo, stock,
                            imagen_url, activo, visible_publico, estado, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-      [num_serie ?? "N/A", etiqueta || null, nombre, id_categoria, descripcion ?? "N/A", marca ?? "N/A", modelo ?? "N/A",
+      [num_serie || null, etiqueta || null, nombre, id_categoria, descripcion || null, marca || null, modelo || null,
        stock ?? 0, imagen_url ?? null,
        activo !== undefined ? activo : 1, visible_publico !== undefined ? visible_publico : 1,
        estado !== undefined ? estado : 'Excelente']
@@ -117,8 +117,7 @@ const Insumo = {
 
   actualizar: async (id, data, conn = null) => {
     const camposPermitidos = [
-      'num_serie', 'nombre', 'descripcion', 'marca', 'modelo',
-      'stock', 'estado', 'id_categoria', 'imagen_url', 'visible_publico', 'activo'
+      'nombre', 'stock', 'estado', 'id_categoria', 'imagen_url', 'visible_publico', 'activo'
     ];
     const sets = [];
     const values = [];
@@ -128,10 +127,13 @@ const Insumo = {
         values.push(data[campo]);
       }
     }
-    // La etiqueta se puede BORRAR (vacía → NULL); los demás campos ignoran null.
-    if (data.etiqueta !== undefined) {
-      sets.push("`etiqueta` = ?");
-      values.push(data.etiqueta ? String(data.etiqueta).trim() || null : null);
+    // Texto opcional: se puede BORRAR (vacío → NULL). Si el campo no viene,
+    // no se toca. Los demás campos ignoran null.
+    for (const campo of ['num_serie', 'etiqueta', 'descripcion', 'marca', 'modelo']) {
+      if (data[campo] !== undefined) {
+        sets.push(`\`${campo}\` = ?`);
+        values.push(data[campo] ? String(data[campo]).trim() || null : null);
+      }
     }
     if (sets.length === 0) return false;
     sets.push("`updated_at` = NOW()");

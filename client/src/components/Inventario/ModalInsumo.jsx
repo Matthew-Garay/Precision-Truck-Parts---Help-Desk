@@ -44,7 +44,12 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
   const firstRef = useRef(null);
   const fotoRef  = useRef(null);
 
-  const [form,        setForm]        = useState({ ...INSUMO_VACIO, ...insumo });
+  // Los textos sin dato llegan como null: en el formulario se muestran vacíos.
+  const [form,        setForm]        = useState(() => {
+    const f = { ...INSUMO_VACIO, ...insumo };
+    for (const k of ["num_serie", "etiqueta", "descripcion", "marca", "modelo"]) if (f[k] == null) f[k] = "";
+    return f;
+  });
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState("");
   const [fotoFile,    setFotoFile]    = useState(null);

@@ -120,7 +120,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
     if (onRecargarRef) onRecargarRef.current = () => { cargar(filtrosRef.current, page, limit); cargarStats(filtrosRef.current); };
   }, [onRecargarRef, cargar, cargarStats, page, limit]);
 
-  useAutoRefresh(() => { cargar(filtrosRef.current, page, limit); cargarStats(filtrosRef.current); }, 30000, [page, limit]);
+  useAutoRefresh(() => { cargar(filtrosRef.current, page, limit); cargarStats(filtrosRef.current); }, 120000, [page, limit]);
 
   useEffect(() => {
     apiFetch("/api/tickets/admins").then(r => r.json()).then(d => { if (Array.isArray(d)) setAdmins(d); }).catch(() => {});

@@ -46,6 +46,7 @@ import crypto            from "crypto";
 import { fileURLToPath } from "url";
 import { fileTypeFromFile } from "file-type";
 import { safeResolvePath }  from './security.js';
+import { optimizar, crearMiniatura } from "../utils/imagenes.js";
 
 const __dirname   = path.dirname(fileURLToPath(import.meta.url));
 const INSUMOS_DIR = path.resolve(__dirname, "../../storage/Insumos");
@@ -117,8 +118,19 @@ async function validarMagicBytes(req, res, next) {
  * Middleware compuesto para subida de imagen de insumo.
  * Uso en rutas: router.post("/insumos/:id/foto", ...uploadInsumo.single("foto"), handler)
  */
+/**
+ * Tercer paso: comprime la foto (≤ 1200 px, sin pérdida visible) y crea su
+ * miniatura para las listas. Si algo falla se deja la foto tal cual.
+ */
+async function optimizarFoto(req, _res, next) {
+  if (!req.file) return next();
+  try { await optimizar(req.file.path); } catch { /* se queda la original */ }
+  try { await crearMiniatura(req.file.path); } catch { /* la lista usará la foto completa */ }
+  next();
+}
+
 export const uploadInsumo = {
-  single: (campo) => [multerSingle(campo), validarMagicBytes],
+  single: (campo) => [multerSingle(campo), validarMagicBytes, optimizarFoto],
 };
 
 export { INSUMOS_DIR };

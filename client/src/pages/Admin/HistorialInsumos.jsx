@@ -152,7 +152,7 @@ export default function HistorialInsumos({ T }) {
   const filtrosStr = JSON.stringify(filtros);
   useEffect(() => { cargar(filtros, page, limit); cargarMetricas(); }, [filtrosStr, page, limit]); // eslint-disable-line
 
-  useAutoRefresh(() => { cargar(filtrosRef.current, page, limit); cargarMetricas(); }, 30000, [page, limit]);
+  useAutoRefresh(() => { cargar(filtrosRef.current, page, limit); cargarMetricas(); }, 120000, [page, limit]);
 
   // Opciones para selects — una sola vez (catálogos completos, no solo los 2000
   // primeros registros, para que el filtro cargue todas las sucursales y áreas).

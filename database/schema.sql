@@ -1,50 +1,46 @@
 -- =============================================================================
 --  ESQUEMA (solo estructura, sin datos)
---  PrecisionTrucks HelpDesk — regenerado 2026-11-18 desde la base con las
---  migraciones 001–005 aplicadas (005: reglas de integridad, índices y disparador).
---  IDs consecutivos desde 1; salidas internas en la tabla salida_interna.
+--  PrecisionTrucks HelpDesk — regenerado 2026-11-18 con server/scripts/regenerar-schema.js
+--  desde la base con las migraciones hasta la 006 aplicadas.
+--  No editar a mano: los cambios van en database/migraciones/NNN_*.sql.
 -- =============================================================================
 
 CREATE DATABASE IF NOT EXISTS `precision_helpdesk` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `precision_helpdesk`;
 
-
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!50503 SET NAMES utf8mb4 */;
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
 DROP TABLE IF EXISTS `categoria`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `categoria` (
   `id_categoria` int NOT NULL AUTO_INCREMENT,
   `nombre_categoria` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `en_tickets` tinyint(1) NOT NULL DEFAULT '0',
-  `en_insumos` tinyint(1) NOT NULL DEFAULT '0',
-  `en_manuales` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id_categoria`),
   UNIQUE KEY `uq_nombre_categoria` (`nombre_categoria`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+DROP TABLE IF EXISTS `categoria_ambito`;
+CREATE TABLE `categoria_ambito` (
+  `id_categoria` int NOT NULL COMMENT 'FK categoria',
+  `ambito` enum('ticket','insumo','manual') COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Módulo donde la categoría está disponible',
+  PRIMARY KEY (`id_categoria`,`ambito`),
+  KEY `idx_ca_ambito` (`ambito`),
+  CONSTRAINT `fk_ca_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categoria` (`id_categoria`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='En qué módulos se ofrece cada categoría (N:M categoría–ámbito)';
+
 DROP TABLE IF EXISTS `departamento`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `departamento` (
   `id_departamento` int NOT NULL AUTO_INCREMENT,
   `nombre_departamento` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id_departamento`),
   UNIQUE KEY `uq_nombre_departamento` (`nombre_departamento`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
 DROP TABLE IF EXISTS `empleado`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `empleado` (
   `id_empleado` int NOT NULL AUTO_INCREMENT,
   `num_empleado` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -75,10 +71,8 @@ CREATE TABLE `empleado` (
   CONSTRAINT `fk_empleado_sucursal` FOREIGN KEY (`id_sucursal`) REFERENCES `sucursal` (`id_sucursal`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `chk_emp_baja` CHECK ((((`eliminado` = 0) and (`fecha_eliminacion` is null)) or ((`eliminado` = 1) and (`fecha_eliminacion` is not null))))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
 DROP TABLE IF EXISTS `historial_acceso`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `historial_acceso` (
   `id_acceso` int NOT NULL AUTO_INCREMENT,
   `id_empleado` int NOT NULL,
@@ -89,10 +83,8 @@ CREATE TABLE `historial_acceso` (
   CONSTRAINT `fk_historial_empleado` FOREIGN KEY (`id_empleado`) REFERENCES `empleado` (`id_empleado`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `chk_acceso_fechas` CHECK (((`fecha_salida` is null) or (`fecha_entrada` is null) or (`fecha_salida` >= `fecha_entrada`)))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
 DROP TABLE IF EXISTS `insumo`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `insumo` (
   `id_insumo` int NOT NULL AUTO_INCREMENT,
   `num_serie` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -116,10 +108,8 @@ CREATE TABLE `insumo` (
   CONSTRAINT `fk_insumo_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categoria` (`id_categoria`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `chk_stock` CHECK ((`stock` >= 0))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
 DROP TABLE IF EXISTS `manual`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `manual` (
   `id_manual` int unsigned NOT NULL AUTO_INCREMENT,
   `nombre` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -136,10 +126,8 @@ CREATE TABLE `manual` (
   CONSTRAINT `fk_manual_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categoria` (`id_categoria`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_manual_empleado` FOREIGN KEY (`subido_por`) REFERENCES `empleado` (`id_empleado`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
 DROP TABLE IF EXISTS `movimiento_inventario`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `movimiento_inventario` (
   `id_movimiento` int NOT NULL AUTO_INCREMENT,
   `id_insumo` int NOT NULL,
@@ -173,20 +161,16 @@ CREATE TABLE `movimiento_inventario` (
   CONSTRAINT `chk_mi_cantidad` CHECK ((`cantidad` > 0)),
   CONSTRAINT `chk_mi_origen_doc` CHECK (((`id_solicitud` is null) or (`id_salida` is null)))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
 DROP TABLE IF EXISTS `rol`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `rol` (
   `id_rol` int NOT NULL AUTO_INCREMENT,
   `nombre_rol` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id_rol`),
   UNIQUE KEY `uq_nombre_rol` (`nombre_rol`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
 DROP TABLE IF EXISTS `salida_cambio`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `salida_cambio` (
   `id_cambio` int NOT NULL AUTO_INCREMENT,
   `id_salida` int NOT NULL,
@@ -202,10 +186,8 @@ CREATE TABLE `salida_cambio` (
   CONSTRAINT `fk_sc_empleado` FOREIGN KEY (`id_empleado`) REFERENCES `empleado` (`id_empleado`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_sc_salida` FOREIGN KEY (`id_salida`) REFERENCES `salida_interna` (`id_salida`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Correcciones hechas a salidas internas';
-/*!40101 SET character_set_client = @saved_cs_client */;
+
 DROP TABLE IF EXISTS `salida_interna`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `salida_interna` (
   `id_salida` int NOT NULL AUTO_INCREMENT,
   `folio_salida` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -245,10 +227,8 @@ CREATE TABLE `salida_interna` (
   CONSTRAINT `chk_sal_ruta` CHECK (((`id_sucursal_origen` is null) or (`id_sucursal_destino` is null) or (`id_sucursal_origen` <> `id_sucursal_destino`))),
   CONSTRAINT `chk_sal_solicitante` CHECK (((`id_solicitante` is null) or (`solicitante_texto` is null)))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Cabecera de las salidas internas (folio SAL-YYYYMM-NNNN)';
-/*!40101 SET character_set_client = @saved_cs_client */;
+
 DROP TABLE IF EXISTS `solicitud`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `solicitud` (
   `id_solicitud` int NOT NULL AUTO_INCREMENT,
   `folio_solicitud` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -276,10 +256,8 @@ CREATE TABLE `solicitud` (
   CONSTRAINT `chk_sol_atencion` CHECK (((`estatus` = _utf8mb4'En proceso') = (`fecha_atencion` is null))),
   CONSTRAINT `chk_sol_ruta` CHECK (((`id_sucursal_origen` is null) or (`id_sucursal_destino` is null) or (`id_sucursal_origen` <> `id_sucursal_destino`)))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
 DROP TABLE IF EXISTS `solicitud_insumo`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `solicitud_insumo` (
   `id_solicitud_insumo` int NOT NULL AUTO_INCREMENT,
   `id_solicitud` int NOT NULL,
@@ -287,7 +265,7 @@ CREATE TABLE `solicitud_insumo` (
   `descripcion` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `cantidad` int NOT NULL DEFAULT '1',
   `cantidad_aprobada` int DEFAULT NULL,
-  `aprobado` tinyint(1) DEFAULT NULL,
+  `aprobado` tinyint(1) GENERATED ALWAYS AS ((case when (`cantidad_aprobada` is null) then NULL when (`cantidad_aprobada` > 0) then 1 else 0 end)) VIRTUAL COMMENT 'Calculado: NULL sin decidir, 1 aceptado, 0 negado',
   PRIMARY KEY (`id_solicitud_insumo`),
   UNIQUE KEY `uq_si_solicitud_insumo` (`id_solicitud`,`id_insumo`),
   KEY `fk_si_insumo` (`id_insumo`),
@@ -296,20 +274,16 @@ CREATE TABLE `solicitud_insumo` (
   CONSTRAINT `chk_si_aprobada` CHECK (((`cantidad_aprobada` is null) or ((`cantidad_aprobada` >= 0) and (`cantidad_aprobada` <= `cantidad`)))),
   CONSTRAINT `chk_si_cantidad` CHECK ((`cantidad` > 0))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
 DROP TABLE IF EXISTS `sucursal`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sucursal` (
   `id_sucursal` int NOT NULL AUTO_INCREMENT,
   `nombre_sucursal` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id_sucursal`),
   UNIQUE KEY `uq_nombre_sucursal` (`nombre_sucursal`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
 DROP TABLE IF EXISTS `ticket`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ticket` (
   `id_ticket` int NOT NULL AUTO_INCREMENT,
   `folio_ticket` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -340,10 +314,24 @@ CREATE TABLE `ticket` (
   CONSTRAINT `chk_ticket_calif_estatus` CHECK (((`calificacion` is null) or (`estatus` = _utf8mb4'Resuelto'))),
   CONSTRAINT `chk_ticket_cierre` CHECK (((`fecha_resuelto` is null) or (`fecha_resuelto` >= `fecha_subido`)))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+DROP TABLE IF EXISTS `ticket_evidencia`;
+CREATE TABLE `ticket_evidencia` (
+  `id_evidencia` int NOT NULL AUTO_INCREMENT COMMENT 'PK',
+  `id_ticket` int NOT NULL COMMENT 'FK ticket',
+  `nombre_archivo` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Nombre dentro de storage/Evidencias_Tickets/<folio>/',
+  `tipo_mime` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'image/jpeg, video/mp4…',
+  `tamano_bytes` int unsigned DEFAULT NULL COMMENT 'Tamaño del archivo',
+  `id_subio` int DEFAULT NULL COMMENT 'FK empleado: quién lo subió',
+  `fecha_subida` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Cuándo se subió',
+  PRIMARY KEY (`id_evidencia`),
+  UNIQUE KEY `uq_evidencia_archivo` (`id_ticket`,`nombre_archivo`),
+  KEY `idx_evidencia_subio` (`id_subio`),
+  CONSTRAINT `fk_ev_subio` FOREIGN KEY (`id_subio`) REFERENCES `empleado` (`id_empleado`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_ev_ticket` FOREIGN KEY (`id_ticket`) REFERENCES `ticket` (`id_ticket`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Archivos adjuntos (evidencias) de cada ticket';
+
 DROP TABLE IF EXISTS `ticket_historial`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ticket_historial` (
   `id_historial` int unsigned NOT NULL AUTO_INCREMENT,
   `id_ticket` int NOT NULL,
@@ -359,19 +347,15 @@ CREATE TABLE `ticket_historial` (
   CONSTRAINT `fk_th_empleado` FOREIGN KEY (`id_empleado`) REFERENCES `empleado` (`id_empleado`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_th_ticket` FOREIGN KEY (`id_ticket`) REFERENCES `ticket` (`id_ticket`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Disparador: mantiene fecha y ruta de los renglones de SALIDA del kardex iguales a su salida.
-DROP TRIGGER IF EXISTS trg_salida_sincroniza_kardex;
+-- ── Disparadores ──
+DROP TRIGGER IF EXISTS `trg_salida_sincroniza_kardex`;
 DELIMITER //
 CREATE TRIGGER `trg_salida_sincroniza_kardex` AFTER UPDATE ON `salida_interna` FOR EACH ROW BEGIN
   IF NOT (NEW.fecha <=> OLD.fecha)

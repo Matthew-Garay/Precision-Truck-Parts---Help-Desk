@@ -26,6 +26,7 @@ import fs        from "fs";
 import { INSUMOS_DIR } from '../middlewares/upload-insumos.js';
 import { SQL_DISPONIBILIDAD } from '../utils/stock.js';
 import { errDetalle, esAdmin, sinStockLista } from './comun.js';
+import { rutaMiniatura } from '../utils/imagenes.js';
 
 export const getInsumos = async (req, res) => {
   try {
@@ -222,6 +223,7 @@ export const subirFotoInsumo = async (req, res) => {
       if (Number(otros) === 0) {
         const anterior = path.join(INSUMOS_DIR, path.basename(insumo.imagen_url));
         await fs.promises.unlink(anterior).catch(() => {});
+        await fs.promises.unlink(rutaMiniatura(anterior)).catch(() => {});
       }
     }
     const imagen_url = `/storage/Insumos/${req.file.filename}`;

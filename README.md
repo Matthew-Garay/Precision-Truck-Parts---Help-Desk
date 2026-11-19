@@ -355,7 +355,7 @@ Internet ──HTTPS──▶ Caddy :443 ──▶ Node 127.0.0.1:3001 ──▶
 
 | Síntoma | Causa | Solución |
 |---|---|---|
-| `Ruta no encontrada` tras actualizar | El backend sigue con la versión anterior | Reiniciar (`Ctrl + C` y `npm run all`). |
+| `Ruta no encontrada` tras actualizar | El backend sigue con la versión anterior | Reiniciar (`Ctrl + C` y `npm run produccion`). |
 | `DB ❌ MySQL sin conexión` | Servicio detenido o credenciales | Revisar MySQL y `DB_*` en `server/.env`. |
 | No llegan correos | Variable o contraseña | Usar `SMTP_PASS` con contraseña de aplicación; `npm run probar:correo`. |
 | Login con Zoho falla | URI no registrada | Registrar la URI exacta de `ZOHO_REDIRECT_URIS` en Zoho. |

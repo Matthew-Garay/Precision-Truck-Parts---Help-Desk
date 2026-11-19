@@ -43,7 +43,7 @@ Abre el sistema en el navegador de esta computadora e inicia sesión.
 
 ## 4. Encender o reiniciar el sistema
 
-1. Busca una ventana negra (terminal) con letras de colores **BACK** y **FRONT**.
+1. Busca la ventana negra (terminal) donde corre el sistema.
    Si existe, haz clic en ella y presiona **Ctrl + C**; si pregunta, escribe `S` y Enter.
    Ciérrala.
 2. Abre **PowerShell** (menú Inicio → escribe "PowerShell" → Enter).
@@ -51,10 +51,14 @@ Abre el sistema en el navegador de esta computadora e inicia sesión.
 
    ```powershell
    cd "C:\Users\Soporte\Videos\PrecisionTrucks_HelpDesk"
-   npm run all
+   npm run produccion
    ```
 
-4. Espera 20–30 segundos. Debe aparecer un resumen con **DB**, **Socket**, **SMTP**, etc.
+   `produccion` prepara la versión optimizada (unos 20 segundos) y la enciende en la
+   misma dirección de siempre (puerto 5173). Es mucho más rápida para todos que
+   `npm run all`, que es solo para cuando el responsable está programando.
+
+4. Espera 30–40 segundos. Debe aparecer un resumen con **DB**, **Socket**, **SMTP**, etc.
    **No cierres esa ventana**: si la cierras, el sistema se apaga. Puedes minimizarla.
 5. Vuelve a probar como en el paso 3.
 

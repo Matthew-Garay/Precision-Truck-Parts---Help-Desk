@@ -336,7 +336,7 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
     if (tab === "historial") cargarSolicitudes(filtrosSol, solPage, solLimit);
   }, [tab, filtrosSolStr, solPage, solLimit]); // eslint-disable-line
 
-  useAutoRefresh(() => { if (tab === "historial") cargarSolicitudes(filtrosSolRef.current, solPage, solLimit); }, 30000, [solPage, solLimit]);
+  useAutoRefresh(() => { if (tab === "historial") cargarSolicitudes(filtrosSolRef.current, solPage, solLimit); }, 120000, [solPage, solLimit]);
 
   const hayFiltrosSol = filtrosSol.busqueda || filtrosSol.estatus !== "Todos" || filtrosSol.prioridad !== "Todos" || filtrosSol.origen !== "Todos";
   const { total: totalSol, enProceso: pendientesSol, aceptados: aceptadosSol, rechazados: rechazadosSol, totalPiezas, prioridades, topInsumos, actividadMes } = statsGlobal;

@@ -76,6 +76,7 @@
  */
 import pool from '../config/db.js';
 import { cache } from '../config/cache.js';
+import { olvidarVersionToken } from '../middlewares/auth-middleware.js';
 
 const TTL_CATALOGO = 10 * 60 * 1000; // 10 minutos — catálogos casi estáticos
 const TTL_NOMBRE   =  5 * 60 * 1000; // 5 minutos
@@ -167,6 +168,7 @@ const Empleado = {
       [idAdmin ?? null, id]
     );
     if (r.affectedRows === 0) return false;
+    olvidarVersionToken(id);
     await pool.query(
       "UPDATE historial_acceso SET fecha_salida = NOW() WHERE id_empleado = ? AND fecha_salida IS NULL",
       [id]

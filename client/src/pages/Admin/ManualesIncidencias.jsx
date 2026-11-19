@@ -508,7 +508,7 @@ export default function ManualesAdmin({ T }) {
     finally { setLoading(false); }
   }, []);
 
-  useAutoRefresh(cargar, 60000);
+  useAutoRefresh(cargar, 300000);
 
   const limpiarFiltros = useCallback(() => { setBusqueda(""); setCategoria(""); }, []);
 

@@ -2,9 +2,10 @@
  * categoria.js
  *
  * Modelo que encapsula las operaciones sobre la tabla "categoria".
- * Las categorias son etiquetas que clasifican los tickets, manuales e insumos
- * del sistema. Cada categoria tiene tres banderas booleanas que indican en
- * que modulos puede usarse: en_tickets, en_insumos, en_manuales.
+ * Las categorias clasifican los tickets, manuales e insumos del sistema. En
+ * que modulos se ofrece cada una vive en la tabla categoria_ambito (un renglon
+ * por modulo; migracion 006). La API conserva los campos en_tickets,
+ * en_insumos y en_manuales, ahora calculados desde categoria_ambito.
  *
  * Metodos:
  *
@@ -32,12 +33,7 @@ import { cache } from '../config/cache.js';
 
 const TTL_CATALOGO = 10 * 60 * 1000; // 10 minutos
 
-// Mapa que relaciona el tipo de modulo con la columna booleana correspondiente en BD.
-const COLUMNAS_CATEGORIA = {
-  ticket:  "en_tickets",
-  insumo:  "en_insumos",
-  manual:  "en_manuales",
-};
+const AMBITOS = new Set(["ticket", "insumo", "manual"]);
 
 const Categoria = {
 
@@ -45,20 +41,29 @@ const Categoria = {
     const hit = cache.get("categoria:all");
     if (hit) return hit;
     const [rows] = await pool.query(
-      `SELECT id_categoria, nombre_categoria, en_tickets, en_insumos, en_manuales
-       FROM categoria ORDER BY id_categoria`
+      `SELECT c.id_categoria, c.nombre_categoria,
+              MAX(a.ambito = 'ticket') AS en_tickets,
+              MAX(a.ambito = 'insumo') AS en_insumos,
+              MAX(a.ambito = 'manual') AS en_manuales
+         FROM categoria c
+         LEFT JOIN categoria_ambito a ON a.id_categoria = c.id_categoria
+        GROUP BY c.id_categoria, c.nombre_categoria
+        ORDER BY c.id_categoria`
     );
     cache.set("categoria:all", rows, TTL_CATALOGO);
     return rows;
   },
 
   getByTipo: async (tipo) => {
-    const col = COLUMNAS_CATEGORIA[tipo];
-    if (!col) throw Object.assign(new Error("Tipo de categoria no valido"), { status: 400 });
+    if (!AMBITOS.has(tipo)) throw Object.assign(new Error("Tipo de categoria no valido"), { status: 400 });
     const hit = cache.get(`categoria:tipo:${tipo}`);
     if (hit) return hit;
     const [rows] = await pool.query(
-      `SELECT id_categoria, nombre_categoria FROM categoria WHERE ${col} = 1 ORDER BY id_categoria`
+      `SELECT c.id_categoria, c.nombre_categoria
+         FROM categoria c
+         JOIN categoria_ambito a ON a.id_categoria = c.id_categoria AND a.ambito = ?
+        ORDER BY c.id_categoria`,
+      [tipo]
     );
     cache.set(`categoria:tipo:${tipo}`, rows, TTL_CATALOGO);
     return rows;

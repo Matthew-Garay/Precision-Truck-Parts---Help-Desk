@@ -13,6 +13,7 @@ import { FS } from '../../utils/tipografia.js';
 import { colorStock } from '../../utils/stock.js';
 import { ORANGE, TEAL } from './inventario-ui.js';
 import { fechaCorta, fechaHora } from '../../utils/fechas.js';
+import { fotoMini } from '../../utils/miniatura.js';
 
 export const SLATE   = { 50: "#f8fafc", 100: "#f1f5f9", 200: "#e2e8f0", 300: "#cbd5e1", 400: "#94a3b8", 600: "#475569", 700: "#334155", 900: "#0f172a" };
 
@@ -191,7 +192,7 @@ export function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHis
               {/* Imagen */}
               <td style={{ ...td, padding: "2px 2px 2px 8px" }}>
                 {row.imagen_url
-                  ? <img src={row.imagen_url} alt="" style={{ width: "22px", height: "22px", borderRadius: "4px", objectFit: "cover", border: `1px solid ${T.border}`, display: "block" }} />
+                  ? <img {...fotoMini(row.imagen_url)} alt="" style={{ width: "22px", height: "22px", borderRadius: "4px", objectFit: "cover", border: `1px solid ${T.border}`, display: "block" }} />
                   : <div style={{ width: "22px", height: "22px", borderRadius: "4px", background: T.surfaceAlt, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Package size={10} style={{ color: T.textFaint }} />
                     </div>

@@ -256,7 +256,7 @@ export default function ManualesIncidencias({ T }) {
       .finally(() => setLoading(false));
   };
 
-  useAutoRefresh(cargar, 60000);
+  useAutoRefresh(cargar, 300000);
 
   const categorias = [...new Map(
     manuales.filter(m => m.nombre_categoria)

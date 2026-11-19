@@ -139,7 +139,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
         }).catch(() => {});
     };
     cargar();
-    const id = setInterval(cargar, 30000);
+    const id = setInterval(cargar, 120000);
     return () => clearInterval(id);
   // emailEditado se lee en cada recarga; no debe reiniciar el intervalo.
   // eslint-disable-next-line react-hooks/exhaustive-deps

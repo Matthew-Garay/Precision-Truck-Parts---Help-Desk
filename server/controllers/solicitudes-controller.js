@@ -382,9 +382,9 @@ export const aprobarItemsSolicitud = async (req, res) => {
       for (const it of normalizados) {
         await conn.query(
           `UPDATE solicitud_insumo
-              SET aprobado = ?, cantidad_aprobada = COALESCE(?, cantidad_aprobada)
+              SET cantidad_aprobada = ?
             WHERE id_solicitud_insumo = ? AND id_solicitud = ?`,
-          [it.aprovado, it.cantidad_aprobada, it.id_solicitud_insumo, id]
+          [it.aprovado === 1 ? it.cantidad_aprobada : 0, it.id_solicitud_insumo, id]
         );
       }
       await conn.commit();
@@ -566,9 +566,9 @@ export const actualizarEstatusSolicitud = async (req, res) => {
         // 3. Guardar aprobado / cantidad aceptada de TODOS los ítems
         for (const r of resueltos) {
           await conn.query(
-            `UPDATE solicitud_insumo SET aprobado = ?, cantidad_aprobada = ?
+            `UPDATE solicitud_insumo SET cantidad_aprobada = ?
               WHERE id_solicitud_insumo = ? AND id_solicitud = ?`,
-            [r.aprovado, r.cantidad_aprobada, r.id_solicitud_insumo, id]
+            [r.aprovado === 1 ? r.cantidad_aprobada : 0, r.id_solicitud_insumo, id]
           );
         }
 

@@ -12,6 +12,7 @@
  * @requires ../PrintShared.tsx
  * @exports PrintSolicitudView (default)
  */
+import { fotoMini } from '../../utils/miniatura.js';
 import {
   PageHeader, PageFooter, PageSize, Firma,
   PRIO_META, fmt, nowFechaGen,
@@ -138,7 +139,7 @@ function InsumosTable({ items, cerrado }: {
               <td className="pr-inv-td" style={{ textAlign: "center", color: "var(--pr-faint)" }}>{i + 1}</td>
               <td className="pr-inv-td pr-inv-td-img">
                 {imgSrc(d.imagen_url) ? (
-                  <img src={imgSrc(d.imagen_url)} alt="" className="pr-inv-thumb" />
+                  <img {...fotoMini(imgSrc(d.imagen_url))} loading="eager" alt="" className="pr-inv-thumb" />
                 ) : (
                   <div className="pr-inv-thumb-placeholder"><span style={{ fontSize: "6pt", color: "var(--pr-faint)" }}>S/F</span></div>
                 )}

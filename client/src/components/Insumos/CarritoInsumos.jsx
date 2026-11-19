@@ -6,6 +6,7 @@
  */
 import { useState, useEffect, useRef } from "react";
 import { Plus, Minus, Trash2, Package, Tag } from "lucide-react";
+import { fotoMini } from '../../utils/miniatura.js';
 
 export function SupplyRow({ supply, isAdded, onAdd, animatingId, T, onDetail }) {
   const isAnimating = animatingId === supply.id_insumo;
@@ -24,7 +25,7 @@ export function SupplyRow({ supply, isAdded, onAdd, animatingId, T, onDetail }) 
             background: T.isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9",
             border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           {supply.imagen_url
-            ? <img src={supply.imagen_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ? <img {...fotoMini(supply.imagen_url)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             : <Package size={12} style={{ color: T.textFaint }} />}
         </div>
       </td>
@@ -102,7 +103,7 @@ export function RequestItem({ supply, quantity, onRemove, onChangeQty, esUltimo 
       <div className="w-7 h-7 rounded flex items-center justify-center flex-shrink-0"
         style={{ background: T.isDark ? "rgba(37,99,235,0.15)" : "#eff6ff", border: "1px solid rgba(59,130,246,0.2)", overflow: "hidden" }}>
         {supply.imagen_url
-          ? <img src={supply.imagen_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ? <img {...fotoMini(supply.imagen_url)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           : <Package size={12} style={{ color: "#3b82f6" }} />}
       </div>
       <div className="flex-1 min-w-0">

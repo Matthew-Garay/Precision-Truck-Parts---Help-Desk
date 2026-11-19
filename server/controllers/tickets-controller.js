@@ -110,14 +110,12 @@
 import Ticket   from '../services/ticket.js';
 import Empleado from '../services/empleado.js';
 import { getIO } from '../config/socket-instance.js';
-import path     from "path";
 import fs       from "fs";
-import { safeResolvePath } from '../middlewares/security.js';
-import { EVIDENCIAS_BASE } from '../middlewares/upload-evidencias.js';
 import pool from '../config/db.js';
 import { cache } from '../config/cache.js';
 import { enviarTicketCerrado } from '../config/mailer.js';
 import Indicadores from '../services/indicadores.js';
+import Evidencia, { MAX_EVIDENCIAS } from '../services/evidencia.js';
 
 export const getHistorialTicket = async (req, res) => {
   try {
@@ -181,13 +179,7 @@ export const getTicketByFolio = async (req, res) => {
     if (id_rol !== 1 && ticket.id_empleado !== id_empleado)
       return res.status(403).json({ error: "Acceso no autorizado" });
 
-    const dir = safeResolvePath(EVIDENCIAS_BASE, folio);
-    let imagenes = [];
-    try {
-      const archivos = await fs.promises.readdir(dir);
-      imagenes = archivos.filter(f => /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|avi)$/i.test(f)).sort();
-    } catch { /* directorio no existe aún */ }
-
+    const imagenes = await Evidencia.listar(ticket.id_ticket);
     res.json({ ...ticket, imagenes });
   } catch (err) {
     console.error("[getTicketByFolio]", err.message);
@@ -228,27 +220,17 @@ export const crearTicket = async (req, res) => {
       id_categoria: parseInt(id_categoria),
     });
 
-    const archivos = req.files || [];
-    if (archivos.length > 0) {
-      const destDir = safeResolvePath(EVIDENCIAS_BASE, ticket.folio_ticket);
-      fs.mkdirSync(destDir, { recursive: true });
-      archivos.forEach((file, i) => {
-        const ext     = path.extname(file.filename);
-        const newPath = path.join(destDir, `${String(i + 1).padStart(2, "0")}${ext}`);
-        fs.renameSync(file.path, newPath);
-      });
-      try {
-        const tmp = safeResolvePath(EVIDENCIAS_BASE, "_tmp_upload");
-        if (fs.readdirSync(tmp).length === 0) fs.rmdirSync(tmp);
-      } catch {}
-    }
+    const guardadas = await Evidencia.guardar({
+      id_ticket: ticket.id_ticket, folio: ticket.folio_ticket,
+      archivos: req.files || [], id_subio: parseInt(id_empleado),
+    });
 
     // Invalidar caché de métricas al crear ticket nuevo
     cache.del("metricas:dashboard");
 
     const emp = await Empleado.getResumen(parseInt(id_empleado));
 
-    res.status(201).json({ ok: true, ...ticket, imagenes: archivos.length });
+    res.status(201).json({ ok: true, ...ticket, imagenes: guardadas.length });
 
     try {
       getIO().to(`empleado_${parseInt(id_empleado)}`).emit("ticket:confirmado", {
@@ -292,14 +274,7 @@ export const getImagenesTicket = async (req, res) => {
         return res.status(403).json({ error: "Acceso no autorizado" });
     }
 
-    const dir = safeResolvePath(EVIDENCIAS_BASE, ticket.folio_ticket);
-    let archivos = [];
-    try {
-      archivos = (await fs.promises.readdir(dir))
-        .filter(f => /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|avi)$/i.test(f))
-        .sort();
-    } catch { /* directorio no existe aún */ }
-    res.json(archivos);
+    res.json(await Evidencia.listar(idTicket));
   } catch (err) {
     console.error("[getImagenesTicket]", err.message);
     res.status(500).json({ error: "Error al obtener imágenes" });
@@ -491,24 +466,13 @@ export const agregarImagenesTicket = async (req, res) => {
     }
     const archivos = req.files || [];
     if (archivos.length === 0) return res.status(400).json({ error: "No se recibieron imágenes" });
-    const destDir = safeResolvePath(EVIDENCIAS_BASE, ticket.folio_ticket);
-    fs.mkdirSync(destDir, { recursive: true });
-    const existentes = fs.existsSync(destDir)
-      ? fs.readdirSync(destDir).filter(f => /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|avi)$/i.test(f)).sort()
-      : [];
-    if (existentes.length + archivos.length > 8) {
+    const existentes = await Evidencia.contar(idTicket);
+    if (existentes + archivos.length > MAX_EVIDENCIAS) {
       // Limpiar archivos subidos antes de rechazar
       archivos.forEach(f => { try { fs.unlinkSync(f.path); } catch {} });
-      return res.status(400).json({ error: `El ticket ya tiene ${existentes.length} imagen(es). Solo se permiten 8 en total.` });
+      return res.status(400).json({ error: `El ticket ya tiene ${existentes} imagen(es). Solo se permiten ${MAX_EVIDENCIAS} en total.` });
     }
-    let contador = existentes.length;
-    archivos.forEach(file => {
-      contador++;
-      const ext = path.extname(file.filename) || path.extname(file.originalname) || ".jpg";
-      const newPath = path.join(destDir, `${String(contador).padStart(2, "0")}${ext}`);
-      fs.renameSync(file.path, newPath);
-    });
-    try { const tmp = safeResolvePath(EVIDENCIAS_BASE, "_tmp_upload"); if (fs.readdirSync(tmp).length === 0) fs.rmdirSync(tmp); } catch {}
+    await Evidencia.guardar({ id_ticket: idTicket, folio: ticket.folio_ticket, archivos, id_subio: id_empleado });
     res.json({ ok: true, agregadas: archivos.length });
   } catch (err) {
     console.error("[agregarImagenesTicket]", err.message);
@@ -529,9 +493,8 @@ export const eliminarImagenTicket = async (req, res) => {
       if (!ownerRows[0] || ownerRows[0].id_empleado !== id_empleado)
         return res.status(403).json({ error: "Acceso no autorizado" });
     }
-    const filePath = safeResolvePath(EVIDENCIAS_BASE, ticket.folio_ticket, nombre);
-    if (!fs.existsSync(filePath)) return res.status(404).json({ error: "Imagen no encontrada" });
-    fs.unlinkSync(filePath);
+    const borrada = await Evidencia.eliminar({ id_ticket: idTicket, folio: ticket.folio_ticket, nombre });
+    if (!borrada) return res.status(404).json({ error: "Imagen no encontrada" });
     res.json({ ok: true });
   } catch (err) {
     console.error("[eliminarImagenTicket]", err.message);

@@ -41,14 +41,31 @@ function getSecret() {
   return s;
 }
 
+// La version de token se consultaba en la base en CADA peticion. Se guarda
+// 10 s en memoria; al cerrar sesion o dar de baja a alguien se borra al momento
+// (olvidarVersionToken), asi que el token viejo deja de servir en el acto.
+const VERSION_TTL_MS = 10_000;
+const versiones = new Map();   // id_empleado -> { ver, hasta }
+
+/** Llamar cuando sube token_version de un empleado (logout, baja). */
+export function olvidarVersionToken(id_empleado) {
+  versiones.delete(Number(id_empleado));
+}
+
 /** Version de token vigente de un empleado (0 si la columna aun no existe). */
 async function versionDeToken(id_empleado) {
+  const id = Number(id_empleado);
+  const hit = versiones.get(id);
+  if (hit && hit.hasta > Date.now()) return hit.ver;
   try {
     const [[row]] = await pool.query(
       "SELECT token_version FROM empleado WHERE id_empleado = ? LIMIT 1",
-      [id_empleado]
+      [id]
     );
-    return row?.token_version ?? 0;
+    const ver = row?.token_version ?? 0;
+    versiones.set(id, { ver, hasta: Date.now() + VERSION_TTL_MS });
+    if (versiones.size > 5000) versiones.clear();   // tope de memoria
+    return ver;
   } catch {
     return 0;
   }

@@ -12,6 +12,7 @@
  * @requires ../PrintShared.tsx
  * @exports PrintReporteListaView (default)
  */
+import { fotoMini } from '../../utils/miniatura.js';
 import {
   PageHeader, PageFooter, PageSize, ReporteTable,
   PRIO_META, ESTATUS_META, nowFechaGen,
@@ -164,7 +165,7 @@ function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; period
         {items.length > 0 ? items.map((it, j) => (
           <div key={j} style={{ display: "flex", alignItems: "center", gap: 4 }}>
             {it.imagen_url
-              ? <img src={it.imagen_url} alt={it.nombre} style={{ width: 22, height: 22, objectFit: "cover", borderRadius: 2, border: "1px solid #000000", flexShrink: 0 }} />
+              ? <img {...fotoMini(it.imagen_url)} alt={it.nombre} style={{ width: 22, height: 22, objectFit: "cover", borderRadius: 2, border: "1px solid #000000", flexShrink: 0 }} />
               : <div style={{ width: 22, height: 22, flexShrink: 0 }} />}
             <span style={{ fontSize: "6.5pt", color: "var(--pr-ink)" }}>{it.nombre} · x{it.qty} · {it.aprobado ? "Aprobado" : "Rechazado"}</span>
           </div>

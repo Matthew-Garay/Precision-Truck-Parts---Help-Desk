@@ -95,7 +95,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
     if (onRecargarRef) onRecargarRef.current = () => cargar(filtrosRef.current, page, limit);
   }, [onRecargarRef, cargar, page, limit]);
 
-  useAutoRefresh(() => cargar(filtrosRef.current, page, limit), 30000, [page, limit]);
+  useAutoRefresh(() => cargar(filtrosRef.current, page, limit), 120000, [page, limit]);
 
   // Carga sin filtros una sola vez para stats globales y opciones de categoría
   useEffect(() => {

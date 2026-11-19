@@ -77,6 +77,7 @@ import jwt      from "jsonwebtoken";
 import pool     from '../config/db.js';
 import { validarEmailCorporativo } from '../middlewares/validate.js';
 import { isProd } from '../utils/helpers.js';
+import { olvidarVersionToken } from '../middlewares/auth-middleware.js';
 
 const errDetalle = (err) => isProd() ? {} : { detalle: err.message };
 
@@ -182,6 +183,7 @@ export const logout = async (req, res) => {
             "UPDATE empleado SET token_version = token_version + 1 WHERE id_empleado = ?",
             [payload.id_empleado]
           );
+          olvidarVersionToken(payload.id_empleado);
         }
       } catch { /* token inválido o expirado — continuar sin revocar */ }
     }

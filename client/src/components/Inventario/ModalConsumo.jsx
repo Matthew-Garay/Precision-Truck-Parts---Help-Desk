@@ -24,8 +24,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, FileDown } from "lucide-react";
-import ExcelJS from "exceljs";
-import { saveAs } from "file-saver";
+// ExcelJS y file-saver se cargan solo al exportar (pesan ≈1 MB).
 import Modal from "../Modal.jsx";
 import { apiFetch } from "../../services/api-client.js";
 import { fechaCorta, mesAnio } from "../../utils/fechas.js";
@@ -66,6 +65,7 @@ export default function ModalConsumo({ T, onClose }) {
   const maxArea = useMemo(() => Math.max(1, ...(datos?.por_area ?? []).map(a => a.piezas)), [datos]);
 
   const exportar = async () => {
+    const [{ default: ExcelJS }, { saveAs }] = await Promise.all([import("exceljs"), import("file-saver")]);
     if (!datos) return;
     const wb = new ExcelJS.Workbook();
     const encabezado = (ws, cols) => {
@@ -185,7 +185,7 @@ export default function ModalConsumo({ T, onClose }) {
                             <td style={{ ...td, color: T.textMuted }}>{i + 1}</td>
                             <td style={td}>
                               <span style={{ fontWeight: 600 }}>{x.nombre}</span>
-                              {x.marca && x.marca !== "N/A" && <span style={{ color: T.textMuted }}> · {x.marca}</span>}
+                              {x.marca && <span style={{ color: T.textMuted }}> · {x.marca}</span>}
                             </td>
                             <td style={{ ...td, textAlign: "right", fontWeight: 800 }}>{x.piezas}</td>
                             <td style={{ ...td, textAlign: "right" }}>{x.operaciones}</td>

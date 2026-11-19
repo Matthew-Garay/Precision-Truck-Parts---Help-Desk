@@ -8,17 +8,19 @@
  */
 import { useState, useEffect, useRef } from "react";
 import { Download, FileSpreadsheet, FileText } from "lucide-react";
-import ExcelJS from "exceljs";
-import { saveAs } from "file-saver";
+// ExcelJS y file-saver se cargan solo al exportar (pesan ≈1 MB).
 import { FS } from '../../utils/tipografia.js';
 import { STOCK_BAJO } from '../../utils/stock.js';
 import { fechaCorta } from '../../utils/fechas.js';
+import { miniatura } from '../../utils/miniatura.js';
 
 
 // ── Helpers ───────────────────────────────────────────────────────
 export async function urlToBase64(url) {
   try {
     const res = await fetch(url);
+    // Solo imágenes: un 404 o una página HTML no deben incrustarse en el Excel.
+    if (!res.ok || !String(res.headers.get("content-type") || "").startsWith("image/")) return null;
     const blob = await res.blob();
     return await new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -74,6 +76,7 @@ export async function toPngBase64White(dataUrl, w, h) {
 
 // ── Exportar Excel ────────────────────────────────────────────────
 export async function exportarExcel(datos) {
+  const [{ default: ExcelJS }, { saveAs }] = await Promise.all([import("exceljs"), import("file-saver")]);
   const wb = new ExcelJS.Workbook();
   wb.creator = "PrecisionTrucks HelpDesk";
   wb.created = new Date();
@@ -220,7 +223,7 @@ export async function exportarExcel(datos) {
     // Imagen del insumo
     if (i.imagen_url) {
       try {
-        const raw = await urlToBase64(i.imagen_url);
+        const raw = (await urlToBase64(miniatura(i.imagen_url))) || await urlToBase64(i.imagen_url);
         if (raw) {
           const jpeg = await toJpegBase64(raw);
           if (jpeg) {

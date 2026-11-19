@@ -33,28 +33,30 @@
  * @requires ../../hooks/use-ticket-notification.js
  * @exports AdminDashboard (default)
  */
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Users, Package, FileText, BookOpen, Settings,
   LogOut, Menu, X, Sun, Moon, ClipboardList, TrendingUp, BarChart3
 } from "lucide-react";
 import { hoyISO } from '../../utils/fechas.js';
-import VistaTicket from './VistaTicket.jsx';
-import VistaSolicitud from './VistaSolicitud.jsx';
-import HistorialIncidencias from './HistorialIncidencias.jsx';
-import Inventario from './Inventario.jsx';
-import Personal from './Personal.jsx';
-import ManualesIncidencias from './ManualesIncidencias.jsx';
-import ConfiguracionPerfil from './ConfiguracionPerfil.jsx';
-import HistorialInsumos from './HistorialInsumos.jsx';
-import RendimientoTecnicos from './RendimientoTecnicos.jsx';
 import { apiFetch, API_ROUTES } from '../../services/api-client.js';
 import { useTheme } from '../../context/theme-context.js';
 import { useAutoRefresh } from '../../hooks/use-auto-refresh.js';
 import { SeccionEstadisticas, SeccionMetricas, KanbanBoard, PanelDerecho } from '../../components/DashboardShared.jsx';
 import CampanaNotificaciones from '../../components/CampanaNotificaciones.jsx';
 import { useTicketNotification } from '../../hooks/use-ticket-notification.js';
+// Cada pantalla se descarga solo cuando se abre (antes todas venían en el
+// archivo inicial: 1.6 MB). Ver <Suspense> en el área de contenido.
+const VistaTicket = lazy(() => import('./VistaTicket.jsx'));
+const VistaSolicitud = lazy(() => import('./VistaSolicitud.jsx'));
+const HistorialIncidencias = lazy(() => import('./HistorialIncidencias.jsx'));
+const Inventario = lazy(() => import('./Inventario.jsx'));
+const Personal = lazy(() => import('./Personal.jsx'));
+const ManualesIncidencias = lazy(() => import('./ManualesIncidencias.jsx'));
+const ConfiguracionPerfil = lazy(() => import('./ConfiguracionPerfil.jsx'));
+const HistorialInsumos = lazy(() => import('./HistorialInsumos.jsx'));
+const RendimientoTecnicos = lazy(() => import('./RendimientoTecnicos.jsx'));
 
 const NAV = [
   { icon: LayoutDashboard, label: "Dashboard",               path: "/admin/dashboard"     },
@@ -171,9 +173,23 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
   const navigate  = useNavigate();
   const location  = useLocation();
 
+  const recargaTimerRef = useRef(null);
   const { notificaciones, onDismiss, onDismissAll, onClickNotif } =
     useTicketNotification({
       usuario,
+      // Cada aviso en vivo recarga lo que cambió (agrupado: varios avisos
+      // seguidos = una sola recarga). La consulta cada 2 min queda de respaldo.
+      onEvento: useCallback((tipo) => {
+        clearTimeout(recargaTimerRef.current);
+        recargaTimerRef.current = setTimeout(() => {
+          if (tipo.startsWith("ticket") || tipo === "tickets:vencidos") {
+            cargarTicketsRef.current?.();
+            cargarMetricasRef.current?.();
+            recargarHistorialRef.current?.();
+          }
+          if (tipo.startsWith("solicitud")) cargarSolicitudesRef.current?.();
+        }, 400);
+      }, []),
       onNavegar: useCallback((tipo, data) => {
         const RECARGA = new Set(["ticket:nuevo","solicitud:nueva","ticket:calificado","tickets:vencidos","ticket:sla_warning","ticket:actualizado","ticket:en_atencion"]);
         if (RECARGA.has(tipo)) {
@@ -275,7 +291,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
     cargarTicketsRef.current?.();
     cargarMetricasRef.current?.();
     cargarSolicitudesRef.current?.();
-  }, 30000, []);
+  }, 120000, []);
 
   const tituloHeader = ticketVer
     ? ticketVer.folio_ticket
@@ -369,6 +385,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
         </header>
 
         <div className="flex-1 min-h-0 overflow-hidden">
+          <Suspense fallback={<div className="flex items-center justify-center py-20 text-[12px] font-semibold" style={{ color: T.textMuted }}>Cargando…</div>}>
           {ticketVer ? (
             <div className="h-full overflow-y-auto"><VistaTicket T={T} ticket={ticketVer} onVolver={() => { setTicketVer(null); cargarTickets(); }} esAdmin usuario={usuario} /></div>
           ) : solicitudVer ? (
@@ -399,6 +416,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
               <p className="text-[11px]" style={{ color: T.textFaint }}>Módulo en desarrollo</p>
             </div>
           )}
+          </Suspense>
         </div>
       </div>
 

@@ -25,6 +25,8 @@ import { fileURLToPath } from "url";
 // variables ya definidas) y antes de importar el pool de conexiones.
 process.env.DB_NAME  = process.env.TEST_DB_NAME || "precision_helpdesk_test";
 process.env.NODE_ENV = "test";
+// Evidencias de tickets en una carpeta temporal, nunca en storage/ real.
+process.env.EVIDENCIAS_DIR = (await import("path")).join((await import("os")).tmpdir(), `helpdesk-evidencias-test-${process.pid}`);
 if (!/_test$/.test(process.env.DB_NAME))
   throw new Error(`Por seguridad las pruebas solo corren contra una base *_test (recibido: ${process.env.DB_NAME})`);
 
@@ -79,6 +81,7 @@ export async function prepararBD() {
                (2, 'Admin',  'Dos', 'admin2@prueba.test', 'x', 1, 1, 1),
                (3, 'Usuario','Tres','usuario3@prueba.test','x', 2, 2, 2);
       INSERT INTO categoria (id_categoria, nombre_categoria) VALUES (1, 'Consumibles');
+      INSERT INTO categoria_ambito (id_categoria, ambito) VALUES (1, 'ticket'), (1, 'insumo');
       INSERT INTO insumo (id_insumo, nombre, id_categoria, stock) VALUES
         (1, 'Tóner prueba',    1, 10),
         (2, 'Etiqueta prueba', 1, 5),

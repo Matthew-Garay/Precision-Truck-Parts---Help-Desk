@@ -11,6 +11,7 @@
  */
 import { PageHeader, PageFooter, PageSize, Firma, nowFechaGen } from '../PrintShared.tsx';
 import './print-report.css';
+import { fotoMini } from '../../utils/miniatura.js';
 
 export interface SalidaRenglon {
   id_movimiento?: number;
@@ -177,7 +178,7 @@ export default function PrintSalidaView({ payload }: { payload: SalidaPayload })
                   </td>
                   <td className="pr-inv-td pr-inv-td-img">
                     {imgSrc(r.imagen_url) ? (
-                      <img src={imgSrc(r.imagen_url)} alt="" className="pr-inv-thumb" />
+                      <img {...fotoMini(imgSrc(r.imagen_url))} loading="eager" alt="" className="pr-inv-thumb" />
                     ) : (
                       <div className="pr-inv-thumb-placeholder"><span style={{ fontSize: "5pt", color: "var(--pr-faint)" }}>S/F</span></div>
                     )}

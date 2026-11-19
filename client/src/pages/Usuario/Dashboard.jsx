@@ -29,7 +29,7 @@
  * @requires ../../hooks/use-ticket-notification.js
  * @exports UsuarioDashboard (default)
  */
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ClipboardList,
@@ -37,18 +37,20 @@ import {
   Menu, X, FilePlus, Settings, Package
 } from "lucide-react";
 import { useAutoRefresh } from '../../hooks/use-auto-refresh.js';
-import NuevoReporte from './NuevoReporte.jsx';
-import HistorialIncidencias from './HistorialIncidencias.jsx';
-import ManualesIncidencias from './ManualesIncidencias.jsx';
-import SolicitudInsumo from './SolicitudInsumo.jsx';
-import VistaTicket from './VistaTicket.jsx';
-import VistaSolicitud from './VistaSolicitud.jsx';
-import ConfiguracionPerfil from './ConfiguracionPerfil.jsx';
 import { apiFetch, API_ROUTES } from '../../services/api-client.js';
 import { useTheme } from '../../context/theme-context.js';
 import { SeccionEstadisticas, SeccionMetricasUsuario, KanbanBoard, PanelDerecho } from '../../components/DashboardShared.jsx';
 import CampanaNotificaciones from '../../components/CampanaNotificaciones.jsx';
 import { useTicketNotification } from '../../hooks/use-ticket-notification.js';
+// Cada pantalla se descarga solo cuando se abre (antes todas venían en el
+// archivo inicial: 1.6 MB). Ver <Suspense> en el área de contenido.
+const NuevoReporte = lazy(() => import('./NuevoReporte.jsx'));
+const HistorialIncidencias = lazy(() => import('./HistorialIncidencias.jsx'));
+const ManualesIncidencias = lazy(() => import('./ManualesIncidencias.jsx'));
+const SolicitudInsumo = lazy(() => import('./SolicitudInsumo.jsx'));
+const VistaTicket = lazy(() => import('./VistaTicket.jsx'));
+const VistaSolicitud = lazy(() => import('./VistaSolicitud.jsx'));
+const ConfiguracionPerfil = lazy(() => import('./ConfiguracionPerfil.jsx'));
 
 const NAV = [
   { icon: LayoutDashboard, label: "Dashboard",               path: "/usuario/dashboard"        },
@@ -175,9 +177,17 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
   const ticketsRef            = useRef(tickets);
   ticketsRef.current          = tickets;
 
+  const recargaTimerRef = useRef(null);
   const { notificaciones, onDismiss, onDismissAll, onClickNotif } =
     useTicketNotification({
       usuario,
+      onEvento: useCallback((tipo) => {
+        clearTimeout(recargaTimerRef.current);
+        recargaTimerRef.current = setTimeout(() => {
+          if (tipo.startsWith("ticket")) { cargarTicketsRef.current?.(); recargarHistorialRef.current?.(); }
+          if (tipo.startsWith("solicitud")) cargarSolicitudesRef.current?.();
+        }, 400);
+      }, []),
       onNavegar: useCallback((tipo, data) => {
         if (["ticket:actualizado", "ticket:en_atencion", "ticket:confirmado", "solicitud:actualizada"].includes(tipo)) {
           cargarTicketsRef.current?.();
@@ -273,7 +283,8 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
     cargarSolicitudes();
   }, [cargarTickets, cargarSolicitudes]);
 
-  useAutoRefresh(() => { cargarTickets(); cargarSolicitudes(); }, 30000, [cargarTickets, cargarSolicitudes]);
+  // Respaldo: los avisos en vivo ya recargan al momento (onEvento).
+  useAutoRefresh(() => { cargarTickets(); cargarSolicitudes(); }, 120000, [cargarTickets, cargarSolicitudes]);
 
   // Interceptar botón atrás cuando hay ticket o solicitud abierta
   useEffect(() => {
@@ -379,6 +390,7 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
         </header>
 
         <div className="flex-1 min-h-0" style={{ background: T.bg, overflow: activoIdx === 2 && !ticketVer && !solicitudVer ? "hidden" : "auto", scrollBehavior: "smooth", overscrollBehavior: "contain" }}>
+          <Suspense fallback={<div className="flex items-center justify-center py-20 text-[12px] font-semibold" style={{ color: T.textMuted }}>Cargando…</div>}>
           {ticketVer ? (
             <VistaTicket T={T} ticket={ticketVer} onVolver={volverDeTicket} usuario={usuario} />
           ) : solicitudVer ? (
@@ -422,6 +434,7 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
               </div>
             </div>
           )}
+          </Suspense>
         </div>
       </div>
 

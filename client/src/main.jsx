@@ -81,6 +81,21 @@ import { limpiarSesionInactiva, useCierreInactividad, marcarActividad, MINUTOS_I
 // se descarta antes de pintar nada (el siguiente usuario ve el login).
 limpiarSesionInactiva()
 
+// Al actualizar el sistema cambian los nombres de los archivos de cada pantalla.
+// Si alguien tenía la página abierta desde antes, al abrir otra pantalla el
+// navegador pediría un archivo que ya no existe: se recarga UNA vez para tomar
+// la versión nueva (la marca evita recargar en bucle si el problema es otro).
+window.addEventListener('vite:preloadError', (e) => {
+  try {
+    if (sessionStorage.getItem('recarga_version') === '1') return
+    sessionStorage.setItem('recarga_version', '1')
+  } catch { /* sin storage */ }
+  e.preventDefault()
+  window.location.reload()
+})
+// La marca se quita tras un minuto sin fallas: la siguiente actualización vuelve a poder recargar.
+setTimeout(() => { try { sessionStorage.removeItem('recarga_version') } catch { /* sin storage */ } }, 60000)
+
 
 const useThemeCtx = useTheme
 
@@ -113,7 +128,7 @@ function App() {
     }
     link.rel  = "icon";
     link.type = "image/x-icon";
-    link.href = "/assets/img/logo.ico?v=2";
+    link.href = "/assets/img/logo.ico?v=3";
   }, [])
 
   // -- Rehidratar token al recargar la página ------------------

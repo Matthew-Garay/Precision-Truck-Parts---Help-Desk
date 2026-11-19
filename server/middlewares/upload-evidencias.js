@@ -51,7 +51,11 @@ import sharp               from "sharp";
 
 // Fix #16: usar import.meta.url en lugar de path.resolve relativo al CWD
 const __dirname       = path.dirname(fileURLToPath(import.meta.url));
-const EVIDENCIAS_BASE = path.resolve(__dirname, "../../storage/Evidencias_Tickets");
+// EVIDENCIAS_DIR solo lo usan las pruebas automáticas (carpeta temporal, para
+// no escribir en la carpeta real de evidencias).
+const EVIDENCIAS_BASE = process.env.EVIDENCIAS_DIR
+  ? path.resolve(process.env.EVIDENCIAS_DIR)
+  : path.resolve(__dirname, "../../storage/Evidencias_Tickets");
 const EVIDENCIAS_TMP  = path.resolve(EVIDENCIAS_BASE, "_tmp_upload");
 
 const MIMETYPES_IMAGEN  = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);

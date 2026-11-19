@@ -66,7 +66,7 @@
  *     Valida todos los campos de un insumo del inventario incluyendo estado
  *     (enum: Excelente, Bueno, Regular, Malo, Dañado) y stock como entero >= 0.
  *     Los campos de texto opcionales (num_serie, descripcion, marca, modelo)
- *     que se dejen en blanco se guardan automaticamente como "N/A".
+ *     que se dejen en blanco se guardan como NULL (sin dato).
  *
  * @module server/middlewares/validate
  * @requires zod
@@ -509,31 +509,28 @@ export const schemaFiltrosTickets = z.object({
 });
 
 /**
- * Texto opcional de insumo que, si se deja en blanco (vacío, solo espacios
- * o null), se guarda automáticamente como "N/A" para que el registro nunca
- * quede vacío en el inventario (misma convención que ya usan los datos
- * sembrados de la tabla insumo).
- *
- * NOTA: imagen_url NO usa este transform — la foto necesita quedarse en null
- * para que el frontend sepa que el insumo aún no tiene imagen.
+ * Texto opcional de insumo:
+ *   - en blanco (vacío, solo espacios o null) → NULL ("sin dato"; antes se
+ *     guardaba el texto 'N/A', ver migración 006);
+ *   - si el campo NO viene en el body → undefined, y el UPDATE no lo toca
+ *     (antes una edición parcial lo convertía en 'N/A' y borraba el dato).
  */
-const textoNA = (max) =>
+const textoOpcional = (max) =>
   z.string().trim().max(max)
     .nullable()
     .optional()
-    .transform(v => (v ? v : "N/A"))
-    .default("N/A");
+    .transform(v => (v === undefined ? undefined : (v || null)));
 
 // Etiqueta física del insumo: opcional; vacía se guarda como NULL (no "N/A").
 const textoEtiqueta = z.string().trim().max(50, "La etiqueta no puede pasar de 50 caracteres").nullable().optional();
 
 export const schemaInsumo = z.object({
-  num_serie:    textoNA(100),
+  num_serie:    textoOpcional(100),
   etiqueta:     textoEtiqueta,
   nombre:       z.string().trim().min(1, "Nombre requerido").max(150),
-  descripcion:  textoNA(1000),
-  marca:        textoNA(100),
-  modelo:       textoNA(100),
+  descripcion:  textoOpcional(1000),
+  marca:        textoOpcional(100),
+  modelo:       textoOpcional(100),
   stock:        z.number({ coerce: true }).int().min(0),
   estado:       z.enum(["Excelente", "Bueno", "Regular", "Malo", "Dañado"]),
   id_categoria: z.number({ coerce: true }).int().positive(),
@@ -550,12 +547,12 @@ export const schemaInsumo = z.object({
 // Schema para actualización parcial de insumo (PUT /insumos/:id)
 // Todos los campos son opcionales: solo se actualizan los que se envían.
 export const schemaActualizarInsumo = z.object({
-  num_serie:    textoNA(100).optional(),
+  num_serie:    textoOpcional(100).optional(),
   etiqueta:     textoEtiqueta,
   nombre:       z.string().trim().min(1, "Nombre requerido").max(150).optional(),
-  descripcion:  textoNA(1000).optional(),
-  marca:        textoNA(100).optional(),
-  modelo:       textoNA(100).optional(),
+  descripcion:  textoOpcional(1000).optional(),
+  marca:        textoOpcional(100).optional(),
+  modelo:       textoOpcional(100).optional(),
   stock:        z.number({ coerce: true }).int().min(0).nullable().optional(),
   estado:       z.enum(["Excelente", "Bueno", "Regular", "Malo", "Dañado"]).nullable().optional(),
   id_categoria: z.number({ coerce: true }).int().positive().nullable().optional(),

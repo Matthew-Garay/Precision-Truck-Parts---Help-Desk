@@ -43,7 +43,9 @@ Archivo de referencia: `server/.env.example` (variables del servidor) y `client/
 | `npm install` | Dependencias |
 | `npm run dev` | Solo Vite (frontend, puerto 5173) |
 | `npm run server` | Backend en modo produccion con `.env` |
-| `npm run all` | Backend y frontend juntos (concurrently); libera puertos con `preall` |
+| `npm run produccion` | **Uso diario.** Compila el frontend y arranca Express en modo producción en el puerto 5173 (misma URL de siempre): sirve la app optimizada y la API en un solo proceso |
+| `npm run iniciar` | Igual que `produccion` pero sin volver a compilar (si `dist/` ya está al día) |
+| `npm run all` | Solo para programar: Vite en modo desarrollo (5173) + backend (3001) |
 | `npm run build` | Build de produccion en `dist/` |
 | `npm run preview` | Preview del build |
 | `npm run probar:correo` | Prueba de la configuracion SMTP |
@@ -52,6 +54,38 @@ Archivo de referencia: `server/.env.example` (variables del servidor) y `client/
 Despliegue tipico en un solo equipo: `npm run build` una vez y despues `npm run server`; Express sirve `dist/` y resuelve cualquier ruta no-API con `index.html` (SPA). Healthchecks: `GET /api/ping` (publico) y `GET /api/health` (con token, expone pool, memoria y uptime). Existe ademas `railway.json` (Nixpacks: `npm install && npm run build`, arranque `node --import ./server/load-env.js server/server.js`, healthcheck `/api/ping`) por si se usa esa plataforma.
 
 Tras un reinicio del proceso: las alertas de Socket.io deduplicadas se reconstruyen desde `Workers/alertState.js`; no hay estado en memoria que deba persistirse manualmente.
+
+## Rendimiento
+
+Medido el 19/11/2026 en el servidor de la oficina (prueba solo lectura con `server/scripts/prueba-carga.js`):
+
+| | Modo desarrollo (`npm run all`) | Modo producción (`npm run produccion`) |
+|---|---|---|
+| Primera carga de la app | 119 archivos, 11.4 MB | 6 archivos, 0.13 MB comprimidos |
+| Visitas siguientes | se vuelve a pedir todo | solo `index.html` (1.6 KB); lo demás queda en caché del navegador |
+| API, 20 usuarios sin pausa | — | 636 pet./s, mediana 25 ms, p95 81 ms, 0 errores |
+| API, 200 usuarios sin pausa | — | ≈730 pet./s, mediana 219 ms, 0 errores |
+
+Cada ruta de la API responde sola en 2–9 ms. Un usuario real hace una petición cada varios segundos, así que
+la capacidad sobra para los ~100 empleados. Repetir la medición con el sistema encendido:
+`node --import ./server/load-env.js server/scripts/prueba-carga.js http://127.0.0.1:5173 50 15`.
+
+Imágenes (19/11/2026, `server/scripts/optimizar-imagenes.js`; originales en `Backups/imagenes_originales_20261119_0946`):
+
+| | Antes | Después |
+|---|---|---|
+| Fondo del login | 5,233 KB (4268 px) | 328 KB (2560 px, WebP 92) |
+| Fotos de insumos (124) | 11.8 MB | 5.9 MB; lado mayor ≤ 1200 px, calidad 90, PNG sin pérdida |
+| Fotos que se descargan en el inventario | 11.8 MB (fotos completas a 22 px) | 0.21 MB (miniaturas `storage/Insumos/min/*.webp`, 128 px) |
+| Icono de la pestaña / logo | 264 KB / 187 KB | 12 KB / 25 KB |
+
+Calidad: PSNR mediano 44 dB y comparación visual al 100 % sin diferencias. Solo se reemplaza un archivo si
+ahorra ≥ 20 %. Las fotos nuevas se comprimen y generan su miniatura al subirlas (`upload-insumos.js`).
+Las pantallas consultan cada 2 min (manuales 5 min) y se recargan al momento con cada aviso en vivo.
+
+Qué lo hace rápido: pantallas cargadas bajo demanda (`lazy`), ExcelJS solo al exportar, archivos con hash en
+caché un año (`index.html` sin caché), compresión gzip y la versión de sesión en memoria 10 s (se invalida al
+cerrar sesión o dar de baja).
 
 ## Respaldos
 
@@ -133,10 +167,22 @@ mal llamados) deben quedar en 0 antes de subir cambios; los **avisos** (variable
 ## Migraciones
 
 Los cambios de esquema van en `database/migraciones/NNN_descripcion.sql` y se reflejan también en
-`database/schema.sql`. Aplicadas: `001_anular_salida.sql`, `002_empleado_eliminado.sql`, `003_salida_cambios.sql` (historial de correcciones de fecha de salidas), `004_insumo_etiqueta.sql` (columna etiqueta del insumo), `005_integridad_fase1.sql` (reglas CHECK/UNIQUE, índices y disparador del kardex).
+`database/schema.sql`. Aplicadas: `001_anular_salida.sql`, `002_empleado_eliminado.sql`, `003_salida_cambios.sql` (historial de correcciones de fecha de salidas), `004_insumo_etiqueta.sql` (columna etiqueta del insumo), `005_integridad_fase1.sql` (reglas CHECK/UNIQUE, índices y disparador del kardex), `006_normalizacion_fase2.sql` (`N/A`→NULL, `categoria_ambito`, `aprobado` calculado, `ticket_evidencia`).
 
 Para aplicar una migración sin el cliente `mysql`: `npm run migrar -- database/migraciones/NNN_….sql` (entiende `DELIMITER`;
-añade `--base otra_base` para ensayar antes en una copia). Haz `npm run respaldar` antes. Propuesta de normalización: [normalizacion-bd.md](normalizacion-bd.md).
+añade `--base otra_base` para ensayar antes en una copia). Haz `npm run respaldar` antes.
+
+Procedimiento seguro para una migración nueva:
+
+```bash
+npm run respaldar
+node --import ./server/load-env.js server/scripts/copiar-base.js precision_ensayo_test        # copia con datos reales
+npm run migrar -- database/migraciones/NNN_….sql --base precision_ensayo_test                  # ensayo
+node --import ./server/load-env.js server/scripts/regenerar-schema.js precision_ensayo_test NNN # schema.sql para las pruebas
+npm test                                                                                      # todo en verde
+npm run migrar -- database/migraciones/NNN_….sql                                              # base real
+node --import ./server/load-env.js server/scripts/copiar-base.js precision_ensayo_test --borrar
+``` Propuesta de normalización: [normalizacion-bd.md](normalizacion-bd.md).
 
 Verificacion periodica: revisar que la carpeta del dia tenga `base_datos.sql` con tamano creciente y `storage/` completo.
 

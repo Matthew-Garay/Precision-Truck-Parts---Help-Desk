@@ -346,7 +346,8 @@ const Solicitud = {
     return result.affectedRows > 0;
   },
 
-  // Actualiza el campo aprobado / cantidad_aprobada de cada ítem de solicitud_insumo
+  // Guarda la cantidad aceptada de cada ítem (0 = negado). `aprobado` es una
+  // columna calculada desde cantidad_aprobada (migración 006): no se escribe.
   aprobarItems: async (id_solicitud, items) => {
     // items: [{ id_solicitud_insumo, aprobado: 0|1, cantidad_aprobada: int|null }]
     const conn = await pool.getConnection();
@@ -359,7 +360,7 @@ const Solicitud = {
         const cantidad = esAprobado === 1 ? (cantidad_aprobada ?? null) : 0;
         await conn.query(
           `UPDATE solicitud_insumo
-              SET aprobado = ?, cantidad_aprobada = COALESCE(?, cantidad_aprobada)
+              SET cantidad_aprobada = IF(? = 1, COALESCE(?, NULLIF(cantidad_aprobada, 0), cantidad), 0)
             WHERE id_solicitud_insumo = ? AND id_solicitud = ?`,
           [esAprobado, cantidad, id_solicitud_insumo, id_solicitud]
         );

@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { Package, AlertCircle, CheckCircle2, X } from "lucide-react";
 import { FS } from '../../utils/tipografia.js';
 import LogoModal from '../LogoModal.jsx';
+import { fotoMini } from '../../utils/miniatura.js';
 
 export function ModalResultado({ resultModal, cartEntries, T, onClose }) {
   const isDark = T?.isDark ?? false;
@@ -120,7 +121,7 @@ export function ModalResultado({ resultModal, cartEntries, T, onClose }) {
                           overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center",
                         }}>
                           {supply.imagen_url
-                            ? <img src={supply.imagen_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            ? <img {...fotoMini(supply.imagen_url)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                             : <Package size={14} style={{ color: T.textFaint }} />
                           }
                         </div>

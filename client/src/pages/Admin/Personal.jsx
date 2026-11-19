@@ -63,7 +63,7 @@ export default function Personal({ T }) {
       .finally(() => { if (mostrarLoading) setLoading(false); });
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
-  useAutoRefresh(() => cargar(false), 30000);
+  useAutoRefresh(() => cargar(false), 120000);
   const filtrados = empleados.filter(e => {
     // Búsqueda sin acentos ni mayúsculas, por nombre completo, correo o número de empleado.
     const q = normalizar(filtros.busqueda).replace(/\s+/g, " ");

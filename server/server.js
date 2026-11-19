@@ -335,8 +335,26 @@ app.use("/api", (req, res) => {
 // En produccion, Express sirve el build del frontend para cualquier ruta no-API.
 if (process.env.NODE_ENV === "production") {
   const distPath = path.resolve(__dirname, "../dist");
-  app.use(express.static(distPath));
-  app.get("/{*path}", (_req, res) => res.sendFile(path.join(distPath, "index.html")));
+  // Archivos del build con hash en el nombre (index-CSWVmRiQ.js): cambian de
+  // nombre en cada versión, así que el navegador los guarda un año y no los
+  // vuelve a pedir. Lo demás (imágenes de public/) un día; index.html se revisa
+  // siempre para que todos reciban la versión nueva al actualizar el sistema.
+  const CON_HASH = /-[A-Za-z0-9_-]{8}\.(js|mjs|css|woff2?|wasm)$/;
+  app.use(express.static(distPath, {
+    index: false,
+    setHeaders: (res, ruta) => {
+      if (CON_HASH.test(ruta))        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      else if (ruta.endsWith(".html")) res.setHeader("Cache-Control", "no-cache");
+      else                             res.setHeader("Cache-Control", "public, max-age=86400");
+    },
+  }));
+  app.get("/{*path}", (req, res) => {
+    // Un archivo que no existe responde 404 (no la página de la app): así una
+    // miniatura faltante cae a la foto completa en vez de recibir HTML.
+    if (/^\/(storage|assets|fotos)\//.test(req.path)) return res.status(404).end();
+    res.setHeader("Cache-Control", "no-cache");
+    res.sendFile(path.join(distPath, "index.html"));
+  });
 }
 
 // Middleware global de errores. Captura cualquier error no manejado en los controladores.

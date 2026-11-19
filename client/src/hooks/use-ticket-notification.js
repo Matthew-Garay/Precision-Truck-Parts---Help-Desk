@@ -115,7 +115,11 @@ function guardarEnStorage(id_empleado, notifs) {
   } catch {}
 }
 
-export function useTicketNotification({ usuario, onNavegar }) {
+export function useTicketNotification({ usuario, onNavegar, onEvento }) {
+  // onEvento(tipo, data): se llama al LLEGAR cada aviso en vivo (no al hacer clic),
+  // para que la pantalla recargue al momento sin esperar la consulta periódica.
+  const onEventoRef = useRef(onEvento);
+  onEventoRef.current = onEvento;
   const toast    = useToast();
   const toastRef = useRef(toast);
   toastRef.current = toast;
@@ -159,6 +163,8 @@ export function useTicketNotification({ usuario, onNavegar }) {
     if (procesandoRef.current.has(dedupeKey)) return;
     procesandoRef.current.add(dedupeKey);
     setTimeout(() => procesandoRef.current.delete(dedupeKey), 3000);
+
+    try { onEventoRef.current?.(tipo, data); } catch { /* la recarga no debe frenar el aviso */ }
 
     // Verificar existencia del ticket — excepto ticket:confirmado (recién creado, puede no estar aún)
     if (EVENTOS_CON_TICKET_ID.has(tipo) && data?.id_ticket && tipo !== "ticket:confirmado") {
