@@ -108,6 +108,8 @@ export default function PrintHistorialView({ data }: { data: HistorialData }) {
 
   const estatusMeta = ESTATUS_META[empleado.estatus === "Activo" ? "Resuelto" : "Cancelado"];
 
+  // Celdas en arreglo: ReporteTable (PrintShared) las envuelve en <td key={j}>.
+  /* eslint-disable react/jsx-key */
   const rows = accesos.map(a => {
     const activa = !a.fecha_salida;
     return [
@@ -123,6 +125,7 @@ export default function PrintHistorialView({ data }: { data: HistorialData }) {
       </span>,
     ];
   });
+  /* eslint-enable react/jsx-key */
 
   return (
     <div className="pr-root" data-ready="true">

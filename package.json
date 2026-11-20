@@ -25,18 +25,21 @@
     "test": "npm test -w server && npm test -w client",
     "test:server": "npm test -w server",
     "test:client": "npm test -w client",
+    "test:navegador": "node --import ./server/load-env.js server/scripts/prueba-navegador-demo.js",
     "lint": "eslint server client/src client/tests client/vite.config.js eslint.config.js",
-    "lint:fix": "eslint --fix server client/src client/vite.config.js eslint.config.js"
+    "lint:fix": "eslint --fix server client/src client/tests client/vite.config.js eslint.config.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@typescript-eslint/parser": "^8.46.2",
     "concurrently": "^10.0.3",
     "cross-env": "^7.0.3",
     "eslint": "^9.39.5",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.14.0",
-    "knip": "^6.43.0"
+    "knip": "^6.43.0",
+    "puppeteer-core": "^24.43.1"
   },
   "allowScripts": {
     "esbuild@0.25.12": true

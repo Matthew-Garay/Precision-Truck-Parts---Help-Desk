@@ -22,7 +22,12 @@ param(
   [string]$Destino = '',
 
   # Cuantas copias antiguas conservar antes de borrar las mas viejas.
-  [int]$Conservar = 14
+  [int]$Conservar = 14,
+
+  # Segundo lugar para la copia (USB, carpeta de red u OneDrive), para no
+  # depender del disco de esta PC. Si se omite, se lee de respaldo-externo.txt
+  # (una ruta en la primera linea). Se conservan ahi las ultimas 4 copias.
+  [string]$CopiaExterna = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -144,6 +149,30 @@ if ($cortes.Count -gt $Conservar) {
     Write-Host "  Borrando copia antigua: $($_.Name)"
     Remove-Item $_.FullName -Recurse -Force
   }
+}
+
+# ── Copia en un segundo lugar (opcional) ────────────────────────────
+if (-not $CopiaExterna) {
+  $archivoExterno = Join-Path $raiz 'respaldo-externo.txt'
+  if (Test-Path $archivoExterno) {
+    $CopiaExterna = (Get-Content $archivoExterno -TotalCount 1 -Encoding UTF8).Trim().Trim('"')
+  }
+}
+if ($CopiaExterna) {
+  try {
+    if (-not (Test-Path $CopiaExterna)) { throw "no existe o no esta conectada" }
+    $destExt = Join-Path $CopiaExterna 'HelpDesk-Respaldos'
+    New-Item -ItemType Directory -Path $destExt -Force | Out-Null
+    Copy-Item -Path $carpeta -Destination $destExt -Recurse -Force
+    Write-Host "  Copia externa: $(Join-Path $destExt (Split-Path $carpeta -Leaf))" -ForegroundColor Green
+    $viejas = Get-ChildItem $destExt -Directory -Filter 'respaldo_*' | Sort-Object Name -Descending | Select-Object -Skip 4
+    $viejas | ForEach-Object { Remove-Item $_.FullName -Recurse -Force }
+  } catch {
+    # Sin copia externa el respaldo local igual queda hecho: solo se avisa.
+    Write-Warning "No se pudo copiar a '$CopiaExterna' ($($_.Exception.Message)). El respaldo local SI quedo hecho."
+  }
+} else {
+  Write-Host '  (Sin copia externa: escribe una ruta en respaldo-externo.txt para guardar tambien fuera de esta PC.)'
 }
 
 Write-Host ''

@@ -146,9 +146,11 @@ function DotIcon({ palKey, index }) {
  *  - mientras nadie toma el ticket, el paso 2 dice "Esperando técnico";
  *  - "No Resuelto" y "Cancelado" terminan en rojo / gris, no en "Resuelto".
  */
-function ajustarPaso(paso, i, pasoActual, estatus) {
+function ajustarPaso(paso, i, pasoActual, estatus, esAdmin) {
   if (paso.id === "tecnico_asignado" && pasoActual === 1 && estatus === "En proceso")
-    return { ...paso, label: "Esperando técnico", desc: "Tu reporte está en la fila de Soporte Técnico; en cuanto un técnico lo tome verás su nombre aquí" };
+    return { ...paso, label: "Esperando técnico", desc: esAdmin
+      ? "Nadie lo ha tomado todavía: asígnale un técnico en \"Acciones del administrador\""
+      : "Tu reporte está en la fila de Soporte Técnico; en cuanto un técnico lo tome verás su nombre aquí" };
   if (paso.id === "resuelto" && estatus === "No Resuelto")
     return { ...paso, label: "Cerrado sin solución", desc: "El reporte se cerró sin resolverse" };
   if (paso.id === "resuelto" && estatus === "Cancelado")
@@ -156,13 +158,13 @@ function ajustarPaso(paso, i, pasoActual, estatus) {
   return paso;
 }
 
-export default function ProgressTimeline({ T, pasoActual = 0, metadata = {}, estatus = null }) {
+export default function ProgressTimeline({ T, pasoActual = 0, metadata = {}, estatus = null, esAdmin = false }) {
   const { isDark } = T;
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       {PASOS.map((pasoBase, i) => {
-        const paso    = ajustarPaso(pasoBase, i, pasoActual, estatus);
+        const paso    = ajustarPaso(pasoBase, i, pasoActual, estatus, esAdmin);
         const isLast  = i === PASOS.length - 1;
         const state   = i < pasoActual ? "done" : i === pasoActual ? "active" : "pending";
         const palKey  = isLast && state === "active" && estatus === "No Resuelto" ? "final-fallido"

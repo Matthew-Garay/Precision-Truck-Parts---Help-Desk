@@ -273,9 +273,30 @@ const Empleado = {
   getDepartamentos: async () => {
     const hit = cache.get("cat:departamentos");
     if (hit) return hit;
-    const [rows] = await pool.query(`SELECT id_departamento, nombre_departamento FROM departamento ORDER BY nombre_departamento ASC`);
+    const [rows] = await pool.query(
+      `SELECT d.id_departamento, d.nombre_departamento, d.id_area, a.nombre_area
+         FROM departamento d LEFT JOIN area a ON a.id_area = d.id_area
+        ORDER BY d.nombre_departamento ASC`);
     cache.set("cat:departamentos", rows, TTL_CATALOGO);
     return rows;
+  },
+
+  // Áreas (agrupan los puestos para los reportes; migración 008).
+  getAreas: async () => {
+    const [rows] = await pool.query(
+      `SELECT a.id_area, a.nombre_area, COUNT(d.id_departamento) AS puestos
+         FROM area a LEFT JOIN departamento d ON d.id_area = a.id_area
+        GROUP BY a.id_area, a.nombre_area ORDER BY a.nombre_area`);
+    return rows;
+  },
+  crearArea: async (nombre) => {
+    const [r] = await pool.query("INSERT INTO area (nombre_area) VALUES (?)", [nombre]);
+    return r.insertId;
+  },
+  asignarArea: async (id_departamento, id_area) => {
+    const [r] = await pool.query("UPDATE departamento SET id_area = ? WHERE id_departamento = ?", [id_area, id_departamento]);
+    cache.del("cat:departamentos");
+    return r.affectedRows > 0;
   },
 
   getRoles: async () => {

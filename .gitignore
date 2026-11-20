@@ -141,3 +141,6 @@ dev/
 /Dump*.sql
 /*.csv
 backups/
+
+# Ruta local del segundo lugar para respaldos (cada PC la suya)
+respaldo-externo.txt

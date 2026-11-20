@@ -15,6 +15,7 @@ import js from "@eslint/js";
 import globals from "globals";
 import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
+import tsParser from "@typescript-eslint/parser";
 
 const sinUsar = ["warn", {
   args: "none",                 // parámetros de Express (req, res, next) aunque no se usen
@@ -49,7 +50,7 @@ export default [
 
   // ── Cliente (React + Vite) ────────────────────────────────────────────────
   {
-    files: ["client/src/**/*.{js,jsx}", "client/tests/**/*.{js,jsx}"],
+    files: ["client/src/**/*.{js,jsx,ts,tsx}", "client/tests/**/*.{js,jsx}"],
     plugins: { react, "react-hooks": reactHooks },
     languageOptions: {
       ecmaVersion: "latest",
@@ -74,5 +75,13 @@ export default [
       // `eslint-disable-next-line` donde la omisión es intencional).
       "react-hooks/exhaustive-deps": "warn",
     },
+  },
+  // Archivos TypeScript (hojas de impresión .tsx): mismo análisis, con el
+  // parser de TypeScript para que entienda tipos e interfaces. Los tipos solo
+  // usados en anotaciones los resuelve TS, no "no-undef".
+  {
+    files: ["client/src/**/*.{ts,tsx}"],
+    languageOptions: { parser: tsParser },
+    rules: { "no-undef": "off" },
   },
 ];

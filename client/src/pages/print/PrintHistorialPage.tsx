@@ -18,7 +18,7 @@
  */
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { getToken, setToken, apiFetch } from '../../services/api-client.js';
+import { getToken, setToken } from '../../services/api-client.js';
 import PrintHistorialView from '../../components/print/PrintHistorialView.tsx';
 import { LoadingPrint, ErrorPrint } from '../../components/PrintShared.tsx';
 import { waitForImages } from '../../utils/print-utils.ts';

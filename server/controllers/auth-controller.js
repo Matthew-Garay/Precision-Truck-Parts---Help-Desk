@@ -419,3 +419,35 @@ export const actualizarPerfil = async (req, res) => {
     res.status(500).json({ error: "Error del servidor", ...errDetalle(err) });
   }
 };
+
+// ── Áreas de los puestos (para reportes por área) ───────────────────────────
+/** GET /api/auth/areas (admin) */
+export const getAreas = async (req, res) => {
+  try { res.json(await Empleado.getAreas()); }
+  catch (err) { res.status(500).json({ error: "Error al obtener las áreas", ...errDetalle(err) }); }
+};
+
+/** POST /api/auth/areas (admin) — body { nombre_area } */
+export const crearArea = async (req, res) => {
+  const nombre = String(req.body?.nombre_area ?? "").trim().replace(/\s+/g, " ");
+  if (nombre.length < 2 || nombre.length > 100) return res.status(400).json({ error: "Escribe un nombre de área (2 a 100 caracteres)" });
+  try { res.status(201).json({ ok: true, id_area: await Empleado.crearArea(nombre), nombre_area: nombre }); }
+  catch (err) {
+    if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ error: `Ya existe el área "${nombre}"` });
+    res.status(500).json({ error: "Error al crear el área", ...errDetalle(err) });
+  }
+};
+
+/** PATCH /api/auth/departamentos/:id/area (admin) — body { id_area | null } */
+export const asignarAreaPuesto = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const idArea = req.body?.id_area == null || req.body?.id_area === "" ? null : parseInt(req.body.id_area, 10);
+  if (!(id > 0) || (idArea !== null && !(idArea > 0))) return res.status(400).json({ error: "Datos inválidos" });
+  try {
+    if (!(await Empleado.asignarArea(id, idArea))) return res.status(404).json({ error: "Puesto no encontrado" });
+    res.json({ ok: true });
+  } catch (err) {
+    if (err.code === "ER_NO_REFERENCED_ROW_2") return res.status(400).json({ error: "El área no existe" });
+    res.status(500).json({ error: "Error al asignar el área", ...errDetalle(err) });
+  }
+};

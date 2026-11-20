@@ -63,33 +63,52 @@ function BarrasMes({ datos, valor, formato, actual, linea, alto = 120 }: {
   const vals = datos.map(valor);
   const max = Math.max(1, linea?.valor ?? 0, ...vals.map(v => v ?? 0)) * 1.15;
   const ancho = 100 / datos.length;
-  const y = (v: number) => alto - (v / max) * alto;
+  const pct = (v: number) => (v / max) * 100;   // altura en % del área de la gráfica
+  // Las BARRAS van en un SVG que se estira al ancho disponible; los TEXTOS van en
+  // HTML encima/debajo: dentro de un SVG estirado (preserveAspectRatio="none")
+  // las letras se deforman y se enciman.
   return (
-    <svg viewBox={`0 0 100 ${alto + 16}`} preserveAspectRatio="none" style={{ width: "100%", height: alto + 16, display: "block" }} role="img">
-      <line x1="0" x2="100" y1={alto} y2={alto} stroke="#cbd5e1" strokeWidth="0.3" vectorEffect="non-scaling-stroke" />
-      {datos.map((m, i) => {
-        const v = vals[i];
-        const sel = m.mes === actual;
-        const h = v ? (v / max) * alto : 0;
-        return (
-          <g key={m.mes}>
-            <title>{`${mesAnio(m.mes)}: ${v == null ? "sin datos" : formato(v)}`}</title>
-            <rect x={i * ancho} y={0} width={ancho} height={alto} fill="transparent" />
-            {h > 0 && <rect x={i * ancho + ancho * 0.18} y={alto - h} width={ancho * 0.64} height={h} rx="0.8" fill={sel ? DESTACADO : BASE} />}
-            {sel && v != null && (
-              <text x={i * ancho + ancho / 2} y={Math.max(7, alto - h - 2)} textAnchor="middle" fontSize="5" fontWeight="700" fill={TINTA}>{formato(v)}</text>
-            )}
-            <text x={i * ancho + ancho / 2} y={alto + 10} textAnchor="middle" fontSize="4" fill={TENUE}>{m.mes.slice(5)}/{m.mes.slice(2, 4)}</text>
-          </g>
-        );
-      })}
-      {linea && (
-        <g>
-          <line x1="0" x2="100" y1={y(linea.valor)} y2={y(linea.valor)} stroke={TINTA} strokeWidth="1" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" />
-          <text x="99.5" y={y(linea.valor) - 1.5} textAnchor="end" fontSize="4" fill={TINTA}>{linea.etiqueta}</text>
-        </g>
-      )}
-    </svg>
+    <div role="img" aria-label="Gráfica por mes" style={{ width: "100%" }}>
+      <div style={{ position: "relative", height: alto }}>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}>
+          <line x1="0" x2="100" y1="100" y2="100" stroke="#cbd5e1" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          {datos.map((m, i) => {
+            const v = vals[i];
+            const h = v ? pct(v) : 0;
+            return (
+              <g key={m.mes}>
+                <title>{`${mesAnio(m.mes)}: ${v == null ? "sin datos" : formato(v)}`}</title>
+                <rect x={i * ancho} y={0} width={ancho} height={100} fill="transparent" />
+                {h > 0 && <rect x={i * ancho + ancho * 0.18} y={100 - h} width={ancho * 0.64} height={h} fill={m.mes === actual ? DESTACADO : BASE} />}
+              </g>
+            );
+          })}
+          {linea && (
+            <line x1="0" x2="100" y1={100 - pct(linea.valor)} y2={100 - pct(linea.valor)} stroke={TINTA} strokeWidth="1" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" />
+          )}
+        </svg>
+        {/* Valor del mes elegido, sobre su barra */}
+        {datos.map((m, i) => {
+          const v = vals[i];
+          if (m.mes !== actual || v == null) return null;
+          return (
+            <span key={m.mes} style={{ position: "absolute", left: `${i * ancho}%`, width: `${ancho}%`, bottom: `${Math.min(88, pct(v))}%`,
+              textAlign: "center", fontSize: "7pt", fontWeight: 700, color: TINTA, paddingBottom: 2 }}>{formato(v)}</span>
+          );
+        })}
+        {linea && (
+          <span style={{ position: "absolute", right: 2, bottom: `${pct(linea.valor)}%`, fontSize: "6.5pt", color: TINTA, paddingBottom: 1, background: "#fff" }}>{linea.etiqueta}</span>
+        )}
+      </div>
+      {/* Meses debajo de cada barra */}
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${datos.length}, 1fr)`, marginTop: 3 }}>
+        {datos.map(m => (
+          <span key={m.mes} style={{ textAlign: "center", fontSize: "6pt", color: m.mes === actual ? TINTA : TENUE, fontWeight: m.mes === actual ? 700 : 400 }}>
+            {m.mes.slice(5)}/{m.mes.slice(2, 4)}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 

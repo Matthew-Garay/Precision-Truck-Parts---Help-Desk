@@ -65,7 +65,7 @@ import { validate, schemaLogin, schemaLogout, schemaActualizarPerfil, schemaCrea
 import {
   login, logout, actualizarPerfil, getAccesos, getAllAccesos,
   getAllEmpleados, getEmpleadoById, getDepartamentos, getRoles, getSucursales, updateEmpleadoAdmin, crearEmpleado, eliminarEmpleado,
-  refreshToken
+  refreshToken, getAreas, crearArea, asignarAreaPuesto,
 } from '../controllers/auth-controller.js';
 import { solicitarRecuperacion, verificarCodigo, resetPassword } from '../controllers/reset-controller.js';
 import { zohoLogin, zohoCallback } from '../controllers/zoho-controller.js';
@@ -98,10 +98,12 @@ const logoutLimiter = rateLimit({
   message: { error: "Demasiadas peticiones." },
 });
 
-// Rate limit para refresh-token (previene fuerza bruta)
+// Rate limit para refresh-token. Ya exige un token válido, así que no hay fuerza
+// bruta que frenar: el límite solo evita abusos. Antes era 5 cada 15 min y se
+// agotaba abriendo unas cuantas ventanas de impresión.
 const refreshTokenLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 60,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Demasiados intentos. Intenta en 15 minutos." },
@@ -155,5 +157,9 @@ router.put("/empleados/:id",       validate(schemaUpdateEmpleadoAdmin), updateEm
 router.post("/empleados",          validate(schemaCrearEmpleado),       crearEmpleado);
 // Borrado lógico: no borra la fila, solo la oculta de Personal
 router.delete("/empleados/:id",    eliminarEmpleado);
+// Áreas: agrupan los puestos para los reportes por área
+router.get("/areas",               getAreas);
+router.post("/areas",              crearArea);
+router.patch("/departamentos/:id/area", asignarAreaPuesto);
 
 export default router;

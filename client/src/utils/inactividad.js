@@ -12,7 +12,10 @@
  */
 import { useEffect, useRef, useState } from "react";
 
-export const MINUTOS_INACTIVIDAD = 30;
+export const MINUTOS_INACTIVIDAD = 30;          // usuarios (computadoras compartidas)
+export const MINUTOS_INACTIVIDAD_ADMIN = 480;   // administradores: una jornada (dejan el panel abierto)
+/** Minutos de inactividad permitidos según el rol guardado en la sesión. */
+export const minutosPara = (usuario) => (usuario?.rol === "admin" ? MINUTOS_INACTIVIDAD_ADMIN : MINUTOS_INACTIVIDAD);
 const LIMITE_MS   = MINUTOS_INACTIVIDAD * 60 * 1000;
 const AVISO_MS    = 60 * 1000;          // aviso 1 minuto antes de cerrar
 const CLAVE       = "_ultima_actividad";
@@ -30,9 +33,9 @@ export const borrarActividad = () => {
 };
 
 /** true si hay una marca de actividad y ya pasó el límite. */
-export const vencidaPorInactividad = (ahora = Date.now()) => {
+export const vencidaPorInactividad = (ahora = Date.now(), limiteMs = LIMITE_MS) => {
   const ultima = leer();
-  return ultima > 0 && ahora - ultima > LIMITE_MS;
+  return ultima > 0 && ahora - ultima > limiteMs;
 };
 
 /**
@@ -40,7 +43,9 @@ export const vencidaPorInactividad = (ahora = Date.now()) => {
  * ANTES de mostrar cualquier pantalla (sin parpadeo del panel del anterior).
  */
 export function limpiarSesionInactiva() {
-  if (!vencidaPorInactividad()) return false;
+  let usuario = null;
+  try { usuario = JSON.parse(localStorage.getItem("usuario") || "null"); } catch { /* sin sesión */ }
+  if (!vencidaPorInactividad(Date.now(), minutosPara(usuario) * 60 * 1000)) return false;
   try {
     ["_tk", "usuario", "id_acceso", CLAVE].forEach(k => localStorage.removeItem(k));
   } catch { /* sin storage */ }
@@ -56,7 +61,8 @@ const EVENTOS = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "w
  * @returns {{ segundosRestantes: number|null, seguir: Function }}
  *   segundosRestantes ≠ null durante el último minuto (para el aviso).
  */
-export function useCierreInactividad(activo, onExpirar) {
+export function useCierreInactividad(activo, onExpirar, minutos = MINUTOS_INACTIVIDAD) {
+  const limiteMs = minutos * 60 * 1000;
   const [restante, setRestante] = useState(null);
   const ultimoGuardado = useRef(0);
   const expirarRef = useRef(onExpirar);
@@ -74,7 +80,7 @@ export function useCierreInactividad(activo, onExpirar) {
       marcarActividad();
     };
     const revisar = () => {
-      const falta = LIMITE_MS - (Date.now() - leer());
+      const falta = limiteMs - (Date.now() - leer());
       if (falta <= 0) { setRestante(null); expirarRef.current?.(); return; }
       setRestante(falta <= AVISO_MS ? Math.ceil(falta / 1000) : null);
     };
@@ -82,14 +88,14 @@ export function useCierreInactividad(activo, onExpirar) {
     EVENTOS.forEach(e => window.addEventListener(e, registrar, { passive: true }));
     const id = setInterval(revisar, CADA_MS);
     // Durante el aviso se revisa cada segundo para la cuenta regresiva.
-    const idAviso = setInterval(() => { if (LIMITE_MS - (Date.now() - leer()) <= AVISO_MS) revisar(); }, 1000);
+    const idAviso = setInterval(() => { if (limiteMs - (Date.now() - leer()) <= AVISO_MS) revisar(); }, 1000);
     revisar();
     return () => {
       EVENTOS.forEach(e => window.removeEventListener(e, registrar));
       clearInterval(id);
       clearInterval(idAviso);
     };
-  }, [activo]);
+  }, [activo, limiteMs]);
 
   const seguir = () => { ultimoGuardado.current = Date.now(); marcarActividad(); setRestante(null); };
   return { segundosRestantes: restante, seguir };

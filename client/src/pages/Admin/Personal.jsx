@@ -33,6 +33,7 @@ import { ModalConfirm, useToast } from '../../components/Feedback.jsx';
 import { ModalEmpleado, ORANGE } from '../../components/Personal/ModalEmpleado.jsx';
 import { ModalHistorial } from '../../components/Personal/ModalHistorialAccesos.jsx';
 import { TablaEmpleados, normalizar } from '../../components/Personal/TablaEmpleados.jsx';
+import ModalAreas from '../../components/Personal/ModalAreas.jsx';
 
 const FILTROS_INIT = { busqueda: "", departamento: "Todos", sucursal: "Todos", estatus: "Todos" };
 
@@ -47,6 +48,7 @@ export default function Personal({ T }) {
   const [filtros, setFiltros] = useState(FILTROS_INIT);
   const [modal, setModal] = useState(null);
   const [modalHistorial, setModalHistorial] = useState(null);
+  const [verAreas, setVerAreas] = useState(false);
   const cargar = useCallback((mostrarLoading = true) => {
     if (mostrarLoading) setLoading(true);
     Promise.all([
@@ -160,6 +162,12 @@ export default function Personal({ T }) {
           onLimpiar={() => setFiltros({ busqueda: "", departamento: "Todos", sucursal: "Todos", estatus: "Todos" })}
           T={T}>
           <button
+            onClick={() => setVerAreas(true)}
+            title="Asignar cada puesto a su área (reportes por área)"
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 6, fontSize: FS.cuerpo, fontWeight: 700, background: "transparent", color: ORANGE, border: `1px solid ${ORANGE}`, cursor: "pointer", whiteSpace: "nowrap" }}>
+            Áreas
+          </button>
+          <button
             onClick={() => setModal({ modo: "crear" })}
             style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 6, fontSize: FS.cuerpo, fontWeight: 700, background: ORANGE, color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
             onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.08)"}
@@ -217,6 +225,7 @@ export default function Personal({ T }) {
           onCerrar={() => setModal(null)}
         />
       )}
+      {verAreas && <ModalAreas T={T} onClose={() => setVerAreas(false)} />}
     </div>
   );
 }

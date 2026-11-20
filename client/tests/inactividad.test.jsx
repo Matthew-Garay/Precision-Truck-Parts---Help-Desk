@@ -2,7 +2,7 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import {
-  MINUTOS_INACTIVIDAD, marcarActividad, vencidaPorInactividad, limpiarSesionInactiva, useCierreInactividad,
+  MINUTOS_INACTIVIDAD, marcarActividad, vencidaPorInactividad, limpiarSesionInactiva, useCierreInactividad, minutosPara,
 } from "../src/utils/inactividad.js";
 
 const MIN = 60 * 1000;
@@ -67,5 +67,16 @@ describe("inactividad", () => {
     expect(result.current.segundosRestantes).toBeNull();
     act(() => { vi.advanceTimersByTime(5 * MIN); });
     expect(onExpirar).not.toHaveBeenCalled();
+  });
+  test("administradores: 8 horas; usuarios: 30 minutos", () => {
+    expect(minutosPara({ rol: "admin" })).toBe(480);
+    expect(minutosPara({ rol: "usuario" })).toBe(30);
+    localStorage.setItem("_tk", "abc");
+    localStorage.setItem("usuario", JSON.stringify({ rol: "admin" }));
+    marcarActividad();
+    vi.setSystemTime(Date.now() + 2 * 60 * MIN);   // 2 h sin uso: el admin sigue dentro
+    expect(limpiarSesionInactiva()).toBe(false);
+    vi.setSystemTime(Date.now() + 7 * 60 * MIN);   // 9 h: se cierra
+    expect(limpiarSesionInactiva()).toBe(true);
   });
 });

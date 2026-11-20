@@ -20,3 +20,11 @@ describe("ProgressTimeline", () => {
     expect(screen.getAllByText("Cancelado").length).toBeGreaterThan(0);
   });
 });
+
+describe("ProgressTimeline · textos por rol", () => {
+  test("el administrador no ve el texto para el usuario ('Tu reporte…')", () => {
+    render(<ProgressTimeline T={T} pasoActual={1} estatus="En proceso" esAdmin />);
+    expect(screen.getByText(/asígnale un técnico/)).toBeTruthy();
+    expect(screen.queryByText(/Tu reporte está en la fila/)).toBeNull();
+  });
+});

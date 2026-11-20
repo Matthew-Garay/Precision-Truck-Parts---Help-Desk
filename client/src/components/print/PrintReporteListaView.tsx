@@ -12,6 +12,8 @@
  * @requires ../PrintShared.tsx
  * @exports PrintReporteListaView (default)
  */
+/* eslint-disable react/jsx-key -- Las celdas se arman como arreglos [<span/>, …] y
+   ReporteTable (PrintShared) las envuelve en <td key={j}>: la clave ya existe. */
 import { fotoMini } from '../../utils/miniatura.js';
 import {
   PageHeader, PageFooter, PageSize, ReporteTable,

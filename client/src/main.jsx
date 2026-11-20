@@ -60,7 +60,7 @@ import Login            from './pages/Login.jsx'
 import ZohoCallbackPage  from './pages/ZohoCallbackPage.jsx'
 import AdminDashboard   from './pages/Admin/Dashboard.jsx'
 import UsuarioDashboard from './pages/Usuario/Dashboard.jsx'
-import API_BASE, { setToken, clearSession, apiFetch } from './services/api-client.js'
+import API_BASE, { setToken, getToken, clearSession, apiFetch } from './services/api-client.js'
 import ErrorBoundary   from './components/ErrorBoundary.jsx'
 import PantallaSalida  from './components/PantallaSalida.jsx'
 const PrintTicketPage     = lazy(() => import('./pages/print/PrintTicketPage.jsx'))
@@ -75,7 +75,7 @@ import { ToastProvider } from './components/Feedback.jsx'
 import { ThemeProvider } from './context/theme-provider.jsx'
 import { useTheme } from './context/theme-context.js'
 import { getUsuario, setUsuario, setIdAcceso } from './utils/session.js'
-import { limpiarSesionInactiva, useCierreInactividad, marcarActividad, MINUTOS_INACTIVIDAD } from './utils/inactividad.js'
+import { limpiarSesionInactiva, useCierreInactividad, marcarActividad, minutosPara } from './utils/inactividad.js'
 
 // Computadoras compartidas: si la sesión guardada lleva más de 30 min sin uso,
 // se descarta antes de pintar nada (el siguiente usuario ve el login).
@@ -137,6 +137,12 @@ function App() {
   useEffect(() => {
     const u = getUsuario()
     if (!u) return
+    // Solo si la sesión tiene más de 30 min: antes se renovaba en CADA carga de
+    // página (también en cada ventana de impresión) y se topaba con el límite.
+    try {
+      const iat = JSON.parse(atob((getToken() || '').split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).iat
+      if (iat && Date.now() / 1000 - iat < 30 * 60) return
+    } catch { /* token ilegible: se intenta renovar */ }
     apiFetch('/api/auth/refresh-token', { method: 'POST' })
       .then(async (res) => {
         if (res.ok) {
@@ -170,6 +176,8 @@ function App() {
   }
 
   // Cierre por inactividad (30 min sin mouse/teclado en ninguna pestaña).
+  // 30 min para usuarios (computadoras compartidas); 8 h para administradores.
+  const minutosInactividad = minutosPara(getUsuario())
   const { segundosRestantes, seguir } = useCierreInactividad(Boolean(getUsuario()), () => {
     const idAcceso = localStorage.getItem('id_acceso')
     if (idAcceso) {
@@ -177,7 +185,7 @@ function App() {
     }
     try { sessionStorage.setItem('motivo_salida', 'inactividad') } catch { /* sin storage */ }
     clearSession()
-  })
+  }, minutosInactividad)
 
   // Con persistencia en localStorage el cierre de pestaña NO termina la sesión.
   // El logout solo ocurre de forma explícita (handleLogout) o por JWT expirado (401).
@@ -212,7 +220,7 @@ function App() {
           padding: '22px 22px 18px', borderTop: '4px solid #F47920', boxShadow: '0 20px 50px rgba(0,0,0,0.35)', textAlign: 'center' }}>
           <p style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>¿Sigues ahí?</p>
           <p style={{ margin: '8px 0 16px', fontSize: 13, color: '#475569', lineHeight: 1.45 }}>
-            Por seguridad, tu sesión se cerrará en <b>{segundosRestantes} s</b> por {MINUTOS_INACTIVIDAD} minutos sin actividad.
+            Por seguridad, tu sesión se cerrará en <b>{segundosRestantes} s</b> por {minutosInactividad >= 60 ? `${minutosInactividad / 60} horas` : `${minutosInactividad} minutos`} sin actividad.
           </p>
           <button onClick={seguir} autoFocus style={{ background: '#F47920', color: '#fff', border: 0, borderRadius: 8,
             padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>

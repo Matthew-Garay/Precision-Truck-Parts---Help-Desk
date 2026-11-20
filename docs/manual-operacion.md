@@ -43,27 +43,32 @@ Abre el sistema en el navegador de esta computadora e inicia sesión.
 
 ## 4. Encender o reiniciar el sistema
 
-1. Busca la ventana negra (terminal) donde corre el sistema.
-   Si existe, haz clic en ella y presiona **Ctrl + C**; si pregunta, escribe `S` y Enter.
-   Ciérrala.
-2. Abre **PowerShell** (menú Inicio → escribe "PowerShell" → Enter).
-3. Copia y pega estas dos líneas, una por una, y presiona Enter después de cada una:
+**Normalmente no hay que hacer nada:** el sistema se enciende solo (versión rápida, puerto 5173)
+cuando se inicia sesión en Windows en esta PC, y si se cae se vuelve a levantar solo en
+segundos. No hay ventana negra que cuidar. Lo hace la tarea de Windows **HelpDesk-Sistema**.
+
+**Si aun así no funciona**, reinícialo así:
+
+1. Abre **PowerShell** (menú Inicio → escribe "PowerShell" → Enter).
+2. Copia y pega esta línea y presiona Enter:
 
    ```powershell
-   cd "C:\Users\Soporte\Videos\PrecisionTrucks_HelpDesk"
-   npm run produccion
+   Stop-ScheduledTask HelpDesk-Sistema; Start-ScheduledTask HelpDesk-Sistema
    ```
 
-   `produccion` prepara la versión optimizada (unos 20 segundos) y la enciende en la
-   misma dirección de siempre (puerto 5173). Es mucho más rápida para todos que
-   `npm run all`, que es solo para cuando el responsable está programando.
+3. Espera 30–40 segundos y vuelve a probar como en el paso 3.
+   Reiniciar la computadora también funciona.
 
-4. Espera 30–40 segundos. Debe aparecer un resumen con **DB**, **Socket**, **SMTP**, etc.
-   **No cierres esa ventana**: si la cierras, el sistema se apaga. Puedes minimizarla.
-5. Vuelve a probar como en el paso 3.
+Lo que el sistema va haciendo queda en `logs\servidor-AAAA-MM-DD.log` (y los errores en
+`logs\errores-AAAA-MM-DD.log`). Si algo falla, manda ese archivo al responsable.
 
-> Reinicia también así después de que el responsable haga cambios al sistema:
-> varios cambios del servidor no aplican hasta reiniciar.
+> Reinicia también así después de que el responsable haga cambios al sistema.
+> Si cambió las pantallas, el reinicio las vuelve a preparar solo.
+
+**Si la dirección del sistema cambió:** cuando el router le da otra IP a esta PC, el sistema
+se adapta solo al encender (lo anota en `logs\servidor-…log` con la palabra `[red]`), pero los
+demás tendrán que entrar con la dirección nueva. Para que no vuelva a pasar, pide que se
+**reserve una IP fija para esta PC en el router**.
 
 **Si sale un error al encender:**
 
@@ -83,6 +88,13 @@ Todos los días a las **23:00** Windows hace una copia de la base de datos y de 
 archivos (manuales, fotos, evidencias) en la carpeta `Backups\` del sistema, con nombre
 `respaldo_AAAAMMDD_HHMM`. Se guardan las últimas 14.
 Si la computadora estaba apagada a esa hora, la copia se hace en cuanto se prenda.
+
+### Copia fuera de esta PC (automática)
+
+Si en la carpeta del sistema existe el archivo `respaldo-externo.txt` con una ruta en la primera
+línea (por ejemplo `E:\` para una USB, `\\OTRA-PC\Respaldos` o una carpeta de OneDrive), cada
+respaldo diario también se copia ahí (se guardan las últimas 4). Si ese lugar no está disponible
+(USB desconectada), el respaldo normal igual se hace y solo queda un aviso.
 
 ### Lo que te toca a ti (cada viernes)
 

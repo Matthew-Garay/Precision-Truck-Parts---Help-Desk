@@ -43,6 +43,7 @@ Archivo de referencia: `server/.env.example` (variables del servidor) y `client/
 | `npm install` | Dependencias |
 | `npm run dev` | Solo Vite (frontend, puerto 5173) |
 | `npm run server` | Backend en modo produccion con `.env` |
+| (automático) | La tarea de Windows **HelpDesk-Sistema** (`scripts/instalar-arranque.ps1`) ejecuta `scripts/iniciar-sistema.ps1` al iniciar sesión: libera puertos, recompila si hubo cambios y enciende en producción (5173), relanzándolo si se cae. Bitácora en `logs/servidor-AAAA-MM-DD.log` |
 | `npm run produccion` | **Uso diario.** Compila el frontend y arranca Express en modo producción en el puerto 5173 (misma URL de siempre): sirve la app optimizada y la API en un solo proceso |
 | `npm run iniciar` | Igual que `produccion` pero sin volver a compilar (si `dist/` ya está al día) |
 | `npm run all` | Solo para programar: Vite en modo desarrollo (5173) + backend (3001) |
@@ -152,6 +153,11 @@ indicadores mensuales y el cambio de contraseña/correo del perfil. Están en `s
 Las del cliente (`client/tests/`, con Vitest y Testing Library) revisan formato de fechas, mensajes de error,
 cierre de sesión por inactividad, la línea de avance del ticket y los componentes separados de las pantallas.
 `npm test` corre ambas; por separado: `npm run test:server` y `npm run test:client`.
+
+**Recorrido en navegador real** (Edge o Chrome de la PC, con `puppeteer-core`): `npm run test:navegador` recrea la base de
+prueba con un ticket y una solicitud de ejemplo, enciende un servidor aparte (puerto 5192) y revisa 25 pantallas:
+errores de JavaScript, pantalla de error y textos clave; deja capturas. Contra el sistema real (solo lectura):
+`node --import ./server/load-env.js server/scripts/prueba-navegador.js http://127.0.0.1:5173`. Requiere `npm run build`.
 
 ## Revisión de código (ESLint)
 

@@ -46,6 +46,7 @@ export default function PiezasSerie({ insumo, T, onCambio }) {
   const [texto, setTexto] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [filtro, setFiltro] = useState("almacen");
+  const [editando, setEditando] = useState(null);   // { id, valor } de la serie que se corrige
   const stock = Number(insumo?.stock) || 0;
   const series = leerSeries(texto);
 
@@ -136,7 +137,19 @@ export default function PiezasSerie({ insumo, T, onCambio }) {
             <tbody>
               {lista.map(p => (
                 <tr key={p.id_unidad} style={{ borderBottom: `1px solid ${T.border}` }}>
-                  <td style={{ padding: "5px 4px", fontFamily: "monospace", fontWeight: 700, color: T.text }}>{p.num_serie}</td>
+                  <td style={{ padding: "5px 4px", fontFamily: "monospace", fontWeight: 700, color: T.text }}>
+                    {editando?.id === p.id_unidad ? (
+                      <form onSubmit={async e => { e.preventDefault(); const v = editando.valor.trim(); if (v && v !== p.num_serie) await corregir(p, { num_serie: v }); setEditando(null); }}
+                        style={{ display: "flex", gap: 4 }}>
+                        <input autoFocus value={editando.valor} maxLength={100} aria-label="Número de serie correcto"
+                          onChange={e => setEditando({ id: p.id_unidad, valor: e.target.value })}
+                          onKeyDown={e => { if (e.key === "Escape") setEditando(null); }}
+                          style={{ width: 130, fontFamily: "monospace", fontSize: 12, padding: "2px 4px", borderRadius: 4, border: `1px solid ${T.orange}`, background: T.bg, color: T.text }} />
+                        <button type="submit" disabled={guardando} style={{ fontSize: 11, border: "none", background: T.orange, color: "#fff", borderRadius: 4, padding: "2px 6px", cursor: "pointer" }}>Guardar</button>
+                        <button type="button" onClick={() => setEditando(null)} style={{ fontSize: 11, border: "none", background: "transparent", color: T.textMuted, cursor: "pointer" }}>Cancelar</button>
+                      </form>
+                    ) : p.num_serie}
+                  </td>
                   <td style={{ padding: "5px 4px" }}>
                     {Number(p.en_almacen) === 1 ? (
                       <select value={p.estado} disabled={guardando} onChange={e => corregir(p, { estado: e.target.value })}
@@ -151,9 +164,9 @@ export default function PiezasSerie({ insumo, T, onCambio }) {
                       : <>Salió {fechaCorta(p.fecha_salida)} · {p.folio_salida || p.folio_solicitud || ""}{p.destino ? ` → ${p.destino}` : ""}</>}
                   </td>
                   <td style={{ padding: "5px 4px", textAlign: "right" }}>
-                    {Number(p.en_almacen) === 1 && (
+                    {Number(p.en_almacen) === 1 && editando?.id !== p.id_unidad && (
                       <button type="button" disabled={guardando} title="Corregir número de serie"
-                        onClick={() => { const s = window.prompt("Número de serie correcto:", p.num_serie); if (s && s.trim() !== p.num_serie) corregir(p, { num_serie: s.trim() }); }}
+                        onClick={() => setEditando({ id: p.id_unidad, valor: p.num_serie })}
                         style={{ fontSize: 11, border: "none", background: "transparent", color: T.orange, cursor: "pointer", fontWeight: 700 }}>Corregir</button>
                     )}
                   </td>

@@ -80,6 +80,8 @@ import { fileURLToPath }   from "url";
 
 // Primero: todo console.error/warn se guarda también en logs/errores-AAAA-MM-DD.log
 import "./utils/logger.js";
+// Antes de leer APP_URL/CORS_ORIGIN: si la IP de la PC cambió, usar la nueva.
+import "./utils/ajustar-ip.js";
 import express           from "express";
 import { createServer }  from "http";
 import { networkInterfaces } from "os";
