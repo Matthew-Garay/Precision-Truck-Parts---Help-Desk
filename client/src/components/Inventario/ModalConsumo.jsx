@@ -33,6 +33,19 @@ const nombreMes = (ym) => mesAnio(ym); // "2026-11" -> "11/2026"
 const pad = (n) => String(n).padStart(2, "0");
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
+/** "cada 5 días" · "cada ~4 semanas" · "cada ~3 meses" */
+export function textoFrecuencia(dias) {
+  if (dias == null) return "—";
+  if (dias < 7) return `cada ${dias} día${dias !== 1 ? "s" : ""}`;
+  if (dias < 60) { const s = Math.round(dias / 7); return `cada ~${s} semana${s !== 1 ? "s" : ""}`; }
+  const m = Math.round(dias / 30); return `cada ~${m} meses`;
+}
+const ESTADO_FREC = {
+  atrasado: { texto: "Ya debió pedirse", color: "#dc2626" },
+  pronto:   { texto: "Esta semana",      color: "#d97706" },
+  al_dia:   { texto: "Al día",           color: "#16a34a" },
+};
+
 // Semáforo de cobertura (meses que alcanza el stock).
 const colorCobertura = (c) => (c == null ? "#94a3b8" : c < 1 ? "#dc2626" : c < 2 ? "#d97706" : "#16a34a");
 
@@ -43,7 +56,12 @@ export default function ModalConsumo({ T, onClose }) {
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
-  const [vista, setVista] = useState("insumo"); // insumo | area | mes
+  const [vista, setVista] = useState("insumo"); // insumo | area | mes | frecuencia
+  // Cada cuánto se consume cada insumo por área / puesto / sucursal
+  const [agrupar, setAgrupar] = useState("area");
+  const [frec, setFrec] = useState(null);
+  const [cargandoFrec, setCargandoFrec] = useState(false);
+  const [buscaFrec, setBuscaFrec] = useState("");
 
   const cargar = async () => {
     if (!desde || !hasta || desde > hasta) { setError("Revisa el rango de fechas."); return; }
@@ -60,6 +78,26 @@ export default function ModalConsumo({ T, onClose }) {
     }
   };
   useEffect(() => { cargar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const cargarFrecuencia = async (como = agrupar) => {
+    setCargandoFrec(true);
+    try {
+      const r = await apiFetch(`/api/solicitudes/consumo/frecuencia?agrupar=${como}&fecha_inicio=${desde}&fecha_fin=${hasta}`);
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || `HTTP ${r.status}`);
+      setFrec(d);
+    } catch (e) {
+      setError(e.message || "No se pudo calcular la frecuencia");
+    } finally {
+      setCargandoFrec(false);
+    }
+  };
+  // Se calcula al abrir la pestaña, al cambiar la agrupación y al consultar otro rango.
+  useEffect(() => { if (vista === "frecuencia") cargarFrecuencia(agrupar); }, [vista, agrupar, datos]); // eslint-disable-line react-hooks/exhaustive-deps
+  const filasFrec = useMemo(() => {
+    const q = buscaFrec.trim().toLowerCase();
+    return (frec?.filas ?? []).filter(x => x.cada_dias != null && (!q || `${x.grupo} ${x.nombre} ${x.marca ?? ""}`.toLowerCase().includes(q)));
+  }, [frec, buscaFrec]);
 
   const maxMes = useMemo(() => Math.max(1, ...(datos?.por_mes ?? []).map(m => m.piezas)), [datos]);
   const maxArea = useMemo(() => Math.max(1, ...(datos?.por_area ?? []).map(a => a.piezas)), [datos]);
@@ -98,6 +136,24 @@ export default function ModalConsumo({ T, onClose }) {
     const w4 = wb.addWorksheet("Detalle");
     encabezado(w4, [{ header: "Mes", key: "mes", width: 14 }, { header: "Área", key: "area", width: 30 }, { header: "Insumo", key: "nombre", width: 45 }, { header: "Piezas", key: "piezas", width: 10 }]);
     datos.detalle.forEach(x => w4.addRow({ ...x, mes: nombreMes(x.mes) }));
+    let f = frec;
+    if (!f) {
+      try { const r = await apiFetch(`/api/solicitudes/consumo/frecuencia?agrupar=${agrupar}&fecha_inicio=${desde}&fecha_fin=${hasta}`); if (r.ok) f = await r.json(); } catch { /* sin hoja */ }
+    }
+    if (f?.filas?.length) {
+      const w5 = wb.addWorksheet("Cada cuánto");
+      encabezado(w5, [
+        { header: f.agrupar === "sucursal" ? "Sucursal" : f.agrupar === "puesto" ? "Puesto" : "Área", key: "grupo", width: 30 },
+        { header: "Insumo", key: "nombre", width: 42 }, { header: "Frecuencia", key: "texto", width: 18 },
+        { header: "Días entre entregas", key: "cada_dias", width: 12 }, { header: "Piezas por entrega", key: "piezas_por_entrega", width: 12 },
+        { header: "Entregas", key: "entregas", width: 10 }, { header: "Última", key: "ultima_txt", width: 12 },
+        { header: "Próxima estimada", key: "proxima_txt", width: 14 }, { header: "Estado", key: "estado_txt", width: 16 },
+      ]);
+      f.filas.forEach(x => w5.addRow({
+        ...x, texto: x.cada_dias == null ? "1 sola entrega" : textoFrecuencia(x.cada_dias),
+        ultima_txt: fechaCorta(x.ultima), proxima_txt: fechaCorta(x.proxima, ""), estado_txt: ESTADO_FREC[x.estado]?.texto ?? "",
+      }));
+    }
     const buf = await wb.xlsx.writeBuffer();
     saveAs(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
       `Consumo_insumos_${fechaCorta(datos.desde).replaceAll("/", "-")}_al_${fechaCorta(datos.hasta).replaceAll("/", "-")}.xlsx`);
@@ -166,7 +222,7 @@ export default function ModalConsumo({ T, onClose }) {
             </p>
 
             <div style={{ display: "flex", gap: 6 }}>
-              {tab("insumo", "Por insumo")}{tab("area", "Por área")}{tab("mes", "Por mes")}
+              {tab("insumo", "Por insumo")}{tab("area", "Por área")}{tab("mes", "Por mes")}{tab("frecuencia", "Cada cuánto")}
             </div>
 
             <div style={{ maxHeight: "46vh", overflow: "auto", border: `1px solid ${T.border}`, borderRadius: 8 }}>
@@ -212,6 +268,65 @@ export default function ModalConsumo({ T, onClose }) {
                       <span style={{ fontSize: 12, fontWeight: 800, color: T.text, textAlign: "right" }}>{a.piezas} pzas · {a.operaciones}</span>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {vista === "frecuencia" && (
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", padding: 8, borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, background: T.surface ?? T.bg, zIndex: 2 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: T.textMuted }}>Agrupar por</span>
+                    {[["area", "Área"], ["puesto", "Puesto"], ["sucursal", "Sucursal"]].map(([k, l]) => (
+                      <button key={k} onClick={() => setAgrupar(k)}
+                        style={{ padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                          border: `1px solid ${agrupar === k ? T.orange : T.border}`, background: agrupar === k ? `${T.orange}18` : "transparent", color: agrupar === k ? T.orange : T.textMuted }}>
+                        {l}
+                      </button>
+                    ))}
+                    <input value={buscaFrec} onChange={e => setBuscaFrec(e.target.value)} placeholder="Buscar área o insumo (ej. tóner)…"
+                      style={{ ...inp, flex: "1 1 180px", height: 28 }} />
+                  </div>
+                  {cargandoFrec && !frec ? (
+                    <p style={{ padding: 12, margin: 0, fontSize: 12, color: T.textMuted }}>Calculando…</p>
+                  ) : filasFrec.length === 0 ? (
+                    <p style={{ padding: 12, margin: 0, fontSize: 12, color: T.textMuted }}>
+                      Todavía no hay insumos con 2 o más entregas en este periodo{buscaFrec ? " que coincidan con la búsqueda" : ""}. La frecuencia se calcula a partir de la segunda entrega.
+                    </p>
+                  ) : (
+                    <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+                      <thead><tr>
+                        <th style={th}>{agrupar === "sucursal" ? "Sucursal" : agrupar === "puesto" ? "Puesto" : "Área"}</th>
+                        <th style={th}>Insumo</th><th style={th}>Frecuencia</th>
+                        <th style={{ ...th, textAlign: "right" }}>Pzas / entrega</th>
+                        <th style={th}>Última</th><th style={th}>Próxima</th><th style={th}>Entregas</th>
+                      </tr></thead>
+                      <tbody>
+                        {filasFrec.map(x => {
+                          const e = ESTADO_FREC[x.estado];
+                          return (
+                            <tr key={`${x.grupo}-${x.id_insumo}`} title={`Entregas: ${x.historial.map(h => `${fechaCorta(h.dia)} (${h.piezas})`).join(", ")}`}>
+                              <td style={{ ...td, fontWeight: 600 }}>{x.grupo}</td>
+                              <td style={td}>{x.nombre}{x.marca && <span style={{ color: T.textMuted }}> · {x.marca}</span>}</td>
+                              <td style={{ ...td, fontWeight: 800 }}>{textoFrecuencia(x.cada_dias)}</td>
+                              <td style={{ ...td, textAlign: "right" }}>{x.piezas_por_entrega}</td>
+                              <td style={td}>{fechaCorta(x.ultima)}</td>
+                              <td style={td}>
+                                {fechaCorta(x.proxima)}
+                                {e && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: e.color }}>● {e.texto}</span>}
+                              </td>
+                              <td style={{ ...td, color: T.textMuted }}>{x.entregas} <span style={{ fontSize: 10 }}>({x.confianza === "alta" ? "confiable" : x.confianza === "media" ? "aproximado" : "pocos datos"})</span></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                  {frec && (
+                    <p style={{ margin: 0, padding: "8px 10px", fontSize: 11, color: T.textFaint, borderTop: `1px solid ${T.border}` }}>
+                      Frecuencia = tiempo típico (mediana) entre entregas del mismo insumo al mismo {agrupar === "sucursal" ? "destino" : agrupar === "puesto" ? "puesto" : "área"}; entregas con 2 días o menos de diferencia cuentan como una.
+                      Próxima = última entrega + frecuencia. {frec.sin_frecuencia} combinación{frec.sin_frecuencia !== 1 ? "es" : ""} con una sola entrega todavía sin frecuencia.
+                      Pasa el mouse sobre un renglón para ver sus entregas.
+                    </p>
+                  )}
                 </div>
               )}
 

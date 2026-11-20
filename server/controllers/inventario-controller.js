@@ -745,6 +745,26 @@ export const getCambiosSalida = async (req, res) => {
  * solicitudes aceptadas); las salidas anuladas no cuentan.
  * Por defecto: los últimos 6 meses completos más el mes en curso.
  */
+/**
+ * getFrecuenciaConsumo
+ * GET /api/solicitudes/consumo/frecuencia?agrupar=area|puesto|sucursal&fecha_inicio&fecha_fin  (admin)
+ * Cada cuánto se entrega cada insumo a cada área. Por defecto: último año.
+ */
+export const getFrecuenciaConsumo = async (req, res) => {
+  const reFecha = /^\d{4}-\d{2}-\d{2}$/;
+  const hoy = new Date();
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const desde = reFecha.test(String(req.query.fecha_inicio ?? "")) ? req.query.fecha_inicio : iso(new Date(hoy.getFullYear() - 1, hoy.getMonth(), hoy.getDate()));
+  const hasta = reFecha.test(String(req.query.fecha_fin ?? "")) ? req.query.fecha_fin : iso(hoy);
+  if (desde > hasta) return res.status(400).json({ error: "La fecha inicial no puede ser mayor que la final" });
+  const agrupar = ["area", "puesto", "sucursal"].includes(req.query.agrupar) ? req.query.agrupar : "area";
+  try {
+    res.json({ desde, hasta, ...(await MovimientoInventario.frecuencia({ desde, hasta, agrupar })) });
+  } catch (err) {
+    res.status(err.statusCode === 400 ? 400 : 500).json({ error: err.statusCode === 400 ? err.message : "Error al calcular la frecuencia de consumo", ...errDetalle(err) });
+  }
+};
+
 export const getReporteConsumo = async (req, res) => {
   const reFecha = /^\d{4}-\d{2}-\d{2}$/;
   const hoy = new Date();

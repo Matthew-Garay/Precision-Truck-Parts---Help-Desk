@@ -1,7 +1,7 @@
 -- =============================================================================
 --  ESQUEMA (solo estructura, sin datos)
 --  PrecisionTrucks HelpDesk — regenerado 2026-11-19 con server/scripts/regenerar-schema.js
---  desde la base con las migraciones hasta la 007 aplicadas.
+--  desde la base con las migraciones hasta la 008 aplicadas.
 --  No editar a mano: los cambios van en database/migraciones/NNN_*.sql.
 -- =============================================================================
 
@@ -14,6 +14,14 @@ USE `precision_helpdesk`;
 /*!50503 SET NAMES utf8mb4 */;
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+
+DROP TABLE IF EXISTS `area`;
+CREATE TABLE `area` (
+  `id_area` int NOT NULL AUTO_INCREMENT COMMENT 'PK',
+  `nombre_area` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Área de la empresa (Contraloría, Almacén…)',
+  PRIMARY KEY (`id_area`),
+  UNIQUE KEY `uq_nombre_area` (`nombre_area`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Áreas de la empresa; agrupan los puestos (tabla departamento)';
 
 DROP TABLE IF EXISTS `categoria`;
 CREATE TABLE `categoria` (
@@ -36,8 +44,11 @@ DROP TABLE IF EXISTS `departamento`;
 CREATE TABLE `departamento` (
   `id_departamento` int NOT NULL AUTO_INCREMENT,
   `nombre_departamento` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id_area` int DEFAULT NULL COMMENT 'FK area: área a la que pertenece el puesto',
   PRIMARY KEY (`id_departamento`),
-  UNIQUE KEY `uq_nombre_departamento` (`nombre_departamento`)
+  UNIQUE KEY `uq_nombre_departamento` (`nombre_departamento`),
+  KEY `idx_departamento_area` (`id_area`),
+  CONSTRAINT `fk_departamento_area` FOREIGN KEY (`id_area`) REFERENCES `area` (`id_area`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `empleado`;
@@ -173,7 +184,7 @@ CREATE TABLE `rol` (
 DROP TABLE IF EXISTS `salida_anulacion`;
 CREATE TABLE `salida_anulacion` (
   `id_salida` int NOT NULL COMMENT 'PK y FK salida_interna',
-  `motivo` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Por qué se anuló',
+  `motivo` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Por qué se anuló',
   `id_anulo` int DEFAULT NULL COMMENT 'FK empleado: quién anuló',
   `fecha` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Cuándo se anuló',
   PRIMARY KEY (`id_salida`),

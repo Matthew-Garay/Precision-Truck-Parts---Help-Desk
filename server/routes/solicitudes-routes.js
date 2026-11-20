@@ -65,7 +65,7 @@ import {
 } from '../controllers/insumos-controller.js';
 import {
   registrarEntradaInsumo, editarEntrada, registrarSalidaInsumo, anularSalida, corregirFechaSalida, getCambiosSalida,
-  getMovimientosInventario, getMovimientosInsumo, getSalidasMiSucursal, getReporteConsumo,
+  getMovimientosInventario, getMovimientosInsumo, getSalidasMiSucursal, getReporteConsumo, getFrecuenciaConsumo,
 } from '../controllers/inventario-controller.js';
 import { uploadInsumo } from '../middlewares/upload-insumos.js';
 
@@ -104,6 +104,8 @@ router.put("/salidas/:id/fecha", requireAdmin, corregirFechaSalida);
 router.get("/salidas/:id/cambios", requireAdmin, getCambiosSalida);
 // Reporte de consumo: insumos más usados, por área y por mes
 router.get("/consumo", requireAdmin, getReporteConsumo);
+// Cada cuánto se consume cada insumo por área / puesto / sucursal
+router.get("/consumo/frecuencia", requireAdmin, getFrecuenciaConsumo);
 // Entrada de material al inventario — suma stock y deja el movimiento
 router.post("/insumos/:id/entrada", requireAdmin, validate(schemaEntradaInsumo), registrarEntradaInsumo);
 router.get("/movimientos",        requireAdmin, getMovimientosInventario);

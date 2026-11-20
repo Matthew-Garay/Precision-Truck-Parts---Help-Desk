@@ -240,7 +240,7 @@ const MovimientoInventario = {
     const [rows] = await pool.query(
       `SELECT DATE_FORMAT(m.fecha, '%Y-%m') AS mes,
               m.id_insumo, i.nombre, i.marca, i.modelo, i.stock,
-              COALESCE(dsa.nombre_departamento, dso.nombre_departamento, 'Sin área') AS area,
+              COALESCE(asa.nombre_area, dsa.nombre_departamento, aso.nombre_area, dso.nombre_departamento, 'Sin área') AS area,
               SUM(m.cantidad) AS piezas,
               GROUP_CONCAT(DISTINCT COALESCE(CONCAT('SAL', m.id_salida), CONCAT('SOL', m.id_solicitud), CONCAT('MOV', m.id_movimiento))) AS ops
          FROM movimiento_inventario m
@@ -248,9 +248,11 @@ const MovimientoInventario = {
          LEFT JOIN v_salida_interna sa ON sa.id_salida = m.id_salida
          LEFT JOIN empleado esa      ON esa.id_empleado = sa.id_solicitante
          LEFT JOIN departamento dsa  ON dsa.id_departamento = esa.id_departamento
+         LEFT JOIN area asa          ON asa.id_area = dsa.id_area
          LEFT JOIN solicitud s       ON s.id_solicitud = m.id_solicitud
          LEFT JOIN empleado eso      ON eso.id_empleado = s.id_empleado
          LEFT JOIN departamento dso  ON dso.id_departamento = eso.id_departamento
+         LEFT JOIN area aso          ON aso.id_area = dso.id_area
         WHERE m.tipo = 'Salida'
           AND (sa.id_salida IS NULL OR sa.estatus = 'Activa')
           AND m.fecha >= ? AND m.fecha < DATE_ADD(?, INTERVAL 1 DAY)
@@ -314,6 +316,102 @@ const MovimientoInventario = {
         insumos: por_insumo.length,
         meses: nMeses,
       },
+    };
+  },
+  /**
+   * frecuencia({ desde, hasta, agrupar, hoy })
+   * Cada cuánto se entrega cada insumo a cada área / puesto / sucursal.
+   *
+   *   agrupar: "area" (puestos agrupados en área; un puesto sin área cuenta como
+   *            su propio nombre) | "puesto" | "sucursal" (sucursal de destino).
+   *
+   * Por cada grupo + insumo:
+   *   entregas        días distintos con entrega (salida interna activa o solicitud aceptada)
+   *   piezas          total entregado en el rango
+   *   cada_dias       MEDIANA de días entre entregas (null con < 2 entregas):
+   *                   la mediana no se mueve por una entrega aislada atrasada
+   *   piezas_por_entrega, por_semana (piezas / semanas entre 1.ª y última entrega)
+   *   ultima, proxima (ultima + cada_dias), estado: "atrasado" | "pronto" (≤ 7 días) | "al_dia"
+   *   confianza       "baja" (2 entregas) | "media" (3–4) | "alta" (5+)
+   * Orden: primero lo que ya toca o está atrasado, luego por frecuencia.
+   */
+  frecuencia: async ({ desde, hasta, agrupar = "area", hoy = new Date() }) => {
+    const GRUPO = {
+      area:     "COALESCE(aa.nombre_area, d.nombre_departamento, 'Sin área')",
+      puesto:   "COALESCE(d.nombre_departamento, 'Sin puesto')",
+      sucursal: "COALESCE(sd.nombre_sucursal, sa.destino_texto, 'Sin sucursal')",
+    }[agrupar];
+    if (!GRUPO) throw Object.assign(new Error("Agrupación no válida"), { statusCode: 400 });
+    const [rows] = await pool.query(
+      `SELECT ${GRUPO} AS grupo, m.id_insumo, i.nombre, i.marca, i.modelo, i.stock,
+              DATE_FORMAT(m.fecha, '%Y-%m-%d') AS dia, SUM(m.cantidad) AS piezas
+         FROM movimiento_inventario m
+         JOIN insumo i                ON i.id_insumo = m.id_insumo
+         LEFT JOIN v_salida_interna sa ON sa.id_salida = m.id_salida
+         LEFT JOIN solicitud s        ON s.id_solicitud = m.id_solicitud
+         LEFT JOIN empleado e         ON e.id_empleado = COALESCE(sa.id_solicitante, s.id_empleado)
+         LEFT JOIN departamento d     ON d.id_departamento = e.id_departamento
+         LEFT JOIN area aa            ON aa.id_area = d.id_area
+         LEFT JOIN sucursal sd        ON sd.id_sucursal = m.id_sucursal_destino
+        WHERE m.tipo = 'Salida'
+          AND (sa.id_salida IS NULL OR sa.estatus = 'Activa')
+          AND m.fecha >= ? AND m.fecha < DATE_ADD(?, INTERVAL 1 DAY)
+        GROUP BY grupo, m.id_insumo, dia
+        ORDER BY grupo, m.id_insumo, dia`,
+      [desde, hasta]
+    );
+    const DIA = 86400000;
+    const aFecha = (s) => { const [y, mo, d] = s.split("-").map(Number); return new Date(y, mo - 1, d); };
+    const iso = (f) => `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, "0")}-${String(f.getDate()).padStart(2, "0")}`;
+    const hoyDia = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const mediana = (v) => { const o = [...v].sort((a, b) => a - b); const k = o.length >> 1; return o.length % 2 ? o[k] : (o[k - 1] + o[k]) / 2; };
+
+    // Entregas separadas por 2 días o menos son la misma reposición entregada
+    // en partes (06/10 y 07/10): se juntan para no reportar "cada 1 día".
+    const JUNTAR_DIAS = 2;
+    const grupos = new Map();
+    for (const r of rows) {
+      const k = `${r.grupo}\u0000${r.id_insumo}`;
+      if (!grupos.has(k)) grupos.set(k, { grupo: r.grupo, id_insumo: r.id_insumo, nombre: r.nombre, marca: r.marca, modelo: r.modelo, stock: Number(r.stock) || 0, dias: [] });
+      const dias = grupos.get(k).dias, piezas = Number(r.piezas) || 0, prev = dias[dias.length - 1];
+      if (prev && (aFecha(r.dia) - aFecha(prev.dia)) / DIA <= JUNTAR_DIAS) prev.piezas += piezas;
+      else dias.push({ dia: r.dia, piezas });
+    }
+    const res = [...grupos.values()].map(g => {
+      const fechas = g.dias.map(x => aFecha(x.dia));
+      const piezas = g.dias.reduce((a, x) => a + x.piezas, 0);
+      const huecos = fechas.slice(1).map((f, i) => Math.round((f - fechas[i]) / DIA));
+      const cada = huecos.length ? Math.round(mediana(huecos)) : null;
+      const ultima = fechas[fechas.length - 1];
+      const proxima = cada ? new Date(ultima.getTime() + cada * DIA) : null;
+      const faltan = proxima ? Math.round((proxima - hoyDia) / DIA) : null;
+      const semanas = Math.max(1, (ultima - fechas[0]) / (7 * DIA));
+      return {
+        grupo: g.grupo, id_insumo: g.id_insumo, nombre: g.nombre, marca: g.marca, modelo: g.modelo, stock: g.stock,
+        entregas: g.dias.length, piezas,
+        cada_dias: cada,
+        cada_semanas: cada ? Math.round((cada / 7) * 10) / 10 : null,
+        piezas_por_entrega: Math.round((piezas / g.dias.length) * 10) / 10,
+        por_semana: g.dias.length >= 2 ? Math.round((piezas / semanas) * 100) / 100 : null,
+        primera: iso(fechas[0]), ultima: iso(ultima),
+        proxima: proxima ? iso(proxima) : null,
+        faltan_dias: faltan,
+        estado: faltan == null ? null : faltan < 0 ? "atrasado" : faltan <= 7 ? "pronto" : "al_dia",
+        confianza: g.dias.length >= 5 ? "alta" : g.dias.length >= 3 ? "media" : g.dias.length === 2 ? "baja" : null,
+        historial: g.dias,
+      };
+    });
+    const peso = { atrasado: 0, pronto: 1, al_dia: 2 };
+    res.sort((a, b) =>
+      (a.cada_dias == null) - (b.cada_dias == null) ||
+      (peso[a.estado] ?? 3) - (peso[b.estado] ?? 3) ||
+      (a.faltan_dias ?? 1e9) - (b.faltan_dias ?? 1e9) ||
+      String(a.grupo).localeCompare(String(b.grupo)) || String(a.nombre).localeCompare(String(b.nombre)));
+    return {
+      agrupar,
+      con_frecuencia: res.filter(x => x.cada_dias != null).length,
+      sin_frecuencia: res.filter(x => x.cada_dias == null).length,
+      filas: res,
     };
   },
 };

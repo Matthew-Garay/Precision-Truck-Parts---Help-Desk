@@ -78,11 +78,13 @@ function resolverAppUrl(_req) {
 function resolverRedirectUri(req, registradas) {
   const respaldo = registradas[0] || "";
   try {
-    const host = String(req?.headers?.["x-forwarded-host"] || req?.headers?.host || "").split(",")[0].trim().split(":")[0];
-    const candidata = registradas.find(u => {
-      try { return new URL(u).hostname === host; } catch { return false; }
-    });
-    return candidata || respaldo;
+    const hostPuerto = String(req?.headers?.["x-forwarded-host"] || req?.headers?.host || "").split(",")[0].trim();
+    const host = hostPuerto.split(":")[0];
+    // Primero la que coincide en IP y PUERTO (modo producción = 5173, desarrollo
+    // detrás del proxy de Vite = 5173 también); si no, la de la misma IP.
+    const exacta = registradas.find(u => { try { return new URL(u).host === hostPuerto; } catch { return false; } });
+    const mismaIp = registradas.find(u => { try { return new URL(u).hostname === host; } catch { return false; } });
+    return exacta || mismaIp || respaldo;
   } catch {
     return respaldo;
   }
