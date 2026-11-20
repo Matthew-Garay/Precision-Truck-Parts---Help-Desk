@@ -84,6 +84,9 @@ const SELECT_JOIN = `
            END) AS motivo,
          m.id_insumo,
          i.nombre AS nombre_insumo, i.descripcion, i.marca, i.modelo, i.imagen_url,
+         -- Piezas con número de serie que salieron con este movimiento (fase 4)
+         (SELECT GROUP_CONCAT(u.num_serie ORDER BY u.num_serie SEPARATOR ', ')
+            FROM insumo_unidad u WHERE u.id_mov_salida = m.id_movimiento) AS series,
          so.nombre_sucursal AS nombre_sucursal_origen,
          sd.nombre_sucursal AS nombre_sucursal_destino,
          s.folio_solicitud,

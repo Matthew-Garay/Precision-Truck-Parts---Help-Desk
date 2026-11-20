@@ -22,6 +22,7 @@ import { X, Package, Hash, Layers, Tag, AlignLeft, BarChart2, ZoomIn } from "luc
 import { FS } from '../../utils/tipografia.js';
 import LogoModal from '../LogoModal.jsx';
 import { colorStock } from '../../utils/stock.js';
+import PiezasSerie from './PiezasSerie.jsx';
 const ORANGE = "var(--color-primary)";
 
 const ESTADO_META = {
@@ -90,7 +91,7 @@ function SpecCard({ icon: Icon, label, value, isDark, mono = false }) {
   );
 }
 
-export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = false }) {
+export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = false, gestionarPiezas = false, onCambio }) {
   const [imgError, setImgError] = useState(false);
   const [ampliar, setAmpliar] = useState(false);   // imagen en grande
   const isDark = T?.isDark ?? false;
@@ -316,6 +317,9 @@ export default function ModalDetalleInsumo({ insumo, onClose, T, ocultarStock = 
                 <SpecCard icon={Hash}   label="Etiqueta"     value={insumo.etiqueta}  isDark={isDark} mono />
               </div>
             )}
+
+            {/* Piezas con número de serie (solo administración, en Inventario) */}
+            {gestionarPiezas && <PiezasSerie insumo={insumo} T={T} onCambio={onCambio} />}
 
             {/* ── Descripción ── */}
             <div>

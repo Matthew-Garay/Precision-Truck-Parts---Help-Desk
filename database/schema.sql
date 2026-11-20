@@ -1,7 +1,7 @@
 -- =============================================================================
 --  ESQUEMA (solo estructura, sin datos)
 --  PrecisionTrucks HelpDesk — regenerado 2026-11-19 con server/scripts/regenerar-schema.js
---  desde la base con las migraciones hasta la 008 aplicadas.
+--  desde la base con las migraciones hasta la 009 aplicadas.
 --  No editar a mano: los cambios van en database/migraciones/NNN_*.sql.
 -- =============================================================================
 
@@ -100,6 +100,7 @@ CREATE TABLE `insumo` (
   `id_insumo` int NOT NULL AUTO_INCREMENT,
   `num_serie` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `etiqueta` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Etiqueta física del insumo (código o texto impreso)',
+  `control_serie` tinyint(1) NOT NULL DEFAULT '0' COMMENT '1 = se controla pieza por pieza con número de serie (insumo_unidad)',
   `nombre` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `descripcion` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `marca` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -119,6 +120,28 @@ CREATE TABLE `insumo` (
   CONSTRAINT `fk_insumo_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categoria` (`id_categoria`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `chk_stock` CHECK ((`stock` >= 0))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `insumo_unidad`;
+CREATE TABLE `insumo_unidad` (
+  `id_unidad` int NOT NULL AUTO_INCREMENT COMMENT 'PK',
+  `id_insumo` int NOT NULL COMMENT 'FK insumo (tipo de artículo)',
+  `num_serie` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Número de serie de esta pieza',
+  `estado` enum('Excelente','Bueno','Regular','Malo','Dañado') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Bueno' COMMENT 'Condición de esta pieza',
+  `en_almacen` tinyint(1) NOT NULL DEFAULT '1' COMMENT '1 = en inventario, 0 = ya salió',
+  `id_mov_entrada` int DEFAULT NULL COMMENT 'FK movimiento_inventario con el que entró (NULL = alta inicial)',
+  `id_mov_salida` int DEFAULT NULL COMMENT 'FK movimiento_inventario con el que salió',
+  `fecha_alta` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Cuándo se registró la pieza',
+  PRIMARY KEY (`id_unidad`),
+  UNIQUE KEY `uq_unidad_serie` (`id_insumo`,`num_serie`),
+  KEY `idx_unidad_disponibles` (`id_insumo`,`en_almacen`,`fecha_alta`),
+  KEY `idx_unidad_entrada` (`id_mov_entrada`),
+  KEY `idx_unidad_salida` (`id_mov_salida`),
+  CONSTRAINT `fk_unidad_entrada` FOREIGN KEY (`id_mov_entrada`) REFERENCES `movimiento_inventario` (`id_movimiento`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_unidad_insumo` FOREIGN KEY (`id_insumo`) REFERENCES `insumo` (`id_insumo`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_unidad_salida` FOREIGN KEY (`id_mov_salida`) REFERENCES `movimiento_inventario` (`id_movimiento`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_unidad_almacen` CHECK ((((`en_almacen` = 1) and (`id_mov_salida` is null)) or ((`en_almacen` = 0) and (`id_mov_salida` is not null)))),
+  CONSTRAINT `chk_unidad_serie` CHECK ((char_length(trim(`num_serie`)) > 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Piezas individuales (con número de serie) de los insumos con control_serie = 1';
 
 DROP TABLE IF EXISTS `manual`;
 CREATE TABLE `manual` (

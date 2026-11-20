@@ -27,6 +27,7 @@ import { INSUMOS_DIR } from '../middlewares/upload-insumos.js';
 import { SQL_DISPONIBILIDAD } from '../utils/stock.js';
 import { errDetalle, esAdmin, sinStockLista } from './comun.js';
 import { rutaMiniatura } from '../utils/imagenes.js';
+import Unidad from '../services/unidad.js';
 
 export const getInsumos = async (req, res) => {
   try {
@@ -61,7 +62,7 @@ export const getInsumosStockBajo = async (req, res) => {
 
 /** SQL compartido: devuelve un insumo con disponibilidad calculada desde stock */
 const SELECT_INSUMO_COMPLETO = `
-  SELECT i.id_insumo, i.num_serie, i.etiqueta, i.nombre, i.descripcion,
+  SELECT i.id_insumo, i.num_serie, i.etiqueta, i.control_serie, i.nombre, i.descripcion,
          i.marca, i.modelo, i.stock, i.estado,
          i.id_categoria, i.imagen_url, i.activo, i.visible_publico,
          c.nombre_categoria,
@@ -147,11 +148,16 @@ export const actualizarInsumo = async (req, res) => {
     try {
       await conn.beginTransaction();
       const [[prev]] = await conn.query(
-        "SELECT id_insumo, stock FROM insumo WHERE id_insumo = ? FOR UPDATE", [id]
+        "SELECT id_insumo, stock, control_serie FROM insumo WHERE id_insumo = ? FOR UPDATE", [id]
       );
       if (!prev) {
         await conn.rollback();
         return res.status(404).json({ error: "Insumo no encontrado" });
+      }
+      // Por pieza: el stock solo cambia con entradas (con series) y salidas (eligiendo series).
+      if (Number(prev.control_serie) === 1 && req.body.stock != null && Number(req.body.stock) !== Number(prev.stock)) {
+        await conn.rollback();
+        return res.status(409).json({ error: "Este insumo se controla por número de serie: el stock cambia con Entradas y Salidas, no editándolo." });
       }
       const ok = await Insumo.actualizar(id, req.body, conn);
       if (!ok) {
@@ -341,4 +347,50 @@ export const getInsumosForUser = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: "Error al obtener el inventario para el usuario", ...errDetalle(err) });
   }
+};
+
+// ── Piezas con número de serie (fase 4, services/unidad.js) ──────────────────
+const responderErrorUnidad = (res, err, texto) =>
+  [400, 404, 409].includes(err?.statusCode)
+    ? res.status(err.statusCode).json({ error: err.message })
+    : res.status(500).json({ error: texto, ...errDetalle(err) });
+
+/** GET /api/solicitudes/insumos/:id/unidades (admin) — piezas y dónde está cada una. */
+export const getUnidadesInsumo = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "ID de insumo inválido" });
+  try { res.json(await Unidad.listar(id)); }
+  catch (err) { responderErrorUnidad(res, err, "Error al obtener las piezas"); }
+};
+
+/** POST /api/solicitudes/insumos/:id/unidades/activar (admin) — body { series: [...] } (una por pieza en stock). */
+export const activarControlSerie = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "ID de insumo inválido" });
+  try {
+    const n = await Unidad.activar(id, req.body?.series);
+    Insumo.limpiarCache();
+    res.json({ ok: true, piezas: n });
+  } catch (err) { responderErrorUnidad(res, err, "Error al activar el control por pieza"); }
+};
+
+/** POST /api/solicitudes/insumos/:id/unidades/desactivar (admin) — solo si ninguna pieza se ha movido. */
+export const desactivarControlSerie = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "ID de insumo inválido" });
+  try {
+    await Unidad.desactivar(id);
+    Insumo.limpiarCache();
+    res.json({ ok: true });
+  } catch (err) { responderErrorUnidad(res, err, "Error al quitar el control por pieza"); }
+};
+
+/** PATCH /api/solicitudes/insumos/:id/unidades/:idUnidad (admin) — corregir serie o estado. */
+export const actualizarUnidad = async (req, res) => {
+  const id = parseInt(req.params.id, 10), idU = parseInt(req.params.idUnidad, 10);
+  if (!(id > 0) || !(idU > 0)) return res.status(400).json({ error: "Datos inválidos" });
+  try {
+    await Unidad.actualizar(id, idU, { num_serie: req.body?.num_serie, estado: req.body?.estado });
+    res.json({ ok: true });
+  } catch (err) { responderErrorUnidad(res, err, "Error al actualizar la pieza"); }
 };

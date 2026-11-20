@@ -27,6 +27,7 @@ import { useToast } from "../Feedback.jsx";
 
 import { FS } from '../../utils/tipografia.js';
 import LogoModal from '../LogoModal.jsx';
+import { leerSeries } from './PiezasSerie.jsx';
 const TEAL = "#0d9488";
 
 function Field({ label, htmlFor, children, textFaint }) {
@@ -65,6 +66,11 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
   const stockActual = Number(insumo?.stock) || 0;
 
   const [cantidad, setCantidad] = useState("2");
+  // Insumo por pieza: cada pieza que llega trae su número de serie; la cantidad
+  // es el número de series capturadas.
+  const porPieza = Number(insumo?.control_serie) === 1;
+  const [seriesTxt, setSeriesTxt] = useState("");
+  const series = leerSeries(seriesTxt);
   const [motivo, setMotivo] = useState("");
   // Fecha y hora reales de la entrada (puede ser retroactiva). Por defecto,
   // ahora mismo en hora local, con el formato de <input type="datetime-local">.
@@ -118,6 +124,7 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    if (porPieza && series.length === 0) { setError("Escribe el número de serie de cada pieza que llega."); return; }
     setSaving(true);
     setError("");
     try {
@@ -126,7 +133,8 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id_insumo: insumo?.id_insumo,
-          cantidad,
+          cantidad: porPieza ? series.length : cantidad,
+          ...(porPieza ? { series } : {}),
           motivo,
           fecha: fecha || null,
         }),
@@ -201,6 +209,20 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
 
         <form id="form-entrada" onSubmit={onSubmit}>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "12px" }}>
+            {porPieza ? (
+              <Field htmlFor="fe-series" label={`Números de serie (${series.length} pieza${series.length !== 1 ? "s" : ""})`} textFaint={textFaint}>
+                <textarea
+                  id="fe-series"
+                  rows={4}
+                  value={seriesTxt}
+                  onChange={(e) => setSeriesTxt(e.target.value)}
+                  placeholder={"Uno por renglón\n5CD1234ABC\n5CD1234ABD"}
+                  style={{ ...inp, height: "auto", fontFamily: "monospace", resize: "vertical" }}
+                  onFocus={onFocus}
+                  onBlur={onBlur}
+                />
+              </Field>
+            ) : (
             <Field htmlFor="fe-cantidad" label="Cantidad" textFaint={textFaint}>
               <input
                 id="fe-cantidad"
@@ -215,6 +237,7 @@ export default function ModalEntradaInsumo({ insumo, onClose, onSaved, onStockUp
                 onBlur={onBlur}
               />
             </Field>
+            )}
 
             <Field htmlFor="fe-fecha" label="Fecha y hora de entrada" textFaint={textFaint}>
               <input

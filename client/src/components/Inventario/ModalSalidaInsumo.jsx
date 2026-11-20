@@ -31,6 +31,7 @@ import { useToast } from '../Feedback.jsx';
 
 import { FS } from '../../utils/tipografia.js';
 import LogoModal from '../LogoModal.jsx';
+import { ElegirSeries } from './PiezasSerie.jsx';
 const ROJO = "#dc2626";
 const PRIORIDADES = ["Urgente", "Alta", "Media", "Baja"];
 
@@ -67,6 +68,7 @@ const nuevoRenglon = () => ({
   id_insumo: "",
   cantidad: "",
   buscar: "",
+  series: [],      // insumos por pieza: números de serie marcados
 });
 
 export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, onClose, onSaved, T }) {
@@ -151,6 +153,7 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
     return i ? [i.marca, i.modelo].filter(Boolean).join(" · ") : "";
   };
   const fotoDe   = id => insumos.find(i => String(i.id_insumo) === String(id))?.imagen_url ?? null;
+  const porPiezaDe = id => Number(insumos.find(i => String(i.id_insumo) === String(id))?.control_serie) === 1;
 
   // Stock que queda disponible para un renglón descontando los demás.
   const restanteDe = id => {
@@ -176,9 +179,12 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
     setError("");
     const items = renglones
       .filter(r => r.id_insumo)
-      .map(r => ({ id_insumo: parseInt(r.id_insumo, 10), cantidad: parseInt(r.cantidad, 10) }));
+      .map(r => ({ id_insumo: parseInt(r.id_insumo, 10), cantidad: parseInt(r.cantidad, 10),
+                   ...(porPiezaDe(r.id_insumo) ? { series: r.series } : {}) }));
 
     if (!items.length) { setError("Agrega al menos un insumo a la salida."); return; }
+    const sinSerie = items.find(r => r.series && r.series.length === 0);
+    if (sinSerie) { setError(`Marca qué piezas de "${nombreDe(sinSerie.id_insumo)}" salen.`); return; }
     if (items.some(r => !Number.isFinite(r.id_insumo) || r.id_insumo <= 0 ||
                         !Number.isFinite(r.cantidad)  || r.cantidad < 1)) {
       setError("Cada insumo debe tener cantidad de al menos 1."); return;
@@ -341,8 +347,8 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
                             onChange={e => {
                               const v = e.target.value;
                               const hit = insumosOperativos.find(i => i.nombre === v);
-                              if (hit) setRenglon(r.key, { id_insumo: String(hit.id_insumo), buscar: "" });
-                              else setRenglon(r.key, { id_insumo: "", buscar: v });
+                              if (hit) setRenglon(r.key, { id_insumo: String(hit.id_insumo), buscar: "", series: [], cantidad: porPiezaDe(hit.id_insumo) ? "0" : r.cantidad });
+                              else setRenglon(r.key, { id_insumo: "", buscar: v, series: [] });
                             }}
                             placeholder="Buscar por nombre, marca o modelo…"
                             style={inp} onFocus={onFocus} onBlur={onBlur} />
@@ -367,7 +373,9 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
                       <Field htmlFor={`sal-cant-${r.key}`} label="Cantidad" required textFaint={textFaint}>
                         <input id={`sal-cant-${r.key}`} type="number" min={1} max={9999}
                           value={r.cantidad} onChange={e => setRenglon(r.key, { cantidad: e.target.value })}
-                          placeholder="0" style={{ ...inp, textAlign: "right", fontWeight: 700 }}
+                          readOnly={porPiezaDe(r.id_insumo)}
+                          title={porPiezaDe(r.id_insumo) ? "Marca abajo qué piezas salen" : undefined}
+                          placeholder="0" style={{ ...inp, textAlign: "right", fontWeight: 700, ...(porPiezaDe(r.id_insumo) ? { opacity: 0.7 } : {}) }}
                           onFocus={onFocus} onBlur={onBlur} />
                       </Field>
                     </div>
@@ -382,6 +390,10 @@ export default function ModalSalidaInsumo({ insumos = [], insumoInicial = null, 
                         </span>
                         {sinStock && <span style={{ fontSize: FS.secundario, fontWeight: 700, color: "#dc2626" }}>— excede lo disponible</span>}
                       </div>
+                    )}
+                    {r.id_insumo && porPiezaDe(r.id_insumo) && (
+                      <ElegirSeries idInsumo={r.id_insumo} seleccion={r.series} T={{ ...T, bg: T?.bg ?? (isDark ? "#0d1117" : "#fff") }}
+                        onChange={(s) => setRenglon(r.key, { series: s, cantidad: String(s.length) })} />
                     )}
                   </div>
                 );

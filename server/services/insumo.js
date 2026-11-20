@@ -57,7 +57,7 @@ const Insumo = {
     if (tieneVisiblePublico) whereClauses.push("i.visible_publico = 1");
     const whereSql = whereClauses.length > 0 ? "WHERE " + whereClauses.join(" AND ") : "";
     const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.num_serie, i.etiqueta, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS nombre_categoria, ${SQL_DISPONIBILIDAD("i")} AS disponibilidad FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria ${whereSql} ORDER BY i.nombre ASC`
+      `SELECT i.id_insumo, i.num_serie, i.etiqueta, i.control_serie, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS nombre_categoria, ${SQL_DISPONIBILIDAD("i")} AS disponibilidad FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria ${whereSql} ORDER BY i.nombre ASC`
     );
     const result = rows || [];
     cache.set(cacheKey, result, TTL_INSUMOS);
@@ -74,7 +74,7 @@ const Insumo = {
     if (tieneActivo) whereClauses.push("i.activo = 1");
     if (tieneVisiblePublico) whereClauses.push("i.visible_publico = 1");
     const [rows] = await pool.query(
-      `SELECT i.id_insumo, i.num_serie, i.etiqueta, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS nombre_categoria, ${SQL_DISPONIBILIDAD("i")} AS disponibilidad FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria WHERE ${whereClauses.join(" AND ")} ORDER BY i.nombre ASC`
+      `SELECT i.id_insumo, i.num_serie, i.etiqueta, i.control_serie, i.nombre, i.descripcion, i.marca, i.modelo, i.stock, i.estado, i.id_categoria AS categoria_id, i.imagen_url, i.activo, i.visible_publico, c.nombre_categoria AS nombre_categoria, ${SQL_DISPONIBILIDAD("i")} AS disponibilidad FROM insumo i LEFT JOIN categoria c ON i.id_categoria = c.id_categoria WHERE ${whereClauses.join(" AND ")} ORDER BY i.nombre ASC`
     );
     const result = rows || [];
     cache.set(cacheKey, result, TTL_INSUMOS);

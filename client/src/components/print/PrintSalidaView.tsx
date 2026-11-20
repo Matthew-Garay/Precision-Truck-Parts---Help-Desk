@@ -23,6 +23,8 @@ export interface SalidaRenglon {
   cantidad?: number | null;
   stock_anterior?: number | null;
   stock_nuevo?: number | null;
+  /** Números de serie que salieron (insumos controlados por pieza). */
+  series?: string[] | string | null;
 }
 
 export interface SalidaPayload {
@@ -187,6 +189,11 @@ export default function PrintSalidaView({ payload }: { payload: SalidaPayload })
                     <div style={{ fontWeight: 700, fontSize: "8pt", color: "var(--pr-ink)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {r.nombre_insumo || "—"}
                     </div>
+                    {r.series && (Array.isArray(r.series) ? r.series.length > 0 : true) ? (
+                      <div style={{ fontSize: "6.5pt", fontFamily: "monospace", color: "var(--pr-ink)", marginTop: 1, wordBreak: "break-word" }}>
+                        Serie: {Array.isArray(r.series) ? r.series.join(", ") : r.series}
+                      </div>
+                    ) : null}
                     {r.descripcion ? (
                       <div style={{ fontSize: "6.5pt", color: "var(--pr-muted)", lineHeight: 1.3, marginTop: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "break-word" }}>
                         {r.descripcion}

@@ -604,7 +604,8 @@ export default function Inventario() {
       <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
 
       {detalle && (
-        <ModalDetalleInsumo insumo={detalle} onClose={() => setDetalle(null)} T={T} />
+        <ModalDetalleInsumo insumo={detalle} onClose={() => setDetalle(null)} T={T}
+          gestionarPiezas onCambio={(i) => { setDetalle(i); cargarInventario(false); }} />
       )}
       {modal !== null && (
         <ModalInsumo insumo={modal} categorias={categorias}

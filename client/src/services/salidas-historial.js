@@ -189,6 +189,7 @@ export function abrirHojaSalida(g) {
         cantidad:       r.cantidad,
         stock_anterior: r.stock_anterior,
         stock_nuevo:    r.stock_nuevo,
+        series:         r.series || null,
       })),
       destino:        g.destino     || "",
       responsable:    g.recibe      || "",

@@ -376,8 +376,12 @@ export const schemaActualizarEstatusSolicitud = z.object({
 // La entrada NO lleva ruta de sucursales: la ruta del material la define el
 // administrador sobre la SOLICITUD (PATCH /:id/ruta), no al capturar la
 // entrada. Solo se suman piezas y se deja el motivo de referencia.
+// Números de serie (solo insumos controlados por pieza).
+const listaSeries = z.array(z.string().trim().max(100, "Un número de serie no puede pasar de 100 caracteres")).max(1000).optional();
+
 export const schemaEntradaInsumo = z.object({
   cantidad:     z.number({ coerce: true }).int().min(1, "La cantidad debe ser al menos 1").max(100000),
+  series:       listaSeries,
   motivo:       z.string().trim().max(500).optional().nullable().default(null),
   id_solicitud: z.number({ coerce: true }).int().positive().nullish(),
   // Fecha manual opcional de la entrada. Acepta SOLO fecha (YYYY-MM-DD) o fecha
@@ -414,7 +418,9 @@ export const schemaSalidaInsumo = z.object({
   items: z.array(z.object({
     id_insumo: z.number({ coerce: true }).int().positive(),
     cantidad:  z.number({ coerce: true }).int().min(1, "La cantidad debe ser al menos 1").max(100000),
+    series:    listaSeries,
   })).min(1, "Debe incluir al menos un insumo").max(100).nullish(),
+  series:    listaSeries,
   destino:     z.string().trim().max(200).optional().nullable().default(null),
   responsable: z.string().trim().max(200).optional().nullable().default(null),
   motivo:      z.string().trim().max(500).optional().nullable().default(null),

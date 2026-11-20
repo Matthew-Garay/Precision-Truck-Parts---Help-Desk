@@ -62,6 +62,7 @@ import {
 import {
   getInsumos, getInventario, getInsumosStockBajo, crearInsumo, actualizarInsumo,
   eliminarInsumo, cambiarActivoInsumo, cambiarVisiblePublico, getInsumosForUser, subirFotoInsumo,
+  getUnidadesInsumo, activarControlSerie, desactivarControlSerie, actualizarUnidad,
 } from '../controllers/insumos-controller.js';
 import {
   registrarEntradaInsumo, editarEntrada, registrarSalidaInsumo, anularSalida, corregirFechaSalida, getCambiosSalida,
@@ -95,6 +96,11 @@ router.post("/insumos/:id/foto",  requireAdmin, ...uploadInsumo.single("foto"), 
 router.delete("/insumos/:id",     requireAdmin, eliminarInsumo);
 router.patch("/insumos/:id/activo", requireAdmin, cambiarActivoInsumo);
 router.patch("/insumos/:id/visible-publico",  requireAdmin, cambiarVisiblePublico);
+// Piezas con número de serie (insumos controlados por pieza)
+router.get("/insumos/:id/unidades",                    requireAdmin, getUnidadesInsumo);
+router.post("/insumos/:id/unidades/activar",           requireAdmin, activarControlSerie);
+router.post("/insumos/:id/unidades/desactivar",        requireAdmin, desactivarControlSerie);
+router.patch("/insumos/:id/unidades/:idUnidad",        requireAdmin, actualizarUnidad);
 // Salida interna manual — descuenta stock y deja el movimiento (uso interno)
 router.post("/salidas", requireAdmin, validate(schemaSalidaInsumo), registrarSalidaInsumo);
 // Anular una salida interna: regresa el stock y la marca como Anulada

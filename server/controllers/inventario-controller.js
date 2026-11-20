@@ -20,6 +20,9 @@ import { getIO } from '../config/socket-instance.js';
 import pool      from '../config/db.js';
 import { generarFolio } from '../utils/helpers.js';
 import { errDetalle, toPosId } from './comun.js';
+import Unidad from '../services/unidad.js';
+
+const errorDeCaptura = (err) => [400, 404, 409].includes(err?.statusCode) ? err.statusCode : null;
 
 /**
  * registrarEntradaInsumo
@@ -58,7 +61,7 @@ export const registrarEntradaInsumo = async (req, res) => {
       await conn.beginTransaction();
 
       const [[ins]] = await conn.query(
-        "SELECT id_insumo, nombre, stock FROM insumo WHERE id_insumo = ? FOR UPDATE", [id_insumo]
+        "SELECT id_insumo, nombre, stock, control_serie FROM insumo WHERE id_insumo = ? FOR UPDATE", [id_insumo]
       );
       if (!ins) {
         await conn.rollback();
@@ -80,8 +83,13 @@ export const registrarEntradaInsumo = async (req, res) => {
         fecha: fechaMySQL,
       });
 
+      // Insumo controlado por pieza: cada pieza que entra trae su número de serie.
+      let series = null;
+      if (Number(ins.control_serie) === 1)
+        series = await Unidad.registrarEntrada(conn, { id_insumo, nombre: ins.nombre, series: req.body.series, cantidad, id_movimiento });
+
       await conn.commit();
-      resultado = { id_movimiento, id_insumo, nombre_insumo: ins.nombre, stock_anterior, stock_nuevo };
+      resultado = { id_movimiento, id_insumo, nombre_insumo: ins.nombre, stock_anterior, stock_nuevo, ...(series ? { series } : {}) };
     } catch (err) {
       await conn.rollback();
       throw err;
@@ -96,6 +104,7 @@ export const registrarEntradaInsumo = async (req, res) => {
 
     res.json({ ok: true, ...resultado });
   } catch (err) {
+    if (errorDeCaptura(err)) return res.status(err.statusCode).json({ error: err.message });
     res.status(500).json({ error: "Error al registrar la entrada de material", ...errDetalle(err) });
   }
 };
@@ -148,6 +157,10 @@ export const editarEntrada = async (req, res) => {
       if (mov.tipo !== "Entrada") {
         await conn.rollback();
         return res.status(409).json({ error: "Solo se pueden editar entradas. Las salidas se corrigen con una entrada o un ajuste." });
+      }
+      if (await Unidad.controla(conn, mov.id_insumo)) {
+        await conn.rollback();
+        return res.status(409).json({ error: "Este insumo se controla por número de serie: la entrada no se puede editar. Registra una salida o una entrada nueva con las series correctas." });
       }
       // Una entrada ligada a una salida es la DEVOLUCIÓN automática de una
       // salida anulada: editarla descuadraría la anulación.
@@ -233,16 +246,19 @@ export const registrarSalidaInsumo = async (req, res) => {
     id_destino, id_responsable, id_solicitante, id_sucursal_origen, id_sucursal_destino,
     justificacion, prioridad } = req.body;
   const renglones = Array.isArray(items) && items.length > 0
-    ? items.map(r => ({ id_insumo: parseInt(r.id_insumo, 10), cantidad: parseInt(r.cantidad, 10) }))
-    : [{ id_insumo: parseInt(id_insumo, 10), cantidad: parseInt(cantidad, 10) }];
+    ? items.map(r => ({ id_insumo: parseInt(r.id_insumo, 10), cantidad: parseInt(r.cantidad, 10), series: Array.isArray(r.series) ? r.series : null }))
+    : [{ id_insumo: parseInt(id_insumo, 10), cantidad: parseInt(cantidad, 10), series: Array.isArray(req.body.series) ? req.body.series : null }];
 
   if (renglones.some(r => !Number.isFinite(r.id_insumo) || r.id_insumo <= 0 || !Number.isFinite(r.cantidad) || r.cantidad <= 0))
     return res.status(400).json({ error: "Cada renglón debe traer insumo y cantidad válidos" });
 
   // Un mismo insumo puede repetirse en la hoja: se consolidan cantidades
   const consolidado = new Map();
-  for (const r of renglones)
+  const seriesPorInsumo = new Map();   // insumos por pieza: series elegidas
+  for (const r of renglones) {
     consolidado.set(r.id_insumo, (consolidado.get(r.id_insumo) || 0) + r.cantidad);
+    if (r.series) seriesPorInsumo.set(r.id_insumo, [...(seriesPorInsumo.get(r.id_insumo) || []), ...r.series]);
+  }
   const lista = [...consolidado.entries()].map(([id_insumo, cantidad]) => ({ id_insumo, cantidad }));
 
   const idAdmin = req.usuario?.id_empleado ?? null;
@@ -397,7 +413,14 @@ export const registrarSalidaInsumo = async (req, res) => {
           motivo:      null,        // los datos de la salida están en salida_interna
           fecha: fechaMySQL,
         });
-        movs.push({ id_movimiento, id_insumo: idIns, nombre_insumo: ins.nombre, descripcion: ins.descripcion ?? null, marca: ins.marca ?? null, modelo: ins.modelo ?? null, imagen_url: ins.imagen_url ?? null, cantidad: cant, stock_anterior, stock_nuevo });
+        // Insumo controlado por pieza: se elige qué número de serie sale.
+        let series = null;
+        if (await Unidad.controla(conn, idIns)) {
+          if (!seriesPorInsumo.has(idIns))
+            throw Object.assign(new Error(`Elige qué número(s) de serie de "${ins.nombre}" salen`), { statusCode: 400 });
+          series = await Unidad.registrarSalida(conn, { id_insumo: idIns, nombre: ins.nombre, series: seriesPorInsumo.get(idIns), cantidad: cant, id_movimiento });
+        }
+        movs.push({ id_movimiento, id_insumo: idIns, nombre_insumo: ins.nombre, descripcion: ins.descripcion ?? null, marca: ins.marca ?? null, modelo: ins.modelo ?? null, imagen_url: ins.imagen_url ?? null, cantidad: cant, stock_anterior, stock_nuevo, ...(series ? { series } : {}) });
       }
 
       await conn.commit();
@@ -418,6 +441,7 @@ export const registrarSalidaInsumo = async (req, res) => {
   } catch (err) {
     // Log obligatorio: sin esto el error 500 es invisible en la consola del
     // servidor y solo aparece en el body de la respuesta (DevTools → Response).
+    if (errorDeCaptura(err)) return res.status(err.statusCode).json({ error: err.message });
     console.error("[salidas] Error al registrar salida de insumos:", err);
     res.status(500).json({ error: "Error al registrar la salida de insumos", ...errDetalle(err) });
   }
@@ -584,6 +608,7 @@ export const anularSalida = async (req, res) => {
           id_empleado: idAdmin,
           motivo: `Anulación de ${sal.folio_salida}: ${motivo}`.slice(0, 500),
         });
+        await Unidad.devolverSalida(conn, r.id_movimiento);   // piezas con serie regresan al almacén
         devueltos.push({ id_insumo: r.id_insumo, nombre: ins.nombre, cantidad: r.cantidad, stock_nuevo });
       }
 

@@ -115,6 +115,7 @@ import pool      from '../config/db.js';
 import { esSoporteOAdmin } from '../middlewares/auth-middleware.js';
 import { STOCK_BAJO } from '../utils/stock.js';
 import { errDetalle, esAdmin, toPosId, validarRutaSucursales } from './comun.js';
+import Unidad from '../services/unidad.js';
 
 export const crearSolicitud = async (req, res) => {
   const { prioridad, id_empleado, insumos, observaciones_generales } = req.body;
@@ -600,7 +601,7 @@ export const actualizarEstatusSolicitud = async (req, res) => {
           }
           const stock_nuevo = inv.stock - r.cantidad_aprobada;
           await conn.query("UPDATE insumo SET stock = ? WHERE id_insumo = ?", [stock_nuevo, r.id_insumo]);
-          await MovimientoInventario.registrar(conn, {
+          const id_movimiento = await MovimientoInventario.registrar(conn, {
             id_insumo:          r.id_insumo,
             tipo:               "Salida",
             cantidad:           r.cantidad_aprobada,
@@ -614,6 +615,9 @@ export const actualizarEstatusSolicitud = async (req, res) => {
             // al leer se muestra "Entrega de material por solicitud SOL-…".
             motivo:             null,
           });
+          // Insumo por pieza: salen las piezas con más tiempo en almacén (queda registrada la serie).
+          if (await Unidad.controla(conn, r.id_insumo))
+            await Unidad.registrarSalida(conn, { id_insumo: r.id_insumo, nombre: r.nombre_insumo, series: null, cantidad: r.cantidad_aprobada, id_movimiento });
         }
 
         // 6. Cerrar la solicitud y sellar la fecha de atención
@@ -701,8 +705,8 @@ export const actualizarEstatusSolicitud = async (req, res) => {
     }
     res.json({ ok: true });
   } catch (err) {
-    const status = err.statusCode === 400 ? 400 : 500;
-    res.status(status).json({ error: err.statusCode === 400 ? err.message : "Error al actualizar solicitud", ...errDetalle(err) });
+    const status = [400, 409].includes(err.statusCode) ? err.statusCode : 500;
+    res.status(status).json({ error: status !== 500 ? err.message : "Error al actualizar solicitud", ...errDetalle(err) });
   }
 };
 
