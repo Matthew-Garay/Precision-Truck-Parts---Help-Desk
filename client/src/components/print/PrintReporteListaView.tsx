@@ -118,7 +118,7 @@ function VistaIncidencias({ datos, periodo, fechaGen, nombreEmpleado }: { datos:
         ]}
       />
       <ReporteTable
-        headers={["Folio", "Título de la Incidencia", "Estatus", "Prioridad", "Empleado", "Área / Depto.", "Técnico Asignado", "Fecha Alta", "Fecha Cierre", "Tiempo", "Cal."]}
+        headers={["Folio", "Título de la Incidencia", "Estatus", "Prioridad", "Empleado", "Puesto", "Técnico Asignado", "Fecha Alta", "Fecha Cierre", "Tiempo", "Cal."]}
         rows={rows}
         colWidths={["88px", "auto", "72px", "56px", "110px", "100px", "110px", "68px", "68px", "44px", "32px"]}
       />
@@ -193,7 +193,7 @@ function VistaInsumos({ datos, periodo, fechaGen }: { datos: InsumoRow[]; period
         ]}
       />
       <ReporteTable
-        headers={["Folio", "Empleado / Área", "Sucursal", "Ruta del material", "Prioridad", "Estatus", "Insumos solicitados", "Fecha"]}
+        headers={["Folio", "Empleado / Puesto", "Sucursal", "Ruta del material", "Prioridad", "Estatus", "Insumos solicitados", "Fecha"]}
         rows={rows}
         colWidths={["68px", "130px", "92px", "150px", "52px", "58px", "auto", "62px"]}
       />

@@ -88,9 +88,10 @@ const Empleado = {
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
               e.email, e.password, e.estatus, e.id_rol, e.id_departamento,
               e.id_sucursal, e.token_version, e.eliminado,
-              d.nombre_departamento, s.nombre_sucursal
+              d.nombre_departamento, ar.nombre_area, s.nombre_sucursal
        FROM empleado e
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       LEFT JOIN area ar ON ar.id_area = d.id_area
        LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal
        WHERE e.email = ? LIMIT 1`,
       [email]
@@ -103,9 +104,10 @@ const Empleado = {
     const [rows] = await pool.query(
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
               e.email, e.estatus, e.id_rol, e.id_departamento,
-              e.id_sucursal, e.eliminado, d.nombre_departamento, s.nombre_sucursal
+              e.id_sucursal, e.eliminado, d.nombre_departamento, ar.nombre_area, s.nombre_sucursal
        FROM empleado e
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       LEFT JOIN area ar ON ar.id_area = d.id_area
        LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal
        WHERE e.id_empleado = ? LIMIT 1`,
       [id]
@@ -223,9 +225,10 @@ const Empleado = {
     const [rows] = await pool.query(
       `SELECT e.id_empleado, e.num_empleado, e.nombre, e.ap_paterno, e.ap_materno,
               e.email, e.estatus, e.id_rol, e.id_departamento, e.id_sucursal,
-              d.nombre_departamento, r.nombre_rol, s.nombre_sucursal
+              d.nombre_departamento, ar.nombre_area, r.nombre_rol, s.nombre_sucursal
        FROM empleado e
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       LEFT JOIN area ar ON ar.id_area = d.id_area
        LEFT JOIN rol r          ON e.id_rol          = r.id_rol
        LEFT JOIN sucursal s     ON e.id_sucursal     = s.id_sucursal
        WHERE e.eliminado = 0   -- borrado lógico: los eliminados no se listan
@@ -247,9 +250,10 @@ const Empleado = {
   getResumen: async (id_empleado) => {
     const [[row]] = await pool.query(
       `SELECT CONCAT(e.nombre,' ',e.ap_paterno) AS nombre_empleado,
-              d.nombre_departamento
+              d.nombre_departamento, ar.nombre_area
        FROM empleado e
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       LEFT JOIN area ar ON ar.id_area = d.id_area
        WHERE e.id_empleado = ? LIMIT 1`,
       [id_empleado]
     );
@@ -371,10 +375,11 @@ const Empleado = {
     const [rows] = await pool.query(
       `SELECT a.id_acceso, a.id_empleado, a.fecha_entrada, a.fecha_salida,
               CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
-              e.email, d.nombre_departamento
+              e.email, d.nombre_departamento, ar.nombre_area
        FROM historial_acceso a
        JOIN empleado e ON a.id_empleado = e.id_empleado
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       LEFT JOIN area ar ON ar.id_area = d.id_area
        ORDER BY a.fecha_entrada DESC
        LIMIT ? OFFSET ?`,
       [limit, offset]

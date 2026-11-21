@@ -216,6 +216,7 @@ export const zohoCallback = async (req, res) => {
       id_rol:          empleado.id_rol,
       rol:             empleado.id_rol === 1 ? "admin" : "usuario",
       departamento:    empleado.nombre_departamento,
+      area:            empleado.nombre_area || null,
       id_departamento: empleado.id_departamento,
       id_sucursal:     empleado.id_sucursal || null,
       sucursal:        empleado.nombre_sucursal || null,

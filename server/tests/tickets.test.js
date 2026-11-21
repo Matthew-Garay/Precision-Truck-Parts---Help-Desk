@@ -66,6 +66,13 @@ describe("tickets (mesa de ayuda)", () => {
   });
 
   // ── Permisos ─────────────────────────────────────────────────────────────
+  test("la vista del ticket trae puesto, área y sucursal del solicitante", async () => {
+    const r = await llamar(ctrl.getTicketById, reqAdmin({ params: { id_ticket: String(t1) } }));
+    assert.equal(r.body.nombre_sucursal, "Sucursal Norte");
+    assert.equal(r.body.nombre_departamento, "Almacén");
+    assert.ok("nombre_area" in r.body);
+  });
+
   test("el dueño ve su ticket; otro usuario recibe 403; el admin sí lo ve", async () => {
     assert.equal((await llamar(ctrl.getTicketById, reqUsuario({ params: { id_ticket: String(t1) } }))).statusCode, 200);
     assert.equal((await llamar(ctrl.getTicketById, reqUsuario({ params: { id_ticket: String(t1) } }, 2))).statusCode, 403);

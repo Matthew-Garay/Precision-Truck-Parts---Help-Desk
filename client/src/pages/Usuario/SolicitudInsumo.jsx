@@ -725,7 +725,8 @@ export default function SolicitudInsumo({ usuario = {}, T, initialTab }) {
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       {[
                         { label: "Nombre",   value: requesterName },
-                        { label: "Área",     value: usuario.departamento || "—" },
+                        { label: "Puesto",   value: usuario.departamento || "—" },
+                        { label: "Área",     value: usuario.area || "—" },
                         { label: "Sucursal", value: usuario.sucursal || "—" },
                       ].map(({ label, value }) => (
                         <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>

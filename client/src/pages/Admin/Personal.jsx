@@ -80,7 +80,7 @@ export default function Personal({ T }) {
   });
   const camposFiltro = [
     { key: "busqueda", label: "Búsqueda Rápida", type: "search", placeholder: "Nombre, correo o núm. de empleado..." },
-    { key: "departamento", label: "Área", type: "select", opts: [{ value: "Todos", label: "Todos" }, ...departamentos.map(d => ({ value: String(d.id_departamento), label: d.nombre_departamento }))] },
+    { key: "departamento", label: "Puesto", type: "select", opts: [{ value: "Todos", label: "Todos" }, ...departamentos.map(d => ({ value: String(d.id_departamento), label: d.nombre_departamento }))] },
     { key: "sucursal", label: "Sucursal", type: "select", minWidth: "130px", opts: [{ value: "Todos", label: "Todas" }, ...sucursales.map(s => ({ value: String(s.id_sucursal), label: s.nombre_sucursal }))] },
     { key: "estatus", label: "Estatus", type: "select", opts: ["Todos", "Activo", "Inactivo"] },
   ];

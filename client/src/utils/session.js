@@ -38,7 +38,7 @@
 
 const CAMPOS_PUBLICOS = ["id_empleado", "num_empleado", "nombre", "ap_paterno", "ap_materno",
                          "email", "id_rol", "rol", "departamento", "id_departamento",
-                         "id_sucursal", "sucursal", "nombre_sucursal"];
+                         "id_sucursal", "sucursal", "nombre_sucursal", "area"];
 
 function filtrarUsuario(u) {
   if (!u || typeof u !== "object") return null;

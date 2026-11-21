@@ -113,7 +113,6 @@ import { getIO } from '../config/socket-instance.js';
 import fs       from "fs";
 import pool from '../config/db.js';
 import { cache } from '../config/cache.js';
-import { enviarTicketCerrado } from '../config/mailer.js';
 import Indicadores from '../services/indicadores.js';
 import Evidencia, { MAX_EVIDENCIAS } from '../services/evidencia.js';
 
@@ -371,13 +370,6 @@ export const actualizarTicket = async (req, res) => {
           io.to("admins").emit("ticket:en_atencion", payloadAtencion);
         }
       } catch (emitErr) { console.error("[emit ticket:actualizado]", emitErr.message); }
-      // Correo al empleado al cerrarse su ticket (no bloquea la respuesta).
-      if (estatus === "Resuelto" || estatus === "No Resuelto") {
-        enviarTicketCerrado({
-          to: t.email_empleado, nombre: t.nombre_empleado, folio: t.folio_ticket, titulo: t.titulo, estatus,
-          tecnico: updated.resuelto_por || t.nombre_tecnico, comentarios: req.body?.comentarios,
-        }).catch(() => {});
-      }
     }
 
     res.json({ ok: true, estatus: updated.estatus, fecha_resuelto: updated.fecha_resuelto ?? null, resuelto_por: updated.resuelto_por ?? null });

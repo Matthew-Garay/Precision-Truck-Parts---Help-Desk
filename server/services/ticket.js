@@ -116,12 +116,14 @@ const Ticket = {
               t.comentarios, t.calificacion, t.id_categoria, t.id_empleado,
               c.nombre_categoria,
               TRIM(CONCAT(e.nombre, ' ', e.ap_paterno, IF(e.ap_materno IS NOT NULL AND e.ap_materno != '', CONCAT(' ', e.ap_materno), ''))) AS nombre_empleado,
-              d.nombre_departamento,
+              d.nombre_departamento, ar.nombre_area, su.nombre_sucursal,
               TRIM(CONCAT(r.nombre, ' ', r.ap_paterno, IF(r.ap_materno IS NOT NULL AND r.ap_materno != '', CONCAT(' ', r.ap_materno), ''))) AS resuelto_por
        FROM ticket t
        LEFT JOIN categoria c ON t.id_categoria = c.id_categoria
        LEFT JOIN empleado  e ON t.id_empleado  = e.id_empleado
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       LEFT JOIN area ar ON ar.id_area = d.id_area
+       LEFT JOIN sucursal su ON su.id_sucursal = e.id_sucursal
        LEFT JOIN empleado  r ON t.id_tecnico = r.id_empleado
        WHERE t.id_ticket = ? LIMIT 1`,
       [id_ticket]
@@ -142,7 +144,8 @@ const Ticket = {
        LEFT JOIN categoria c      ON t.id_categoria     = c.id_categoria
        LEFT JOIN empleado  e      ON t.id_empleado      = e.id_empleado
        LEFT JOIN empleado  r      ON t.id_tecnico       = r.id_empleado
-       LEFT JOIN departamento dep ON e.id_departamento  = dep.id_departamento`;
+       LEFT JOIN departamento dep ON e.id_departamento  = dep.id_departamento
+       LEFT JOIN area ar          ON ar.id_area         = dep.id_area`;
     const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total ${BASE_JOINS} ${WHERE}`, params);
     const [rows] = await pool.query(
       `SELECT t.id_ticket, t.folio_ticket, t.titulo, t.descripcion,
@@ -150,7 +153,7 @@ const Ticket = {
               t.comentarios, t.calificacion, t.id_categoria,
               c.nombre_categoria,
               TRIM(CONCAT(e.nombre, ' ', e.ap_paterno, IF(e.ap_materno IS NOT NULL AND e.ap_materno != '', CONCAT(' ', e.ap_materno), ''))) AS nombre_empleado,
-              dep.nombre_departamento,
+              dep.nombre_departamento, ar.nombre_area,
               TRIM(CONCAT(r.nombre, ' ', r.ap_paterno, IF(r.ap_materno IS NOT NULL AND r.ap_materno != '', CONCAT(' ', r.ap_materno), ''))) AS resuelto_por
        ${BASE_JOINS} ${WHERE}
        ORDER BY t.fecha_subido DESC
@@ -360,15 +363,16 @@ const Ticket = {
     // ese equipo ATIENDE incidencias, no las solicita, por lo que no debe
     // aparecer como solicitante en el reporte.
     const [porDepartamento] = await pool.query(
-      `SELECT d.nombre_departamento AS departamento,
+      `SELECT COALESCE(ar.nombre_area, d.nombre_departamento, 'Sin área') AS departamento,
               COUNT(*) AS total,
               SUM(t.estatus = 'Resuelto') AS resueltos
        FROM ticket t
        LEFT JOIN empleado e ON t.id_empleado = e.id_empleado
        LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+       LEFT JOIN area ar ON ar.id_area = d.id_area
        WHERE d.id_departamento IS NULL
           OR d.nombre_departamento NOT IN ('Soporte Técnico', 'Auxiliar de Soporte Técnico')
-       GROUP BY d.id_departamento, d.nombre_departamento
+       GROUP BY COALESCE(ar.nombre_area, d.nombre_departamento, 'Sin área')
        ORDER BY total DESC`
     );
 
@@ -442,13 +446,14 @@ const Ticket = {
               t.fecha_subido, t.fecha_resuelto, t.calificacion,
               c.nombre_categoria,
               CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')) AS nombre_empleado,
-              dep.nombre_departamento,
+              dep.nombre_departamento, ar.nombre_area,
               s.nombre_sucursal,
               CONCAT(r.nombre,' ',r.ap_paterno,' ',IFNULL(r.ap_materno,'')) AS resuelto_por
        FROM ticket t
        LEFT JOIN categoria c      ON t.id_categoria    = c.id_categoria
        LEFT JOIN empleado  e      ON t.id_empleado     = e.id_empleado
        LEFT JOIN departamento dep ON e.id_departamento = dep.id_departamento
+       LEFT JOIN area ar          ON ar.id_area        = dep.id_area
        LEFT JOIN sucursal s       ON e.id_sucursal     = s.id_sucursal
        LEFT JOIN empleado  r      ON t.id_tecnico      = r.id_empleado
        WHERE ${conditions.join(" AND ")}

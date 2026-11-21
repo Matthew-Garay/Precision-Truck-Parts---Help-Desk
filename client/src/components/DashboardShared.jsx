@@ -279,7 +279,7 @@ export function SeccionMetricas({ T, metricas }) {
           <div className="w-1 h-3 rounded-full" style={{ background: "#F47920" }} />
           <Building2 size={10} style={{ color: isDark ? "rgba(255,255,255,0.4)" : T.textMuted }} />
           <p className="text-[9px] font-black uppercase tracking-widest"
-            style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Tickets por Departamento</p>
+            style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Tickets por área</p>
         </div>
         <div className="px-2.5 py-1.5 flex flex-col gap-1">
           {deptos.length === 0 ? (
@@ -292,7 +292,7 @@ export function SeccionMetricas({ T, metricas }) {
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-semibold truncate max-w-[65%]"
                     style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>
-                    {d.departamento || "Sin depto."}
+                    {d.departamento || "Sin área"}
                   </span>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] font-black" style={{ color: T.orange }}>{d.total}</span>

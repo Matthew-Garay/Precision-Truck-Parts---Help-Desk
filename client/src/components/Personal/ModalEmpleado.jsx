@@ -86,7 +86,7 @@ export function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles,
       if (passErr) return setError(passErr);
     }
     if (!form.id_rol) return setError("Selecciona un rol.");
-    if (!form.id_departamento) return setError("Selecciona un área.");
+    if (!form.id_departamento) return setError("Selecciona un puesto.");
     setSaving(true); setError("");
     try {
       await onGuardar(form, modo, empleado?.id_empleado);
@@ -196,9 +196,9 @@ export function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles,
               )}
             </Field>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              <Field htmlFor="fe-depto" label="Área" required textFaint={tk.textFaint}>
+              <Field htmlFor="fe-depto" label="Puesto" required textFaint={tk.textFaint}>
                 <select id="fe-depto" value={form.id_departamento} onChange={e => set("id_departamento", e.target.value)} style={selectStyle}>
-                  <option value="">Selecciona un área</option>
+                  <option value="">Selecciona un puesto</option>
                   {departamentos.map(d => (
                     <option key={d.id_departamento} value={String(d.id_departamento)}>{d.nombre_departamento}</option>
                   ))}

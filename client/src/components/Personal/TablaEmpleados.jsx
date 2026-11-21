@@ -138,7 +138,7 @@ export function TablaEmpleados({ empleados, filtrosKey, T, isDark, onEditar, onH
   const COLS = [
     { key: "nombre", label: "Empleado", sortable: true },
     { key: "id", label: "ID", sortable: true },
-    { key: "depto", label: "Área", sortable: true },
+    { key: "depto", label: "Puesto", sortable: true },
     { key: "sucursal", label: "Sucursal", sortable: true },
     { key: "rol", label: "Rol", sortable: true },
     { key: "email", label: "Correo", sortable: false },

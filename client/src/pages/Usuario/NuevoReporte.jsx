@@ -342,7 +342,7 @@ const card = {
                 </div>
               </div>
               <div>
-                <Label>Área</Label>
+                <Label>Puesto</Label>
                 <input readOnly value={area}
                   style={{ ...inputStyle, opacity:.6, cursor:"default", background: isDark ? "rgba(255,255,255,0.03)" : T.surfaceAlt }}/>
               </div>

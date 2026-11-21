@@ -53,6 +53,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Busca el logo en la ruta esperada. Si no existe, los correos se envian sin imagen.
 function resolverLogo() {
   const candidatos = [
+    // "logo negro": texto en NEGRO, para el fondo blanco del correo. logo.png es
+    // para fondos oscuros (la palabra "Precision" es blanca y no se veía).
+    path.resolve(__dirname, "../../client/public/assets/img/logo negro.png"),
     path.resolve(__dirname, "../../client/public/assets/img/logo.png"),
   ];
   for (const ruta of candidatos) {
@@ -171,8 +174,8 @@ export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
   // placa blanca. El fondo blanco va en el atributo style (además de la clase)
   // porque algunos clientes de correo ignoran las hojas de estilo.
   const logoTag =
-    `<img src="cid:logoptp" alt="Precision Truck Parts" width="94" height="60" ` +
-    `style="display:block;margin:0 auto;border:0;width:94px;height:60px;background:#ffffff;" />`;
+    `<img src="cid:logoptp" alt="Precision Truck Parts" width="94" height="73" ` +
+    `style="display:block;margin:0 auto;border:0;width:94px;height:73px;background:#ffffff;" />`;
 
   const html =
     `<!DOCTYPE html>` +
@@ -284,77 +287,4 @@ export async function enviarCodigoRecuperacion({ to, nombre, codigo }) {
       cid:      "logoptp",
     }] : [],
   });
-}
-
-/**
- * Avisa por correo al empleado que su ticket se cerró (Resuelto o No Resuelto),
- * con el comentario del técnico y la invitación a calificar la atención.
- * Nunca lanza: si el SMTP falla solo se registra en consola (el cierre del
- * ticket no debe fallar por el correo).
- *
- * @param {object} p
- * @param {string} p.to        correo del empleado
- * @param {string} p.nombre    nombre del empleado
- * @param {string} p.folio     folio del ticket (ST-…)
- * @param {string} p.titulo    título del ticket
- * @param {string} p.estatus   "Resuelto" | "No Resuelto"
- * @param {string} [p.tecnico] quién lo atendió
- * @param {string} [p.comentarios] comentario de cierre
- */
-export async function enviarTicketCerrado({ to, nombre, folio, titulo, estatus, tecnico, comentarios }) {
-  // En las pruebas automáticas nunca se manda correo real.
-  if (process.env.NODE_ENV === "test" || !smtpConfigurado() || !to) return;
-  const resuelto = estatus === "Resuelto";
-  const color    = resuelto ? "#16a34a" : "#dc2626";
-  const nombre1  = esc(String(nombre || "").trim().split(/\s+/)[0] || "");
-  const app      = (process.env.APP_URL || "").replace(/\/+$/, "");
-  const logoTag  = LOGO_PATH
-    ? `<img src="cid:logoptp" alt="Precision Truck Parts" width="94" height="60" style="display:block;margin:0 auto;border:0;width:94px;height:60px;background:#ffffff;" />`
-    : `<b style="font-size:16px;color:#1D1D1B;">Precision Truck Parts</b>`;
-  const fila = (k, v) => v
-    ? `<tr><td style="padding:6px 0;color:#64748b;font-size:13px;width:120px;vertical-align:top;">${k}</td>` +
-      `<td style="padding:6px 0;color:#1D1D1B;font-size:13px;font-weight:bold;">${v}</td></tr>`
-    : "";
-
-  const html =
-    `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>` +
-    `<meta name="viewport" content="width=device-width,initial-scale=1"/>` +
-    `<title>Ticket ${esc(folio)} - Precision Truck Parts</title></head>` +
-    `<body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;">` +
-    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:24px 12px;"><tr><td align="center">` +
-    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:10px;overflow:hidden;border-top:4px solid #F47920;">` +
-      `<tr><td style="padding:20px;background:#ffffff;" align="center">${logoTag}</td></tr>` +
-      `<tr><td style="padding:4px 28px 24px;">` +
-        `<p style="margin:0 0 12px;font-size:15px;color:#1D1D1B;">Hola ${nombre1},</p>` +
-        `<p style="margin:0 0 16px;font-size:14px;color:#334155;line-height:1.5;">` +
-          (resuelto
-            ? `Soporte Técnico marcó tu reporte como <b style="color:${color};">Resuelto</b>.`
-            : `Soporte Técnico cerró tu reporte como <b style="color:${color};">No resuelto</b>. Si el problema continúa, levanta un reporte nuevo.`) +
-        `</p>` +
-        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e8ecf0;border-bottom:1px solid #e8ecf0;margin-bottom:16px;">` +
-          fila("Folio", esc(folio)) +
-          fila("Reporte", esc(titulo)) +
-          fila("Atendió", esc(tecnico || "")) +
-          fila("Comentario", esc(comentarios || "").replace(/\n/g, "<br/>")) +
-          fila("Fecha", esc(getAhoraHermosillo())) +
-        `</table>` +
-        (resuelto
-          ? `<p style="margin:0 0 16px;font-size:13px;color:#334155;line-height:1.5;">¿Quedó bien? Entra al sistema y <b>califica la atención</b> en tu reporte: nos ayuda a mejorar.</p>`
-          : "") +
-        (app ? `<p style="margin:0;text-align:center;"><a href="${esc(app)}" style="display:inline-block;background:#F47920;color:#ffffff;text-decoration:none;font-weight:bold;font-size:13px;padding:10px 20px;border-radius:8px;">Abrir la mesa de ayuda</a></p>` : "") +
-      `</td></tr>` +
-      `<tr><td style="padding:12px 28px;background:#f8fafc;color:#94a3b8;font-size:11px;text-align:center;">Correo automático de la mesa de ayuda de Soporte Técnico. No respondas a este mensaje.</td></tr>` +
-    `</table></td></tr></table></body></html>`;
-
-  try {
-    await transporter.sendMail({
-      from:    process.env.SMTP_FROM || process.env.SMTP_USER,
-      to,
-      subject: `Tu reporte ${folio} ${resuelto ? "fue resuelto" : "se cerró sin solución"}`,
-      html,
-      attachments: LOGO_PATH ? [{ filename: "logo.png", path: LOGO_PATH, cid: "logoptp" }] : [],
-    });
-  } catch (err) {
-    console.error(`[mailer] No se pudo enviar el aviso del ticket ${folio}:`, err.message);
-  }
 }

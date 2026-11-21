@@ -128,7 +128,7 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
         .then(emp => {
           if (!emp?.id_empleado) return;
           setPerfil(prev => {
-            const next = { ...prev, num_empleado: emp.num_empleado, nombre: emp.nombre, ap_paterno: emp.ap_paterno, ap_materno: emp.ap_materno || "", email: emp.email, departamento: emp.nombre_departamento, nombre_sucursal: emp.nombre_sucursal || null };
+            const next = { ...prev, num_empleado: emp.num_empleado, nombre: emp.nombre, ap_paterno: emp.ap_paterno, ap_materno: emp.ap_materno || "", email: emp.email, departamento: emp.nombre_departamento, area: emp.nombre_area || null, nombre_sucursal: emp.nombre_sucursal || null };
             if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
             setNombre(emp.nombre       || "");
             setApPaterno(emp.ap_paterno || "");
@@ -202,10 +202,10 @@ export default function ConfiguracionPerfilShared({ T, usuario, onUsuarioActuali
               <p className="text-[10px] mt-0.5" style={{ color: T.textFaint }}>{perfil.departamento || usuario.departamento || "-"}</p>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-0" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` }}>
-            {[{ label: "Número", val: perfil.num_empleado || "-" }, { label: "Departamento", val: perfil.departamento || "-" }, { label: "Sucursal", val: perfil.nombre_sucursal || "-" }]
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` }}>
+            {[{ label: "Número", val: perfil.num_empleado || "-" }, { label: "Puesto", val: perfil.departamento || "-" }, { label: "Área", val: perfil.area || usuario.area || "-" }, { label: "Sucursal", val: perfil.nombre_sucursal || "-" }]
               .map(({ label, val }, i) => (
-                <div key={label} className="px-4 py-3" style={{ borderRight: i < 2 ? `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` : "none" }}>
+                <div key={label} className="px-4 py-3" style={{ borderRight: i < 3 ? `1px solid ${isDark ? "rgba(255,255,255,0.06)" : T.border}` : "none" }}>
                   <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: T.textFaint }}>{label}</p>
                   <p className="text-[11px] font-bold truncate mt-0.5" style={{ color: T.text }}>{val}</p>
                 </div>

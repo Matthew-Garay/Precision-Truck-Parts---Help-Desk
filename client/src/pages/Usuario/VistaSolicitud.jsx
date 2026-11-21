@@ -490,7 +490,8 @@ export default function VistaSolicitud({ id_solicitud, T, esAdmin = false, onBac
               <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 {[
                   { icon: User,          label: "Solicitante",  val: solicitud.nombre_empleado    || "—" },
-                  { icon: Tag,           label: "Área",         val: solicitud.nombre_departamento || "—" },
+                  { icon: Tag,           label: "Puesto",       val: solicitud.nombre_departamento || "—" },
+                  { icon: Tag,           label: "Área",         val: solicitud.nombre_area         || "—" },
                   { icon: Calendar,      label: "Fecha",        val: fmtFechaHora(solicitud.fecha) },
                   { icon: AlertTriangle, label: "Prioridad",    val: solicitud.prioridad || "—" },
                 ].map(({ icon: Icon, label, val }) => (

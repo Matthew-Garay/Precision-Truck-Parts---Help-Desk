@@ -16,7 +16,7 @@ $bitacora = Join-Path $logs ("servidor-{0}.log" -f (Get-Date -Format 'yyyy-MM-dd
 function Anotar($texto) { "[{0}] {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $texto | Add-Content $bitacora -Encoding UTF8 }
 
 Anotar "Iniciando la mesa de ayuda (modo producción)…"
-& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'liberar-puertos.ps1')
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'liberar-puertos.ps1') -Produccion
 
 # ¿Hay que recompilar? Si dist no existe o algún archivo del cliente es más nuevo.
 $index = Join-Path $raiz 'dist\index.html'

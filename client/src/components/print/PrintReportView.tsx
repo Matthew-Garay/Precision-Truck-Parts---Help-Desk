@@ -123,7 +123,7 @@ export default function PrintReportView({ ticket }: { ticket: Ticket }) {
           <DataGrid items={[
             { label: "Folio",             value: ticket.folio_ticket,           half: true },
             { label: "Solicitante",       value: ticket.nombre_empleado,        half: true },
-            { label: "Departamento",      value: ticket.nombre_departamento,    half: true },
+            { label: "Puesto",            value: ticket.nombre_departamento,    half: true },
             { label: "Sucursal",          value: ticket.nombre_sucursal ?? "—", half: true },
             { label: "Categoría",         value: ticket.nombre_categoria,       half: true },
             { label: "Fecha de alta",     value: `${fechaAlta} · ${horaAlta}`,  half: true },

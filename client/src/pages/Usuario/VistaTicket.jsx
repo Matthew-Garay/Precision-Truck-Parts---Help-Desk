@@ -548,7 +548,8 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
               <div className="vt-info-grid px-4 sm:px-8 py-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-x-8 sm:gap-y-4">
                 {[
                   { icon: User,         label: "Solicitante",       val: ticket.nombre_empleado     || "-" },
-                  { icon: Tag,          label: "Departamento",       val: ticket.nombre_departamento || "-" },
+                  { icon: Tag,          label: "Puesto",             val: ticket.nombre_departamento || "-" },
+                  { icon: Tag,          label: "Área",               val: ticket.nombre_area         || "-" },
                   { icon: Tag,          label: "Sucursal",           val: ticket.nombre_sucursal     || "-" },
                   { icon: Calendar,     label: "Fecha de alta",      val: `${fechaAlta} · ${horaAlta}` },
                   { icon: CheckCircle2, label: "Fecha resolución",   val: fechaResuelto ? `${fechaResuelto} · ${horaResuelto}` : "Pendiente" },

@@ -189,7 +189,7 @@ export default function HistorialIncidencias({ T, usuario = {}, onVerTicket, onR
     { key:"prioridad", label:"Prioridad",         type:"select",  opts:["Todos","Urgente","Alta","Media","Baja"] },
     { key:"tecnico",   label:"Técnico",           type:"combo",   placeholder:"Escribe el nombre...", opts:toOpts(optsCache.tecnicos) },
     { key:"usuario",   label:"Usuario",           type:"combo",   placeholder:"Escribe el nombre...", opts:toOpts(optsCache.usuarios) },
-    { key:"area",      label:"Área",              type:"select",  opts:toOpts(optsCache.areas) },
+    { key:"area",      label:"Puesto",            type:"select",  opts:toOpts(optsCache.areas) },
     { key:"sucursal",  label:"Sucursal",           type:"select",  opts:toOpts(optsCache.sucursales) },
   ];
 

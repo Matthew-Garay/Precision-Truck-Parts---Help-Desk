@@ -56,6 +56,14 @@ Despliegue tipico en un solo equipo: `npm run build` una vez y despues `npm run 
 
 Tras un reinicio del proceso: las alertas de Socket.io deduplicadas se reconstruyen desde `Workers/alertState.js`; no hay estado en memoria que deba persistirse manualmente.
 
+## Correos que envía el sistema
+
+**Solo uno:** el código para recuperar la contraseña (`enviarCodigoRecuperacion` en `server/config/mailer.js`).
+Por decisión de la empresa (20/11/2026) el sistema **no** manda correos de tickets (ni al levantarlos ni al
+cerrarlos): los avisos de tickets y solicitudes son solo dentro del sistema (notificaciones en vivo y campana).
+
+El correo usa `client/public/assets/img/logo negro.png` (texto negro sobre el fondo blanco del correo).
+
 ## Rendimiento
 
 Medido el 19/11/2026 en el servidor de la oficina (prueba solo lectura con `server/scripts/prueba-carga.js`):

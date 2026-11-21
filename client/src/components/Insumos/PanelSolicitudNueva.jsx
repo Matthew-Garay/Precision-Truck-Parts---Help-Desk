@@ -40,7 +40,8 @@ export default function PanelSolicitudNueva({ T, activePriority, cartEntries, ha
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {[
             { label: "Nombre",   value: requesterName },
-            { label: "Área",     value: usuario.departamento || "—" },
+            { label: "Puesto",   value: usuario.departamento || "—" },
+            { label: "Área",     value: usuario.area || "—" },
             { label: "Sucursal", value: usuario.sucursal || "—" },
           ].map(({ label, value }) => (
             <div key={label} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 4 }}>

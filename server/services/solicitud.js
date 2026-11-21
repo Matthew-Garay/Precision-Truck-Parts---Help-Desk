@@ -131,7 +131,7 @@ const Solicitud = {
     const [rows] = await pool.query(
       `SELECT s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
               IFNULL(CONCAT(e.nombre,' ',e.ap_paterno),'[Empleado eliminado]') AS nombre_empleado,
-              d.nombre_departamento,
+              d.nombre_departamento, ar.nombre_area,
               su.nombre_sucursal,
               GROUP_CONCAT(i.nombre ORDER BY i.nombre SEPARATOR ', ') AS insumos_nombres,
               SUM(si.cantidad) AS total_piezas,
@@ -139,6 +139,7 @@ const Solicitud = {
        FROM solicitud s
        LEFT JOIN empleado e          ON s.id_empleado    = e.id_empleado
        LEFT JOIN departamento d      ON e.id_departamento = d.id_departamento
+       LEFT JOIN area ar ON ar.id_area = d.id_area
        LEFT JOIN sucursal su         ON e.id_sucursal    = su.id_sucursal
        LEFT JOIN solicitud_insumo si ON s.id_solicitud   = si.id_solicitud
        LEFT JOIN insumo i            ON si.id_insumo     = i.id_insumo
@@ -162,11 +163,12 @@ const Solicitud = {
               sd.nombre_sucursal AS nombre_sucursal_destino,
               IFNULL(CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')),'[Empleado eliminado]') AS nombre_empleado,
               e.id_sucursal AS id_sucursal_empleado,
-              d.nombre_departamento,
+              d.nombre_departamento, ar.nombre_area,
               su.nombre_sucursal
        FROM solicitud s
        LEFT JOIN empleado e     ON s.id_empleado          = e.id_empleado
        LEFT JOIN departamento d ON e.id_departamento      = d.id_departamento
+       LEFT JOIN area ar ON ar.id_area = d.id_area
        LEFT JOIN sucursal su    ON e.id_sucursal          = su.id_sucursal
        LEFT JOIN sucursal so    ON s.id_sucursal_origen   = so.id_sucursal
        LEFT JOIN sucursal sd    ON s.id_sucursal_destino  = sd.id_sucursal
@@ -254,6 +256,7 @@ const Solicitud = {
        FROM solicitud s
        LEFT JOIN empleado e     ON s.id_empleado      = e.id_empleado
        LEFT JOIN departamento d ON e.id_departamento  = d.id_departamento
+       LEFT JOIN area ar ON ar.id_area = d.id_area
        LEFT JOIN sucursal su    ON e.id_sucursal      = su.id_sucursal
        ${whereSQL}`,
       params
@@ -261,7 +264,7 @@ const Solicitud = {
     const [rows] = await pool.query(
       `SELECT s.id_solicitud, s.folio_solicitud, s.fecha, s.estatus, s.prioridad,
               IFNULL(CONCAT(e.nombre,' ',e.ap_paterno,' ',IFNULL(e.ap_materno,'')),'[Empleado eliminado]') AS nombre_empleado,
-              d.nombre_departamento,
+              d.nombre_departamento, ar.nombre_area,
               su.nombre_sucursal,
               COUNT(si.id_solicitud_insumo) AS total_insumos,
               SUM(si.cantidad) AS total_piezas,
@@ -271,6 +274,7 @@ const Solicitud = {
        FROM solicitud s
        LEFT JOIN empleado e     ON s.id_empleado      = e.id_empleado
        LEFT JOIN departamento d ON e.id_departamento  = d.id_departamento
+       LEFT JOIN area ar ON ar.id_area = d.id_area
        LEFT JOIN sucursal su    ON e.id_sucursal      = su.id_sucursal
        LEFT JOIN solicitud_insumo si ON s.id_solicitud     = si.id_solicitud
        LEFT JOIN insumo i            ON si.id_insumo       = i.id_insumo

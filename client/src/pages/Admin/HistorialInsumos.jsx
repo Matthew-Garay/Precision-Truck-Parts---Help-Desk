@@ -213,7 +213,7 @@ export default function HistorialInsumos({ T }) {
     { key: "estatus",   label: "Estatus",          type: "select",  opts: ["Todos", "En proceso", "Aceptado", "Rechazado", "Entregado", "Anulada"] },
     { key: "prioridad", label: "Prioridad",         type: "select",  opts: ["Todos", "Urgente", "Alta", "Media", "Baja"] },
     { key: "usuario",   label: "Usuario",           type: "combo",   placeholder: "Escribe el nombre...", opts: toOpts(optsCache.usuarios) },
-    { key: "area",      label: "Área",              type: "select",  opts: toOpts(optsCache.areas) },
+    { key: "area",      label: "Puesto",            type: "select",  opts: toOpts(optsCache.areas) },
     { key: "sucursal",  label: "Sucursal",          type: "select",  opts: toOpts(optsCache.sucursales) },
     { key: "origen",    label: "Origen",            type: "select",  opts: [{ value: "Todos", label: "Todos" }, { value: "interno", label: "Salidas internas" }, { value: "sistema", label: "Salidas de sistema" }, { value: "soporte", label: "Uso de Soporte" }] },
   ];

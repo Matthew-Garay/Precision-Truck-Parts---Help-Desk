@@ -280,7 +280,7 @@ export default function PrintSolicitudView({ solicitud }: { solicitud: Solicitud
               <span className="pr-info-value">{solicitud.nombre_empleado}</span>
             </div>
             <div className="pr-info-row">
-              <span className="pr-info-label">Departamento</span>
+              <span className="pr-info-label">Puesto</span>
               <span className="pr-info-value">{solicitud.nombre_departamento}</span>
             </div>
             <div className="pr-info-row">

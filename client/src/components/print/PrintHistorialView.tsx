@@ -161,7 +161,7 @@ export default function PrintHistorialView({ data }: { data: HistorialData }) {
           <DataGrid items={[
             { label: "N.º Empleado",  value: empleado.num_empleado        ?? "—", half: true },
             { label: "Correo",        value: empleado.email,                      half: true },
-            { label: "Departamento",  value: empleado.nombre_departamento ?? "—", half: true },
+            { label: "Puesto",        value: empleado.nombre_departamento ?? "—", half: true },
             { label: "Sucursal",      value: empleado.nombre_sucursal     ?? "—", half: true },
             { label: "Estatus",       value: empleado.estatus,                    half: true },
             { label: "Total sesiones",value: String(accesos.length),              half: true },
