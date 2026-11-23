@@ -177,7 +177,7 @@ export const editarEntrada = async (req, res) => {
         // El punto más bajo del kardex a partir de esta entrada no puede quedar negativo.
         const [[min]] = await conn.query(
           `SELECT LEAST(MIN(stock_nuevo), MIN(IF(id_movimiento > ?, stock_anterior, stock_nuevo))) AS minimo
-             FROM movimiento_inventario WHERE id_insumo = ? AND id_movimiento >= ?`,
+           FROM movimiento_inventario WHERE id_insumo = ? AND id_movimiento >= ?`,
           [id, mov.id_insumo, id]
         );
         const minimo = Math.min(Number(min?.minimo ?? 0), Number(ins.stock));
@@ -693,7 +693,7 @@ export const corregirFechaSalida = async (req, res) => {
         await conn.rollback();
         return res.status(400).json({
           error: `El folio ${sal.folio_salida} es del mes ${fol[2]}/${fol[1]}: la fecha debe quedar en ese mes. ` +
-                 "Si la salida fue en otro mes, anúlala y captúrala de nuevo.",
+                   "Si la salida fue en otro mes, anúlala y captúrala de nuevo.",
         });
       }
       const antes = new Date(sal.fecha);
@@ -710,7 +710,7 @@ export const corregirFechaSalida = async (req, res) => {
         return res.status(400).json({ error: "La fecha es la misma que ya tiene la salida" });
       }
       const fechaMySQL = `${nueva.getFullYear()}-${pad2(nueva.getMonth() + 1)}-${pad2(nueva.getDate())} ` +
-                         `${pad2(nueva.getHours())}:${pad2(nueva.getMinutes())}:${pad2(nueva.getSeconds())}`;
+                       `${pad2(nueva.getHours())}:${pad2(nueva.getMinutes())}:${pad2(nueva.getSeconds())}`;
       await conn.query("UPDATE salida_interna SET fecha = ? WHERE id_salida = ?", [fechaMySQL, id]);
       const [mov] = await conn.query(
         "UPDATE movimiento_inventario SET fecha = ? WHERE id_salida = ? AND tipo = 'Salida'", [fechaMySQL, id]
@@ -748,11 +748,11 @@ export const getCambiosSalida = async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT c.id_cambio, c.campo, c.valor_anterior, c.valor_nuevo, c.motivo, c.fecha,
-              TRIM(CONCAT_WS(' ', e.nombre, e.ap_paterno, e.ap_materno)) AS empleado
-         FROM salida_cambio c
-         LEFT JOIN empleado e ON e.id_empleado = c.id_empleado
-        WHERE c.id_salida = ?
-        ORDER BY c.fecha DESC, c.id_cambio DESC`,
+               TRIM(CONCAT_WS(' ', e.nombre, e.ap_paterno, e.ap_materno)) AS empleado
+          FROM salida_cambio c
+          LEFT JOIN empleado e ON e.id_empleado = c.id_empleado
+         WHERE c.id_salida = ?
+         ORDER BY c.fecha DESC, c.id_cambio DESC`,
       [id]
     );
     res.json(rows);
