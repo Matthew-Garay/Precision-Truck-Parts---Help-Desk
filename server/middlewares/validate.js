@@ -330,6 +330,28 @@ export const schemaEditarTicket = z.object({
   comentarios:  z.string().max(10000).nullable().optional(),
 });
 
+// ── Base de conocimiento ──────────────────────────────────────────
+// vaciosANull convierte "" en null antes de validar: los opcionales aceptan null.
+export const schemaArticulo = z.object({
+  titulo:       z.string({ error: "El título es obligatorio" }).trim().min(3, "El título debe tener al menos 3 caracteres").max(200, "El título no puede superar 200 caracteres"),
+  resumen:      z.string().trim().max(300, "El resumen no puede superar 300 caracteres").nullable().optional(),
+  contenido:    z.string({ error: "El contenido es obligatorio" }).trim().min(1, "El contenido es obligatorio").max(200000, "El contenido es demasiado largo"),
+  etiquetas:    z.string().trim().max(255, "Las etiquetas no pueden superar 255 caracteres").nullable().optional(),
+  id_categoria: z.number({ coerce: true, error: "La categoría es obligatoria" }).int().positive("La categoría es obligatoria"),
+  publicado:    z.boolean().optional().default(true),
+});
+
+export const schemaVotoArticulo = z.object({
+  util: z.boolean({ error: "Indica si el artículo te sirvió" }),
+});
+
+export const schemaBuscarConocimiento = z.object({
+  q:         z.string().trim().max(200, "La búsqueda es demasiado larga").optional().default(""),
+  tipo:      z.enum(["todos", "articulo", "pdf"]).optional().default("todos"),
+  categoria: z.coerce.number().int().positive().optional(),
+  limite:    z.coerce.number().int().min(1).max(50).optional().default(30),
+});
+
 export const schemaCrearSolicitud = z.object({
   prioridad:   z.enum(["Urgente", "Alta", "Media", "Baja"]),
   // id_empleado del body solo es referencial; el controller valida ownership contra el JWT

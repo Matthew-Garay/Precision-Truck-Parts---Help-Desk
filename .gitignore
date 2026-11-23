@@ -34,11 +34,13 @@ server/workers/reset_tokens.json.tmp
 storage/Evidencias_Tickets/*
 storage/Insumos/*
 storage/Manuales/*
+storage/Conocimiento/*
 storage/_tmp_upload/*
 # Mantener estructura de carpetas
 !storage/Evidencias_Tickets/.gitkeep
 !storage/Insumos/.gitkeep
 !storage/Manuales/.gitkeep
+!storage/Conocimiento/.gitkeep
 !storage/_tmp_upload/.gitkeep
 
 # ── Logs ─────────────────────────────────────────

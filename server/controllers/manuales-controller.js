@@ -23,6 +23,7 @@
  * @requires ../middlewares/security.js
  * @requires ../middlewares/upload-manuales.js
  * @requires ../services/manual.js
+ * @requires ../services/conocimiento.js
  * @requires ../utils/helpers.js
  * @exports listarManuales
  * @exports subirManual
@@ -36,10 +37,21 @@ import fs   from "fs";
 import { safeResolvePath } from '../middlewares/security.js';
 import { uploadManual, MANUALES_DIR, nombreManual } from '../middlewares/upload-manuales.js';
 import Manual from '../services/manual.js';
+import Conocimiento from '../services/conocimiento.js';
 import { isProd } from '../utils/helpers.js';
 
 const urlPublica = (archivo) => `/storage/Manuales/${encodeURIComponent(path.basename(archivo))}`;
 const borrarTemporal = (p) => fs.promises.unlink(p).catch(() => {});
+
+/**
+ * Base de conocimiento: extrae en segundo plano el texto de los PDF nuevos o
+ * reemplazados para que el buscador encuentre lo que dicen por dentro. No se
+ * espera: la respuesta al administrador sale de inmediato.
+ */
+function indexarEnSegundoPlano() {
+  Conocimiento.indexarPendientes(MANUALES_DIR)
+    .catch(e => console.warn("[conocimiento] No se pudo extraer el texto del PDF:", e.message));
+}
 
 /** Tamaño legible del PDF en disco (null si el archivo no existe). */
 async function tamanoArchivo(rutaPdf) {
@@ -108,6 +120,7 @@ export const subirManual = (req, res) => {
     try {
       const { rutaFinal, id } = await procesarArchivo(req.file, nombre, descripcion, idCat);
       const manual = (await Manual.getAll()).find(m => m.id_manual === id);
+      indexarEnSegundoPlano();
       res.status(201).json({ ok: true, manual: { ...manual, url: urlPublica(rutaFinal) } });
     } catch (e) {
       await borrarTemporal(req.file.path);
@@ -143,6 +156,7 @@ export const subirManualesLote = (req, res) => {
         resultados.push({ ok: false, nombre, error: isProd() ? "Error al procesar" : e.message });
       }
     }
+    if (resultados.some(r => r.ok)) indexarEnSegundoPlano();
     res.status(207).json({ resultados });
   });
 };
@@ -159,6 +173,7 @@ export const actualizarManual = async (req, res) => {
       nombre: nombre.trim().slice(0, 150), descripcion: descripcion?.trim() || null, id_categoria: idCat,
     });
     if (!ok) return res.status(404).json({ error: "Manual no encontrado" });
+    Conocimiento.invalidarIndice();
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: isProd() ? "Error interno" : e.message });
@@ -182,6 +197,8 @@ export const reemplazarArchivo = (req, res) => {
       await fs.promises.unlink(rutaFinal).catch(() => {});
       await fs.promises.rename(req.file.path, rutaFinal);
       await Manual.actualizarFechaCambio(id);
+      await Conocimiento.marcarManualPendiente(id);
+      indexarEnSegundoPlano();
       res.json({ ok: true, url: urlPublica(nombreBase) });
     } catch (e) {
       await borrarTemporal(req.file.path);
@@ -198,6 +215,7 @@ export const eliminarManual = async (req, res) => {
     if (!ruta) return res.status(404).json({ error: "Manual no encontrado" });
     const ok = await Manual.eliminar(id);
     if (!ok) return res.status(404).json({ error: "Manual no encontrado" });
+    Conocimiento.invalidarIndice();
     try { await fs.promises.unlink(safeResolvePath(MANUALES_DIR, path.basename(ruta))); } catch { /* ya no existe */ }
     res.json({ ok: true });
   } catch (e) {

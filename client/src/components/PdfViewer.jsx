@@ -6,6 +6,8 @@
  * Props:
  *   url    - URL completa del PDF
  *   isDark - boolean para tema
+ *   paginaInicial - página en la que abre (opcional; la base de conocimiento
+ *                   abre el PDF donde está la coincidencia de la búsqueda)
  *
  * @module client/components/PdfViewer
  * @requires react
@@ -20,7 +22,7 @@ import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw } from "lucide-rea
 import pdfjs, { PDFJS_PARAMS } from '../utils/pdfjs.js';
 
 import { FS } from '../utils/tipografia.js';
-export default function PdfViewer({ url, isDark }) {
+export default function PdfViewer({ url, isDark, paginaInicial = 1 }) {
   const canvasRef   = useRef(null);
   const renderTask  = useRef(null);
   const pdfRef      = useRef(null);
@@ -59,6 +61,9 @@ export default function PdfViewer({ url, isDark }) {
         pdfRef.current = pdf;
         numPagesRef.current = pdf.numPages;
         setNumPages(pdf.numPages);
+        const inicial = Math.min(Math.max(1, parseInt(paginaInicial, 10) || 1), pdf.numPages);
+        pageNumRef.current = inicial;
+        setPageNum(inicial);
         // Ajustar scale al ancho del contenedor
         if (scrollRef.current) {
           const page1 = await pdf.getPage(1);
@@ -76,7 +81,7 @@ export default function PdfViewer({ url, isDark }) {
     })();
 
     return () => { cancelled = true; };
-  }, [url]);
+  }, [url, paginaInicial]);
 
   // Renderizar página
   const renderPage = useCallback(async () => {

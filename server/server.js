@@ -73,6 +73,8 @@
  * @requires ./routes/tickets-routes.js
  * @requires ./routes/solicitudes-routes.js
  * @requires ./routes/manuales-routes.js
+ * @requires ./routes/conocimiento-routes.js
+ * @requires ./services/conocimiento.js
  * @exports (ninguno: punto de entrada / efectos)
  */
 import { dirname } from "path";
@@ -102,6 +104,9 @@ import authRoutes        from './routes/auth-routes.js';
 import ticketsRoutes     from './routes/tickets-routes.js';
 import solicitudesRoutes from './routes/solicitudes-routes.js';
 import manualesRoutes    from './routes/manuales-routes.js';
+import conocimientoRoutes from './routes/conocimiento-routes.js';
+import Conocimiento      from './services/conocimiento.js';
+import { MANUALES_DIR }  from './middlewares/upload-manuales.js';
 import { STOCK_BAJO }    from './utils/stock.js';
 
 const REQUIRED_ENV = ["JWT_SECRET", "DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"];
@@ -328,6 +333,7 @@ app.use("/api/auth",        authRoutes);
 app.use("/api/tickets",     ticketsRoutes);
 app.use("/api/solicitudes", solicitudesRoutes);
 app.use("/api/manuales",    manualesRoutes);
+app.use("/api/conocimiento", conocimientoRoutes);
 
 // Cualquier ruta /api/* no registrada retorna JSON con 404, nunca HTML.
 app.use("/api", (req, res) => {
@@ -429,4 +435,12 @@ httpServer.listen(PORT, process.env.HOST || "0.0.0.0", async () => {
   console.log(line + "\n");
 
   iniciarWorkers(io);
+
+  // Base de conocimiento: extrae en segundo plano el texto de los PDF que aún
+  // no lo tienen (los subidos antes de esta función) para poder buscar dentro.
+  setTimeout(() => {
+    Conocimiento.indexarPendientes(MANUALES_DIR)
+      .then(n => { if (n) console.log(`  [conocimiento] Texto extraído de ${n} manual(es) PDF`); })
+      .catch(e => console.warn("[conocimiento] No se pudo indexar los PDF:", e.message));
+  }, 3000).unref();
 });

@@ -1,7 +1,7 @@
 -- =============================================================================
 --  ESQUEMA (solo estructura, sin datos)
---  PrecisionTrucks HelpDesk — regenerado 2026-11-19 con server/scripts/regenerar-schema.js
---  desde la base con las migraciones hasta la 009 aplicadas.
+--  PrecisionTrucks HelpDesk — regenerado 2026-11-23 con server/scripts/regenerar-schema.js
+--  desde la base con las migraciones hasta la 010 aplicadas.
 --  No editar a mano: los cambios van en database/migraciones/NNN_*.sql.
 -- =============================================================================
 
@@ -22,6 +22,42 @@ CREATE TABLE `area` (
   PRIMARY KEY (`id_area`),
   UNIQUE KEY `uq_nombre_area` (`nombre_area`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Áreas de la empresa; agrupan los puestos (tabla departamento)';
+
+DROP TABLE IF EXISTS `articulo_conocimiento`;
+CREATE TABLE `articulo_conocimiento` (
+  `id_articulo` int NOT NULL AUTO_INCREMENT COMMENT 'PK',
+  `titulo` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Título del artículo',
+  `resumen` varchar(300) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Una o dos líneas que se muestran en la lista',
+  `contenido` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Cuerpo en Markdown',
+  `etiquetas` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Palabras clave separadas por coma',
+  `id_categoria` int NOT NULL COMMENT 'FK categoria (ámbito manual)',
+  `publicado` tinyint(1) NOT NULL DEFAULT '1' COMMENT '0 = borrador, solo lo ven los administradores',
+  `vistas` int unsigned NOT NULL DEFAULT '0' COMMENT 'Veces que lo abrió un usuario',
+  `creado_por` int DEFAULT NULL COMMENT 'FK empleado autor',
+  `editado_por` int DEFAULT NULL COMMENT 'FK empleado de la última edición',
+  `fecha_creacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `fecha_cambio` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Última edición del contenido',
+  PRIMARY KEY (`id_articulo`),
+  KEY `idx_articulo_categoria` (`id_categoria`),
+  KEY `idx_articulo_publicado` (`publicado`,`fecha_cambio`),
+  KEY `fk_articulo_creado` (`creado_por`),
+  KEY `fk_articulo_editado` (`editado_por`),
+  CONSTRAINT `fk_articulo_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categoria` (`id_categoria`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_articulo_creado` FOREIGN KEY (`creado_por`) REFERENCES `empleado` (`id_empleado`) ON DELETE SET NULL,
+  CONSTRAINT `fk_articulo_editado` FOREIGN KEY (`editado_por`) REFERENCES `empleado` (`id_empleado`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Artículos de la base de conocimiento';
+
+DROP TABLE IF EXISTS `articulo_voto`;
+CREATE TABLE `articulo_voto` (
+  `id_articulo` int NOT NULL COMMENT 'FK articulo_conocimiento',
+  `id_empleado` int NOT NULL COMMENT 'FK empleado que votó',
+  `util` tinyint(1) NOT NULL COMMENT '1 = me sirvió, 0 = no me sirvió',
+  `fecha` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_articulo`,`id_empleado`),
+  KEY `fk_voto_empleado` (`id_empleado`),
+  CONSTRAINT `fk_voto_articulo` FOREIGN KEY (`id_articulo`) REFERENCES `articulo_conocimiento` (`id_articulo`) ON DELETE CASCADE,
+  CONSTRAINT `fk_voto_empleado` FOREIGN KEY (`id_empleado`) REFERENCES `empleado` (`id_empleado`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Votos de utilidad de los artículos';
 
 DROP TABLE IF EXISTS `categoria`;
 CREATE TABLE `categoria` (
@@ -153,6 +189,7 @@ CREATE TABLE `manual` (
   `fecha_subida` datetime DEFAULT CURRENT_TIMESTAMP,
   `fecha_cambio` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `ruta_pdf` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `contenido_texto` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Texto del PDF para la búsqueda (páginas separadas por \\f). NULL = pendiente',
   `id_categoria` int NOT NULL,
   PRIMARY KEY (`id_manual`),
   KEY `idx_manual_categoria` (`id_categoria`),
