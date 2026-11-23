@@ -117,10 +117,12 @@ await revisar("Admin - Boton reporte para direccion", ADMIN, "/admin/dashboard",
 await revisar("Reporte para direccion", ADMIN, "/print/indicadores?mes=2026-11", contiene("Indicadores mensuales", "Cifras de los últimos 12 meses"));
 await revisar("Reporte de consumo - Cada cuanto", ADMIN, "/admin/insumos", async (page) => {
   if (!await clic(page, "Consumo") && !await clic(page, "consumo")) return "no se encontró el botón del reporte de consumo";
+  await esperar(1500);
+  if (!/Sucursales/.test(await texto(page)) || !/piezas|Sin consumo en este periodo/.test(await texto(page))) return "la vista por sucursal no aparece";
   if (!await clic(page, "Cada cuánto")) return "no se encontró la pestaña Cada cuánto";
   await esperar(1500);
   const t = await texto(page);
-  return /Frecuencia|Todavía no hay insumos con 2 o más entregas/.test(t) || "la pestaña no muestra frecuencias";
+  return /cada ~?\d|Aún no hay insumos pedidos 2 o más veces/.test(t) || "la pestaña no muestra frecuencias";
 });
 await revisar("Inventario - piezas con serie en el detalle", ADMIN, "/admin/inventario", async (page) => {
   const abierto = await page.evaluate(() => {
@@ -134,7 +136,7 @@ await revisar("Inventario - piezas con serie en el detalle", ADMIN, "/admin/inve
   return incluye(t, "Piezas con número de serie") || "el detalle no muestra la sección de piezas";
 });
 await revisar("Personal - Areas", ADMIN, "/admin/personal", async (page) => {
-  if (!await clic(page, "Áreas")) return "no se encontró el botón Áreas";
+  if (!await clic(page, "Puestos por área")) return "no se encontró el botón Puestos por área";
   await esperar(1500);
   const t = await texto(page);
   return (incluye(t, "Áreas de los puestos") && incluye(t, "Sin área")) || "la ventana de áreas no cargó";

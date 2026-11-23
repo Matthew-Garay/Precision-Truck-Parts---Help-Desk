@@ -69,6 +69,15 @@ describe("frecuencia de consumo", () => {
     assert.ok(s.filas.some(x => x.grupo === "Sucursal Norte" && x.cada_dias === 28));
   });
 
+  test("el consumo se agrupa por sucursal (destino de la salida)", async () => {
+    const r = await M.consumo({ desde: "2026-01-01", hasta: "2026-11-30" });
+    const norte = r.por_sucursal.find(s => s.sucursal === "Sucursal Norte");
+    assert.ok(norte, JSON.stringify(r.por_sucursal));
+    assert.equal(norte.piezas, 9);                       // 4 tóner + 5 etiquetas
+    assert.deepEqual(norte.insumos.map(i => [i.id_insumo, i.piezas]), [[2, 5], [1, 4]]);
+    assert.ok(r.detalle.every(d => d.sucursal), "cada renglón del detalle trae su sucursal");
+  });
+
   test("las salidas anuladas no cuentan", async () => {
     const id = await salida("2026-10-19T10:00", 1, 1);
     let t = (await M.frecuencia({ desde: "2026-01-01", hasta: "2026-11-30" })).filas.find(x => x.id_insumo === 1);

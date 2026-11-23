@@ -258,6 +258,14 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
           from { opacity: 0; transform: translateY(-6px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        /* Teléfono: panel fijo de orilla a orilla bajo el encabezado y con
+           altura limitada a la pantalla (la lista se desplaza por dentro). */
+        @media (max-width: 640px) {
+          .notif-panel { position: fixed !important; top: 60px !important; left: 8px !important; right: 8px !important;
+                         width: auto !important; transform: none !important; }
+          .notif-lista { max-height: calc(100dvh - 130px) !important; }
+          .notif-sub   { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        }
       `}</style>
 
       {/* -- Panel desplegable --
@@ -267,7 +275,7 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
       {abierto && (
         <div
           ref={panelRef}
-          className="absolute z-50 rounded-2xl overflow-hidden"
+          className="notif-panel absolute z-50 rounded-2xl overflow-hidden"
           style={{
             top: "calc(100% + 8px)",
             right: 0,
@@ -317,7 +325,7 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
           </div>
 
           {/* Lista */}
-          <div style={{ maxHeight: "420px", overflowY: "auto" }}>
+          <div className="notif-lista" style={{ maxHeight: "420px", overflowY: "auto", overscrollBehavior: "contain" }}>
             {notificaciones.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
                 <Bell size={28} style={{ color: T.textFaint }} />
@@ -364,14 +372,15 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
                   )}
 
                   <div
-                    className="flex items-start gap-3 px-4 py-3 transition-colors"
-                    style={{ background: bg }}
+                    className="flex items-start gap-2.5 px-3 py-2 transition-colors"
+                    style={{ background: bg, cursor: tieneAccion ? "pointer" : "default" }}
+                    onClick={tieneAccion ? (e) => { e.stopPropagation(); handleClickNotif(n); } : undefined}
                     onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.05)"}
                     onMouseLeave={e => e.currentTarget.style.filter = "none"}>
 
                     {/* Icono */}
                     <div
-                      className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center mt-0.5 overflow-hidden"
+                      className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center mt-0.5 overflow-hidden"
                       style={{
                         background: imgUrl ? "transparent" : `${color}20`,
                         border: `1px solid ${color}30`,
@@ -391,7 +400,7 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
                       {sub.split("\n").map((linea, li) => (
                         <p
                           key={li}
-                          className="text-[9px] leading-snug mt-0.5"
+                          className="notif-sub text-[9px] leading-snug mt-0.5"
                           style={{
                             color: li === 0 ? T.textMuted : T.textFaint,
                             fontWeight: li === 0 ? 500 : 400,
@@ -399,9 +408,29 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
                           {linea}
                         </p>
                       ))}
-                      <p className="text-[9px] mt-1" style={{ color: T.textFaint }}>
-                        {new Date(n.ts).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
-                      </p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-[9px]" style={{ color: T.textFaint }}>
+                          {new Date(n.ts).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        {/* Acción: enlace compacto junto a la hora (toda la fila también la abre) */}
+                        {tieneAccion && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleClickNotif(n); }}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold transition-all hover:brightness-110 active:scale-95"
+                            style={{
+                              fontFamily: "var(--font-sans, 'Inter','Segoe UI',sans-serif)",
+                              ...(esCalificable
+                                ? { background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#fff" }
+                                : esSLA
+                                ? { background: "linear-gradient(135deg, #dc2626, #b91c1c)", color: "#fff" }
+                                : { background: isDark ? "rgba(255,255,255,0.08)" : "#fff", color: T.orange, border: `1px solid rgba(244,121,32,0.3)` })
+                            }}>
+                            {esCalificable && <Star size={9} />}
+                            {esSLA && <AlertTriangle size={9} />}
+                            {accion} →
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Cerrar — onClick en lugar de onMouseDown para no
@@ -416,26 +445,6 @@ export default function CampanaNotificaciones({ T, notificaciones, onDismiss, on
                     </button>
                   </div>
 
-                  {/* Botón de acción — onClick estándar; handleClickNotif
-                      establece el flag antes de setAbierto(false) para que
-                      el listener externo no interfiera */}
-                  {tieneAccion && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleClickNotif(n); }}
-                      className="mx-3 mb-2 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[9px] font-bold transition-all hover:brightness-110 active:scale-95"
-                      style={{
-                        fontFamily: "var(--font-sans, 'Inter','Segoe UI',sans-serif)",
-                        ...(esCalificable
-                          ? { background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#fff", boxShadow: "0 2px 8px rgba(245,158,11,0.35)" }
-                          : esSLA
-                          ? { background: "linear-gradient(135deg, #dc2626, #b91c1c)", color: "#fff", boxShadow: "0 2px 8px rgba(220,38,38,0.35)" }
-                          : { background: isDark ? "rgba(255,255,255,0.08)" : T.surfaceAlt, color: T.orange, border: `1px solid rgba(244,121,32,0.3)` })
-                      }}>
-                      {esCalificable && <Star size={10} />}
-                      {esSLA && <AlertTriangle size={10} />}
-                      {accion}
-                    </button>
-                  )}
                 </div>
               );
             })}

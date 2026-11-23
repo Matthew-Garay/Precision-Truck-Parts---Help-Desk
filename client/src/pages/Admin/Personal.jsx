@@ -35,7 +35,8 @@ import { ModalHistorial } from '../../components/Personal/ModalHistorialAccesos.
 import { TablaEmpleados, normalizar } from '../../components/Personal/TablaEmpleados.jsx';
 import ModalAreas from '../../components/Personal/ModalAreas.jsx';
 
-const FILTROS_INIT = { busqueda: "", departamento: "Todos", sucursal: "Todos", estatus: "Todos" };
+const FILTROS_INIT = { busqueda: "", area: "Todos", departamento: "Todos", sucursal: "Todos", estatus: "Todos" };
+const SIN_AREA = "__sin_area__";
 
 // ── Personal (página principal) ───────────────────────────────────
 export default function Personal({ T }) {
@@ -65,7 +66,7 @@ export default function Personal({ T }) {
       .finally(() => { if (mostrarLoading) setLoading(false); });
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
-  useAutoRefresh(() => cargar(false), 120000);
+  useAutoRefresh(() => cargar(false), 120000, [], { inmediato: false });
   const filtrados = empleados.filter(e => {
     // Búsqueda sin acentos ni mayúsculas, por nombre completo, correo o número de empleado.
     const q = normalizar(filtros.busqueda).replace(/\s+/g, " ");
@@ -73,6 +74,7 @@ export default function Personal({ T }) {
       const heno = normalizar(`${e.nombre} ${e.ap_paterno} ${e.ap_materno || ""} ${e.email || ""} ${e.num_empleado || ""}`).replace(/\s+/g, " ");
       if (!heno.includes(q)) return false;
     }
+    if (filtros.area !== "Todos" && (filtros.area === SIN_AREA ? !!e.nombre_area : e.nombre_area !== filtros.area)) return false;
     if (filtros.departamento !== "Todos" && String(e.id_departamento) !== filtros.departamento) return false;
     if (filtros.sucursal !== "Todos" && String(e.id_sucursal) !== filtros.sucursal) return false;
     if (filtros.estatus !== "Todos" && e.estatus !== filtros.estatus) return false;
@@ -80,6 +82,9 @@ export default function Personal({ T }) {
   });
   const camposFiltro = [
     { key: "busqueda", label: "Búsqueda Rápida", type: "search", placeholder: "Nombre, correo o núm. de empleado..." },
+    { key: "area", label: "Área", type: "select", opts: [{ value: "Todos", label: "Todas" },
+        ...[...new Set(departamentos.map(d => d.nombre_area).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es")).map(a => ({ value: a, label: a })),
+        { value: SIN_AREA, label: "Sin área" }] },
     { key: "departamento", label: "Puesto", type: "select", opts: [{ value: "Todos", label: "Todos" }, ...departamentos.map(d => ({ value: String(d.id_departamento), label: d.nombre_departamento }))] },
     { key: "sucursal", label: "Sucursal", type: "select", minWidth: "130px", opts: [{ value: "Todos", label: "Todas" }, ...sucursales.map(s => ({ value: String(s.id_sucursal), label: s.nombre_sucursal }))] },
     { key: "estatus", label: "Estatus", type: "select", opts: ["Todos", "Activo", "Inactivo"] },
@@ -131,18 +136,7 @@ export default function Personal({ T }) {
   };
   return (
     <div style={{ background: T.bg, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-      <div style={{ maxWidth: 1400, width: "100%", margin: "0 auto", padding: "16px 16px 0", display: "flex", flexDirection: "column", flex: 1, minHeight: 0, mb: "1rem" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: FS.titulo, fontWeight: 800, color: T.textMain, letterSpacing: "-0.02em" }}>Personal</h2>
-            <p style={{ margin: "2px 0 0", fontSize: FS.cuerpo, color: T.textMuted }}>Administración de empleados y accesos</p>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <span style={{ fontSize: FS.etiqueta, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, padding: "4px 10px", borderRadius: 20, border: `1px solid ${T.border}`, background: T.surfaceAlt }}>
-              {empleados.length} empleados
-            </span>
-          </div>
-        </div>
+      <div style={{ maxWidth: 1400, width: "100%", margin: "0 auto", padding: "16px 16px 0", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginBottom: 14 }}>
           {[
             { label: "Total", val: empleados.length, color: "#3b82f6", bgL: "#eff6ff", bgD: "#0f1f3d" },
@@ -159,13 +153,13 @@ export default function Personal({ T }) {
           campos={camposFiltro}
           valores={filtros}
           onChange={(k, v) => setFiltros(p => ({ ...p, [k]: v }))}
-          onLimpiar={() => setFiltros({ busqueda: "", departamento: "Todos", sucursal: "Todos", estatus: "Todos" })}
+          onLimpiar={() => setFiltros(FILTROS_INIT)}
           T={T}>
           <button
             onClick={() => setVerAreas(true)}
             title="Asignar cada puesto a su área (reportes por área)"
             style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 6, fontSize: FS.cuerpo, fontWeight: 700, background: "transparent", color: ORANGE, border: `1px solid ${ORANGE}`, cursor: "pointer", whiteSpace: "nowrap" }}>
-            Áreas
+            Puestos por área
           </button>
           <button
             onClick={() => setModal({ modo: "crear" })}
@@ -225,7 +219,8 @@ export default function Personal({ T }) {
           onCerrar={() => setModal(null)}
         />
       )}
-      {verAreas && <ModalAreas T={T} onClose={() => setVerAreas(false)} />}
+      {/* Al cerrar se recarga la lista para que la columna Área refleje los cambios */}
+      {verAreas && <ModalAreas T={T} onClose={() => { setVerAreas(false); cargar(false); }} />}
     </div>
   );
 }

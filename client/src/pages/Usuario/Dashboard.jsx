@@ -279,8 +279,7 @@ export default function UsuarioDashboard({ usuario = {}, onLogout, onUsuarioActu
   useEffect(() => {
     cargarTicketsRef.current     = cargarTickets;
     cargarSolicitudesRef.current = cargarSolicitudes;
-    cargarTickets();
-    cargarSolicitudes();
+    // La primera carga la hace useAutoRefresh (antes se cargaba dos veces).
   }, [cargarTickets, cargarSolicitudes]);
 
   // Respaldo: los avisos en vivo ya recargan al momento (onEvento).

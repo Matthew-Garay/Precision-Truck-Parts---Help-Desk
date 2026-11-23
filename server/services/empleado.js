@@ -299,7 +299,8 @@ const Empleado = {
   },
   asignarArea: async (id_departamento, id_area) => {
     const [r] = await pool.query("UPDATE departamento SET id_area = ? WHERE id_departamento = ?", [id_area, id_departamento]);
-    cache.del("cat:departamentos");
+    // El área de cada empleado sale de su puesto: también se refresca la lista de empleados.
+    cache.delMany(["cat:departamentos", "empleados:all"]);
     return r.affectedRows > 0;
   },
 

@@ -120,6 +120,7 @@ export function TablaEmpleados({ empleados, filtrosKey, T, isDark, onEditar, onH
       nombre:   e => normalizar(`${e.nombre} ${e.ap_paterno} ${e.ap_materno || ""}`),
       id:       e => e.num_empleado || "",
       depto:    e => normalizar(e.nombre_departamento),
+      area:     e => normalizar(e.nombre_area),
       sucursal: e => normalizar(e.nombre_sucursal),
       rol:      e => normalizar(e.nombre_rol),
     };
@@ -139,13 +140,16 @@ export function TablaEmpleados({ empleados, filtrosKey, T, isDark, onEditar, onH
     { key: "nombre", label: "Empleado", sortable: true },
     { key: "id", label: "ID", sortable: true },
     { key: "depto", label: "Puesto", sortable: true },
+    { key: "area", label: "Área", sortable: true },
     { key: "sucursal", label: "Sucursal", sortable: true },
     { key: "rol", label: "Rol", sortable: true },
     { key: "email", label: "Correo", sortable: false },
     { key: "acciones", label: "", sortable: false },
   ];
+  // Columnas que se ocultan en teléfono
+  const OPC_MOVIL = new Set(["id", "area", "sucursal", "rol", "email"]);
   const thS = {
-    padding: "10px 16px",
+    padding: "10px 10px",
     fontSize: FS.etiqueta, fontWeight: 700, letterSpacing: "0.07em",
     textTransform: "uppercase", whiteSpace: "nowrap",
     color: T.textMuted,
@@ -156,7 +160,7 @@ export function TablaEmpleados({ empleados, filtrosKey, T, isDark, onEditar, onH
     position: "sticky", top: 0, zIndex: 2,
   };
   const tdS = {
-    padding: "10px 16px",
+    padding: "8px 10px",
     fontSize: FS.cuerpo,
     color: T.textMain,
     borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}`,
@@ -164,12 +168,22 @@ export function TablaEmpleados({ empleados, filtrosKey, T, isDark, onEditar, onH
   };
   return (
     <div style={{ borderRadius: 10, overflow: "hidden", background: T.surface, border: `1px solid ${T.border}`, boxShadow: isDark ? "0 1px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+      {/* Teléfono: solo Empleado, Puesto y acciones; el correo va bajo el nombre. */}
+      <style>{`
+        .emp-movil { display: none; }
+        @media (max-width: 640px) {
+          .tabla-emp .emp-opc { display: none !important; }
+          .tabla-emp .emp-movil { display: block; }
+          .tabla-emp .emp-nombre { white-space: normal !important; }
+          .tabla-emp th, .tabla-emp td { padding-left: 6px !important; padding-right: 6px !important; }
+          .tabla-emp .emp-avatar { display: none !important; }
+        }`}</style>
       <div style={{ overflowX: "auto", overflowY: "auto", flexGrow: 1, flexShrink: 1, minHeight: 0 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 0 }}>
+        <table className="tabla-emp" style={{ width: "100%", borderCollapse: "collapse", minWidth: 0 }}>
           <thead>
             <tr>
               {COLS.map(col => (
-                <th key={col.key}
+                <th key={col.key} className={OPC_MOVIL.has(col.key) ? "emp-opc" : undefined}
                   style={{ ...thS, textAlign: col.key === "acciones" ? "right" : "left", cursor: col.sortable ? "pointer" : "default" }}
                   onClick={() => col.sortable && toggleSort(col.key)}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -192,28 +206,38 @@ export function TablaEmpleados({ empleados, filtrosKey, T, isDark, onEditar, onH
                   onMouseLeave={e => e.currentTarget.style.background = rowBg}>
                   <td style={tdS}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <Avatar nombre={nombre} size={30} isDark={isDark} />
+                      <span className="emp-avatar" style={{ display: "contents" }}><Avatar nombre={nombre} size={30} isDark={isDark} /></span>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                         <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: activo ? "#22c55e" : "#94a3b8", boxShadow: activo ? "0 0 0 2.5px rgba(34,197,94,0.2)" : "none" }} />
-                        <span style={{ fontSize: FS.cuerpo, fontWeight: 600, color: T.textMain, whiteSpace: "nowrap" }}>{nombre}</span>
+                        <div style={{ minWidth: 0 }}>
+                          <span className="emp-nombre" style={{ fontSize: FS.cuerpo, fontWeight: 600, color: T.textMain, whiteSpace: "nowrap" }}>{nombre}</span>
+                          <span className="emp-movil" style={{ fontSize: FS.etiqueta, color: T.textFaint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "46vw" }}>{emp.email}</span>
+                        </div>
                       </div>
                     </div>
                   </td>
-                  <td style={tdS}>
+                  <td className="emp-opc" style={tdS}>
                     <span style={{ fontFamily: "'JetBrains Mono','Courier New',monospace", fontSize: FS.secundario, color: T.textMuted, background: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6", padding: "2px 7px", borderRadius: 4 }}>
                       {emp.num_empleado || "—"}
                     </span>
                   </td>
-                  <td style={{ ...tdS, color: T.textMuted }}>{emp.nombre_departamento || "—"}</td>
-                  <td style={{ ...tdS, color: T.textMuted }}>{emp.nombre_sucursal || "—"}</td>
-                  <td style={tdS}>
+                  <td style={{ ...tdS, color: T.textMuted }}>
+                    {emp.nombre_departamento || "—"}
+                    {/* En teléfono el área va bajo el puesto */}
+                    <span className="emp-movil" style={{ fontSize: FS.etiqueta, color: T.textFaint }}>{emp.nombre_area || "Sin área"}</span>
+                  </td>
+                  <td className="emp-opc" style={{ ...tdS, color: emp.nombre_area ? T.textMuted : "#d97706" }}>
+                    {emp.nombre_area || "Sin área"}
+                  </td>
+                  <td className="emp-opc" style={{ ...tdS, color: T.textMuted }}>{emp.nombre_sucursal || "—"}</td>
+                  <td className="emp-opc" style={tdS}>
                     {emp.nombre_rol && (
                       <span style={{ fontSize: FS.secundario, fontWeight: 600, background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9", color: T.textMuted, border: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "#e2e8f0"}`, padding: "2px 8px", borderRadius: 4 }}>
                         {emp.nombre_rol}
                       </span>
                     )}
                   </td>
-                  <td style={{ ...tdS, color: T.textMuted, maxWidth: 200 }}>
+                  <td className="emp-opc" style={{ ...tdS, color: T.textMuted, maxWidth: 190 }}>
                     <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {emp.email}
                     </span>

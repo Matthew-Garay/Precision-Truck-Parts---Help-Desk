@@ -22,7 +22,7 @@ describe("componentes separados", () => {
     ];
     render(<TablaEmpleados empleados={empleados} filtrosKey="x" T={T} isDark={false}
       onEditar={() => {}} onHistorial={() => {}} onToggleEstatus={() => {}} onEliminar={() => {}} />);
-    expect(screen.getByText(/ana@ptp\.com\.mx/)).toBeTruthy();
+    expect(screen.getAllByText(/ana@ptp\.com\.mx/).length).toBeGreaterThan(0);
   });
 
   test("un insumo del carrito cambia su cantidad y nunca baja de 1", () => {

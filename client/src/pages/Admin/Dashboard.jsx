@@ -261,9 +261,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
     apiFetch(API_ROUTES.SOLICITUDES_PEND)
       .then(r => r.json())
       .then(data => {
-        console.log("[solicitudes pendientes raw]", data);
         const lista = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
-        console.log("[solicitudes pendientes lista]", lista);
         setSolicitudes(lista);
       })
       .catch(err => console.error("[Admin] Error cargando solicitudes pendientes:", err.message))
@@ -280,18 +278,19 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
     cargarTicketsRef.current     = cargarTickets;
     cargarMetricasRef.current    = cargarMetricas;
     cargarSolicitudesRef.current = cargarSolicitudes;
-    cargarTickets();
-    cargarMetricas();
-    cargarSolicitudes();
   }, [cargarTickets, cargarMetricas, cargarSolicitudes]);
 
-  // Refresco automático cada 30 s. (Se quitó una consulta al inventario cada
-  // 3 s que no se mostraba en pantalla y saturaba el servidor.)
+  // Carga al abrir + refresco cada 2 min (useAutoRefresh ya carga al montar;
+  // antes se cargaba DOS veces). Los tickets los usa también el panel
+  // derecho en cualquier pantalla; métricas y solicitudes pendientes solo se
+  // muestran en el Tablero, así que solo se piden ahí.
+  const enTablero = location.pathname === "/admin/dashboard" || location.pathname === "/admin";
+  useAutoRefresh(() => { cargarTickets(); }, 120000, [cargarTickets]);
   useAutoRefresh(() => {
-    cargarTicketsRef.current?.();
-    cargarMetricasRef.current?.();
-    cargarSolicitudesRef.current?.();
-  }, 120000, []);
+    if (!enTablero) return;
+    cargarMetricas();
+    cargarSolicitudes();
+  }, 120000, [enTablero, cargarMetricas, cargarSolicitudes]);
 
   const tituloHeader = ticketVer
     ? ticketVer.folio_ticket

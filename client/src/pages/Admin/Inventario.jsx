@@ -161,7 +161,7 @@ export default function Inventario() {
   useAutoRefresh(() => {
     if (vista === "entradas") cargarMovimientos("Entrada");
     else cargarInventario(false);
-  }, 120000);
+  }, 120000, [], { inmediato: false });
 
   const handleSave = (data, isEdit) => {
     setInsumos(prev => isEdit ? prev.map(i => i.id_insumo === data.id_insumo ? data : i) : [...prev, data]);

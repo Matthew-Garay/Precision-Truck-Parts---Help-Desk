@@ -232,10 +232,14 @@ const MovimientoInventario = {
    * la del solicitante (salida interna) o la del empleado (solicitud).
    *
    * Devuelve:
-   *   detalle    [{ mes, area, id_insumo, nombre, piezas }]  (para Excel)
+   *   La SUCURSAL es la de destino de la salida; si no tiene, la del empleado
+   *   que la pidió.
+   *
+   *   detalle    [{ mes, sucursal, area, id_insumo, nombre, piezas }]  (para Excel)
    *   por_insumo [{ id_insumo, nombre, marca, modelo, stock, piezas,
    *                 operaciones, promedio_mensual, meses_cobertura }]
    *   por_area   [{ area, piezas, operaciones }]
+   *   por_sucursal [{ sucursal, piezas, operaciones, insumos: [{ id_insumo, nombre, piezas }] }]
    *   por_mes    [{ mes, piezas }]   (todos los meses del rango, aunque sean 0)
    *   totales    { piezas, operaciones, insumos, meses }
    */
@@ -244,6 +248,7 @@ const MovimientoInventario = {
       `SELECT DATE_FORMAT(m.fecha, '%Y-%m') AS mes,
               m.id_insumo, i.nombre, i.marca, i.modelo, i.stock,
               COALESCE(asa.nombre_area, dsa.nombre_departamento, aso.nombre_area, dso.nombre_departamento, 'Sin área') AS area,
+              COALESCE(sd.nombre_sucursal, sa.destino_texto, ss.nombre_sucursal, 'Sin sucursal') AS sucursal,
               SUM(m.cantidad) AS piezas,
               GROUP_CONCAT(DISTINCT COALESCE(CONCAT('SAL', m.id_salida), CONCAT('SOL', m.id_solicitud), CONCAT('MOV', m.id_movimiento))) AS ops
          FROM movimiento_inventario m
@@ -256,10 +261,12 @@ const MovimientoInventario = {
          LEFT JOIN empleado eso      ON eso.id_empleado = s.id_empleado
          LEFT JOIN departamento dso  ON dso.id_departamento = eso.id_departamento
          LEFT JOIN area aso          ON aso.id_area = dso.id_area
+         LEFT JOIN sucursal sd       ON sd.id_sucursal = m.id_sucursal_destino
+         LEFT JOIN sucursal ss       ON ss.id_sucursal = COALESCE(esa.id_sucursal, eso.id_sucursal)
         WHERE m.tipo = 'Salida'
           AND (sa.id_salida IS NULL OR sa.estatus = 'Activa')
           AND m.fecha >= ? AND m.fecha < DATE_ADD(?, INTERVAL 1 DAY)
-        GROUP BY mes, m.id_insumo, area
+        GROUP BY mes, m.id_insumo, area, sucursal
         ORDER BY mes, piezas DESC`,
       [desde, hasta]
     );
@@ -275,6 +282,7 @@ const MovimientoInventario = {
 
     const porInsumo = new Map();
     const porArea   = new Map();
+    const porSucursal = new Map();
     const porMes    = new Map(meses.map(m => [m, 0]));
     const opsTotal  = new Set();
     for (const r of rows) {
@@ -289,6 +297,12 @@ const MovimientoInventario = {
       const ar = porArea.get(r.area) || { area: r.area, piezas: 0, _ops: new Set() };
       ar.piezas += piezas; ops.forEach(o => ar._ops.add(o));
       porArea.set(r.area, ar);
+
+      const su = porSucursal.get(r.sucursal) || { sucursal: r.sucursal, piezas: 0, _ops: new Set(), _ins: new Map() };
+      su.piezas += piezas; ops.forEach(o => su._ops.add(o));
+      const si = su._ins.get(r.id_insumo) || { id_insumo: r.id_insumo, nombre: r.nombre, piezas: 0 };
+      si.piezas += piezas; su._ins.set(r.id_insumo, si);
+      porSucursal.set(r.sucursal, su);
 
       porMes.set(r.mes, (porMes.get(r.mes) || 0) + piezas);
     }
@@ -309,9 +323,13 @@ const MovimientoInventario = {
     }).sort((a, b) => b.piezas - a.piezas || String(a.nombre).localeCompare(String(b.nombre)));
 
     return {
-      detalle: rows.map(r => ({ mes: r.mes, area: r.area, id_insumo: r.id_insumo, nombre: r.nombre, piezas: Number(r.piezas) || 0 })),
+      detalle: rows.map(r => ({ mes: r.mes, sucursal: r.sucursal, area: r.area, id_insumo: r.id_insumo, nombre: r.nombre, piezas: Number(r.piezas) || 0 })),
       por_insumo,
       por_area: [...porArea.values()].map(fin).sort((a, b) => b.piezas - a.piezas),
+      por_sucursal: [...porSucursal.values()].map(({ _ops, _ins, ...s }) => ({
+        ...s, operaciones: _ops.size,
+        insumos: [..._ins.values()].sort((a, b) => b.piezas - a.piezas || String(a.nombre).localeCompare(String(b.nombre))),
+      })).sort((a, b) => b.piezas - a.piezas),
       por_mes:  [...porMes.entries()].map(([mes, piezas]) => ({ mes, piezas })),
       totales: {
         piezas: por_insumo.reduce((a, x) => a + x.piezas, 0),
@@ -338,11 +356,11 @@ const MovimientoInventario = {
    *   confianza       "baja" (2 entregas) | "media" (3–4) | "alta" (5+)
    * Orden: primero lo que ya toca o está atrasado, luego por frecuencia.
    */
-  frecuencia: async ({ desde, hasta, agrupar = "area", hoy = new Date() }) => {
+  frecuencia: async ({ desde, hasta, agrupar = "sucursal", hoy = new Date() }) => {
     const GRUPO = {
       area:     "COALESCE(aa.nombre_area, d.nombre_departamento, 'Sin área')",
       puesto:   "COALESCE(d.nombre_departamento, 'Sin puesto')",
-      sucursal: "COALESCE(sd.nombre_sucursal, sa.destino_texto, 'Sin sucursal')",
+      sucursal: "COALESCE(sd.nombre_sucursal, sa.destino_texto, se.nombre_sucursal, 'Sin sucursal')",
     }[agrupar];
     if (!GRUPO) throw Object.assign(new Error("Agrupación no válida"), { statusCode: 400 });
     const [rows] = await pool.query(
@@ -356,6 +374,7 @@ const MovimientoInventario = {
          LEFT JOIN departamento d     ON d.id_departamento = e.id_departamento
          LEFT JOIN area aa            ON aa.id_area = d.id_area
          LEFT JOIN sucursal sd        ON sd.id_sucursal = m.id_sucursal_destino
+         LEFT JOIN sucursal se        ON se.id_sucursal = e.id_sucursal
         WHERE m.tipo = 'Salida'
           AND (sa.id_salida IS NULL OR sa.estatus = 'Activa')
           AND m.fecha >= ? AND m.fecha < DATE_ADD(?, INTERVAL 1 DAY)

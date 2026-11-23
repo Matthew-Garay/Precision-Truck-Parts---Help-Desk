@@ -66,7 +66,9 @@ if (!arriba) {
 
 // 3. Recorrido en navegador ─────────────────────────────────────────────────
 const codigo = await new Promise((resolve) => {
-  const p = spawn(process.execPath, ["--import", "./server/load-env.js", "server/scripts/prueba-navegador.js", BASE, ...process.argv.slice(2)],
+  // PRUEBA_SCRIPT permite correr otro recorrido (p. ej. server/scripts/captura-movil.js).
+  const script = process.env.PRUEBA_SCRIPT || "server/scripts/prueba-navegador.js";
+  const p = spawn(process.execPath, ["--import", "./server/load-env.js", script, BASE, ...process.argv.slice(2)],
     { cwd: RAIZ, env: { ...entorno, NODE_ENV: "development", PORT: "", PRUEBA_TICKET: FOLIO_TICKET, PRUEBA_SOLICITUD: FOLIO_SOL }, stdio: "inherit" });
   p.on("exit", resolve);
 });

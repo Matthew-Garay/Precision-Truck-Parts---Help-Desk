@@ -782,7 +782,7 @@ export const getFrecuenciaConsumo = async (req, res) => {
   const desde = reFecha.test(String(req.query.fecha_inicio ?? "")) ? req.query.fecha_inicio : iso(new Date(hoy.getFullYear() - 1, hoy.getMonth(), hoy.getDate()));
   const hasta = reFecha.test(String(req.query.fecha_fin ?? "")) ? req.query.fecha_fin : iso(hoy);
   if (desde > hasta) return res.status(400).json({ error: "La fecha inicial no puede ser mayor que la final" });
-  const agrupar = ["area", "puesto", "sucursal"].includes(req.query.agrupar) ? req.query.agrupar : "area";
+  const agrupar = ["area", "puesto", "sucursal"].includes(req.query.agrupar) ? req.query.agrupar : "sucursal";
   try {
     res.json({ desde, hasta, ...(await MovimientoInventario.frecuencia({ desde, hasta, agrupar })) });
   } catch (err) {

@@ -65,6 +65,19 @@ const CSS = `
 ._fb_toastIn  { animation: _fb_toastIn  0.15s ease-in-out forwards }
 ._fb_toastOut { animation: _fb_toastOut 0.15s ease-in-out forwards }
 ._fb_spin     { animation: _fb_spin 0.7s linear infinite }
+/* Teléfono: los avisos van ABAJO, a lo ancho y compactos, para no tapar el
+   encabezado ni la campana. Solo se ven los 3 más recientes. */
+@media (max-width: 640px) {
+  ._fb_toasts { top: auto !important; right: 10px !important; left: 10px !important;
+                bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important; gap: 4px !important; }
+  ._fb_toasts > ._fb_toast:nth-last-child(n+4) { display: none !important; }
+  ._fb_toast  { min-width: 0 !important; max-width: none !important; padding: 7px 8px 7px 10px !important; gap: 8px !important;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.18) !important; }
+  ._fb_toast p { font-size: 12px !important; line-height: 1.35 !important; }
+  ._fb_toast p + p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  @keyframes _fb_toastIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
+  @keyframes _fb_toastOut{ from { opacity:1; transform:translateY(0) } to { opacity:0; transform:translateY(10px) } }
+}
 `;
 if (typeof document !== "undefined" && !document.getElementById("__fb_css")) {
   const s = document.createElement("style");
@@ -379,7 +392,7 @@ function ToastItem({ toast, onRemove, isDark }) {
 
   return (
     <div
-      className={out ? "_fb_toastOut" : "_fb_toastIn"}
+      className={`_fb_toast ${out ? "_fb_toastOut" : "_fb_toastIn"}`}
       role="alert"
       aria-live="assertive"
       style={{
@@ -460,6 +473,7 @@ export function ToastProvider({ children, T }) {
       {children}
       <div
         aria-live="polite"
+        className="_fb_toasts"
         style={{
           position: "fixed", top: "16px", right: "16px",
           zIndex: 2000,

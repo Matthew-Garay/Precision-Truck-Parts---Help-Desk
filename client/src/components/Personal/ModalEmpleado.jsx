@@ -203,6 +203,13 @@ export function ModalEmpleado({ T, isDark, modo, empleado, departamentos, roles,
                     <option key={d.id_departamento} value={String(d.id_departamento)}>{d.nombre_departamento}</option>
                   ))}
                 </select>
+                {/* El área no se elige aquí: sale del puesto (se ajusta en "Puestos por área") */}
+                {form.id_departamento && (() => {
+                  const area = departamentos.find(d => String(d.id_departamento) === String(form.id_departamento))?.nombre_area;
+                  return <span style={{ fontSize: 10, marginTop: 3, display: "block", color: area ? tk.textFaint : "#d97706" }}>
+                    Área: <b>{area || "sin área asignada"}</b>
+                  </span>;
+                })()}
               </Field>
               <Field htmlFor="fe-suc" label="Sucursal" required textFaint={tk.textFaint}>
                 <select id="fe-suc" value={form.id_sucursal} onChange={e => set("id_sucursal", e.target.value)} style={selectStyle}>

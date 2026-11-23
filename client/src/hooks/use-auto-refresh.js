@@ -19,6 +19,8 @@
  *   intervaloMs - intervalo en milisegundos (default: 30000 = 30 segundos)
  *   deps        - arreglo de dependencias adicionales que reinician el hook
  *                 (igual que el segundo argumento de useEffect)
+ *   opciones.inmediato - false si la pantalla ya hace su propia carga inicial
+ *                 (evita pedir lo mismo dos veces al abrirla). Default: true.
  *
  * Uso tipico:
  *   useAutoRefresh(() => cargarTickets(), 30000);
@@ -28,7 +30,7 @@
  * @exports useAutoRefresh
  */
 import { useEffect, useRef, useCallback } from "react";
-export function useAutoRefresh(fn, intervaloMs = 30000, deps = []) {
+export function useAutoRefresh(fn, intervaloMs = 30000, deps = [], { inmediato = true } = {}) {
   const fnRef        = useRef(fn);
   const intervalRef  = useRef(null);
   const ultimaRef    = useRef(null);
@@ -52,7 +54,7 @@ export function useAutoRefresh(fn, intervaloMs = 30000, deps = []) {
   }, []);
 
   useEffect(() => {
-    ejecutar();
+    if (inmediato) ejecutar(); else ultimaRef.current = Date.now();
     iniciar();
 
     const handleVisibility = () => {
@@ -73,5 +75,5 @@ export function useAutoRefresh(fn, intervaloMs = 30000, deps = []) {
     };
   // `deps` son las dependencias que pasa quien usa el hook (lista variable a propósito).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ejecutar, iniciar, detener, intervaloMs, ...deps]);
+  }, [ejecutar, iniciar, detener, intervaloMs, inmediato, ...deps]);
 }

@@ -158,19 +158,33 @@ export function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHis
     whiteSpace: "nowrap", position: "sticky", top: 0, zIndex: 10,
   };
 
+  // En teléfono (≤640px) se ocultan Etiqueta, Categoría y Estado y los botones
+  // van en dos renglones: así Nombre, Stock y Acciones caben sin deslizar.
+  const OPCIONAL = new Set([0, 2, 3, 4]);
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: FS.cuerpo, tableLayout: "fixed", minWidth: "720px" }}>
+    <>
+    <style>{`
+      @media (max-width: 640px) {
+        .tabla-inv { min-width: 0 !important; }
+        .tabla-inv .inv-opc { display: none !important; }
+        .tabla-inv col.inv-stock { width: 40px !important; }
+        .tabla-inv .inv-barra { display: none !important; }
+        .tabla-inv .inv-nombre { white-space: normal !important; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .tabla-inv col.inv-acc { width: 104px !important; }
+        .tabla-inv .inv-acciones { flex-wrap: wrap !important; }
+      }`}</style>
+    <table className="tabla-inv" style={{ width: "100%", borderCollapse: "collapse", fontSize: FS.cuerpo, tableLayout: "fixed", minWidth: "720px" }}>
       <colgroup>
-        <col style={{ width: "40px" }} />
+        <col className="inv-opc" style={{ width: "40px" }} />
         <col style={{ width: "26%" }} />
-        <col style={{ width: "11%" }} />
-        <col style={{ width: "14%" }} />
-        <col style={{ width: "10%" }} />
-        <col style={{ width: "10%" }} />
-        <col style={{ width: "244px" }} />
+        <col className="inv-opc" style={{ width: "11%" }} />
+        <col className="inv-opc" style={{ width: "14%" }} />
+        <col className="inv-opc" style={{ width: "10%" }} />
+        <col className="inv-stock" style={{ width: "10%" }} />
+        <col className="inv-acc" style={{ width: "244px" }} />
       </colgroup>
       <thead>
-        <tr>{COLS.map((c, i) => <th key={i} style={{ ...th, ...(i === COLS.length - 1 ? { textAlign: "right" } : null) }}>{c}</th>)}</tr>
+        <tr>{COLS.map((c, i) => <th key={i} className={OPCIONAL.has(i) ? "inv-opc" : undefined} style={{ ...th, ...(i === COLS.length - 1 ? { textAlign: "right" } : null) }}>{c}</th>)}</tr>
       </thead>
       <tbody>
         {rows.map((row) => {
@@ -190,7 +204,7 @@ export function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHis
               onMouseLeave={() => setHoverRow(null)}
             >
               {/* Imagen */}
-              <td style={{ ...td, padding: "2px 2px 2px 8px" }}>
+              <td className="inv-opc" style={{ ...td, padding: "2px 2px 2px 8px" }}>
                 {row.imagen_url
                   ? <img {...fotoMini(row.imagen_url)} alt="" style={{ width: "22px", height: "22px", borderRadius: "4px", objectFit: "cover", border: `1px solid ${T.border}`, display: "block" }} />
                   : <div style={{ width: "22px", height: "22px", borderRadius: "4px", background: T.surfaceAlt, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -207,7 +221,7 @@ export function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHis
                 >
                   <div style={{ width: "2px", height: "18px", borderRadius: "2px", background: ESTADO_META[row.estado]?.color ?? SLATE[400], flexShrink: 0 }} />
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: FS.cuerpo, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div className="inv-nombre" style={{ fontSize: FS.cuerpo, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {row.nombre}
                     </div>
                     {(row.marca || row.modelo) && (
@@ -219,17 +233,17 @@ export function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHis
                 </div>
               </td>
               {/* Etiqueta física del insumo */}
-              <td style={{ ...td }} title={row.etiqueta || "Sin etiqueta"}>
+              <td className="inv-opc" style={{ ...td }} title={row.etiqueta || "Sin etiqueta"}>
                 <span style={{ fontSize: FS.etiqueta, fontFamily: "monospace", fontWeight: 700, color: row.etiqueta ? T.text : T.textFaint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
                   {row.etiqueta || "—"}
                 </span>
               </td>
               {/* Categoría */}
-              <td style={{ ...td, overflow: "hidden" }}>
+              <td className="inv-opc" style={{ ...td, overflow: "hidden" }}>
                 <ChipCategoria nombre={row.nombre_categoria} T={T} />
               </td>
               {/* Estado */}
-              <td style={td}>
+              <td className="inv-opc" style={td}>
                 <ChipEstado estado={row.estado} T={T} />
               </td>
               {/* Stock */}
@@ -238,14 +252,14 @@ export function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHis
                   <span style={{ fontSize: FS.cuerpo, fontWeight: 700, color: stockColor, fontFamily: "monospace", minWidth: "20px" }}>
                     {row.stock ?? 0}
                   </span>
-                  <div style={{ flex: 1, height: "3px", borderRadius: "99px", background: T.border, overflow: "hidden" }}>
+                  <div className="inv-barra" style={{ flex: 1, height: "3px", borderRadius: "99px", background: T.border, overflow: "hidden" }}>
                     <div style={{ width: `${Math.min(100, Math.round(((row.stock ?? 0) / 20) * 100))}%`, height: "100%", background: stockColor, borderRadius: "99px" }} />
                   </div>
                 </div>
               </td>
               {/* Acciones */}
               <td style={{ ...td }}>
-                <div style={{ display: "flex", gap: "4px", flexWrap: "nowrap", alignItems: "center", justifyContent: "flex-end" }}>
+                <div className="inv-acciones" style={{ display: "flex", gap: "4px", flexWrap: "nowrap", alignItems: "center", justifyContent: "flex-end" }}>
                   <IconBtn onClick={() => onEntrada(row)} title="Registrar entrada de material" hoverColor={TEAL.base} hoverBg={TEAL.light}>
                     <ArrowDownToLine size={13} />
                   </IconBtn>
@@ -276,12 +290,13 @@ export function DataTable({ rows, onDetail, onEditar, onEntrada, onSalida, onHis
         })}
       </tbody>
     </table>
+    </>
   );
 }
 
 
 // ── Entradas / Salidas de material: tabla de movimientos del inventario ──
-export const COLS_ENTRADAS = ["Fecha", "Insumo", "Cantidad", "Stock", "Registró", "Motivo"];
+export const COLS_ENTRADAS = ["Fecha", "Insumo", "Cantidad", "Stock antes", "Stock después", "Registró", "Motivo"];
 
 
 export function EntradasTable({ rows, tipo = "Entrada", onEditar }) {
@@ -328,13 +343,14 @@ export function EntradasTable({ rows, tipo = "Entrada", onEditar }) {
   };
 
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: FS.cuerpo, tableLayout: "fixed", minWidth: "960px" }}>
+    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: FS.cuerpo, tableLayout: "fixed", minWidth: "1040px" }}>
       <colgroup>
         <col style={{ width: "130px" }} />
         <col style={{ width: "26%" }} />
-        <col style={{ width: "92px" }} />
-        <col style={{ width: "104px" }} />
-        <col style={{ width: "18%" }} />
+        <col style={{ width: "86px" }} />
+        <col style={{ width: "96px" }} />
+        <col style={{ width: "106px" }} />
+        <col style={{ width: "16%" }} />
         <col />
         {editable && <col style={{ width: "56px" }} />}
       </colgroup>
@@ -372,8 +388,15 @@ export function EntradasTable({ rows, tipo = "Entrada", onEditar }) {
               <td style={{ ...td, fontWeight: 800, fontVariantNumeric: "tabular-nums", color: esSalida ? "#dc2626" : "#16a34a" }}>
                 {esSalida ? `-${m.cantidad}` : `+${m.cantidad}`}
               </td>
-              <td style={{ ...td, fontSize: FS.secundario, color: T.textMuted, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
-                {m.stock_anterior ?? 0} → {m.stock_nuevo ?? 0}
+              {/* Stock del insumo justo antes y justo después de este movimiento */}
+              <td style={{ ...td, fontWeight: 600, color: T.textMuted, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                {m.stock_anterior ?? 0}
+              </td>
+              <td style={{ ...td, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                <span style={{ fontWeight: 800, color: colorStock(m.stock_nuevo ?? 0) }}>{m.stock_nuevo ?? 0}</span>
+                <span style={{ marginLeft: 6, fontSize: FS.etiqueta, fontWeight: 700, color: esSalida ? "#dc2626" : "#16a34a" }}>
+                  {esSalida ? "▼" : "▲"}
+                </span>
               </td>
               <td style={{ ...td, fontSize: FS.secundario, whiteSpace: "nowrap" }}>
                 {m.nombre_empleado || "—"}

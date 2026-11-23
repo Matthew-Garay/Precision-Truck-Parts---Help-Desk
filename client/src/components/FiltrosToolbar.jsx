@@ -146,7 +146,7 @@ function SearchField({ campo, valor, onChange, disabled, T }) {
   }, [campo.key, debounceMs, onChange]);
   const handleClear = () => { setLocalVal(""); clearTimeout(timerRef.current); onChange(campo.key, ""); };
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: "110px", flex: "1 1 110px", maxWidth: "200px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: "110px", flex: "1 1 110px", maxWidth: campo._movil ? "none" : "200px" }}>
       <label style={LABEL_ST(activo, orange, textMuted)}>{campo.label}</label>
       <div style={{ position: "relative" }}>
         <Search size={9} style={{ position: "absolute", left: "5px", top: "50%", transform: "translateY(-50%)", color: activo ? orange : textFaint, pointerEvents: "none" }} />
@@ -357,7 +357,7 @@ export default function FiltrosToolbar({
   return (
     <div ref={wrapRef} style={wrapStyle}>
       {/* Cabecera siempre visible */}
-      <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 8px",
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", padding: "5px 8px",
         borderBottom: (expandido || hayFiltros) ? bs : "none" }}>
         <button onClick={() => setExpandido(v => !v)}
           style={{ display: "flex", alignItems: "center", gap: "4px", background: "none",
@@ -377,8 +377,7 @@ export default function FiltrosToolbar({
         </button>
         <div style={{ width: "1px", height: "20px", background: isDark ? "rgba(255,255,255,0.07)" : "#E5E7EB", flexShrink: 0 }} />
         {/* Búsqueda siempre visible */}
-        {campos.filter(c => c.type === "search").map(renderField)}
-        <div style={{ flex: 1 }} />
+        {campos.filter(c => c.type === "search").map(c => renderField({ ...c, _movil: true }))}
         <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
           {loading && <Spinner color={orange} />}
           {hayFiltros && !disabled && (
@@ -388,8 +387,13 @@ export default function FiltrosToolbar({
               Limpiar
             </button>
           )}
-          {children}
         </div>
+        {/* En teléfono los botones de la página van en su propio renglón para que no se corten */}
+        {children && (
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end", gap: "6px", width: "100%" }}>
+            {children}
+          </div>
+        )}
       </div>
       {/* Panel colapsable: selects y demás */}
       {expandido && (

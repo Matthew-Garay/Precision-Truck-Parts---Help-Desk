@@ -1,37 +1,32 @@
 /**
  * ModalConsumo.jsx
  *
- * Reporte de CONSUMO de insumos para planear compras: qué insumos se usan
- * más, qué áreas consumen más y cómo va el consumo mes a mes. Cuenta todo el
- * material que salió del inventario (salidas internas activas y solicitudes
- * aceptadas); las salidas anuladas no cuentan.
+ * Reporte de CONSUMO de insumos, agrupado sobre todo POR SUCURSAL: cuánto se
+ * usa de cada cosa, cuánto al mes, cada cuánto se pide y para cuánto alcanza
+ * el stock. Cuenta el material que salió del inventario (salidas internas
+ * activas y solicitudes aceptadas); las salidas anuladas no cuentan.
  *
- * "Cobertura" = meses que alcanza el stock actual al ritmo de consumo
- * promedio del periodo. Menos de 1 mes se marca en rojo: hay que comprar.
+ * Todo se filtra con un clic: periodo rápido (1/3/6/12 meses) y sucursal.
+ * "Alcanza" = meses que dura el stock actual al ritmo de consumo del periodo.
  *
- * Export default: ModalConsumo
+ * Export default: ModalConsumo  ·  export: textoFrecuencia
  * Props: T, onClose.
- * Endpoint: GET /api/solicitudes/consumo?fecha_inicio&fecha_fin
+ * Endpoints: GET /api/solicitudes/consumo, GET /api/solicitudes/consumo/frecuencia
  *
  * @module client/components/Inventario/ModalConsumo
- * @requires react
- * @requires lucide-react
- * @requires exceljs
- * @requires file-saver
- * @requires ../Modal.jsx
- * @requires ../../services/api-client.js
- * @exports ModalConsumo (default)
  */
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, FileDown } from "lucide-react";
+import { BarChart3, FileDown, Store, Package, CalendarRange, Repeat, ChevronRight } from "lucide-react";
 // ExcelJS y file-saver se cargan solo al exportar (pesan ≈1 MB).
 import Modal from "../Modal.jsx";
 import { apiFetch } from "../../services/api-client.js";
 import { fechaCorta, mesAnio } from "../../utils/fechas.js";
 
-const nombreMes = (ym) => mesAnio(ym); // "2026-11" -> "11/2026"
 const pad = (n) => String(n).padStart(2, "0");
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const mesCorto = (ym) => { const [y, m] = ym.split("-").map(Number); return `${MESES_CORTOS[m - 1]} ${String(y).slice(2)}`; };
+const redondea = (n) => (n >= 10 ? Math.round(n) : Math.round(n * 10) / 10);
 
 /** "cada 5 días" · "cada ~4 semanas" · "cada ~3 meses" */
 export function textoFrecuencia(dias) {
@@ -41,306 +36,308 @@ export function textoFrecuencia(dias) {
   const m = Math.round(dias / 30); return `cada ~${m} meses`;
 }
 const ESTADO_FREC = {
-  atrasado: { texto: "Ya debió pedirse", color: "#dc2626" },
-  pronto:   { texto: "Esta semana",      color: "#d97706" },
-  al_dia:   { texto: "Al día",           color: "#16a34a" },
+  atrasado: { texto: "Ya toca", color: "#dc2626" },
+  pronto:   { texto: "Esta semana", color: "#d97706" },
+  al_dia:   { texto: "Al día", color: "#16a34a" },
 };
-
-// Semáforo de cobertura (meses que alcanza el stock).
-const colorCobertura = (c) => (c == null ? "#94a3b8" : c < 1 ? "#dc2626" : c < 2 ? "#d97706" : "#16a34a");
+/** Semáforo de cobertura (meses que alcanza el stock). */
+function alcance(c) {
+  if (c == null) return { texto: "—", color: "#94a3b8" };
+  if (c < 1) return { texto: c < 0.25 ? "Comprar ya" : `${Math.max(1, Math.round(c * 4.3))} sem`, color: "#dc2626" };
+  return { texto: `${redondea(c)} mes${c >= 1.05 ? "es" : ""}`, color: c < 2 ? "#d97706" : "#16a34a" };
+}
+const PERIODOS = [[1, "1 mes"], [3, "3 meses"], [6, "6 meses"], [12, "1 año"]];
+const TODAS = "__todas__";
 
 export default function ModalConsumo({ T, onClose }) {
   const hoy = new Date();
-  const [desde, setDesde] = useState(iso(new Date(hoy.getFullYear(), hoy.getMonth() - 5, 1)));
+  const desdeMeses = (n) => iso(new Date(hoy.getFullYear(), hoy.getMonth() - (n - 1), 1));
+  const [periodo, setPeriodo] = useState(6);          // meses, o 0 = personalizado
+  const [desde, setDesde] = useState(desdeMeses(6));
   const [hasta, setHasta] = useState(iso(hoy));
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
-  const [vista, setVista] = useState("insumo"); // insumo | area | mes | frecuencia
-  // Cada cuánto se consume cada insumo por área / puesto / sucursal
-  const [agrupar, setAgrupar] = useState("area");
+  const [vista, setVista] = useState("sucursal");     // sucursal | insumo | mes | frecuencia
+  const [sucursal, setSucursal] = useState(TODAS);
+  const [busca, setBusca] = useState("");
   const [frec, setFrec] = useState(null);
   const [cargandoFrec, setCargandoFrec] = useState(false);
-  const [buscaFrec, setBuscaFrec] = useState("");
 
-  const cargar = async () => {
+  // Carga automática al cambiar el periodo (sin botón "Consultar").
+  useEffect(() => {
     if (!desde || !hasta || desde > hasta) { setError("Revisa el rango de fechas."); return; }
-    setCargando(true); setError("");
-    try {
-      const r = await apiFetch(`/api/solicitudes/consumo?fecha_inicio=${desde}&fecha_fin=${hasta}`);
-      const d = await r.json();
-      if (!r.ok) throw new Error(d?.error || `HTTP ${r.status}`);
-      setDatos(d);
-    } catch (e) {
-      setError(e.message || "No se pudo cargar el reporte");
-    } finally {
-      setCargando(false);
-    }
-  };
-  useEffect(() => { cargar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    let vivo = true;
+    setCargando(true); setError(""); setFrec(null);
+    apiFetch(`/api/solicitudes/consumo?fecha_inicio=${desde}&fecha_fin=${hasta}`)
+      .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d?.error || `HTTP ${r.status}`); if (vivo) setDatos(d); })
+      .catch(e => vivo && setError(e.message || "No se pudo cargar el reporte"))
+      .finally(() => vivo && setCargando(false));
+    return () => { vivo = false; };
+  }, [desde, hasta]);
 
-  const cargarFrecuencia = async (como = agrupar) => {
+  useEffect(() => {
+    if (vista !== "frecuencia" || frec || !datos) return;
     setCargandoFrec(true);
-    try {
-      const r = await apiFetch(`/api/solicitudes/consumo/frecuencia?agrupar=${como}&fecha_inicio=${desde}&fecha_fin=${hasta}`);
-      const d = await r.json();
-      if (!r.ok) throw new Error(d?.error || `HTTP ${r.status}`);
-      setFrec(d);
-    } catch (e) {
-      setError(e.message || "No se pudo calcular la frecuencia");
-    } finally {
-      setCargandoFrec(false);
-    }
-  };
-  // Se calcula al abrir la pestaña, al cambiar la agrupación y al consultar otro rango.
-  useEffect(() => { if (vista === "frecuencia") cargarFrecuencia(agrupar); }, [vista, agrupar, datos]); // eslint-disable-line react-hooks/exhaustive-deps
-  const filasFrec = useMemo(() => {
-    const q = buscaFrec.trim().toLowerCase();
-    return (frec?.filas ?? []).filter(x => x.cada_dias != null && (!q || `${x.grupo} ${x.nombre} ${x.marca ?? ""}`.toLowerCase().includes(q)));
-  }, [frec, buscaFrec]);
+    apiFetch(`/api/solicitudes/consumo/frecuencia?agrupar=sucursal&fecha_inicio=${desde}&fecha_fin=${hasta}`)
+      .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d?.error || `HTTP ${r.status}`); setFrec(d); })
+      .catch(e => setError(e.message || "No se pudo calcular la frecuencia"))
+      .finally(() => setCargandoFrec(false));
+  }, [vista, frec, datos, desde, hasta]);
 
-  const maxMes = useMemo(() => Math.max(1, ...(datos?.por_mes ?? []).map(m => m.piezas)), [datos]);
-  const maxArea = useMemo(() => Math.max(1, ...(datos?.por_area ?? []).map(a => a.piezas)), [datos]);
+  const elegirPeriodo = (n) => { setPeriodo(n); if (n) { setDesde(desdeMeses(n)); setHasta(iso(hoy)); } };
+
+  // ── Datos según la sucursal elegida ──────────────────────────────────
+  const meses = datos?.totales?.meses || 1;
+  const vistaDatos = useMemo(() => {
+    if (!datos) return null;
+    const global = new Map(datos.por_insumo.map(x => [x.id_insumo, x]));
+    const filas = sucursal === TODAS ? datos.detalle : datos.detalle.filter(d => d.sucursal === sucursal);
+    const porInsumo = new Map(), porMes = new Map(datos.por_mes.map(m => [m.mes, 0]));
+    for (const d of filas) {
+      const g = global.get(d.id_insumo) || {};
+      const x = porInsumo.get(d.id_insumo) || { id_insumo: d.id_insumo, nombre: d.nombre, marca: g.marca, stock: g.stock ?? 0, cobertura: g.meses_cobertura, piezas: 0 };
+      x.piezas += d.piezas; porInsumo.set(d.id_insumo, x);
+      porMes.set(d.mes, (porMes.get(d.mes) || 0) + d.piezas);
+    }
+    const insumos = [...porInsumo.values()].map(x => ({ ...x, alMes: x.piezas / meses }))
+      .sort((a, b) => b.piezas - a.piezas || String(a.nombre).localeCompare(String(b.nombre)));
+    const piezas = insumos.reduce((a, x) => a + x.piezas, 0);
+    return {
+      insumos, piezas,
+      porMes: [...porMes.entries()].map(([mes, p]) => ({ mes, piezas: p })),
+      porComprar: insumos.filter(x => x.cobertura != null && x.cobertura < 1).length,
+    };
+  }, [datos, sucursal, meses]);
+
+  const sucursales = datos?.por_sucursal ?? [];
+  const totalGlobal = datos?.totales?.piezas || 0;
+  const q = busca.trim().toLowerCase();
+  const insumosVisibles = (vistaDatos?.insumos ?? []).filter(x => !q || `${x.nombre} ${x.marca ?? ""}`.toLowerCase().includes(q));
+  const filasFrec = (frec?.filas ?? []).filter(x => x.cada_dias != null
+    && (sucursal === TODAS || x.grupo === sucursal)
+    && (!q || `${x.grupo} ${x.nombre} ${x.marca ?? ""}`.toLowerCase().includes(q)));
+  const maxIns = Math.max(1, ...(vistaDatos?.insumos ?? []).map(x => x.piezas));
+  const maxMes = Math.max(1, ...(vistaDatos?.porMes ?? []).map(m => m.piezas));
 
   const exportar = async () => {
-    const [{ default: ExcelJS }, { saveAs }] = await Promise.all([import("exceljs"), import("file-saver")]);
     if (!datos) return;
+    const [{ default: ExcelJS }, { saveAs }] = await Promise.all([import("exceljs"), import("file-saver")]);
     const wb = new ExcelJS.Workbook();
-    const encabezado = (ws, cols) => {
+    const hoja = (nombre, cols, filas) => {
+      const ws = wb.addWorksheet(nombre);
       ws.columns = cols;
       ws.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
       ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF47920" } };
+      filas.forEach(f => ws.addRow(f));
     };
-    const w0 = wb.addWorksheet("Resumen");
-    w0.columns = [{ key: "a", width: 26 }, { key: "b", width: 30 }];
-    [["Reporte de consumo de insumos", ""],
-     ["Periodo", `${fechaCorta(datos.desde)} al ${fechaCorta(datos.hasta)}`],
-     ["Piezas usadas", datos.totales.piezas],
-     ["Generado", fechaCorta(new Date())]].forEach(r => w0.addRow({ a: r[0], b: r[1] }));
-    w0.getRow(1).font = { bold: true, size: 13 };
-    w0.getColumn("a").font = { bold: true };
-    const w1 = wb.addWorksheet("Por insumo");
-    encabezado(w1, [
-      { header: "Insumo", key: "nombre", width: 45 }, { header: "Marca", key: "marca", width: 18 },
-      { header: "Modelo", key: "modelo", width: 18 }, { header: "Piezas usadas", key: "piezas", width: 14 },
-      { header: "Salidas", key: "operaciones", width: 10 }, { header: "Promedio mensual", key: "promedio_mensual", width: 17 },
-      { header: "Stock actual", key: "stock", width: 13 }, { header: "Meses de cobertura", key: "meses_cobertura", width: 18 },
-    ]);
-    datos.por_insumo.forEach(x => w1.addRow(x));
-    const w2 = wb.addWorksheet("Por área");
-    encabezado(w2, [{ header: "Área", key: "area", width: 35 }, { header: "Piezas", key: "piezas", width: 12 }, { header: "Salidas", key: "operaciones", width: 12 }]);
-    datos.por_area.forEach(x => w2.addRow(x));
-    const w3 = wb.addWorksheet("Por mes");
-    encabezado(w3, [{ header: "Mes", key: "mes", width: 14 }, { header: "Piezas", key: "piezas", width: 12 }]);
-    datos.por_mes.forEach(x => w3.addRow({ ...x, mes: nombreMes(x.mes) }));
-    const w4 = wb.addWorksheet("Detalle");
-    encabezado(w4, [{ header: "Mes", key: "mes", width: 14 }, { header: "Área", key: "area", width: 30 }, { header: "Insumo", key: "nombre", width: 45 }, { header: "Piezas", key: "piezas", width: 10 }]);
-    datos.detalle.forEach(x => w4.addRow({ ...x, mes: nombreMes(x.mes) }));
-    let f = frec;
-    if (!f) {
-      try { const r = await apiFetch(`/api/solicitudes/consumo/frecuencia?agrupar=${agrupar}&fecha_inicio=${desde}&fecha_fin=${hasta}`); if (r.ok) f = await r.json(); } catch { /* sin hoja */ }
-    }
-    if (f?.filas?.length) {
-      const w5 = wb.addWorksheet("Cada cuánto");
-      encabezado(w5, [
-        { header: f.agrupar === "sucursal" ? "Sucursal" : f.agrupar === "puesto" ? "Puesto" : "Área", key: "grupo", width: 30 },
-        { header: "Insumo", key: "nombre", width: 42 }, { header: "Frecuencia", key: "texto", width: 18 },
-        { header: "Días entre entregas", key: "cada_dias", width: 12 }, { header: "Piezas por entrega", key: "piezas_por_entrega", width: 12 },
-        { header: "Entregas", key: "entregas", width: 10 }, { header: "Última", key: "ultima_txt", width: 12 },
-        { header: "Próxima estimada", key: "proxima_txt", width: 14 }, { header: "Estado", key: "estado_txt", width: 16 },
-      ]);
-      f.filas.forEach(x => w5.addRow({
-        ...x, texto: x.cada_dias == null ? "1 sola entrega" : textoFrecuencia(x.cada_dias),
-        ultima_txt: fechaCorta(x.ultima), proxima_txt: fechaCorta(x.proxima, ""), estado_txt: ESTADO_FREC[x.estado]?.texto ?? "",
-      }));
+    hoja("Por sucursal", [{ header: "Sucursal", key: "sucursal", width: 32 }, { header: "Piezas", key: "piezas", width: 10 },
+      { header: "Al mes", key: "alMes", width: 10 }, { header: "Salidas", key: "operaciones", width: 10 }, { header: "Lo que más usa", key: "top", width: 60 }],
+      sucursales.map(s => ({ ...s, alMes: redondea(s.piezas / meses), top: s.insumos.slice(0, 5).map(i => `${i.nombre} (${i.piezas})`).join(", ") })));
+    hoja("Por insumo", [{ header: "Insumo", key: "nombre", width: 45 }, { header: "Marca", key: "marca", width: 18 },
+      { header: "Piezas", key: "piezas", width: 10 }, { header: "Al mes", key: "promedio_mensual", width: 10 },
+      { header: "Stock", key: "stock", width: 10 }, { header: "Alcanza (meses)", key: "meses_cobertura", width: 16 }], datos.por_insumo);
+    hoja("Por mes", [{ header: "Mes", key: "mes", width: 12 }, { header: "Piezas", key: "piezas", width: 10 }],
+      datos.por_mes.map(x => ({ ...x, mes: mesAnio(x.mes) })));
+    hoja("Detalle", [{ header: "Mes", key: "mes", width: 12 }, { header: "Sucursal", key: "sucursal", width: 30 }, { header: "Área", key: "area", width: 28 },
+      { header: "Insumo", key: "nombre", width: 45 }, { header: "Piezas", key: "piezas", width: 10 }],
+      datos.detalle.map(x => ({ ...x, mes: mesAnio(x.mes) })));
+    if (frec?.filas?.length) {
+      hoja("Cada cuánto", [{ header: "Sucursal", key: "grupo", width: 30 }, { header: "Insumo", key: "nombre", width: 42 },
+        { header: "Frecuencia", key: "texto", width: 18 }, { header: "Piezas por vez", key: "piezas_por_entrega", width: 14 },
+        { header: "Última", key: "ultima", width: 12 }, { header: "Próxima", key: "proxima", width: 12 }],
+        frec.filas.map(x => ({ ...x, texto: x.cada_dias == null ? "1 sola vez" : textoFrecuencia(x.cada_dias), ultima: fechaCorta(x.ultima), proxima: fechaCorta(x.proxima, "") })));
     }
     const buf = await wb.xlsx.writeBuffer();
     saveAs(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
-      `Consumo_insumos_${fechaCorta(datos.desde).replaceAll("/", "-")}_al_${fechaCorta(datos.hasta).replaceAll("/", "-")}.xlsx`);
+      `Consumo_${fechaCorta(datos.desde).replaceAll("/", "-")}_al_${fechaCorta(datos.hasta).replaceAll("/", "-")}.xlsx`);
   };
 
-  const inp = {
-    height: 30, padding: "0 8px", borderRadius: 6, fontSize: 12,
-    border: `1px solid ${T.border}`, background: T.bg, color: T.text, colorScheme: T.isDark ? "dark" : "light",
-  };
-  const th = { textAlign: "left", padding: "6px 8px", fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", color: T.textMuted, borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, background: T.surface ?? T.bg };
-  const td = { padding: "5px 8px", fontSize: 12, color: T.text, borderBottom: `1px solid ${T.border}` };
-  const tab = (k, label) => (
-    <button key={k} onClick={() => setVista(k)}
-      style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer",
-        border: `1px solid ${vista === k ? T.orange : T.border}`, background: vista === k ? `${T.orange}18` : "transparent",
-        color: vista === k ? T.orange : T.textMuted }}>
-      {label}
-    </button>
+  // ── Estilos ──────────────────────────────────────────────────────────
+  const chip = (activo) => ({
+    padding: "5px 11px", borderRadius: 99, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+    border: `1px solid ${activo ? T.orange : T.border}`, background: activo ? T.orange : "transparent", color: activo ? "#fff" : T.textMuted,
+  });
+  const inp = { height: 30, padding: "0 8px", borderRadius: 6, fontSize: 12, border: `1px solid ${T.border}`, background: T.bg, color: T.text, colorScheme: T.isDark ? "dark" : "light" };
+  const tarjeta = { border: `1px solid ${T.border}`, borderRadius: 10, background: T.surface ?? T.bg };
+  const TABS = [["sucursal", "Sucursales", Store], ["insumo", "Insumos", Package], ["mes", "Por mes", CalendarRange], ["frecuencia", "Cada cuánto", Repeat]];
+  const vacio = (txt) => <p style={{ padding: 16, margin: 0, fontSize: 12, color: T.textMuted, textAlign: "center" }}>{txt}</p>;
+  const barra = (pct, color = T.orange) => (
+    <div style={{ height: 6, borderRadius: 3, background: T.border, overflow: "hidden" }}>
+      <div style={{ width: `${Math.max(2, pct)}%`, height: "100%", background: color, borderRadius: 3, transition: "width .3s" }} />
+    </div>
   );
 
   return (
-    <Modal T={T} title="Reporte de consumo" subtitle="Planeación de compras" icon={<BarChart3 size={15} />}
-      onClose={onClose} cancelLabel="Cerrar" maxWidth="980px">
+    <Modal T={T} title="Consumo de insumos" subtitle="Qué se usa, dónde y cada cuánto" icon={<BarChart3 size={15} />}
+      onClose={onClose} cancelLabel="Cerrar" maxWidth="1000px">
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {/* Rango y acciones */}
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 8 }}>
-          <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 10, fontWeight: 700, color: T.textMuted }}>
-            DESDE <input type="date" value={desde} max={hasta} onChange={e => setDesde(e.target.value)} style={inp} />
-          </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 10, fontWeight: 700, color: T.textMuted }}>
-            HASTA <input type="date" value={hasta} min={desde} max={iso(hoy)} onChange={e => setHasta(e.target.value)} style={inp} />
-          </label>
-          <button onClick={cargar} disabled={cargando}
-            style={{ height: 30, padding: "0 12px", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", background: T.orange, color: "#fff", opacity: cargando ? 0.6 : 1 }}>
-            {cargando ? "Cargando…" : "Consultar"}
-          </button>
-          <button onClick={exportar} disabled={!datos || cargando}
-            style={{ height: 30, padding: "0 12px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-              border: `1px solid ${T.border}`, background: "transparent", color: T.text, opacity: !datos ? 0.5 : 1 }}>
+
+        {/* Periodo */}
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+          {PERIODOS.map(([n, l]) => <button key={n} onClick={() => elegirPeriodo(n)} style={chip(periodo === n)}>{l}</button>)}
+          <button onClick={() => setPeriodo(0)} style={chip(periodo === 0)}>Fechas…</button>
+          {periodo === 0 && (
+            <>
+              <input type="date" aria-label="Desde" value={desde} max={hasta} onChange={e => setDesde(e.target.value)} style={inp} />
+              <input type="date" aria-label="Hasta" value={hasta} min={desde} max={iso(hoy)} onChange={e => setHasta(e.target.value)} style={inp} />
+            </>
+          )}
+          <span style={{ flex: 1 }} />
+          {cargando && <span style={{ fontSize: 11, color: T.textMuted }}>Cargando…</span>}
+          <button onClick={exportar} disabled={!datos || cargando} title="Descargar en Excel"
+            style={{ ...chip(false), display: "flex", alignItems: "center", gap: 4, color: T.text, opacity: !datos ? 0.5 : 1 }}>
             <FileDown size={13} /> Excel
           </button>
         </div>
 
         {error && <p role="alert" style={{ margin: 0, fontSize: 12, color: "#dc2626" }}>{error}</p>}
 
-        {datos && (
+        {datos && vistaDatos && (
           <>
-            {/* Totales */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8 }}>
+            {/* Sucursal: filtra todo el reporte */}
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
+              <button onClick={() => setSucursal(TODAS)} style={chip(sucursal === TODAS)}>Todas · {totalGlobal}</button>
+              {sucursales.map(s => (
+                <button key={s.sucursal} onClick={() => setSucursal(s.sucursal)} style={chip(sucursal === s.sucursal)}>
+                  {s.sucursal} · {s.piezas}
+                </button>
+              ))}
+            </div>
+
+            {/* Cifras clave */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
               {[
-                ["Piezas usadas", datos.totales.piezas],
-                ["Salidas", datos.totales.operaciones],
-                ["Insumos distintos", datos.totales.insumos],
-                ["Por comprar (<1 mes)", datos.por_insumo.filter(x => x.meses_cobertura != null && x.meses_cobertura < 1).length],
-              ].map(([l, v]) => (
-                <div key={l} style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.border}` }}>
-                  <p style={{ margin: 0, fontSize: 10, fontWeight: 800, textTransform: "uppercase", color: T.textMuted }}>{l}</p>
-                  <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: T.text }}>{v}</p>
+                ["Piezas usadas", vistaDatos.piezas, T.text, `${fechaCorta(datos.desde)} al ${fechaCorta(datos.hasta)}`],
+                ["Al mes", redondea(vistaDatos.piezas / meses), T.orange, `Promedio de ${meses} mes${meses !== 1 ? "es" : ""}`],
+                ["Insumos distintos", vistaDatos.insumos.length, T.text, ""],
+                ["Por comprar", vistaDatos.porComprar, vistaDatos.porComprar ? "#dc2626" : "#16a34a", "Stock para menos de 1 mes"],
+              ].map(([l, v, c, tip]) => (
+                <div key={l} title={tip} style={{ ...tarjeta, padding: "8px 12px" }}>
+                  <p style={{ margin: 0, fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", color: T.textMuted }}>{l}</p>
+                  <p style={{ margin: 0, fontSize: 22, fontWeight: 900, color: c, lineHeight: 1.2 }}>{v}</p>
                 </div>
               ))}
             </div>
-            <p style={{ margin: 0, fontSize: 11, color: T.textFaint }}>
-              <b>Periodo: {fechaCorta(datos.desde)} al {fechaCorta(datos.hasta)}.</b>{" "}
-              Promedio calculado sobre {datos.totales.meses} mes{datos.totales.meses !== 1 ? "es" : ""} (desde el primer mes con consumo del rango).
-              Cobertura = meses que alcanza el stock actual a ese ritmo.
-            </p>
 
-            <div style={{ display: "flex", gap: 6 }}>
-              {tab("insumo", "Por insumo")}{tab("area", "Por área")}{tab("mes", "Por mes")}{tab("frecuencia", "Cada cuánto")}
+            {/* Pestañas */}
+            <div style={{ display: "flex", gap: 4, borderBottom: `1px solid ${T.border}`, overflowX: "auto" }}>
+              {TABS.map(([k, l, Icon]) => (
+                <button key={k} onClick={() => setVista(k)}
+                  style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+                    background: "transparent", border: "none", borderBottom: `2px solid ${vista === k ? T.orange : "transparent"}`,
+                    color: vista === k ? T.orange : T.textMuted, marginBottom: -1 }}>
+                  <Icon size={13} /> {l}
+                </button>
+              ))}
+              {(vista === "insumo" || vista === "frecuencia") && (
+                <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar insumo…"
+                  style={{ ...inp, height: 28, margin: "0 0 4px auto", flex: "0 1 200px" }} />
+              )}
             </div>
 
-            <div style={{ maxHeight: "46vh", overflow: "auto", border: `1px solid ${T.border}`, borderRadius: 8 }}>
-              {vista === "insumo" && (
-                datos.por_insumo.length === 0
-                  ? <p style={{ padding: 12, margin: 0, fontSize: 12, color: T.textMuted }}>Sin consumo en este periodo.</p>
-                  : <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 620 }}>
-                      <thead><tr>
-                        <th style={th}>#</th><th style={th}>Insumo</th><th style={{ ...th, textAlign: "right" }}>Piezas</th>
-                        <th style={{ ...th, textAlign: "right" }}>Salidas</th><th style={{ ...th, textAlign: "right" }}>Prom./mes</th>
-                        <th style={{ ...th, textAlign: "right" }}>Stock</th><th style={{ ...th, textAlign: "right" }}>Cobertura</th>
-                      </tr></thead>
-                      <tbody>
-                        {datos.por_insumo.map((x, i) => (
-                          <tr key={x.id_insumo}>
-                            <td style={{ ...td, color: T.textMuted }}>{i + 1}</td>
-                            <td style={td}>
-                              <span style={{ fontWeight: 600 }}>{x.nombre}</span>
-                              {x.marca && <span style={{ color: T.textMuted }}> · {x.marca}</span>}
-                            </td>
-                            <td style={{ ...td, textAlign: "right", fontWeight: 800 }}>{x.piezas}</td>
-                            <td style={{ ...td, textAlign: "right" }}>{x.operaciones}</td>
-                            <td style={{ ...td, textAlign: "right" }}>{x.promedio_mensual}</td>
-                            <td style={{ ...td, textAlign: "right" }}>{x.stock}</td>
-                            <td style={{ ...td, textAlign: "right", fontWeight: 800, color: colorCobertura(x.meses_cobertura) }}>
-                              {x.meses_cobertura == null ? "—" : `${x.meses_cobertura} m`}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-              )}
-
-              {vista === "area" && (
-                <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                  {datos.por_area.length === 0 && <p style={{ margin: 0, fontSize: 12, color: T.textMuted }}>Sin consumo en este periodo.</p>}
-                  {datos.por_area.map(a => (
-                    <div key={a.area} style={{ display: "grid", gridTemplateColumns: "minmax(120px, 220px) 1fr 90px", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 12, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.area}>{a.area}</span>
-                      <div style={{ height: 8, borderRadius: 4, background: T.border, overflow: "hidden" }}>
-                        <div style={{ width: `${Math.round(a.piezas / maxArea * 100)}%`, height: "100%", background: T.orange }} />
-                      </div>
-                      <span style={{ fontSize: 12, fontWeight: 800, color: T.text, textAlign: "right" }}>{a.piezas} pzas · {a.operaciones}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {vista === "frecuencia" && (
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", padding: 8, borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, background: T.surface ?? T.bg, zIndex: 2 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: T.textMuted }}>Agrupar por</span>
-                    {[["area", "Área"], ["puesto", "Puesto"], ["sucursal", "Sucursal"]].map(([k, l]) => (
-                      <button key={k} onClick={() => setAgrupar(k)}
-                        style={{ padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer",
-                          border: `1px solid ${agrupar === k ? T.orange : T.border}`, background: agrupar === k ? `${T.orange}18` : "transparent", color: agrupar === k ? T.orange : T.textMuted }}>
-                        {l}
+            <div style={{ maxHeight: "48vh", overflow: "auto" }}>
+              {/* ── Sucursales: una tarjeta por sucursal ── */}
+              {vista === "sucursal" && (sucursales.length === 0 ? vacio("Sin consumo en este periodo.") : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 10 }}>
+                  {sucursales.filter(s => sucursal === TODAS || s.sucursal === sucursal).map(s => {
+                    const pct = Math.round(s.piezas / Math.max(1, totalGlobal) * 100);
+                    return (
+                      <button key={s.sucursal} onClick={() => { setSucursal(s.sucursal); setVista("insumo"); }}
+                        title="Ver los insumos de esta sucursal"
+                        style={{ ...tarjeta, padding: 12, textAlign: "left", cursor: "pointer", display: "flex", flexDirection: "column", gap: 8, color: T.text }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <Store size={14} style={{ color: T.orange, flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, fontWeight: 800, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.sucursal}</span>
+                          <ChevronRight size={14} style={{ color: T.textFaint }} />
+                        </div>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                          <span style={{ fontSize: 24, fontWeight: 900, lineHeight: 1 }}>{s.piezas}</span>
+                          <span style={{ fontSize: 11, color: T.textMuted }}>piezas · <b style={{ color: T.orange }}>{redondea(s.piezas / meses)}/mes</b></span>
+                          <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 800, color: T.textMuted }}>{pct}%</span>
+                        </div>
+                        {barra(pct)}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                          {s.insumos.slice(0, 4).map(i => (
+                            <div key={i.id_insumo} style={{ display: "flex", gap: 6, fontSize: 11 }}>
+                              <span style={{ flex: 1, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.nombre}</span>
+                              <b>{i.piezas}</b>
+                            </div>
+                          ))}
+                          {s.insumos.length > 4 && <span style={{ fontSize: 10, color: T.textFaint }}>+{s.insumos.length - 4} más</span>}
+                        </div>
                       </button>
-                    ))}
-                    <input value={buscaFrec} onChange={e => setBuscaFrec(e.target.value)} placeholder="Buscar área o insumo (ej. tóner)…"
-                      style={{ ...inp, flex: "1 1 180px", height: 28 }} />
-                  </div>
-                  {cargandoFrec && !frec ? (
-                    <p style={{ padding: 12, margin: 0, fontSize: 12, color: T.textMuted }}>Calculando…</p>
-                  ) : filasFrec.length === 0 ? (
-                    <p style={{ padding: 12, margin: 0, fontSize: 12, color: T.textMuted }}>
-                      Todavía no hay insumos con 2 o más entregas en este periodo{buscaFrec ? " que coincidan con la búsqueda" : ""}. La frecuencia se calcula a partir de la segunda entrega.
-                    </p>
-                  ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
-                      <thead><tr>
-                        <th style={th}>{agrupar === "sucursal" ? "Sucursal" : agrupar === "puesto" ? "Puesto" : "Área"}</th>
-                        <th style={th}>Insumo</th><th style={th}>Frecuencia</th>
-                        <th style={{ ...th, textAlign: "right" }}>Pzas / entrega</th>
-                        <th style={th}>Última</th><th style={th}>Próxima</th><th style={th}>Entregas</th>
-                      </tr></thead>
-                      <tbody>
-                        {filasFrec.map(x => {
-                          const e = ESTADO_FREC[x.estado];
-                          return (
-                            <tr key={`${x.grupo}-${x.id_insumo}`} title={`Entregas: ${x.historial.map(h => `${fechaCorta(h.dia)} (${h.piezas})`).join(", ")}`}>
-                              <td style={{ ...td, fontWeight: 600 }}>{x.grupo}</td>
-                              <td style={td}>{x.nombre}{x.marca && <span style={{ color: T.textMuted }}> · {x.marca}</span>}</td>
-                              <td style={{ ...td, fontWeight: 800 }}>{textoFrecuencia(x.cada_dias)}</td>
-                              <td style={{ ...td, textAlign: "right" }}>{x.piezas_por_entrega}</td>
-                              <td style={td}>{fechaCorta(x.ultima)}</td>
-                              <td style={td}>
-                                {fechaCorta(x.proxima)}
-                                {e && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: e.color }}>● {e.texto}</span>}
-                              </td>
-                              <td style={{ ...td, color: T.textMuted }}>{x.entregas} <span style={{ fontSize: 10 }}>({x.confianza === "alta" ? "confiable" : x.confianza === "media" ? "aproximado" : "pocos datos"})</span></td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                  {frec && (
-                    <p style={{ margin: 0, padding: "8px 10px", fontSize: 11, color: T.textFaint, borderTop: `1px solid ${T.border}` }}>
-                      Frecuencia = tiempo típico (mediana) entre entregas del mismo insumo al mismo {agrupar === "sucursal" ? "destino" : agrupar === "puesto" ? "puesto" : "área"}; entregas con 2 días o menos de diferencia cuentan como una.
-                      Próxima = última entrega + frecuencia. {frec.sin_frecuencia} combinación{frec.sin_frecuencia !== 1 ? "es" : ""} con una sola entrega todavía sin frecuencia.
-                      Pasa el mouse sobre un renglón para ver sus entregas.
-                    </p>
-                  )}
+                    );
+                  })}
                 </div>
-              )}
+              ))}
 
+              {/* ── Insumos: cuánto se usa y para cuánto alcanza ── */}
+              {vista === "insumo" && (insumosVisibles.length === 0 ? vacio("Sin consumo en este periodo.") : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {insumosVisibles.map(x => {
+                    const a = alcance(x.cobertura);
+                    return (
+                      <div key={x.id_insumo} style={{ ...tarjeta, padding: "8px 12px", display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: "4px 12px", alignItems: "center" }}>
+                        <div style={{ minWidth: 0 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{x.nombre}</span>
+                          {x.marca && <span style={{ fontSize: 11, color: T.textFaint }}> · {x.marca}</span>}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 11, color: T.textMuted, whiteSpace: "nowrap" }}>
+                          <span title="Piezas usadas en el periodo"><b style={{ fontSize: 15, color: T.text }}>{x.piezas}</b> usadas</span>
+                          <span title="Promedio al mes"><b style={{ fontSize: 13, color: T.orange }}>{redondea(x.alMes)}</b>/mes</span>
+                          <span title="Stock actual (todas las sucursales)">stock <b style={{ color: T.text }}>{x.stock}</b></span>
+                          <span title="Para cuánto alcanza el stock al ritmo de consumo general"
+                            style={{ padding: "2px 8px", borderRadius: 99, fontWeight: 800, color: a.color, background: `${a.color}18`, minWidth: 64, textAlign: "center" }}>
+                            {a.texto}
+                          </span>
+                        </div>
+                        <div style={{ gridColumn: "1 / -1" }}>{barra(x.piezas / maxIns * 100)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+
+              {/* ── Por mes ── */}
               {vista === "mes" && (
-                <div style={{ padding: 12, display: "flex", alignItems: "flex-end", gap: 8, height: 220, overflowX: "auto" }}>
-                  {datos.por_mes.map(m => (
-                    <div key={m.mes} style={{ flex: "1 0 48px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, height: "100%", justifyContent: "flex-end" }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: T.text }}>{m.piezas}</span>
-                      <div style={{ width: "70%", height: `${Math.max(2, Math.round(m.piezas / maxMes * 150))}px`, background: T.orange, borderRadius: "4px 4px 0 0" }} />
-                      <span style={{ fontSize: 10, color: T.textMuted, whiteSpace: "nowrap" }}>{nombreMes(m.mes)}</span>
+                <div style={{ padding: "8px 4px", display: "flex", alignItems: "flex-end", gap: 6, height: 230, overflowX: "auto" }}>
+                  {vistaDatos.porMes.map(m => (
+                    <div key={m.mes} title={`${mesAnio(m.mes)}: ${m.piezas} piezas`}
+                      style={{ flex: "1 0 40px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, height: "100%", justifyContent: "flex-end" }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: T.text }}>{m.piezas || ""}</span>
+                      <div style={{ width: "70%", height: `${Math.max(3, Math.round(m.piezas / maxMes * 160))}px`, background: m.piezas ? T.orange : T.border, borderRadius: "5px 5px 0 0", transition: "height .3s" }} />
+                      <span style={{ fontSize: 10, color: T.textMuted, whiteSpace: "nowrap" }}>{mesCorto(m.mes)}</span>
                     </div>
                   ))}
                 </div>
               )}
+
+              {/* ── Cada cuánto se pide cada insumo en cada sucursal ── */}
+              {vista === "frecuencia" && (cargandoFrec && !frec ? vacio("Calculando…") : filasFrec.length === 0
+                ? vacio("Aún no hay insumos pedidos 2 o más veces en este periodo.")
+                : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {filasFrec.map(x => {
+                      const e = ESTADO_FREC[x.estado];
+                      return (
+                        <div key={`${x.grupo}-${x.id_insumo}`} style={{ ...tarjeta, padding: "8px 12px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 12px" }}
+                          title={`Entregas: ${x.historial.map(h => `${fechaCorta(h.dia)} (${h.piezas})`).join(", ")}`}>
+                          <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{x.nombre}</div>
+                            <div style={{ fontSize: 11, color: T.textFaint }}>{x.grupo}</div>
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 900, color: T.orange, whiteSpace: "nowrap" }}>{textoFrecuencia(x.cada_dias)}</span>
+                          <span style={{ fontSize: 11, color: T.textMuted, whiteSpace: "nowrap" }}><b style={{ color: T.text }}>{x.piezas_por_entrega}</b> por vez</span>
+                          <span style={{ fontSize: 11, color: T.textMuted, whiteSpace: "nowrap" }} title={`Última: ${fechaCorta(x.ultima)}`}>
+                            próxima <b style={{ color: T.text }}>{fechaCorta(x.proxima)}</b>
+                          </span>
+                          {e && <span style={{ fontSize: 10, fontWeight: 800, color: e.color, background: `${e.color}18`, padding: "2px 8px", borderRadius: 99, whiteSpace: "nowrap" }}>{e.texto}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
             </div>
           </>
         )}
