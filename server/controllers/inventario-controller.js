@@ -89,7 +89,7 @@ export const registrarEntradaInsumo = async (req, res) => {
         series = await Unidad.registrarEntrada(conn, { id_insumo, nombre: ins.nombre, series: req.body.series, cantidad, id_movimiento });
 
       await conn.commit();
-      resultado = { id_movimiento, id_insumo, nombre_insumo: ins.nombre, stock_anterior, stock_nuevo, ...(series ? { series } : {}) };
+      resultado = { id_movimiento, id_insumo, nombre_insumo: ins.nombre, imagen_url: ins.imagen_url || null, stock_anterior, stock_nuevo, ...(series ? { series } : {}) };
     } catch (err) {
       await conn.rollback();
       throw err;
@@ -609,7 +609,7 @@ export const anularSalida = async (req, res) => {
           motivo: `Anulación de ${sal.folio_salida}: ${motivo}`.slice(0, 500),
         });
         await Unidad.devolverSalida(conn, r.id_movimiento);   // piezas con serie regresan al almacén
-        devueltos.push({ id_insumo: r.id_insumo, nombre: ins.nombre, cantidad: r.cantidad, stock_nuevo });
+        devueltos.push({ id_insumo: r.id_insumo, nombre: ins.nombre, imagen_url: ins.imagen_url || null, cantidad: r.cantidad, stock_nuevo });
       }
 
       // La anulación vive en salida_anulacion (migración 007): existir = anulada.
