@@ -98,6 +98,9 @@ export function useSocket(id_empleado, onEvento) {
     socket.on("ticket:sla_warning",   d => cbRef.current?.({ tipo: "ticket:sla_warning",   data: d }));
     socket.on("insumo:stock_critico", d => cbRef.current?.({ tipo: "insumo:stock_critico", data: d }));
     socket.on("ticket:sin_atender",   d => cbRef.current?.({ tipo: "ticket:sin_atender",   data: d }));
+    // Entradas, salidas, salidas internas, anulaciones y solicitudes aceptadas:
+    // el servidor lo emite a "admins" después de cambiar el stock.
+    socket.on("inventario:movimiento", d => cbRef.current?.({ tipo: "inventario:movimiento", data: d }));
 
     return () => { socket.disconnect(); socketRef.current = null; };
   }, [id_empleado]);

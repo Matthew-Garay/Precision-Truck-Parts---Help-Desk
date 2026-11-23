@@ -124,7 +124,7 @@ function SidebarContent({ T, activo, onNavigate, onClose, onLogout }) {
   );
 }
 
-function DashboardContent({ T, usuario, tickets = [], solicitudes = [], metricas, onVerTicket, onVerSolicitud }) {
+function DashboardContent({ T, usuario, tickets = [], solicitudes = [], metricas, metricasSol, onVerTicket, onVerSolicitud }) {
   return (
     <div className="flex flex-col" style={{ background: T.bg, height: "100%", overflowY: "auto" }}>
       <div className="flex-shrink-0" style={{ padding: "var(--content-pt) var(--content-px) 0" }}>
@@ -139,7 +139,9 @@ function DashboardContent({ T, usuario, tickets = [], solicitudes = [], metricas
           </button>
         </div>
         <SeccionMetricas T={T} metricas={metricas} />
-        <SeccionEstadisticas T={T} tickets={tickets} solicitudes={solicitudes} />
+        {/* solicitudes = solo las pendientes (para el tablero); metricasSol = totales reales
+            de solicitudes y salidas internas, para que las estadísticas no cuenten solo pendientes */}
+        <SeccionEstadisticas T={T} tickets={tickets} solicitudes={solicitudes} metricasSolicitudes={metricasSol} />
       </div>
       <div className="flex-shrink-0" style={{ padding: "4px var(--content-px) 10px" }}>
         <KanbanBoard T={T} tickets={tickets} solicitudes={solicitudes} onVerTicket={onVerTicket} onVerSolicitud={onVerSolicitud} inline />
@@ -154,6 +156,10 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
   const [tickets, setTickets]         = useState([]);
   const [solicitudes, setSolicitudes]  = useState([]);
   const [metricas, setMetricas]        = useState(null);
+  const [metricasSol, setMetricasSol]  = useState(null);
+  // Sube cada vez que cambia el stock (entrada, salida, salida interna, anulación,
+  // solicitud aceptada) para que Inventario e Historial recarguen al momento.
+  const [versionInventario, setVersionInventario] = useState(0);
   const [ticketVer, setTicketVer]     = useState(null);
   const [solicitudVer, setSolicitudVer] = useState(null);
   const [errorRed, setErrorRed]       = useState(false);
@@ -163,6 +169,7 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
   const cargarTicketsRef      = useRef(null);
   const cargarMetricasRef     = useRef(null);
   const cargarSolicitudesRef  = useRef(null);
+  const cargarMetricasSolRef  = useRef(null);
   const ticketsRef            = useRef(tickets);
   ticketsRef.current          = tickets;
   const solicitudesRef        = useRef(solicitudes);
@@ -174,20 +181,33 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
   const location  = useLocation();
 
   const recargaTimerRef = useRef(null);
+  const tiposPendientesRef = useRef(new Set());
   const { notificaciones, onDismiss, onDismissAll, onClickNotif } =
     useTicketNotification({
       usuario,
       // Cada aviso en vivo recarga lo que cambió (agrupado: varios avisos
       // seguidos = una sola recarga). La consulta cada 2 min queda de respaldo.
       onEvento: useCallback((tipo) => {
+        // Se juntan los tipos que llegan dentro de 400 ms: antes solo se atendía
+        // el último y, por ejemplo, un ticket seguido de un movimiento de
+        // inventario dejaba sin recargar los tickets.
+        tiposPendientesRef.current.add(tipo);
         clearTimeout(recargaTimerRef.current);
         recargaTimerRef.current = setTimeout(() => {
-          if (tipo.startsWith("ticket") || tipo === "tickets:vencidos") {
+          const tipos = [...tiposPendientesRef.current];
+          tiposPendientesRef.current.clear();
+          if (tipos.some(t => t.startsWith("ticket"))) {
             cargarTicketsRef.current?.();
             cargarMetricasRef.current?.();
             recargarHistorialRef.current?.();
           }
-          if (tipo.startsWith("solicitud")) cargarSolicitudesRef.current?.();
+          const tocaSolicitudes = tipos.some(t => t.startsWith("solicitud"));
+          const tocaStock = tipos.some(t => t === "inventario:movimiento" || t === "insumo:stock_critico");
+          if (tocaSolicitudes) cargarSolicitudesRef.current?.();
+          if (tocaSolicitudes || tocaStock) {
+            cargarMetricasSolRef.current?.();
+            setVersionInventario(v => v + 1);
+          }
         }, 400);
       }, []),
       onNavegar: useCallback((tipo, data) => {
@@ -267,6 +287,14 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
       .catch(err => console.error("[Admin] Error cargando solicitudes pendientes:", err.message))
   , []);
 
+  // Totales de TODAS las solicitudes y salidas internas (no solo pendientes).
+  const cargarMetricasSol = useCallback(() =>
+    apiFetch(`/api/solicitudes/metricas`)
+      .then(r => r.json())
+      .then(data => { if (data?.total !== undefined) setMetricasSol(data); })
+      .catch((err) => console.error("[Admin] Error cargando métricas de solicitudes:", err.message))
+  , []);
+
   const cargarMetricas = useCallback(() =>
     apiFetch(`/api/tickets/metricas`)
       .then(r => r.json())
@@ -278,7 +306,8 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
     cargarTicketsRef.current     = cargarTickets;
     cargarMetricasRef.current    = cargarMetricas;
     cargarSolicitudesRef.current = cargarSolicitudes;
-  }, [cargarTickets, cargarMetricas, cargarSolicitudes]);
+    cargarMetricasSolRef.current = cargarMetricasSol;
+  }, [cargarTickets, cargarMetricas, cargarSolicitudes, cargarMetricasSol]);
 
   // Carga al abrir + refresco cada 2 min (useAutoRefresh ya carga al montar;
   // antes se cargaba DOS veces). Los tickets los usa también el panel
@@ -290,7 +319,8 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
     if (!enTablero) return;
     cargarMetricas();
     cargarSolicitudes();
-  }, 120000, [enTablero, cargarMetricas, cargarSolicitudes]);
+    cargarMetricasSol();
+  }, 120000, [enTablero, cargarMetricas, cargarSolicitudes, cargarMetricasSol]);
 
   const tituloHeader = ticketVer
     ? ticketVer.folio_ticket
@@ -390,13 +420,13 @@ function AdminDashboardInner({ usuario, onLogout, onUsuarioActualizado }) {
           ) : solicitudVer ? (
             <div className="h-full overflow-y-auto"><VistaSolicitud T={T} id_solicitud={solicitudVer.id_solicitud} esAdmin onBack={() => setSolicitudVer(null)} /></div>
           ) : activo === 0 ? (
-            <DashboardContent T={T} usuario={usuario} tickets={tickets} solicitudes={solicitudes} metricas={metricas} onVerTicket={setTicketVer} onVerSolicitud={setSolicitudVer} />
+            <DashboardContent T={T} usuario={usuario} tickets={tickets} solicitudes={solicitudes} metricas={metricas} metricasSol={metricasSol} onVerTicket={setTicketVer} onVerSolicitud={setSolicitudVer} />
           ) : activo === 1 ? (
             <HistorialIncidencias T={T} usuario={usuario} onVerTicket={setTicketVer} onRecargarRef={recargarHistorialRef} />
           ) : activo === 2 ? (
-            <div className="h-full overflow-hidden"><HistorialInsumos T={T} /></div>
+            <div className="h-full overflow-hidden"><HistorialInsumos T={T} versionInventario={versionInventario} /></div>
           ) : activo === 3 ? (
-            <div className="h-full overflow-y-auto"><Inventario T={T} /></div>
+            <div className="h-full overflow-y-auto"><Inventario T={T} versionInventario={versionInventario} /></div>
           ) : activo === 4 ? (
             <div className="h-full overflow-y-auto"><RendimientoTecnicos T={T} /></div>
           ) : activo === 5 ? (

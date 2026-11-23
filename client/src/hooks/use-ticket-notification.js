@@ -77,6 +77,14 @@ const EVENTOS_USUARIO = new Set([
   "ticket:cancelado",
 ]);
 
+// Eventos de admin que solo recargan pantallas (stock, estadísticas) sin
+// notificación ni sonido: un movimiento de inventario no es un aviso, y
+// solicitud:actualizada le llega al admin cuando OTRO admin acepta o niega.
+const EVENTOS_SILENCIOSOS_ADMIN = new Set([
+  "inventario:movimiento",
+  "solicitud:actualizada",
+]);
+
 // Eventos que requieren verificar si el ticket aun existe en BD
 const EVENTOS_CON_TICKET_ID = new Set([
   "ticket:actualizado",
@@ -143,6 +151,10 @@ export function useTicketNotification({ usuario, onNavegar, onEvento }) {
   // procesarEvento es estable (sin dependencias que cambien) gracias a los refs
   const procesarEvento = useCallback(async ({ tipo, data }) => {
     const esAdmin = esAdminRef.current;
+    if (esAdmin && EVENTOS_SILENCIOSOS_ADMIN.has(tipo)) {
+      try { onEventoRef.current?.(tipo, data); } catch { /* sin pantalla que recargar */ }
+      return;
+    }
     if (!EVENTOS_ADMIN.has(tipo) && !EVENTOS_USUARIO.has(tipo)) return;
     if (esAdmin  && !EVENTOS_ADMIN.has(tipo)) return;
     if (!esAdmin && !EVENTOS_USUARIO.has(tipo)) return;

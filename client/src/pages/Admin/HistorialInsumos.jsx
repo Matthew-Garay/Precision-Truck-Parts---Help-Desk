@@ -63,7 +63,7 @@ const BadgeSoporte = () => (
 const LIMIT = 25;
 const FILTROS_INIT = { busqueda: "", estatus: "Todos", prioridad: "Todos", area: "Todos", usuario: "Todos", sucursal: "Todos", origen: "Todos" };
 
-export default function HistorialInsumos({ T }) {
+export default function HistorialInsumos({ T, versionInventario = 0 }) {
   const isDark = T.isDark;
   const { card, hdr } = useCardStyles(T);
 
@@ -153,6 +153,13 @@ export default function HistorialInsumos({ T }) {
   useEffect(() => { cargar(filtros, page, limit); cargarMetricas(); }, [filtrosStr, page, limit]); // eslint-disable-line
 
   useAutoRefresh(() => { cargar(filtrosRef.current, page, limit); cargarMetricas(); }, 120000, [page, limit], { inmediato: false });
+
+  // Aviso en vivo (salida, salida interna, anulación, solicitud aceptada o
+  // negada): la lista y los totales se actualizan sin esperar 2 minutos.
+  useEffect(() => {
+    if (!versionInventario) return;
+    cargar(filtrosRef.current, page, limit); cargarMetricas();
+  }, [versionInventario]); // eslint-disable-line
 
   // Opciones para selects — una sola vez (catálogos completos, no solo los 2000
   // primeros registros, para que el filtro cargue todas las sucursales y áreas).

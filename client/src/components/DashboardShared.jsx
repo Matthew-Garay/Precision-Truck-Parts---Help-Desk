@@ -19,7 +19,7 @@
  *   Fila de KPIs para el dashboard del usuario: total, en proceso,
  *   resueltos, sin resolver, tasa de resolucion y tiempo promedio.
  *
- * SeccionEstadisticas({ T, tickets, solicitudes })
+ * SeccionEstadisticas({ T, tickets, solicitudes, metricasSolicitudes? })
  *   Dos tarjetas: reportes por prioridad (con barras) y reportes por
  *   estatus (con grafica de pastel y barras). Combina tickets y solicitudes.
  *
@@ -102,7 +102,9 @@ function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
         </div>
       )}
 
-      {/* Zona de barras */}
+      {/* Zona de barras: con un solo mes no hay tendencia que mostrar (sería un bloque
+          enorme); basta el resumen de números de abajo. */}
+      {tendencia.length > 1 && (<>
       <div style={{ display: "flex", alignItems: "flex-end", gap: "3px", height: "48px", width: "100%" }}>
         {tendencia.map((t, i) => {
           const esActivo = i === idxActivo;
@@ -138,6 +140,7 @@ function TendenciaChart({ tendencia, T, isDark, MESES_CORTOS }) {
           );
         })}
       </div>
+      </>)}
 
       {/* Panel de datos globales */}
       <div style={{
@@ -402,7 +405,7 @@ export function SeccionMetricasUsuario({ T, tickets = [] }) {
   );
 }
 
-export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
+export function SeccionEstadisticas({ T, tickets = [], solicitudes = [], metricasSolicitudes = null }) {
   const isDark = T.isDark;
 
   // "Soporte Técnico" y "Auxiliar de Soporte Técnico" no cuentan en las
@@ -424,8 +427,14 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
   ].map(p => ({
     ...p,
     valor:   tk.filter(t => t.prioridad === p.label).length,
-    insumos: sol.filter(s => s.prioridad === p.label).length,
+    // Con métricas del servidor (admin) se cuentan TODAS las solicitudes y las
+    // salidas internas activas; la lista `solicitudes` del admin trae solo las
+    // pendientes, y contarla dejaba fuera lo aceptado, lo negado y las salidas.
+    insumos: metricasSolicitudes
+      ? Number(metricasSolicitudes[`p_${p.label.toLowerCase()}`]) || 0
+      : sol.filter(s => s.prioridad === p.label).length,
   }));
+  const totalSol = prioridadData.reduce((n, p) => n + p.insumos, 0);
 
   const estatusData = [
     { label: "Resuelto",    color: "#16a34a", valor: tk.filter(t => t.estatus === "Resuelto").length },
@@ -443,11 +452,18 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
           <div className="w-1 h-3 rounded-full" style={{ background: "#F47920" }} />
           <p className="text-[9px] font-black uppercase tracking-widest"
             style={{ color: isDark ? "rgba(255,255,255,0.45)" : T.textMuted }}>Reportes por Prioridad</p>
+          {/* Leyenda: el número es de tickets; el globo azul, de solicitudes de insumo */}
+          {totalSol > 0 && (
+            <span className="ml-auto flex items-center gap-1 text-[9px] font-semibold" style={{ color: T.textFaint }}>
+              tickets · <Package size={9} style={{ color: '#3b82f6' }} /> solicitudes
+            </span>
+          )}
         </div>
         <div className="px-2.5 py-1.5 flex flex-col gap-1">
           {prioridadData.map((p, i) => {
             const totalFila = p.valor + p.insumos;
-            const pct = total > 0 ? Math.round((totalFila / (total + sol.length)) * 100) : 0;
+            const granTotal = total + totalSol;
+            const pct = granTotal > 0 ? Math.round((totalFila / granTotal) * 100) : 0;
             return (
               <div key={i} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
@@ -457,9 +473,10 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
                       style={{ color: isDark ? "rgba(255,255,255,0.65)" : T.text }}>{p.label}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-black" style={{ color: p.color }}>{totalFila}</span>
+                    <span className="text-[10px] font-black" style={{ color: p.color }} title={`${p.valor} ticket${p.valor !== 1 ? 's' : ''}`}>{p.valor}</span>
                     {p.insumos > 0 && (
                       <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-black"
+                        title={`${p.insumos} solicitud${p.insumos !== 1 ? 'es' : ''} de insumo`}
                         style={{ background: isDark ? 'rgba(59,130,246,0.2)' : '#dbeafe', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)' }}>
                         <Package size={8} />{p.insumos}
                       </span>
@@ -468,10 +485,13 @@ export function SeccionEstadisticas({ T, tickets = [], solicitudes = [] }) {
                 </div>
                 <div className="relative h-3 rounded-full overflow-hidden"
                   style={{ background: isDark ? "rgba(255,255,255,0.06)" : p.bg }}>
-                  <div className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-700"
-                    style={{ width: `${pct > 0 ? Math.max(pct, 10) : 0}%`, background: p.color }}>
-                    {totalFila > 0 && <span className="text-[9px] font-black text-white">{pct}%</span>}
-                  </div>
+                  {/* Sin registros no se pinta la barra (antes el relleno dejaba una mancha de color) */}
+                  {totalFila > 0 && (
+                    <div className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-700"
+                      style={{ width: `${Math.max(pct, 10)}%`, background: p.color }}>
+                      <span className="text-[9px] font-black text-white">{pct}%</span>
+                    </div>
+                  )}
                   {totalFila === 0 && (
                     <span className="absolute inset-0 flex items-center pl-2.5 text-[9px]"
                       style={{ color: isDark ? "rgba(255,255,255,0.2)" : T.textFaint }}>Sin registros</span>
@@ -713,9 +733,9 @@ export function KanbanBoard({ T, tickets = [], solicitudes = [], onVerTicket, on
           </span>
         </div>
         <div className="p-2 flex flex-col gap-1.5"
-          style={{ minHeight: '60px' }}>
+          style={{ minHeight: total === 0 ? 0 : '60px' }}>
           {total === 0 ? (
-            <div className="flex items-center justify-center py-6">
+            <div className="flex items-center justify-center py-1">
               <p className="text-[11px]" style={{ color: T.textFaint }}>Sin elementos</p>
             </div>
           ) : items.map(item => {

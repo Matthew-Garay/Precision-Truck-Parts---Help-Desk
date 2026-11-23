@@ -59,7 +59,9 @@ const ESTADO_OPTS = ["Excelente", "Bueno", "Regular", "Malo", "Dañado"];
 const PAGE_SIZE  = 25; // coincide con el selector estándar [10, 25, 50, 100] de <Paginacion/>
 
 // ── Página principal ──────────────────────────────────────────────
-export default function Inventario() {
+// versionInventario: la sube el Dashboard cuando el servidor avisa que cambió el
+// stock (entrada, salida, salida interna, anulación o solicitud aceptada).
+export default function Inventario({ versionInventario = 0 } = {}) {
   const [insumos,    setInsumos]    = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [loading,    setLoading]    = useState(true);
@@ -105,6 +107,12 @@ export default function Inventario() {
           }
           prevRef.current = lista;
           return JSON.stringify(prev) === JSON.stringify(lista) ? prev : lista;
+        });
+        // El detalle abierto muestra el stock recién leído, no el de cuando se abrió.
+        setDetalle(d => {
+          if (!d) return d;
+          const fresco = lista.find(i => i.id_insumo === d.id_insumo);
+          return fresco && fresco.stock !== d.stock ? { ...d, ...fresco } : d;
         });
       })
       .catch(() => {})
@@ -162,6 +170,15 @@ export default function Inventario() {
     if (vista === "entradas") cargarMovimientos("Entrada");
     else cargarInventario(false);
   }, 120000, [], { inmediato: false });
+
+  // Aviso en vivo de un cambio de stock (de esta u otra pantalla, o de otro
+  // administrador): se recarga el inventario y, si está abierta, la lista de entradas.
+  useEffect(() => {
+    if (!versionInventario) return;
+    cargarInventario(false);
+    if (vista === "entradas") cargarMovimientos("Entrada");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [versionInventario]);
 
   const handleSave = (data, isEdit) => {
     setInsumos(prev => isEdit ? prev.map(i => i.id_insumo === data.id_insumo ? data : i) : [...prev, data]);
@@ -351,7 +368,10 @@ export default function Inventario() {
   const estadoBueno    = insumos.filter(i => i.estado === "Excelente" || i.estado === "Bueno").length;
   // Regular, Malo y Dañado cuentan como estado deficiente para la tasa de salud.
   const estadoMalo     = insumos.filter(i => i.estado === "Malo" || i.estado === "Regular" || i.estado === "Dañado").length;
-  const tasaSalud      = insumos.length > 0 ? Math.round((estadoBueno / insumos.length) * 100) : 0;
+  // Solo cuentan los insumos con estado capturado; si ninguno lo tiene, la tasa queda "sin evaluar" (null).
+  const conEstado      = estadoBueno + estadoMalo;
+  const tasaSalud      = conEstado > 0 ? Math.round((estadoBueno / conEstado) * 100) : null;
+  const sinEstado      = insumos.length - conEstado;
 
   // Entradas: paginación del servidor
   const movTotalPaginas = Math.max(1, Math.ceil(movTotal / movPageSize));
@@ -478,11 +498,15 @@ export default function Inventario() {
             pct={insumos.length > 0 ? Math.round((criticos / insumos.length) * 100) : 0}
           />
           <KpiCard
-            label="Salud del Catálogo" value={`${tasaSalud}%`}
-            sub={estadoMalo > 0 ? `${estadoMalo} en estado deficiente` : "Todo en buen estado"}
-            icon={tasaSalud >= 70 ? CheckCircle2 : Activity}
-            color={tasaSalud >= 70 ? "#16a34a" : tasaSalud >= 40 ? "#d97706" : "#dc2626"}
-            highlight={tasaSalud < 70} pct={tasaSalud}
+            label="Salud del Catálogo" value={tasaSalud === null ? "—" : `${tasaSalud}%`}
+            sub={tasaSalud === null
+              ? "Sin estado capturado"
+              : estadoMalo > 0
+                ? `${estadoMalo} en estado deficiente`
+                : sinEstado > 0 ? `Todo bien · ${sinEstado} sin evaluar` : "Todo en buen estado"}
+            icon={tasaSalud === null || tasaSalud >= 70 ? CheckCircle2 : Activity}
+            color={tasaSalud === null ? "#64748b" : tasaSalud >= 70 ? "#16a34a" : tasaSalud >= 40 ? "#d97706" : "#dc2626"}
+            highlight={tasaSalud !== null && tasaSalud < 70} pct={tasaSalud ?? undefined}
           />
         </div>
         )}
