@@ -65,9 +65,8 @@ function resolverAppUrl(_req) {
     return process.env.APP_URL.replace(/\/+$/, "");
   }
   // Sin APP_URL solo puede ser desarrollo local (en producción server.js exige
-  // APP_URL al arrancar). Antes había una IP de red local fija que en otro
-  // equipo o en internet mandaba el login de Zoho a una dirección inexistente.
-  return "http://localhost:5173";
+  // APP_URL al arrancar). IP de red local del servidor (según .env).
+  return "http://192.168.31.23:5173";
 }
 
 /**
