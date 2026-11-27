@@ -210,15 +210,42 @@ export default function NuevoReporte({ T, solicitante, area = "-", usuario = {},
   ]);
   const esVideo = (tipo) => tipo?.startsWith("video/");
 
+  // Límites que aplica el servidor (middlewares/upload-evidencias.js): mejor
+  // avisar aquí que dejar subir 100 MB para que la petición falle al final.
+  const MAX_MB_VIDEO = 100, MAX_MB_FOTO = 25, MAX_MB_ENVIO = 250;
+  const MB = b => (b / (1024 * 1024)).toFixed(1);
+
   const agregarImgs = files => {
     const libres = MAX_IMGS - form.evidencias.length;
+    let pesoActual = form.evidencias.reduce((s, ev) => s + (ev.file?.size || 0), 0);
+    const avisos = [];
+    const aceptados = [];
     Array.from(files)
       .filter(f => MIME_PERMITIDOS.has(f.type))
       .slice(0, libres)
       .forEach(file => {
-        const src = URL.createObjectURL(file);
-        setForm(f => ({ ...f, evidencias: [...f.evidencias, { src, name: file.name, file, isVideo: esVideo(file.type) }] }));
+        const esVid = esVideo(file.type);
+        const tope = esVid ? MAX_MB_VIDEO : MAX_MB_FOTO;
+        if (file.size > tope * 1024 * 1024) {
+          avisos.push(`"${file.name}" pesa ${MB(file.size)} MB; el máximo para ${esVid ? "videos" : "fotos"} es ${tope} MB.`);
+          return;
+        }
+        if (pesoActual + file.size > MAX_MB_ENVIO * 1024 * 1024) {
+          avisos.push(`"${file.name}" no cabe: el envío no puede superar ${MAX_MB_ENVIO} MB.`);
+          return;
+        }
+        pesoActual += file.size;
+        aceptados.push(file);
       });
+    setErrores(e => {
+      const n = { ...e };
+      if (avisos.length) n.evidencias = avisos.join(" "); else delete n.evidencias;
+      return n;
+    });
+    aceptados.forEach(file => {
+      const src = URL.createObjectURL(file);
+      setForm(f => ({ ...f, evidencias: [...f.evidencias, { src, name: file.name, file, isVideo: esVideo(file.type) }] }));
+    });
   };
 
   const handleDrop = e => {
@@ -614,6 +641,8 @@ const card = {
                   </span>
                 </div>
 
+                <Err campo="evidencias"/>
+
                 {/* Zona principal drag & drop */}
                 {form.evidencias.length < MAX_IMGS && (
                   <label className="flex flex-col items-center justify-center gap-2 w-full py-5 rounded-xl cursor-pointer transition-all mb-3"
@@ -629,7 +658,7 @@ const card = {
                       <Camera size={22} style={{ color:"#F47920" }}/>
                     </div>
                     <p className="text-[11px] font-semibold" style={{ color:"#F47920" }}>Haz clic o arrastra archivos aquí</p>
-                    <p className="text-[10px]" style={{ color:iconColor }}>PNG, JPG, MP4, WebM · Máx. {MAX_IMGS} archivos</p>
+                    <p className="text-[10px]" style={{ color:iconColor }}>Fotos hasta 25 MB · Videos hasta 100 MB · Máx. {MAX_IMGS} archivos</p>
                   </label>
                 )}
 

@@ -148,9 +148,43 @@ async function validarYComprimirArchivos(req, res, next) {
   next();
 }
 
-// Middleware compuesto: multer + validación + compresión
+// Tope del conjunto de archivos de UNA petición (8 × 100 MB sería 800 MB en disco).
+// Se comprueba con Content-Length antes de leer el cuerpo: la respuesta es inmediata.
+export const MAX_BYTES_PETICION = 250 * 1024 * 1024;
+const limitarTamanoPeticion = (req, res, next) => {
+  const largo = Number(req.headers["content-length"] || 0);
+  if (largo > MAX_BYTES_PETICION + 1024 * 1024) {
+    res.setHeader("Connection", "close");
+    return res.status(413).json({
+      error: "Las evidencias juntas pesan demasiado (máximo 250 MB por envío). Adjunta menos archivos o videos más cortos.",
+    });
+  }
+  next();
+};
+
+// Temporales huérfanos: si la petición falla después de subir (por ejemplo, el
+// ticket no pasa la validación del formulario), los archivos quedaban para
+// siempre en _tmp_upload. Se borran al cabo de 2 h; una subida real tarda segundos.
+const TMP_MAX_EDAD_MS = 2 * 60 * 60 * 1000;
+export function limpiarTemporalesViejos(ahora = Date.now()) {
+  let borrados = 0;
+  try {
+    for (const nombre of fs.readdirSync(EVIDENCIAS_TMP)) {
+      const ruta = path.join(EVIDENCIAS_TMP, nombre);
+      try {
+        if (ahora - fs.statSync(ruta).mtimeMs > TMP_MAX_EDAD_MS) { fs.unlinkSync(ruta); borrados++; }
+      } catch { /* archivo en uso o ya borrado */ }
+    }
+  } catch { /* carpeta aún no creada */ }
+  return borrados;
+}
+const intervaloLimpieza = setInterval(limpiarTemporalesViejos, 30 * 60 * 1000);
+intervaloLimpieza.unref();
+
+// Middleware compuesto: tope de tamaño + multer + validación + compresión
 const uploadEvidencias = {
   array: (campo, maxCount) => [
+    limitarTamanoPeticion,
     uploadEvidenciasRaw.array(campo, maxCount),
     validarYComprimirArchivos,
   ],
