@@ -48,6 +48,7 @@ import crypto             from "crypto";
 import { fileURLToPath }  from "url";
 import { fileTypeFromFile } from "file-type";
 import sharp               from "sharp";
+import { optimizarVideo }  from "../utils/video.js";
 
 // Fix #16: usar import.meta.url en lugar de path.resolve relativo al CWD
 const __dirname       = path.dirname(fileURLToPath(import.meta.url));
@@ -102,7 +103,8 @@ async function validarYComprimirArchivos(req, res, next) {
 
   const rutas = archivos.map(f => f.path);
   const limpiar = () => {
-    for (const ruta of rutas) {
+    // Rutas originales y las ya convertidas (un video puede cambiar de nombre)
+    for (const ruta of new Set([...rutas, ...archivos.map(f => f.path)])) {
       try { if (fs.existsSync(ruta)) fs.unlinkSync(ruta); } catch {}
     }
   };
@@ -118,6 +120,18 @@ async function validarYComprimirArchivos(req, res, next) {
     if (!tipo || !MIMETYPES_PERMITIDOS.has(tipo.mime)) {
       limpiar();
       return res.status(400).json({ error: "Archivo rechazado: el contenido no es una imagen o video válido" });
+    }
+
+    // Video: se convierte a MP4 H.264 (reproduce en cualquier navegador y pesa
+    // menos). Si ffmpeg falla o tarda demasiado, se conserva el original.
+    if (MIMETYPES_VIDEO.has(tipo.mime)) {
+      const convertido = await optimizarVideo(file.path).catch(() => null);
+      if (convertido) {
+        file.path     = convertido;
+        file.filename = path.basename(convertido);
+        file.mimetype = "video/mp4";
+      }
+      continue;
     }
 
     // Comprimir archivos

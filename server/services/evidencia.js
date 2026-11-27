@@ -18,6 +18,7 @@ import path from "path";
 import pool from "../config/db.js";
 import { safeResolvePath } from "../middlewares/security.js";
 import { EVIDENCIAS_BASE } from "../middlewares/upload-evidencias.js";
+import { crearPoster } from "../utils/video.js";
 
 export const MAX_EVIDENCIAS = 8;
 const RE_EVIDENCIA = /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|avi)$/i;
@@ -54,6 +55,10 @@ const Evidencia = {
       const nombre = `${String(mayor).padStart(2, "0")}${ext.toLowerCase()}`;
       const destino = path.join(destDir, nombre);
       fs.renameSync(file.path, destino);
+      // Miniatura de los videos: un fotograma en <carpeta>/min/NN.jpg para la lista.
+      if (file.mimetype?.startsWith("video/")) {
+        await crearPoster(destino, path.join(destDir, "min", `${path.parse(nombre).name}.jpg`)).catch(() => {});
+      }
       let tamano = null;
       try { tamano = fs.statSync(destino).size; } catch { /* sin tamaño */ }
       await pool.query(
@@ -78,6 +83,9 @@ const Evidencia = {
     );
     const enDisco = fs.existsSync(filePath);
     if (enDisco) fs.unlinkSync(filePath);
+    // Su miniatura de video (si la tiene) también se borra
+    const poster = safeResolvePath(EVIDENCIAS_BASE, folio, "min", `${path.parse(nombre).name}.jpg`);
+    try { if (fs.existsSync(poster)) fs.unlinkSync(poster); } catch { /* sin miniatura */ }
     return r.affectedRows > 0 || enDisco;
   },
 };

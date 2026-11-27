@@ -598,8 +598,11 @@ export default function VistaTicket({ T, ticket, onVolver, esAdmin = false, usua
                           {isVideo ? (
                             <div className="w-full h-full flex items-center justify-center"
                               style={{ background: isDark ? "rgba(0,0,0,0.7)" : "#1e293b" }}>
+                              {/* Miniatura generada al subir (min/NN.jpg). Sin ella el video
+                                  no se precarga: la lista no descarga el archivo entero. */}
                               <video src={`${API}/storage/Evidencias_Tickets/${ticket.folio_ticket}/${img}`}
-                                className="w-full h-full object-cover absolute inset-0" muted preload="metadata"/>
+                                poster={`${API}/storage/Evidencias_Tickets/${ticket.folio_ticket}/min/${img.replace(/\.[^.]+$/, "")}.jpg`}
+                                className="w-full h-full object-cover absolute inset-0" muted preload="none"/>
                               <svg className="relative z-10" width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><polygon points="5,3 19,12 5,21"/></svg>
                             </div>
                           ) : (
