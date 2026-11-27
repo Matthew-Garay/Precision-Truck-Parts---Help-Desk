@@ -605,8 +605,15 @@ export const getIndicadoresMensuales = async (req, res) => {
   const mes = String(req.query.mes || `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`);
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes))
     return res.status(400).json({ error: "Elige un mes válido" });
+  // Es un informe mensual: se recalcula cada 5 min como máximo. Sin esto cada
+  // visita al tablero repetía ~12 consultas con la vista de salidas.
+  const clave = `indicadores:${mes}`;
   try {
-    res.json(await Indicadores.mensual(mes));
+    const guardado = cache.get(clave);
+    if (guardado) return res.json(guardado);
+    const datos = await Indicadores.mensual(mes);
+    cache.set(clave, datos, 5 * 60 * 1000);
+    res.json(datos);
   } catch (err) {
     console.error("[indicadores]", err.message);
     res.status(500).json({ error: "Error al calcular los indicadores" });
