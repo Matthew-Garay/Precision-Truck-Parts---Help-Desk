@@ -181,7 +181,7 @@ export function iniciarWorkers(io) {
       stockAlertados.clear(); // nuevo día → permitir re-emisión
       const [criticos] = await pool.query(
         `SELECT id_insumo, nombre, stock, imagen_url
-         FROM insumo WHERE stock <= ? ORDER BY stock ASC, nombre ASC LIMIT 50`,
+         FROM insumo WHERE stock <= ? ORDER BY stock ASC, nombre ASC`,
         [STOCK_BAJO]
       );
       if (criticos.length === 0) return;
