@@ -169,6 +169,19 @@ export const actualizarInsumo = async (req, res) => {
       let stockNuevo = null;
       if (req.body.stock !== undefined) {
         stockNuevo = Math.max(parseInt(req.body.stock, 10) || 0, 0);
+        // Control de concurrencia: el formulario manda el stock que vio al abrirse
+        // (stock_original). Si desde entonces hubo una entrada o salida, guardar
+        // sobrescribiría ese movimiento con un número viejo. Se rechaza y se pide recargar.
+        if (stockNuevo !== stockAnterior) {
+          const visto = req.body.stock_original;
+          if (visto === undefined || visto === null || Number(visto) !== stockAnterior) {
+            await conn.rollback();
+            return res.status(409).json({
+              error: `El stock de este insumo cambió mientras editabas (ahora hay ${stockAnterior}). Recarga la pantalla antes de corregirlo.`,
+              stock_actual: stockAnterior,
+            });
+          }
+        }
         if (stockNuevo !== stockAnterior) {
         mov = stockNuevo > stockAnterior
           ? { tipo: "Entrada", cantidad: stockNuevo - stockAnterior, motivo: "Aumento de stock al editar el insumo" }

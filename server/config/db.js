@@ -58,12 +58,22 @@ const pool = mysql.createPool({
     : {}),
 });
 
-// Verificar conexión al iniciar
-pool.getConnection()
-  .then(conn => { conn.release(); })
-  .catch(err => {
-    console.error("\u274c MySQL \u2014 no se pudo conectar:", err.message);
-    process.exit(1);
-  });
+const REINTENTOS_MAX = 10;
+// Verificar conexión al iniciar. Antes, un fallo terminaba el proceso: una caída
+// breve de MySQL tumbaba todo el sistema y las pruebas morían si el pool se cerraba
+// antes de que esta verificación acabara. Ahora reintenta con espera creciente.
+function verificarConexion(intento = 1) {
+  if (process.env.NODE_ENV === "test") return;
+  pool.getConnection()
+    .then(conn => { conn.release(); })
+    .catch(err => {
+      if (err.code === "POOL_CLOSED") return;
+      console.error(`❌ MySQL — intento ${intento} de conexión falló:`, err.message);
+      if (intento < REINTENTOS_MAX) {
+        setTimeout(() => verificarConexion(intento + 1), Math.min(30000, 2000 * intento)).unref();
+      }
+    });
+}
+verificarConexion();
 
 export default pool;

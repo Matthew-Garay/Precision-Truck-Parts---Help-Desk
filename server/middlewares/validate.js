@@ -560,6 +560,8 @@ export const schemaActualizarInsumo = z.object({
   marca:        textoOpcional(100).optional(),
   modelo:       textoOpcional(100).optional(),
   stock:        z.number({ coerce: true }).int().min(0).nullable().optional(),
+  // Stock que vio el formulario al abrirse (ver actualizarInsumo: control de concurrencia).
+  stock_original: z.number({ coerce: true }).int().min(0).nullable().optional(),
   estado:       z.enum(["Excelente", "Bueno", "Regular", "Malo", "Dañado"]).nullable().optional(),
   id_categoria: z.number({ coerce: true }).int().positive().nullable().optional(),
   imagen_url:   z.string().trim().max(255).optional().nullable(),

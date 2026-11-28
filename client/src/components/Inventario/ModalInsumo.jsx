@@ -161,7 +161,12 @@ export default function ModalInsumo({ insumo, categorias, onClose, onSave, T }) 
         descripcion:  form.descripcion || null,
         marca:        form.marca       || "",
         modelo:       form.modelo      || "",
-        stock:        Number(form.stock),
+        // Al crear, el stock inicial va en el formulario. Al editar NO se envía:
+        // solo se manda el stock que se vio al abrir (el servidor rechaza el
+        // guardado si cambió desde entonces, en vez de pisar entradas o salidas).
+        ...(isEdit
+          ? { stock_original: Number(insumo?.stock ?? 0) }
+          : { stock: Number(form.stock) }),
         estado:       form.estado,
         id_categoria: Number(form.id_categoria),
         imagen_url:   form.imagen_url  || null,
